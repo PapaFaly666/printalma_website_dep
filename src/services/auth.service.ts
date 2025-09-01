@@ -189,28 +189,7 @@ class AuthService {
    * Vérification de l'authentification - idéal pour la vérification au chargement
    */
   async checkAuth(): Promise<AuthCheckResponse> {
-    try {
-      return await this.request<AuthCheckResponse>(API_ENDPOINTS.AUTH.CHECK);
-    } catch (error: any) {
-      // Si l'erreur est 401 et qu'on a un fallback valide, essayons de récupérer le profil
-      if (error?.statusCode === 401) {
-        const fallback = this.checkAuthFallback();
-        if (fallback.hasValidFallback) {
-          console.log('🔄 Tentative avec fallback localStorage...');
-          // Essayer de récupérer le profil quand même
-          try {
-            const profile = await this.getProfile();
-            return {
-              isAuthenticated: true,
-              user: profile
-            };
-          } catch (profileError) {
-            console.log('❌ Impossible de récupérer le profil avec fallback');
-          }
-        }
-      }
-      throw error;
-    }
+    return this.request<AuthCheckResponse>(API_ENDPOINTS.AUTH.CHECK);
   }
 
   /**
