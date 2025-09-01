@@ -43,6 +43,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error: null
   });
 
+  // État pour savoir si c'est la première vérification
+  const [isInitialCheck, setIsInitialCheck] = useState(true);
+
   // 🆕 NOUVEAU - État pour l'ID temporaire de l'utilisateur qui doit changer son mot de passe
   const [tempUserId, setTempUserId] = useState<number | null>(null);
 
@@ -51,9 +54,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuthStatus();
   }, []);
 
+  // Vérifier automatiquement l'authentification sur les changements de focus/visibilité
+  useEffect(() => {
+    const handleFocus = () => {
+      if (!isInitialCheck && !authState.loading) {
+        checkAuthStatus();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isInitialCheck && !authState.loading) {
+        checkAuthStatus();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isInitialCheck, authState.loading]);
+
   const checkAuthStatus = async () => {
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      // Ne montrer le loading que lors de la première vérification
+      if (isInitialCheck) {
+        setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      } else {
+        setAuthState(prev => ({ ...prev, error: null }));
+      }
       
       // 1️⃣ Tentative principale : récupérer directement le profil complet (inclut profile_photo_url)
       try {
@@ -66,6 +97,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             loading: false,
             error: null
           });
+          setIsInitialCheck(false);
           return; // ✅ on a terminé
         }
       } catch (err) {
@@ -102,6 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           loading: false,
           error: null
         });
+        setIsInitialCheck(false);
       } else {
         setAuthState({
           isAuthenticated: false,
@@ -110,6 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           loading: false,
           error: null
         });
+        setIsInitialCheck(false);
       }
     } catch (error) {
       // Silencieux - utilisateur simplement non connecté
@@ -120,6 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         loading: false,
         error: null
       });
+      setIsInitialCheck(false);
     }
   };
 
@@ -217,6 +252,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // 3. Nettoyer les données temporaires
       setTempUserId(null);
+      setIsInitialCheck(true); // Réinitialiser pour la prochaine connexion
       
       // 4. Attendre un peu pour que les cookies soient supprimés
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -234,6 +270,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       
       setTempUserId(null);
+      setIsInitialCheck(true); // Réinitialiser pour la prochaine connexion
     }
     
     // 5. Redirection différée pour éviter les problèmes de timing
