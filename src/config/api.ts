@@ -1,16 +1,16 @@
 // Configuration de l'API PrintAlma
 export const API_CONFIG = {
-  BASE_URL: 'https://printalma-back-dep.onrender.com',
+  BASE_URL: import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com',
   TIMEOUT: 10000,
   HEADERS: {
     'Content-Type': 'application/json'
   }
 };
 
-// Configuration des cookies
+// Configuration des cookies basée sur l'environnement
 export const COOKIE_CONFIG = {
-  sameSite: 'strict' as const,
-  secure: false, // true en production
+  sameSite: (import.meta.env.VITE_SAME_SITE || 'lax') as 'strict' | 'lax' | 'none',
+  secure: import.meta.env.VITE_SECURE_COOKIES === 'true' || import.meta.env.VITE_ENVIRONMENT === 'production',
   httpOnly: true
 };
 

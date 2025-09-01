@@ -145,8 +145,11 @@ const queryClient = new QueryClient();
 
 import ConfirmEmailChange from './pages/ConfirmEmailChange';
 import ProductsPage from './pages/ProductsPage';
+import { useAuthPersistence } from './hooks/useAuthPersistence';
 
 function App() {
+  // Maintenir la persistance de l'authentification
+  useAuthPersistence();
   return (
     <Router>
       <QueryClientProvider client={queryClient}>

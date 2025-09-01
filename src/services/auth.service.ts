@@ -22,29 +22,43 @@ import {
 class AuthService {
   private baseUrl = API_CONFIG.BASE_URL;
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}, retries = 2): Promise<T> {
     // Préparer les headers par défaut seulement si ce n'est pas FormData
     const isFormData = options.body instanceof FormData;
     const defaultHeaders = isFormData ? {} : API_CONFIG.HEADERS;
     
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      credentials: 'include', // ⭐ Toujours inclure les cookies
-      headers: {
-        ...defaultHeaders,
-        ...options.headers
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+          ...options,
+          credentials: 'include', // ⭐ Toujours inclure les cookies
+          headers: {
+            ...defaultHeaders,
+            ...options.headers
+          }
+        });
+
+        if (!response.ok) {
+          const error: ApiError = await response.json().catch(() => ({
+            statusCode: response.status,
+            message: this.getErrorMessage(response.status)
+          }));
+          throw error;
+        }
+
+        return response.json();
+      } catch (error) {
+        // Si c'est la dernière tentative ou si c'est une erreur non-réseau, on lance l'erreur
+        if (attempt === retries || (error as any)?.statusCode) {
+          throw error;
+        }
+        
+        // Attendre un peu avant de réessayer (backoff exponentiel)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 500));
       }
-    });
-
-    if (!response.ok) {
-      const error: ApiError = await response.json().catch(() => ({
-        statusCode: response.status,
-        message: this.getErrorMessage(response.status)
-      }));
-      throw error;
     }
-
-    return response.json();
+    
+    throw new Error('Toutes les tentatives de requête ont échoué');
   }
 
   private getErrorMessage(statusCode: number): string {

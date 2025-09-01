@@ -54,28 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  // Vérifier automatiquement l'authentification sur les changements de focus/visibilité
-  useEffect(() => {
-    const handleFocus = () => {
-      if (!isInitialCheck && !authState.loading) {
-        checkAuthStatus();
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !isInitialCheck && !authState.loading) {
-        checkAuthStatus();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isInitialCheck, authState.loading]);
+  // Les vérifications périodiques sont maintenant gérées par useAuthPersistence
 
   const checkAuthStatus = async () => {
     try {
@@ -100,52 +79,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsInitialCheck(false);
           return; // ✅ on a terminé
         }
-      } catch (err) {
-        // ignore -> on tentera fallback
+      } catch (err: any) {
+        // Si c'est une erreur 401, c'est normal (non connecté)
+        if (err?.statusCode !== 401) {
+          console.warn('Erreur lors de la récupération du profil:', err);
+        }
       }
 
       // 2️⃣ Fallback : ancien endpoint /auth/check
-      const response = await authService.checkAuth();
-      if (response.isAuthenticated && response.user) {
-        let userWithPhoto = response.user;
+      try {
+        const response = await authService.checkAuth();
+        if (response.isAuthenticated && response.user) {
+          let userWithPhoto = response.user;
 
-        // 🆕 Si l'utilisateur est vendeur et qu'il manque l'URL photo, tentons de la récupérer via le profil étendu
-        if (
-          userWithPhoto.role === 'VENDEUR' &&
-          !userWithPhoto.profile_photo_url
-        ) {
-          try {
-            const extended = await authService.getExtendedVendorProfile();
-            if (extended.success && extended.vendor.profile_photo_url) {
-              userWithPhoto = {
-                ...userWithPhoto,
-                profile_photo_url: extended.vendor.profile_photo_url
-              } as User;
+          // 🆕 Si l'utilisateur est vendeur et qu'il manque l'URL photo, tentons de la récupérer via le profil étendu
+          if (
+            userWithPhoto.role === 'VENDEUR' &&
+            !userWithPhoto.profile_photo_url
+          ) {
+            try {
+              const extended = await authService.getExtendedVendorProfile();
+              if (extended.success && extended.vendor.profile_photo_url) {
+                userWithPhoto = {
+                  ...userWithPhoto,
+                  profile_photo_url: extended.vendor.profile_photo_url
+                } as User;
+              }
+            } catch (err) {
+              console.warn('Impossible de récupérer la photo de profil étendue:', err);
             }
-          } catch (err) {
-            console.warn('Impossible de récupérer la photo de profil étendue:', err);
           }
-        }
 
-        setAuthState({
-          isAuthenticated: true,
-          user: userWithPhoto,
-          mustChangePassword: response.user.must_change_password || false,
-          loading: false,
-          error: null
-        });
-        setIsInitialCheck(false);
-      } else {
-        setAuthState({
-          isAuthenticated: false,
-          user: null,
-          mustChangePassword: false,
-          loading: false,
-          error: null
-        });
-        setIsInitialCheck(false);
+          setAuthState({
+            isAuthenticated: true,
+            user: userWithPhoto,
+            mustChangePassword: response.user.must_change_password || false,
+            loading: false,
+            error: null
+          });
+          setIsInitialCheck(false);
+          return;
+        }
+      } catch (err: any) {
+        // Si c'est une erreur 401, c'est normal (non connecté)
+        if (err?.statusCode !== 401) {
+          console.warn('Erreur lors de la vérification d\'authentification:', err);
+        }
       }
+
+      // Si on arrive ici, l'utilisateur n'est pas connecté
+      setAuthState({
+        isAuthenticated: false,
+        user: null,
+        mustChangePassword: false,
+        loading: false,
+        error: null
+      });
+      setIsInitialCheck(false);
     } catch (error) {
+      console.warn('Erreur générale lors de la vérification d\'authentification:', error);
       // Silencieux - utilisateur simplement non connecté
       setAuthState({
         isAuthenticated: false,
