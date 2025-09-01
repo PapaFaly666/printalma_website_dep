@@ -95,14 +95,15 @@ class AuthService {
       body: JSON.stringify(credentials)
     });
     
-    // 🆕 Sauvegarder un indicateur de connexion en localStorage comme fallback
+    // 🆕 Sauvegarder les données utilisateur complètes en localStorage
     if ('user' in response && response.user) {
-      localStorage.setItem('auth_fallback', JSON.stringify({
+      const authData = {
         timestamp: Date.now(),
-        userId: response.user.id,
-        email: response.user.email
-      }));
-      console.log('💾 Fallback auth sauvegardé en localStorage');
+        user: response.user,
+        isAuthenticated: true
+      };
+      localStorage.setItem('auth_session', JSON.stringify(authData));
+      console.log('💾 Session utilisateur sauvegardée en localStorage');
     }
     
     return response;
@@ -119,9 +120,10 @@ class AuthService {
         method: 'POST'
       });
       
-      // 🆕 Nettoyer le fallback localStorage
+      // 🆕 Nettoyer la session localStorage
+      localStorage.removeItem('auth_session');
       localStorage.removeItem('auth_fallback');
-      console.log('🗑️ Fallback auth supprimé du localStorage');
+      console.log('🗑️ Session utilisateur supprimée du localStorage');
       
       console.log('✅ Déconnexion réussie côté serveur:', response);
       return response;
@@ -142,9 +144,10 @@ class AuthService {
         console.warn('⚠️ Impossible de nettoyer manuellement les cookies:', cookieError);
       }
       
-      // 🆕 Nettoyer le fallback localStorage même en cas d'erreur
+      // 🆕 Nettoyer la session localStorage même en cas d'erreur
+      localStorage.removeItem('auth_session');
       localStorage.removeItem('auth_fallback');
-      console.log('🗑️ Fallback auth supprimé du localStorage (mode erreur)');
+      console.log('🗑️ Session utilisateur supprimée du localStorage (mode erreur)');
       
       
       // Retourner un message même en cas d'erreur
@@ -153,31 +156,32 @@ class AuthService {
   }
 
   /**
-   * 🆕 Vérifier le fallback localStorage pour l'authentification
+   * 🆕 Récupérer la session utilisateur depuis localStorage
    */
-  private checkAuthFallback(): { isAuthenticated: boolean; hasValidFallback: boolean } {
+  getStoredSession(): { isAuthenticated: boolean; user: any | null } {
     try {
-      const fallback = localStorage.getItem('auth_fallback');
-      if (!fallback) {
-        return { isAuthenticated: false, hasValidFallback: false };
+      const stored = localStorage.getItem('auth_session');
+      if (!stored) {
+        console.log('📭 Aucune session stockée trouvée');
+        return { isAuthenticated: false, user: null };
       }
       
-      const data = JSON.parse(fallback);
+      const data = JSON.parse(stored);
       const now = Date.now();
-      const maxAge = 24 * 60 * 60 * 1000; // 24 heures
+      const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 jours
       
       if (now - data.timestamp > maxAge) {
-        console.log('⏰ Fallback auth expiré, suppression...');
-        localStorage.removeItem('auth_fallback');
-        return { isAuthenticated: false, hasValidFallback: false };
+        console.log('⏰ Session stockée expirée, suppression...');
+        localStorage.removeItem('auth_session');
+        return { isAuthenticated: false, user: null };
       }
       
-      console.log('✅ Fallback auth valide trouvé:', data);
-      return { isAuthenticated: true, hasValidFallback: true };
+      console.log('✅ Session stockée valide trouvée:', data.user);
+      return { isAuthenticated: true, user: data.user };
     } catch (error) {
-      console.warn('⚠️ Erreur lors de la vérification du fallback:', error);
-      localStorage.removeItem('auth_fallback');
-      return { isAuthenticated: false, hasValidFallback: false };
+      console.warn('⚠️ Erreur lors de la récupération de la session stockée:', error);
+      localStorage.removeItem('auth_session');
+      return { isAuthenticated: false, user: null };
     }
   }
 

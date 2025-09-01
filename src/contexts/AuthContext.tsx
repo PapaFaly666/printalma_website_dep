@@ -73,12 +73,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAuthState(prev => ({ ...prev, error: null }));
       }
       
-      // 1️⃣ Tentative principale : récupérer directement le profil complet (inclut profile_photo_url)
+      // 🆕 0️⃣ Priorité 1 : Vérifier la session localStorage (solution pour les cookies qui ne fonctionnent pas)
+      const storedSession = authService.getStoredSession();
+      if (storedSession.isAuthenticated && storedSession.user) {
+        console.log('📱 Utilisation de la session localStorage');
+        setAuthState({
+          isAuthenticated: true,
+          user: storedSession.user,
+          mustChangePassword: storedSession.user.must_change_password || false,
+          loading: false,
+          error: null
+        });
+        setIsInitialCheck(false);
+        return; // ✅ Session localStorage trouvée et valide
+      }
+      
+      // 1️⃣ Tentative : récupérer directement le profil complet (si les cookies fonctionnent)
       try {
-        console.log('🎯 Tentative de récupération du profil...');
+        console.log('🎯 Tentative de récupération du profil via cookies...');
         const profile = await authService.getProfile();
         if (profile) {
-          console.log('✅ Profil récupéré avec succès:', profile);
+          console.log('✅ Profil récupéré avec succès via cookies:', profile);
+          // Sauvegarder en localStorage pour les prochaines fois
+          const authData = {
+            timestamp: Date.now(),
+            user: profile,
+            isAuthenticated: true
+          };
+          localStorage.setItem('auth_session', JSON.stringify(authData));
+          
           setAuthState({
             isAuthenticated: true,
             user: profile,
@@ -94,11 +117,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (err?.statusCode !== 401) {
           console.warn('⚠️ Erreur lors de la récupération du profil:', err);
         } else {
-          console.log('🔒 Non authentifié (401) - normal');
+          console.log('🔒 Non authentifié via cookies (401) - normal');
         }
       }
 
-      // 2️⃣ Fallback : ancien endpoint /auth/check
+      // 2️⃣ Fallback : ancien endpoint /auth/check (si les cookies fonctionnent)
       try {
         console.log('🔄 Fallback vers /auth/check...');
         const response = await authService.checkAuth();
@@ -125,6 +148,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
 
           console.log('✅ Authentification réussie via /auth/check:', userWithPhoto);
+          // Sauvegarder en localStorage pour les prochaines fois
+          const authData = {
+            timestamp: Date.now(),
+            user: userWithPhoto,
+            isAuthenticated: true
+          };
+          localStorage.setItem('auth_session', JSON.stringify(authData));
+          
           setAuthState({
             isAuthenticated: true,
             user: userWithPhoto,
