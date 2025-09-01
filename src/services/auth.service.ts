@@ -29,6 +29,13 @@ class AuthService {
     
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
+        console.log(`🔄 Requête vers: ${this.baseUrl}${endpoint}`);
+        console.log('📝 Options:', { 
+          credentials: 'include', 
+          method: options.method || 'GET',
+          headers: { ...defaultHeaders, ...options.headers }
+        });
+        
         const response = await fetch(`${this.baseUrl}${endpoint}`, {
           ...options,
           credentials: 'include', // ⭐ Toujours inclure les cookies
@@ -36,6 +43,12 @@ class AuthService {
             ...defaultHeaders,
             ...options.headers
           }
+        });
+        
+        console.log(`📡 Réponse de ${endpoint}:`, {
+          status: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+          url: response.url
         });
 
         if (!response.ok) {
@@ -77,10 +90,22 @@ class AuthService {
    * Connexion utilisateur avec gestion du changement de mot de passe obligatoire
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    return this.request<LoginResponse>(API_ENDPOINTS.AUTH.LOGIN, {
+    const response = await this.request<LoginResponse>(API_ENDPOINTS.AUTH.LOGIN, {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
+    
+    // 🆕 Sauvegarder un indicateur de connexion en localStorage comme fallback
+    if ('user' in response && response.user) {
+      localStorage.setItem('auth_fallback', JSON.stringify({
+        timestamp: Date.now(),
+        userId: response.user.id,
+        email: response.user.email
+      }));
+      console.log('💾 Fallback auth sauvegardé en localStorage');
+    }
+    
+    return response;
   }
 
   /**
@@ -93,6 +118,10 @@ class AuthService {
       const response = await this.request<{ message: string }>(API_ENDPOINTS.AUTH.LOGOUT, {
         method: 'POST'
       });
+      
+      // 🆕 Nettoyer le fallback localStorage
+      localStorage.removeItem('auth_fallback');
+      console.log('🗑️ Fallback auth supprimé du localStorage');
       
       console.log('✅ Déconnexion réussie côté serveur:', response);
       return response;
@@ -113,8 +142,42 @@ class AuthService {
         console.warn('⚠️ Impossible de nettoyer manuellement les cookies:', cookieError);
       }
       
+      // 🆕 Nettoyer le fallback localStorage même en cas d'erreur
+      localStorage.removeItem('auth_fallback');
+      console.log('🗑️ Fallback auth supprimé du localStorage (mode erreur)');
+      
+      
       // Retourner un message même en cas d'erreur
       return { message: 'Déconnexion effectuée localement (erreur serveur)' };
+    }
+  }
+
+  /**
+   * 🆕 Vérifier le fallback localStorage pour l'authentification
+   */
+  private checkAuthFallback(): { isAuthenticated: boolean; hasValidFallback: boolean } {
+    try {
+      const fallback = localStorage.getItem('auth_fallback');
+      if (!fallback) {
+        return { isAuthenticated: false, hasValidFallback: false };
+      }
+      
+      const data = JSON.parse(fallback);
+      const now = Date.now();
+      const maxAge = 24 * 60 * 60 * 1000; // 24 heures
+      
+      if (now - data.timestamp > maxAge) {
+        console.log('⏰ Fallback auth expiré, suppression...');
+        localStorage.removeItem('auth_fallback');
+        return { isAuthenticated: false, hasValidFallback: false };
+      }
+      
+      console.log('✅ Fallback auth valide trouvé:', data);
+      return { isAuthenticated: true, hasValidFallback: true };
+    } catch (error) {
+      console.warn('⚠️ Erreur lors de la vérification du fallback:', error);
+      localStorage.removeItem('auth_fallback');
+      return { isAuthenticated: false, hasValidFallback: false };
     }
   }
 
@@ -122,7 +185,28 @@ class AuthService {
    * Vérification de l'authentification - idéal pour la vérification au chargement
    */
   async checkAuth(): Promise<AuthCheckResponse> {
-    return this.request<AuthCheckResponse>(API_ENDPOINTS.AUTH.CHECK);
+    try {
+      return await this.request<AuthCheckResponse>(API_ENDPOINTS.AUTH.CHECK);
+    } catch (error: any) {
+      // Si l'erreur est 401 et qu'on a un fallback valide, essayons de récupérer le profil
+      if (error?.statusCode === 401) {
+        const fallback = this.checkAuthFallback();
+        if (fallback.hasValidFallback) {
+          console.log('🔄 Tentative avec fallback localStorage...');
+          // Essayer de récupérer le profil quand même
+          try {
+            const profile = await this.getProfile();
+            return {
+              isAuthenticated: true,
+              user: profile
+            };
+          } catch (profileError) {
+            console.log('❌ Impossible de récupérer le profil avec fallback');
+          }
+        }
+      }
+      throw error;
+    }
   }
 
   /**

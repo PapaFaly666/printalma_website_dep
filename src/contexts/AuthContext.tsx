@@ -57,18 +57,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Les vérifications périodiques sont maintenant gérées par useAuthPersistence
 
   const checkAuthStatus = async () => {
+    console.log('🔍 Vérification du statut d\'authentification...', {
+      isInitialCheck,
+      currentUrl: window.location.href,
+      cookies: document.cookie
+    });
+    
     try {
       // Ne montrer le loading que lors de la première vérification
       if (isInitialCheck) {
+        console.log('⏳ Première vérification - affichage du loading');
         setAuthState(prev => ({ ...prev, loading: true, error: null }));
       } else {
+        console.log('🔄 Vérification périodique - pas de loading');
         setAuthState(prev => ({ ...prev, error: null }));
       }
       
       // 1️⃣ Tentative principale : récupérer directement le profil complet (inclut profile_photo_url)
       try {
+        console.log('🎯 Tentative de récupération du profil...');
         const profile = await authService.getProfile();
         if (profile) {
+          console.log('✅ Profil récupéré avec succès:', profile);
           setAuthState({
             isAuthenticated: true,
             user: profile,
@@ -82,13 +92,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (err: any) {
         // Si c'est une erreur 401, c'est normal (non connecté)
         if (err?.statusCode !== 401) {
-          console.warn('Erreur lors de la récupération du profil:', err);
+          console.warn('⚠️ Erreur lors de la récupération du profil:', err);
+        } else {
+          console.log('🔒 Non authentifié (401) - normal');
         }
       }
 
       // 2️⃣ Fallback : ancien endpoint /auth/check
       try {
+        console.log('🔄 Fallback vers /auth/check...');
         const response = await authService.checkAuth();
+        console.log('📋 Réponse /auth/check:', response);
         if (response.isAuthenticated && response.user) {
           let userWithPhoto = response.user;
 
@@ -110,6 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           }
 
+          console.log('✅ Authentification réussie via /auth/check:', userWithPhoto);
           setAuthState({
             isAuthenticated: true,
             user: userWithPhoto,
@@ -128,6 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Si on arrive ici, l'utilisateur n'est pas connecté
+      console.log('❌ Aucune authentification trouvée - utilisateur déconnecté');
       setAuthState({
         isAuthenticated: false,
         user: null,
@@ -137,7 +153,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       setIsInitialCheck(false);
     } catch (error) {
-      console.warn('Erreur générale lors de la vérification d\'authentification:', error);
+      console.warn('⚠️ Erreur générale lors de la vérification d\'authentification:', error);
       // Silencieux - utilisateur simplement non connecté
       setAuthState({
         isAuthenticated: false,
