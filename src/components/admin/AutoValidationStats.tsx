@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { autoValidationService, AutoValidationStats } from '../../services/autoValidationService';
+import { autoValidationService, AutoValidationStats as AutoValidationStatsType } from '../../services/autoValidationService';
 
 interface AutoValidationStatsProps {
   className?: string;
@@ -10,7 +10,7 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
   className = '',
   refreshTrigger = 0
 }) => {
-  const [stats, setStats] = useState<AutoValidationStats | null>(null);
+  const [stats, setStats] = useState<AutoValidationStatsType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
