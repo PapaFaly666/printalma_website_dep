@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { autoValidationService, AutoValidationResult } from '../../services/autoValidationService';
+import AutoValidationButton from './AutoValidationButton';
 
 interface AutoValidationControlsProps {
   onValidationComplete?: (result: AutoValidationResult) => void;
@@ -45,35 +46,26 @@ const AutoValidationControls: React.FC<AutoValidationControlsProps> = ({
     <div className={`space-y-4 ${className}`}>
       {/* Bouton d'auto-validation globale */}
       <div className="flex items-center gap-4">
-        <button
-          onClick={handleAutoValidateAll}
-          disabled={isLoading}
-          className={`
-            inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-            transition-colors duration-200
-            ${isLoading 
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-              : 'bg-green-600 hover:bg-green-700 text-white'
+        <AutoValidationButton
+          variant="global"
+          onSuccess={(result) => {
+            setLastResult(result);
+            if (onValidationComplete) {
+              onValidationComplete(result);
             }
-          `}
-        >
-          {isLoading ? (
-            <>
-              <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
-              <span>Auto-validation en cours...</span>
-            </>
-          ) : (
-            <>
-              <span className="text-base">🤖</span>
-              <span>Auto-valider tous les produits éligibles</span>
-            </>
-          )}
-        </button>
+            console.log(`🤖 ${result.message}`);
+          }}
+          onError={(error) => {
+            setError(error.message || 'Erreur lors de l\'auto-validation');
+            console.error('Erreur auto-validation:', error);
+          }}
+          className="bg-green-600 hover:bg-green-700"
+        />
 
         {/* Indicateur du dernier résultat */}
-        {lastResult && !isLoading && (
+        {lastResult && !isLoading && lastResult.success && (
           <div className="text-sm text-green-600">
-            ✅ {lastResult.updated.length} produit(s) auto-validé(s)
+            ✅ {lastResult.data.updatedProducts.length} produit(s) auto-validé(s)
           </div>
         )}
       </div>
@@ -87,23 +79,23 @@ const AutoValidationControls: React.FC<AutoValidationControlsProps> = ({
       )}
 
       {/* Résumé des produits auto-validés */}
-      {lastResult && lastResult.updated.length > 0 && (
+      {lastResult && lastResult.success && lastResult.data.updatedProducts.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <h4 className="font-medium text-green-800 mb-2">
-            🎉 Produits auto-validés ({lastResult.updated.length})
+            🎉 Produits auto-validés ({lastResult.data.updatedProducts.length})
           </h4>
           <div className="space-y-1">
-            {lastResult.updated.slice(0, 5).map((product) => (
+            {lastResult.data.updatedProducts.slice(0, 5).map((product) => (
               <div key={product.id} className="text-sm text-green-700">
                 • <span className="font-medium">{product.name}</span> 
                 <span className="text-xs opacity-75 ml-2">
-                  (ID: {product.id})
+                  (ID: {product.id}, {product.status})
                 </span>
               </div>
             ))}
-            {lastResult.updated.length > 5 && (
+            {lastResult.data.updatedProducts.length > 5 && (
               <div className="text-sm text-green-600 italic">
-                ... et {lastResult.updated.length - 5} autre(s)
+                ... et {lastResult.data.updatedProducts.length - 5} autre(s)
               </div>
             )}
           </div>

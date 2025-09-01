@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 import { designService, Design } from '../../services/designService';
 import { NotificationBanner } from '../../components/ui/notification-banner';
 import AutoValidationControls from '../../components/admin/AutoValidationControls';
+import { autoValidationService } from '../../services/autoValidationService';
 
 interface DesignWithValidation extends Design {
   vendor: {
@@ -235,28 +236,29 @@ export const AdminDesignValidation: React.FC = () => {
       setRejectionReason('');
       setValidatorNote('');
       
-      // Déclencher l'auto-validation des produits vendeur si le design a été validé
+      // Auto-valider les produits vendeur si le design a été validé
       if (isValid) {
         try {
-          const autoValidationResponse = await fetch(`https://printalma-back-dep.onrender.com/api/admin/vendor-products/auto-validate`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (autoValidationResponse.ok) {
-            const autoResult = await autoValidationResponse.json();
-            if (autoResult.data.updated.length > 0) {
-              toast.success('Auto-validation déclenchée !', {
-                description: `${autoResult.data.updated.length} produit(s) vendeur auto-validé(s) suite à la validation du design.`,
+          // Utiliser le service pour auto-valider les produits associés à ce design
+          const autoResult = await autoValidationService.autoValidateProductsForDesign(designId);
+          
+          if (autoResult.success && autoResult.data.updatedProducts.length > 0) {
+            toast.success('✅ Produits auto-validés !', {
+              description: `${autoResult.data.updatedProducts.length} produit(s) vendeur automatiquement validé(s) (isValidated = true) suite à la validation du design.`,
+              duration: 6000
+            });
+          } else {
+            // Fallback: essayer l'auto-validation globale
+            const globalResult = await autoValidationService.autoValidateAllProducts();
+            if (globalResult.success && globalResult.data.updatedProducts.length > 0) {
+              toast.success('✅ Auto-validation globale déclenchée !', {
+                description: `${globalResult.data.updatedProducts.length} produit(s) vendeur mis à jour avec isValidated = true.`,
                 duration: 5000
               });
             }
           }
         } catch (error) {
-          console.log('Info: Auto-validation non disponible, système manuel uniquement.');
+          console.log('Info: Auto-validation des produits non disponible, les produits devront être validés manuellement.');
         }
       }
       
