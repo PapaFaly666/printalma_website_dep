@@ -11,8 +11,8 @@ const AutoValidationDashboard: React.FC = () => {
     setRefreshTrigger(prev => prev + 1);
     
     // Afficher une notification de succès (vous pouvez utiliser votre système de notifications)
-    if (result.updated.length > 0) {
-      console.log(`✅ ${result.updated.length} produit(s) auto-validé(s) avec succès !`);
+    if (result.success && result.data.updatedProducts.length > 0) {
+      console.log(`✅ ${result.data.updatedProducts.length} produit(s) auto-validé(s) avec succès !`);
     }
   };
 

@@ -22,7 +22,7 @@ const AutoValidationControls: React.FC<AutoValidationControlsProps> = ({
     setError(null);
     
     try {
-      const result = await autoValidationService.autoValidateAll();
+      const result = await autoValidationService.autoValidateAllProducts();
       setLastResult(result);
       
       if (onValidationComplete) {

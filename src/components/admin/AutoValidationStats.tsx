@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { autoValidationService, AutoValidationStats as StatsType } from '../../services/autoValidationService';
+import { autoValidationService, AutoValidationStats } from '../../services/autoValidationService';
 
 interface AutoValidationStatsProps {
   className?: string;
@@ -10,7 +10,7 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
   className = '',
   refreshTrigger = 0
 }) => {
-  const [stats, setStats] = useState<StatsType | null>(null);
+  const [stats, setStats] = useState<AutoValidationStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,9 +72,9 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
 
   if (!stats) return null;
 
-  const totalProducts = stats.autoValidated + stats.manualValidated + stats.pending;
+  const totalProducts = stats.data.autoValidated + stats.data.manualValidated + stats.data.pending;
   const autoValidationRate = totalProducts > 0 
-    ? ((stats.autoValidated / totalProducts) * 100).toFixed(1)
+    ? ((stats.data.autoValidated / totalProducts) * 100).toFixed(1)
     : '0';
 
   return (
@@ -108,7 +108,7 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
             <span className="text-lg">🤖</span>
             <span className="text-sm font-medium text-green-800">Auto-validés</span>
           </div>
-          <div className="text-2xl font-bold text-green-900">{stats.autoValidated}</div>
+          <div className="text-2xl font-bold text-green-900">{stats.data.autoValidated}</div>
           <div className="text-xs text-green-600 mt-1">
             {autoValidationRate}% du total
           </div>
@@ -120,7 +120,7 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
             <span className="text-lg">✅</span>
             <span className="text-sm font-medium text-blue-800">Manuels</span>
           </div>
-          <div className="text-2xl font-bold text-blue-900">{stats.manualValidated}</div>
+          <div className="text-2xl font-bold text-blue-900">{stats.data.manualValidated}</div>
           <div className="text-xs text-blue-600 mt-1">
             Validés par admin
           </div>
@@ -132,7 +132,7 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
             <span className="text-lg">⏳</span>
             <span className="text-sm font-medium text-orange-800">En attente</span>
           </div>
-          <div className="text-2xl font-bold text-orange-900">{stats.pending}</div>
+          <div className="text-2xl font-bold text-orange-900">{stats.data.pending}</div>
           <div className="text-xs text-orange-600 mt-1">
             Non validés
           </div>
@@ -144,7 +144,7 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
             <span className="text-lg">📈</span>
             <span className="text-sm font-medium text-gray-800">Total validés</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{stats.totalValidated}</div>
+          <div className="text-2xl font-bold text-gray-900">{stats.data.totalValidated}</div>
           <div className="text-xs text-gray-600 mt-1">
             Sur {totalProducts} produits
           </div>
@@ -156,14 +156,14 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">Progression globale</span>
           <span className="text-gray-800 font-medium">
-            {totalProducts > 0 ? ((stats.totalValidated / totalProducts) * 100).toFixed(1) : 0}%
+            {totalProducts > 0 ? ((stats.data.totalValidated / totalProducts) * 100).toFixed(1) : 0}%
           </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-3">
           <div 
             className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-300"
             style={{ 
-              width: `${totalProducts > 0 ? (stats.totalValidated / totalProducts) * 100 : 0}%` 
+              width: `${totalProducts > 0 ? (stats.data.totalValidated / totalProducts) * 100 : 0}%` 
             }}
           ></div>
         </div>
@@ -174,7 +174,7 @@ const AutoValidationStats: React.FC<AutoValidationStatsProps> = ({
       </div>
 
       {/* Efficacité de l'auto-validation */}
-      {stats.totalValidated > 0 && (
+      {stats.data.totalValidated > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span className="text-base">💡</span>
