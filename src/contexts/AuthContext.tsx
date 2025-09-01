@@ -73,10 +73,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAuthState(prev => ({ ...prev, error: null }));
       }
       
-      // 🆕 0️⃣ Priorité 1 : Vérifier la session localStorage (solution pour les cookies qui ne fonctionnent pas)
+      // 🆕 0️⃣ PRIORITÉ ABSOLUE : Vérifier la session localStorage AVANT toute autre tentative
+      console.log('🔍 Étape 0 : Vérification de la session localStorage...');
       const storedSession = authService.getStoredSession();
+      
       if (storedSession.isAuthenticated && storedSession.user) {
-        console.log('📱 Utilisation de la session localStorage');
+        console.log('📱 ✅ SUCCÈS : Utilisation de la session localStorage - utilisateur connecté !');
         setAuthState({
           isAuthenticated: true,
           user: storedSession.user,
@@ -85,7 +87,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           error: null
         });
         setIsInitialCheck(false);
-        return; // ✅ Session localStorage trouvée et valide
+        return; // ✅ Session localStorage trouvée et valide - ARRET ICI
+      } else {
+        console.log('📭 Pas de session localStorage valide, tentative cookies...');
       }
       
       // 1️⃣ Tentative : récupérer directement le profil complet (si les cookies fonctionnent)

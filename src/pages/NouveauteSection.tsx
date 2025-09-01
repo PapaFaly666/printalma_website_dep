@@ -85,45 +85,28 @@ interface ProductCardProps {
   showDelimitations?: boolean; // ✅ Option pour afficher les délimitations
 }
 
-// Utilitaire pour normaliser les délimitations - CORRECTION MAJEURE
+// Utilitaire pour normaliser les délimitations
 const normalizeDelimitations = (delimitations: any[], imageWidth: number, imageHeight: number) => {
   if (!delimitations || delimitations.length === 0) return [];
   
   return delimitations.map(delim => {
     let { x, y, width, height } = delim;
     
-    // 🚨 CORRECTION CRITIQUE : L'API dit "PERCENTAGE" mais les valeurs sont en pixels !
-    // Même si coordinateType = "PERCENTAGE", si les valeurs > 100, c'est en pixels
+    // Conversion pixels → pourcentage si nécessaire
     const seemsToBePixels = x > 100 || y > 100 || width > 100 || height > 100;
     
     if (seemsToBePixels) {
-      console.log(`🔄 CORRECTION CRITIQUE - Valeurs étiquetées "PERCENTAGE" mais en réalité en pixels:`, {
-        original: { x, y, width, height },
-        coordinateType: delim.coordinateType,
-        imageSize: { width: imageWidth, height: imageHeight }
-      });
-      
-      // Conversion pixels → pourcentage
       x = (x / imageWidth) * 100;
       y = (y / imageHeight) * 100;
       width = (width / imageWidth) * 100;
       height = (height / imageHeight) * 100;
-      
-      console.log(`✅ Après correction pixels → pourcentage:`, { 
-        x: x.toFixed(2), 
-        y: y.toFixed(2), 
-        width: width.toFixed(2), 
-        height: height.toFixed(2) 
-      });
-    } else {
-      console.log(`✅ Délimitation déjà en pourcentage:`, { x, y, width, height });
     }
     
-    // ✅ S'assurer que les valeurs sont dans des plages réalistes
-    const finalX = Math.max(0, Math.min(95, x)); // Laisser un peu de marge
+    // S'assurer que les valeurs sont dans des plages réalistes
+    const finalX = Math.max(0, Math.min(95, x));
     const finalY = Math.max(0, Math.min(95, y));
-    const finalWidth = Math.max(5, Math.min(100 - finalX, width)); // Au moins 5% de largeur
-    const finalHeight = Math.max(5, Math.min(100 - finalY, height)); // Au moins 5% de hauteur
+    const finalWidth = Math.max(5, Math.min(100 - finalX, width));
+    const finalHeight = Math.max(5, Math.min(100 - finalY, height));
     
     return {
       id: delim.id,
@@ -137,14 +120,14 @@ const normalizeDelimitations = (delimitations: any[], imageWidth: number, imageH
   });
 };
 
-// Utilitaire pour normaliser les positions de design avec correction des valeurs extrêmes
-const normalizeDesignPosition = (position: any, delimitations?: any[]) => {
+// Utilitaire pour normaliser les positions de design
+const normalizeDesignPosition = (position: any) => {
   const { x, y, scale, rotation, designWidth, designHeight } = position;
   
   let normalizedX = x;
   let normalizedY = y;
   
-  // ✅ Vérifier si les valeurs sont valides
+  // Vérifier si les valeurs sont valides
   if (typeof normalizedX !== 'number' || isNaN(normalizedX)) {
     normalizedX = 0;
   }
@@ -152,27 +135,13 @@ const normalizeDesignPosition = (position: any, delimitations?: any[]) => {
     normalizedY = 0;
   }
   
-  // 🚨 CORRECTION CRITIQUE : Si les positions sont trop extrêmes, les centrer
+  // Si les positions sont trop extrêmes, les centrer
   const isExtremePosition = Math.abs(normalizedX) > 50 || Math.abs(normalizedY) > 50;
   
   if (isExtremePosition) {
-    console.log(`🚨 POSITION EXTRÊME DÉTECTÉE - Correction nécessaire:`, {
-      original: { x: normalizedX, y: normalizedY },
-      wasExtreme: true
-    });
-    
-    // Pour les positions extrêmes, centrer le design
-    normalizedX = 0; // Centre horizontal
-    normalizedY = 0; // Centre vertical
-    
-    console.log(`✅ Position corrigée vers le centre:`, { x: normalizedX, y: normalizedY });
+    normalizedX = 0;
+    normalizedY = 0;
   }
-  
-  console.log(`🎯 Position design finale:`, {
-    original: { x, y, scale, rotation },
-    normalized: { x: normalizedX, y: normalizedY, scale: scale || 0.8 },
-    wasExtreme: isExtremePosition
-  });
   
   return {
     x: normalizedX,
@@ -190,47 +159,26 @@ const normalizeDesignPosition = (position: any, delimitations?: any[]) => {
 
 // Fonction pour adapter les données de l'API new-arrivals vers le format vendor/products
 const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
-  console.log('🔄 Adaptation new-arrival pour produit:', item.id, item);
-  
-  // ✅ CORRECTION : Utiliser designPositions (pluriel) de l'API réelle
   const designPositions = item.designPositions;
   
   // Vérifier si designPositions existe et a les propriétés nécessaires
   if (!designPositions || designPositions.length === 0) {
-    console.warn(`⚠️ designPositions manquant pour le produit ${item.id}`);
-    return null; // Retourner null si pas de designPositions
+    return null;
   }
   
-  const firstDesignPos = designPositions[0]; // Prendre la première position
+  const firstDesignPos = designPositions[0];
   
-  // ✅ Extraire les délimitations de la première image de la première variation de couleur
+  // Extraire les délimitations de la première image de la première variation de couleur
   const firstImage = item.baseProduct.colorVariations[0]?.images[0];
   const rawDelimitations = firstImage?.delimitations || [];
   
-  // ✅ Normaliser les délimitations (convertir de pixels vers pourcentage si nécessaire)
+  // Normaliser les délimitations
   const normalizedDelimitations = firstImage 
     ? normalizeDelimitations(rawDelimitations, firstImage.naturalWidth, firstImage.naturalHeight)
     : [];
   
-  // ✅ NORMALISER la position pour un affichage identique à /vendor/products
-  const normalizedPosition = normalizeDesignPosition(firstDesignPos.position, normalizedDelimitations);
-  
-  console.log(`📏 Position du design pour produit ${item.id}:`, {
-    designPositions: designPositions,
-    originalPosition: firstDesignPos.position,
-    normalizedPosition: normalizedPosition,
-    designScale: item.designScale,
-    designPositioning: item.designPositioning,
-    // ✅ Debug des délimitations
-    rawDelimitations: rawDelimitations,
-    normalizedDelimitations: normalizedDelimitations,
-    imageInfo: firstImage ? {
-      url: firstImage.url,
-      naturalWidth: firstImage.naturalWidth,
-      naturalHeight: firstImage.naturalHeight,
-      delimitationsCount: normalizedDelimitations.length
-    } : 'No image found'
-  });
+  // Normaliser la position
+  const normalizedPosition = normalizeDesignPosition(firstDesignPos.position);
   
   return {
     id: item.id,
@@ -244,10 +192,9 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
         ...cv,
         images: cv.images.map(img => ({
           ...img,
-          viewType: img.view, // L'API utilise 'view' au lieu de 'viewType'
+          viewType: img.view,
           naturalWidth: img.naturalWidth,
           naturalHeight: img.naturalHeight,
-          // ✅ CORRECTION CRUCIALE : Utiliser les délimitations normalisées avec la structure exacte attendue par SimpleProductPreview
           delimitations: normalizeDelimitations(img.delimitations, img.naturalWidth, img.naturalHeight).map(delim => ({
             id: delim.id,
             name: delim.name,
@@ -266,23 +213,18 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
       positioning: item.designPositioning,
       scale: firstDesignPos.position.scale
     },
-    // ✅ CORRECTION : Utiliser les designPositions normalisées pour un affichage identique
     designPositions: [{
       designId: firstDesignPos.designId,
-      position: normalizedPosition, // ✅ Utiliser la position normalisée
+      position: normalizedPosition,
       createdAt: firstDesignPos.createdAt,
       updatedAt: firstDesignPos.updatedAt
     }],
-    
-    
-    // Structure EXACTE comme /vendor/products - designTransforms vide
     designTransforms: [],
     selectedColors: item.baseProduct.colorVariations.map(cv => ({
       id: cv.id,
       name: cv.name,
       colorCode: cv.colorCode
     })),
-    // ✅ CORRECTION : Utiliser le vrai designId de l'API
     designId: firstDesignPos.designId
   };
 };
@@ -291,9 +233,8 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
 const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimitations = false }) => {
   const adaptedProduct = adaptNewArrivalToVendorProduct(item);
 
-  // Si l'adaptation échoue (pas de designPosition), ne pas afficher le produit
+  // Si l'adaptation échoue, ne pas afficher le produit
   if (!adaptedProduct) {
-    console.warn(`⚠️ Impossible d'afficher le produit ${item.id} - designPosition manquant`);
     return null;
   }
 
@@ -305,16 +246,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
         minHeight: "350px"
       }}
     >
-      {/* ✅ AFFICHAGE IDENTIQUE à /vendeur/products : Utilise SimpleProductPreview avec le même système de positionnement */}
       <div className="absolute inset-0 w-full h-full overflow-hidden">
         <SimpleProductPreview
           product={adaptedProduct}
           showColorSlider={true}
-          showDelimitations={showDelimitations} // ✅ Mode debug pour afficher les délimitations (comme /vendeur/products)
+          showDelimitations={showDelimitations}
           className="w-full h-full"
-          onColorChange={(colorId) => {
-            console.log(`🎨 Couleur changée pour produit ${item.id}: ${colorId}`);
-          }}
+          onColorChange={() => {}}
         />
       </div>
 
@@ -345,49 +283,32 @@ const NouveautesGrid: React.FC = () => {
   const [nouveautesData, setNouveautesData] = useState<NewArrivalProduct[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [showDelimitations, setShowDelimitations] = useState<boolean>(false); // ✅ Mode debug pour voir les délimitations
+  const [showDelimitations, setShowDelimitations] = useState<boolean>(false);
 
   // Fonction pour récupérer les nouveautés depuis l'API
   useEffect(() => {
     const fetchNewArrivals = async () => {
       try {
-        console.log('🔄 Tentative de connexion à:', 'https://printalma-back-dep.onrender.com/public/new-arrivals');
-        
         const response = await fetch('https://printalma-back-dep.onrender.com/public/new-arrivals');
-        
-        console.log('📡 Réponse API status:', response.status);
-        console.log('📡 Réponse API ok:', response.ok);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();
-        console.log('📊 Données reçues:', result);
         
         if (result.success && result.data) {
-          console.log(`✅ ${result.data.length} nouveautés trouvées`);
           setNouveautesData(result.data);
         } else {
-          console.warn('⚠️ API response format inattendu:', result);
           // Essayer d'adapter si les données sont dans un autre format
           if (Array.isArray(result)) {
-            console.log('📝 Données sous forme d\'array, adaptation...');
             setNouveautesData(result);
           } else if (result.data && Array.isArray(result.data)) {
-            console.log('📝 Données dans result.data, utilisation...');
             setNouveautesData(result.data);
           }
         }
       } catch (error) {
-        console.error('❌ Erreur lors du chargement des nouveautés:', error);
-        console.error('❌ Détails:', {
-          message: error.message,
-          type: error.constructor.name
-        });
-        
-        // Afficher un message d'erreur à l'utilisateur
-        console.log('🔧 Suggestion: Vérifiez que le backend est démarré sur le port 3004');
+        console.error('Erreur lors du chargement des nouveautés:', error);
       } finally {
         setIsLoading(false);
       }
@@ -492,19 +413,6 @@ const NouveautesGrid: React.FC = () => {
           </h2>
           
           <div className="flex items-center gap-3">
-            {/* ✅ Bouton debug pour afficher les délimitations (comme dans /vendeur/products) */}
-            <button
-              onClick={() => setShowDelimitations(!showDelimitations)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                showDelimitations 
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-              }`}
-              title={showDelimitations ? 'Masquer les délimitations' : 'Afficher les délimitations (debug)'}
-            >
-              {showDelimitations ? '🔍 Debug ON' : '🔍 Debug'}
-            </button>
-            
             <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
               Voir toutes les nouveautés
             </button>
@@ -531,19 +439,16 @@ const NouveautesGrid: React.FC = () => {
             </button>
           )}
 
-          {/* Grille de 4 produits avec SimpleProductPreview */}
+          {/* Grille de 4 produits */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8 transition-all duration-300">
-            {currentProducts.map((item) => {
-              const productCard = (
-                <ProductCard 
-                  key={item.id} 
-                  item={item} 
-                  formatPrice={formatPrice}
-                  showDelimitations={showDelimitations} // ✅ Passer la prop pour contrôler l'affichage des délimitations
-                />
-              );
-              return productCard;
-            }).filter(Boolean)}
+            {currentProducts.map((item) => (
+              <ProductCard 
+                key={item.id} 
+                item={item} 
+                formatPrice={formatPrice}
+                showDelimitations={false}
+              />
+            )).filter(Boolean)}
           </div>
 
           {/* Bouton navigation droite */}

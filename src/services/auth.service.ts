@@ -159,25 +159,35 @@ class AuthService {
    * 🆕 Récupérer la session utilisateur depuis localStorage
    */
   getStoredSession(): { isAuthenticated: boolean; user: any | null } {
+    console.log('🔍 Vérification de la session localStorage...');
+    
     try {
       const stored = localStorage.getItem('auth_session');
+      console.log('📦 Données brutes localStorage:', stored);
+      
       if (!stored) {
         console.log('📭 Aucune session stockée trouvée');
         return { isAuthenticated: false, user: null };
       }
       
       const data = JSON.parse(stored);
+      console.log('🔄 Données parsées:', data);
+      
       const now = Date.now();
       const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 jours
+      const age = now - data.timestamp;
       
-      if (now - data.timestamp > maxAge) {
+      console.log(`⏰ Âge de la session: ${Math.round(age / 1000)} secondes (max: ${Math.round(maxAge / 1000)} secondes)`);
+      
+      if (age > maxAge) {
         console.log('⏰ Session stockée expirée, suppression...');
         localStorage.removeItem('auth_session');
         return { isAuthenticated: false, user: null };
       }
       
       console.log('✅ Session stockée valide trouvée:', data.user);
-      return { isAuthenticated: true, user: data.user };
+      console.log('📊 Retour:', { isAuthenticated: data.isAuthenticated, user: data.user });
+      return { isAuthenticated: data.isAuthenticated, user: data.user };
     } catch (error) {
       console.warn('⚠️ Erreur lors de la récupération de la session stockée:', error);
       localStorage.removeItem('auth_session');
