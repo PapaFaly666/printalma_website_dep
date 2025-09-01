@@ -148,13 +148,12 @@ import ProductsPage from './pages/ProductsPage';
 import { useAuthPersistence } from './hooks/useAuthPersistence';
 
 function App() {
-  // Maintenir la persistance de l'authentification
-  useAuthPersistence();
   return (
     <Router>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <CategoryProvider>
+          <AuthPersistenceWrapper>
+            <CategoryProvider>
             <Wrapper>
               <Routes>
                 {/* Routes publiques */}
@@ -336,11 +335,18 @@ function App() {
                 <Route path='/confirm-email-change' element={<ConfirmEmailChange />} />
               </Routes>
             </Wrapper>
-          </CategoryProvider>
+            </CategoryProvider>
+          </AuthPersistenceWrapper>
         </AuthProvider>
       </QueryClientProvider>
     </Router>
   );
+}
+
+// Composant wrapper pour utiliser le hook à l'intérieur de l'AuthProvider
+function AuthPersistenceWrapper({ children }: { children: React.ReactNode }) {
+  useAuthPersistence();
+  return <>{children}</>;
 }
 
 export default App;
