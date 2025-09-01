@@ -480,6 +480,16 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+
+                        <NavItem
+                            icon={<span className="text-base">🤖</span>}
+                            label="Auto-validation"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'auto-validation'}
+                            onClick={() => handleNavigation('auto-validation')}
+                            badge=""
+                            textColor=""
+                        />
                     </NavGroup>
 
                     <NavGroup

@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { designService, Design } from '../../services/designService';
 import { NotificationBanner } from '../../components/ui/notification-banner';
+import AutoValidationControls from '../../components/admin/AutoValidationControls';
 
 interface DesignWithValidation extends Design {
   vendor: {
@@ -234,6 +235,31 @@ export const AdminDesignValidation: React.FC = () => {
       setRejectionReason('');
       setValidatorNote('');
       
+      // Déclencher l'auto-validation des produits vendeur si le design a été validé
+      if (isValid) {
+        try {
+          const autoValidationResponse = await fetch(`https://printalma-back-dep.onrender.com/api/admin/vendor-products/auto-validate`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (autoValidationResponse.ok) {
+            const autoResult = await autoValidationResponse.json();
+            if (autoResult.data.updated.length > 0) {
+              toast.success('Auto-validation déclenchée !', {
+                description: `${autoResult.data.updated.length} produit(s) vendeur auto-validé(s) suite à la validation du design.`,
+                duration: 5000
+              });
+            }
+          }
+        } catch (error) {
+          console.log('Info: Auto-validation non disponible, système manuel uniquement.');
+        }
+      }
+      
       // Recharger les listes pour refléter les changements
       await Promise.all([
         loadAllDesigns(),
@@ -410,6 +436,23 @@ export const AdminDesignValidation: React.FC = () => {
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Contrôles d'auto-validation */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-6 shadow-md">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-xl">🤖</span>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Auto-validation des Produits Vendeur
+            </h3>
+          </div>
+          <AutoValidationControls 
+            onValidationComplete={(result) => {
+              // Recharger les statistiques après auto-validation
+              loadValidationStats();
+            }}
+            className="w-full"
+          />
         </div>
 
         {/* Liste des designs */}
