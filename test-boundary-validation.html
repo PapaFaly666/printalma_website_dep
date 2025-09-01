@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Validation des Limites - Design Positioner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .boundary-zone {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            border: 2px dashed #ccc;
+            margin: 20px auto;
+            background: #f9f9f9;
+        }
+        .design-element {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: 2px solid #333;
+            cursor: move;
+            user-select: none;
+            transform-origin: center;
+        }
+        .boundary-indicator {
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            right: 10%;
+            bottom: 10%;
+            border: 2px dashed #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            pointer-events: none;
+        }
+        .boundary-indicator.invalid {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-group label {
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .control-group input {
+            width: 100px;
+            padding: 5px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.valid {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .status.invalid {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .violations {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .violations ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        .violations li {
+            margin: 2px 0;
+        }
+        .test-info {
+            background: #e0f2fe;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .test-info h3 {
+            margin-top: 0;
+            color: #0277bd;
+        }
+        .test-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .test-info li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test du Système de Validation des Limites</h1>
+        
+        <div class="test-info">
+            <h3>Objectif du Test</h3>
+            <p>Ce test vérifie que le système de validation des limites fonctionne correctement pour le positionnement des designs.</p>
+            <ul>
+                <li><strong>Zone verte :</strong> Zone autorisée (10% de marge par rapport aux bords)</li>
+                <li><strong>Zone rouge :</strong> Zone interdite (le design sort des limites)</li>
+                <li><strong>Validation en temps réel :</strong> Le statut change automatiquement selon la position</li>
+                <li><strong>Contrôles précis :</strong> Utilisez les sliders pour tester les limites</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Zone de Test Interactive</h2>
+            
+            <div class="boundary-zone" id="boundaryZone">
+                <div class="boundary-indicator" id="boundaryIndicator"></div>
+                <div class="design-element" id="designElement">
+                    <div style="text-align: center; line-height: 80px; color: white; font-weight: bold;">DESIGN</div>
+                </div>
+            </div>
+
+            <div class="status" id="statusIndicator">
+                Position valide dans les limites autorisées
+            </div>
+
+            <div class="violations" id="violationsList" style="display: none;">
+                <strong>Violations détectées :</strong>
+                <ul id="violationsItems"></ul>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label>Position X (%)</label>
+                    <input type="range" id="posX" min="0" max="100" value="50" step="1">
+                    <span id="posXValue">50%</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Position Y (%)</label>
+                    <input type="range" id="posY" min="0" max="100" value="30" step="1">
+                    <span id="posYValue">30%</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Échelle</label>
+                    <input type="range" id="scale" min="0.1" max="2" value="1" step="0.1">
+                    <span id="scaleValue">1.0x</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Rotation (°)</label>
+                    <input type="range" id="rotation" min="0" max="360" value="0" step="1">
+                    <span id="rotationValue">0°</span>
+                </div>
+            </div>
+
+            <button onclick="resetPosition()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                🔄 Réinitialiser
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Logs de Validation</h2>
+            <div id="validationLogs" style="background: #f8f9fa; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+                <div>Initialisation du système de validation...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration des limites
+        const BOUNDARY_MARGIN = 0.1; // 10% de marge
+        const MAX_SCALE = 1.5;
+        const MIN_SCALE = 0.3;
+        
+        // Éléments DOM
+        const designElement = document.getElementById('designElement');
+        const boundaryIndicator = document.getElementById('boundaryIndicator');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const violationsList = document.getElementById('violationsList');
+        const violationsItems = document.getElementById('violationsItems');
+        const validationLogs = document.getElementById('validationLogs');
+        
+        // Contrôles
+        const posXSlider = document.getElementById('posX');
+        const posYSlider = document.getElementById('posY');
+        const scaleSlider = document.getElementById('scale');
+        const rotationSlider = document.getElementById('rotation');
+        
+        // Valeurs affichées
+        const posXValue = document.getElementById('posXValue');
+        const posYValue = document.getElementById('posYValue');
+        const scaleValue = document.getElementById('scaleValue');
+        const rotationValue = document.getElementById('rotationValue');
+        
+        // État actuel
+        let currentTransforms = {
+            positionX: 0.5,
+            positionY: 0.3,
+            scale: 1.0,
+            rotation: 0
+        };
+        
+        // Fonction de validation des limites
+        function validateBoundaries(transforms) {
+            const violations = [];
+            const containerWidth = 400;
+            const containerHeight = 400;
+            
+            // Calculer les dimensions du design transformé
+            const designWidth = 80 * transforms.scale;
+            const designHeight = 80 * transforms.scale;
+            
+            // Calculer les positions des coins du design
+            const centerX = transforms.positionX * containerWidth;
+            const centerY = transforms.positionY * containerHeight;
+            
+            // Calculer les positions des coins en tenant compte de la rotation
+            const cos = Math.cos((transforms.rotation * Math.PI) / 180);
+            const sin = Math.sin((transforms.rotation * Math.PI) / 180);
+            
+            // Points des coins du design (relatifs au centre)
+            const corners = [
+                { x: -designWidth / 2, y: -designHeight / 2 },
+                { x: designWidth / 2, y: -designHeight / 2 },
+                { x: designWidth / 2, y: designHeight / 2 },
+                { x: -designWidth / 2, y: designHeight / 2 }
+            ];
+            
+            // Appliquer la rotation et calculer les positions absolues
+            const rotatedCorners = corners.map(corner => ({
+                x: centerX + (corner.x * cos - corner.y * sin),
+                y: centerY + (corner.x * sin + corner.y * cos)
+            }));
+            
+            // Vérifier si les coins sortent des limites
+            const marginX = containerWidth * BOUNDARY_MARGIN;
+            const marginY = containerHeight * BOUNDARY_MARGIN;
+            const maxX = containerWidth - marginX;
+            const maxY = containerHeight - marginY;
+            const minX = marginX;
+            const minY = marginY;
+            
+            rotatedCorners.forEach((corner, index) => {
+                if (corner.x < minX || corner.x > maxX || corner.y < minY || corner.y > maxY) {
+                    violations.push(`Coin ${index + 1} sort de la zone autorisée`);
+                }
+            });
+            
+            // Vérifier l'échelle
+            if (transforms.scale > MAX_SCALE) {
+                violations.push(`Échelle trop grande (max: ${MAX_SCALE}x)`);
+            }
+            
+            if (transforms.scale < MIN_SCALE) {
+                violations.push(`Échelle trop petite (min: ${MIN_SCALE}x)`);
+            }
+            
+            // Vérifier la position de base
+            if (transforms.positionX < BOUNDARY_MARGIN || transforms.positionX > (1 - BOUNDARY_MARGIN)) {
+                violations.push('Position horizontale hors limites');
+            }
+            
+            if (transforms.positionY < BOUNDARY_MARGIN || transforms.positionY > (1 - BOUNDARY_MARGIN)) {
+                violations.push('Position verticale hors limites');
+            }
+            
+            const isValid = violations.length === 0;
+            const message = isValid 
+                ? 'Position valide dans les limites autorisées' 
+                : 'Le design sort de la zone autorisée';
+            
+            return {
+                isValid,
+                message,
+                violations
+            };
+        }
+        
+        // Fonction de mise à jour de l'affichage
+        function updateDisplay(transforms) {
+            // Appliquer les transformations CSS
+            const translateX = transforms.positionX * 400;
+            const translateY = transforms.positionY * 400;
+            designElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${transforms.scale}) rotate(${transforms.rotation}deg)`;
+            
+            // Valider les limites
+            const validation = validateBoundaries(transforms);
+            
+            // Mettre à jour l'indicateur de boundary
+            boundaryIndicator.className = `boundary-indicator ${validation.isValid ? '' : 'invalid'}`;
+            
+            // Mettre à jour le statut
+            statusIndicator.className = `status ${validation.isValid ? 'valid' : 'invalid'}`;
+            statusIndicator.textContent = validation.message;
+            
+            // Mettre à jour les violations
+            if (validation.violations.length > 0) {
+                violationsList.style.display = 'block';
+                violationsItems.innerHTML = validation.violations.map(v => `<li>${v}</li>`).join('');
+            } else {
+                violationsList.style.display = 'none';
+            }
+            
+            // Ajouter un log
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${validation.isValid ? '✅' : '❌'} ${validation.message}`;
+            validationLogs.innerHTML += `<div>${logEntry}</div>`;
+            validationLogs.scrollTop = validationLogs.scrollHeight;
+        }
+        
+        // Fonction de réinitialisation
+        function resetPosition() {
+            currentTransforms = {
+                positionX: 0.5,
+                positionY: 0.3,
+                scale: 1.0,
+                rotation: 0
+            };
+            
+            // Mettre à jour les sliders
+            posXSlider.value = currentTransforms.positionX * 100;
+            posYSlider.value = currentTransforms.positionY * 100;
+            scaleSlider.value = currentTransforms.scale;
+            rotationSlider.value = currentTransforms.rotation;
+            
+            // Mettre à jour les valeurs affichées
+            posXValue.textContent = `${Math.round(currentTransforms.positionX * 100)}%`;
+            posYValue.textContent = `${Math.round(currentTransforms.positionY * 100)}%`;
+            scaleValue.textContent = `${currentTransforms.scale.toFixed(1)}x`;
+            rotationValue.textContent = `${Math.round(currentTransforms.rotation)}°`;
+            
+            updateDisplay(currentTransforms);
+        }
+        
+        // Event listeners pour les sliders
+        posXSlider.addEventListener('input', (e) => {
+            currentTransforms.positionX = e.target.value / 100;
+            posXValue.textContent = `${e.target.value}%`;
+            updateDisplay(currentTransforms);
+        });
+        
+        posYSlider.addEventListener('input', (e) => {
+            currentTransforms.positionY = e.target.value / 100;
+            posYValue.textContent = `${e.target.value}%`;
+            updateDisplay(currentTransforms);
+        });
+        
+        scaleSlider.addEventListener('input', (e) => {
+            currentTransforms.scale = parseFloat(e.target.value);
+            scaleValue.textContent = `${currentTransforms.scale.toFixed(1)}x`;
+            updateDisplay(currentTransforms);
+        });
+        
+        rotationSlider.addEventListener('input', (e) => {
+            currentTransforms.rotation = parseInt(e.target.value);
+            rotationValue.textContent = `${currentTransforms.rotation}°`;
+            updateDisplay(currentTransforms);
+        });
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDisplay(currentTransforms);
+            validationLogs.innerHTML += '<div>✅ Système de validation initialisé avec succès</div>';
+        });
+    </script>
+</body>
+</html> 

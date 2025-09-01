@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interface Complète - Thèmes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .interface-simulation {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: #f8f9fa;
+        }
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            border-bottom-color: #007bff;
+            background: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .product-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .product-card.selected {
+            border-color: #007bff;
+            background: #f0f8ff;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        .new-product-list {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .new-product-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Interface Complète - Gestion des Produits dans les Thèmes</h1>
+        
+        <div class="status info">
+            <h3>📋 Test de l'interface complète</h3>
+            <p>Ce test simule l'interface d'ajout de produits aux thèmes avec les deux options : produits existants et création de nouveaux produits.</p>
+        </div>
+        
+        <div class="interface-simulation">
+            <h2>🎨 Interface de Gestion des Produits</h2>
+            <p><strong>Thème :</strong> "Mangas" (ID: 1)</p>
+            
+            <div class="tab-container">
+                <div class="tab active" onclick="switchTab('existing')">
+                    🔍 Produits existants
+                </div>
+                <div class="tab" onclick="switchTab('new')">
+                    ➕ Créer des produits
+                </div>
+            </div>
+            
+            <div id="existing-tab" class="tab-content active">
+                <h3>📦 Sélectionner des produits existants</h3>
+                
+                <div class="form-group">
+                    <label>Recherche :</label>
+                    <input type="text" placeholder="Rechercher un produit..." id="search-input">
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Statut :</label>
+                        <select id="status-filter">
+                            <option value="all">Tous les statuts</option>
+                            <option value="published">Publié</option>
+                            <option value="draft">Brouillon</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 1;">
+                        <label>Type :</label>
+                        <select id="type-filter">
+                            <option value="all">Tous les types</option>
+                            <option value="ready">Produits prêts</option>
+                            <option value="mockup">Produits mockup</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="product-grid" id="existing-products">
+                    <!-- Produits existants simulés -->
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <button onclick="addSelectedExisting()" id="add-existing-btn" disabled>
+                        Ajouter les produits sélectionnés
+                    </button>
+                </div>
+            </div>
+            
+            <div id="new-tab" class="tab-content">
+                <h3>➕ Créer de nouveaux produits</h3>
+                
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: white;">
+                    <h4>📝 Formulaire de création</h4>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Nom du produit *</label>
+                            <input type="text" id="new-name" placeholder="Ex: T-Shirt Manga">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Prix (en centimes) *</label>
+                            <input type="number" id="new-price" placeholder="2500">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description *</label>
+                        <textarea id="new-description" placeholder="Description détaillée du produit..."></textarea>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Statut</label>
+                            <select id="new-status">
+                                <option value="draft">Brouillon</option>
+                                <option value="published">Publié</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Type de produit</label>
+                            <select id="new-type">
+                                <option value="mockup">Produit mockup</option>
+                                <option value="ready">Produit prêt</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Catégories</label>
+                            <input type="text" id="new-categories" placeholder="T-shirts, Manga, Anime">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Images du produit</label>
+                        <input type="file" multiple accept="image/*" id="new-images">
+                        <div id="images-info" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
+                    </div>
+                    
+                    <button onclick="addNewProductToList()" id="add-to-list-btn" style="width: 100%;">
+                        ➕ Ajouter à la liste
+                    </button>
+                </div>
+                
+                <div id="new-products-list" class="new-product-list" style="display: none;">
+                    <h4>📋 Produits à créer</h4>
+                    <div id="new-products-items"></div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <button onclick="createNewProducts()" id="create-products-btn" disabled>
+                        Créer les produits
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let selectedExistingProducts = new Set();
+        let newProductsToCreate = [];
+        let existingProducts = [
+            { id: 1, name: "T-Shirt Manga", price: 2500, status: "published", type: "ready", description: "T-shirt avec design manga" },
+            { id: 2, name: "Mug Anime", price: 1500, status: "published", type: "ready", description: "Mug avec personnage anime" },
+            { id: 3, name: "Poster Dragon Ball", price: 800, status: "draft", type: "mockup", description: "Poster Dragon Ball Z" },
+            { id: 4, name: "Casquette One Piece", price: 1800, status: "published", type: "ready", description: "Casquette One Piece" }
+        ];
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+        
+        function switchTab(tabName) {
+            // Mettre à jour les onglets
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            if (tabName === 'existing') {
+                loadExistingProducts();
+            }
+        }
+        
+        function loadExistingProducts() {
+            const container = document.getElementById('existing-products');
+            container.innerHTML = existingProducts.map(product => `
+                <div class="product-card" onclick="toggleExistingProduct(${product.id})">
+                    <h4>${product.name}</h4>
+                    <p style="font-size: 12px; color: #666;">${product.description}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <span style="font-weight: bold; color: #28a745;">${(product.price / 100).toFixed(2)}€</span>
+                        <span style="padding: 2px 8px; border-radius: 12px; font-size: 12px; background: ${product.status === 'published' ? '#d4edda' : '#fff3cd'}; color: ${product.status === 'published' ? '#155724' : '#856404'};">
+                            ${product.status}
+                        </span>
+                    </div>
+                    <div style="margin-top: 5px;">
+                        <span style="padding: 2px 6px; border-radius: 8px; font-size: 10px; background: #e9ecef; color: #495057;">
+                            ${product.type === 'ready' ? 'Produit prêt' : 'Produit mockup'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function toggleExistingProduct(productId) {
+            const card = event.currentTarget;
+            
+            if (selectedExistingProducts.has(productId)) {
+                selectedExistingProducts.delete(productId);
+                card.classList.remove('selected');
+            } else {
+                selectedExistingProducts.add(productId);
+                card.classList.add('selected');
+            }
+            
+            updateExistingButton();
+        }
+        
+        function updateExistingButton() {
+            const btn = document.getElementById('add-existing-btn');
+            btn.disabled = selectedExistingProducts.size === 0;
+            btn.textContent = `Ajouter ${selectedExistingProducts.size} produit(s)`;
+        }
+        
+        function addSelectedExisting() {
+            if (selectedExistingProducts.size === 0) {
+                log('❌ Veuillez sélectionner au moins un produit', 'error');
+                return;
+            }
+            
+            log(`✅ ${selectedExistingProducts.size} produit(s) existant(s) sélectionné(s)`, 'success');
+            log('🎯 Simulation : Ajout des produits existants au thème...', 'info');
+            
+            // Simuler l'ajout
+            setTimeout(() => {
+                log('✅ Produits existants ajoutés avec succès !', 'success');
+                selectedExistingProducts.clear();
+                updateExistingButton();
+            }, 1000);
+        }
+        
+        function addNewProductToList() {
+            const name = document.getElementById('new-name').value;
+            const price = parseInt(document.getElementById('new-price').value);
+            const description = document.getElementById('new-description').value;
+            const status = document.getElementById('new-status').value;
+            const type = document.getElementById('new-type').value;
+            const categories = document.getElementById('new-categories').value;
+            const images = document.getElementById('new-images').files;
+            
+            if (!name || !price || !description) {
+                log('❌ Veuillez remplir tous les champs obligatoires', 'error');
+                return;
+            }
+            
+            const newProduct = {
+                name,
+                price,
+                description,
+                status,
+                type,
+                categories: categories.split(',').map(cat => cat.trim()).filter(cat => cat),
+                imagesCount: images.length
+            };
+            
+            newProductsToCreate.push(newProduct);
+            updateNewProductsList();
+            updateCreateButton();
+            
+            // Réinitialiser le formulaire
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-price').value = '';
+            document.getElementById('new-description').value = '';
+            document.getElementById('new-categories').value = '';
+            document.getElementById('new-images').value = '';
+            document.getElementById('images-info').textContent = '';
+            
+            log('✅ Nouveau produit ajouté à la liste', 'success');
+        }
+        
+        function updateNewProductsList() {
+            const container = document.getElementById('new-products-items');
+            const listContainer = document.getElementById('new-products-list');
+            
+            if (newProductsToCreate.length === 0) {
+                listContainer.style.display = 'none';
+                return;
+            }
+            
+            listContainer.style.display = 'block';
+            container.innerHTML = newProductsToCreate.map((product, index) => `
+                <div class="new-product-item">
+                    <div>
+                        <h5>${product.name}</h5>
+                        <p style="font-size: 12px; color: #666;">${(product.price / 100).toFixed(2)}€</p>
+                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                            <span style="padding: 2px 6px; border-radius: 8px; font-size: 10px; background: #e9ecef; color: #495057;">
+                                ${product.status}
+                            </span>
+                            <span style="padding: 2px 6px; border-radius: 8px; font-size: 10px; background: #e9ecef; color: #495057;">
+                                ${product.type === 'ready' ? 'Produit prêt' : 'Produit mockup'}
+                            </span>
+                        </div>
+                    </div>
+                    <button onclick="removeNewProduct(${index})" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">
+                        ❌
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function removeNewProduct(index) {
+            newProductsToCreate.splice(index, 1);
+            updateNewProductsList();
+            updateCreateButton();
+        }
+        
+        function updateCreateButton() {
+            const btn = document.getElementById('create-products-btn');
+            btn.disabled = newProductsToCreate.length === 0;
+            btn.textContent = `Créer ${newProductsToCreate.length} produit(s)`;
+        }
+        
+        function createNewProducts() {
+            if (newProductsToCreate.length === 0) {
+                log('❌ Veuillez ajouter au moins un produit à créer', 'error');
+                return;
+            }
+            
+            log(`🎯 Simulation : Création de ${newProductsToCreate.length} nouveau(x) produit(s)...`, 'info');
+            
+            // Simuler la création
+            setTimeout(() => {
+                log('✅ Nouveaux produits créés et ajoutés au thème avec succès !', 'success');
+                newProductsToCreate = [];
+                updateNewProductsList();
+                updateCreateButton();
+            }, 1500);
+        }
+        
+        // Gestion des images
+        document.getElementById('new-images').addEventListener('change', function(e) {
+            const files = e.target.files;
+            const info = document.getElementById('images-info');
+            if (files.length > 0) {
+                info.textContent = `${files.length} image(s) sélectionnée(s)`;
+            } else {
+                info.textContent = '';
+            }
+        });
+        
+        // Initialisation
+        window.onload = function() {
+            log('🚀 Test de l\'interface complète de gestion des produits dans les thèmes', 'info');
+            loadExistingProducts();
+        };
+    </script>
+</body>
+</html> 

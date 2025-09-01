@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Système de Transformation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-left: 5px solid #007bff;
+        }
+
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .test-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #28a745;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .test-item h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .test-item p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .test-button:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .test-button.success {
+            background: #28a745;
+        }
+
+        .test-button.error {
+            background: #dc3545;
+        }
+
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .test-result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .test-result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .test-result.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .checklist {
+            background: #e8f5e8;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .checklist h3 {
+            color: #155724;
+            margin-bottom: 15px;
+        }
+
+        .checklist ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .checklist li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .api-endpoint {
+            background: #f1f3f4;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .config-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .config-section h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.success {
+            background: #28a745;
+        }
+
+        .status-indicator.error {
+            background: #dc3545;
+        }
+
+        .status-indicator.pending {
+            background: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Test - Système de Transformation</h1>
+            <p>Validation complète du workflow de transformation des designs</p>
+        </div>
+
+        <div class="content">
+            <!-- Configuration -->
+            <div class="config-section">
+                <h3>⚙️ Configuration</h3>
+                <input type="text" id="apiUrl" class="config-input" placeholder="URL API (ex: http://localhost:3004)" value="http://localhost:3004">
+                <input type="number" id="baseProductId" class="config-input" placeholder="ID du produit admin (ex: 1)" value="1">
+                <input type="number" id="designId" class="config-input" placeholder="ID du design (ex: 10)" value="10">
+                <button class="test-button" onclick="updateConfig()">Mettre à jour la configuration</button>
+            </div>
+
+            <!-- Étape 1: Récupération produit admin -->
+            <div class="test-section">
+                <h2>📋 Étape 1: Récupération du produit admin</h2>
+                <div class="test-item">
+                    <h3>🔍 GET /products/:baseProductId</h3>
+                    <p>Récupère les informations du produit admin avec ses colorVariations, sizes, etc.</p>
+                    <div class="api-endpoint">GET /products/{baseProductId}</div>
+                    <button class="test-button" onclick="testGetAdminProduct()">Tester</button>
+                    <div id="adminProductResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Étape 2: Création de transformation -->
+            <div class="test-section">
+                <h2>🎯 Étape 2: Création de transformation (prototype)</h2>
+                <div class="test-item">
+                    <h3>🚀 POST /vendor/products</h3>
+                    <p>Crée un prototype avec le payload exhaustif minimal selon la documentation.</p>
+                    <div class="api-endpoint">POST /vendor/products</div>
+                    <button class="test-button" onclick="testCreateTransformation()">Créer prototype</button>
+                    <div id="createTransformationResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Étape 3: Liste des transformations -->
+            <div class="test-section">
+                <h2>📜 Étape 3: Liste des transformations</h2>
+                <div class="test-item">
+                    <h3>📋 GET /vendor/transformations</h3>
+                    <p>Récupère la liste des prototypes créés.</p>
+                    <div class="api-endpoint">GET /vendor/transformations</div>
+                    <button class="test-button" onclick="testGetTransformations()">Lister prototypes</button>
+                    <div id="transformationsResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Étape 4: Publication -->
+            <div class="test-section">
+                <h2>🚀 Étape 4: Publication d'un prototype</h2>
+                <div class="test-item">
+                    <h3>📦 POST /vendor/transformations/:id/publish</h3>
+                    <p>Publie un prototype en produit réel.</p>
+                    <div class="api-endpoint">POST /vendor/transformations/{id}/publish</div>
+                    <input type="number" id="transformationId" class="config-input" placeholder="ID de la transformation à publier" style="width: 200px; display: inline-block;">
+                    <button class="test-button" onclick="testPublishTransformation()">Publier</button>
+                    <div id="publishResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Étape 5: Nettoyage -->
+            <div class="test-section">
+                <h2>🧹 Étape 5: Nettoyage des prototypes</h2>
+                <div class="test-item">
+                    <h3>🗑️ DELETE /vendor/transformations/cleanup</h3>
+                    <p>Nettoie les prototypes obsolètes.</p>
+                    <div class="api-endpoint">DELETE /vendor/transformations/cleanup?olderThanDays=14</div>
+                    <button class="test-button" onclick="testCleanupTransformations()">Nettoyer</button>
+                    <div id="cleanupResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Test de gestion d'erreurs -->
+            <div class="test-section">
+                <h2>⚠️ Test de gestion d'erreurs</h2>
+                <div class="test-item">
+                    <h3>🔍 Test des codes d'erreur</h3>
+                    <p>Teste la gestion des erreurs 400, 403, 409, 404, 500.</p>
+                    <button class="test-button" onclick="testErrorHandling(400)">Test 400</button>
+                    <button class="test-button" onclick="testErrorHandling(403)">Test 403</button>
+                    <button class="test-button" onclick="testErrorHandling(409)">Test 409</button>
+                    <button class="test-button" onclick="testErrorHandling(404)">Test 404</button>
+                    <button class="test-button" onclick="testErrorHandling(500)">Test 500</button>
+                    <div id="errorHandlingResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Résumé des tests -->
+            <div class="test-section">
+                <h2>📊 Résumé des tests</h2>
+                <div id="testSummary" class="test-item">
+                    <h3>🎯 Statut global</h3>
+                    <p>Exécutez les tests ci-dessus pour voir un résumé complet.</p>
+                    <div id="summaryContent"></div>
+                </div>
+            </div>
+
+            <!-- Checklist finale -->
+            <div class="checklist">
+                <h3>✅ Checklist de validation</h3>
+                <ul>
+                    <li>Récupération du produit admin réussie</li>
+                    <li>Création de transformation retourne <code>status: "TRANSFORMATION"</code></li>
+                    <li>Liste des transformations affichée</li>
+                    <li>Publication retourne <code>status: "PUBLISHED"</code></li>
+                    <li>Nettoyage des prototypes fonctionne</li>
+                    <li>Gestion des erreurs selon la documentation</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration globale
+        let config = {
+            apiUrl: 'http://localhost:3004',
+            baseProductId: 1,
+            designId: 10
+        };
+
+        let testResults = {
+            adminProduct: null,
+            createTransformation: null,
+            transformations: null,
+            publish: null,
+            cleanup: null,
+            errorHandling: null
+        };
+
+        function updateConfig() {
+            config.apiUrl = document.getElementById('apiUrl').value;
+            config.baseProductId = parseInt(document.getElementById('baseProductId').value);
+            config.designId = parseInt(document.getElementById('designId').value);
+            
+            showResult('summaryContent', 'Configuration mise à jour: ' + JSON.stringify(config, null, 2), 'info');
+        }
+
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `test-result ${type}`;
+            element.innerHTML = content;
+        }
+
+        async function makeRequest(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include'
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const response = await fetch(`${config.apiUrl}${endpoint}`, options);
+                const data = await response.json();
+                
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    data: data
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    status: 0,
+                    error: error.message
+                };
+            }
+        }
+
+        async function testGetAdminProduct() {
+            console.log('🔍 Test: Récupération du produit admin');
+            
+            const result = await makeRequest(`/products/${config.baseProductId}`);
+            
+            if (result.success) {
+                testResults.adminProduct = result.data;
+                showResult('adminProductResult', 
+                    `✅ Succès!\n\nProduit: ${result.data.name}\nCouleurs: ${result.data.colorVariations?.length || 0}\nTailles: ${result.data.sizes?.length || 0}\n\nDétails:\n${JSON.stringify(result.data, null, 2)}`, 
+                    'success'
+                );
+            } else {
+                showResult('adminProductResult', 
+                    `❌ Erreur ${result.status}: ${result.error || result.data?.message || 'Erreur inconnue'}\n\nDétails:\n${JSON.stringify(result, null, 2)}`, 
+                    'error'
+                );
+            }
+            
+            updateSummary();
+        }
+
+        async function testCreateTransformation() {
+            console.log('🚀 Test: Création de transformation');
+            
+            if (!testResults.adminProduct) {
+                showResult('createTransformationResult', 
+                    '❌ Erreur: Vous devez d\'abord récupérer le produit admin', 
+                    'error'
+                );
+                return;
+            }
+
+            const payload = {
+                baseProductId: config.baseProductId,
+                designId: config.designId,
+                vendorName: "Produit auto-généré pour positionnement design",
+                vendorDescription: "", // ⬅️ DESCRIPTION VIDE pour éviter l'erreur auto-générée
+                vendorPrice: 25000,
+                vendorStock: 100,
+                selectedColors: [],
+                selectedSizes: [],
+                productStructure: {
+                    adminProduct: testResults.adminProduct,
+                    designApplication: { 
+                        positioning: "CENTER", 
+                        scale: 0.6 
+                    }
+                },
+                designPosition: { 
+                    x: -10, 
+                    y: 5, 
+                    scale: 1, 
+                    rotation: 0 
+                },
+                bypassValidation: true
+            };
+
+            const result = await makeRequest('/vendor/products', 'POST', payload);
+            
+            if (result.success && result.data.status === 'TRANSFORMATION') {
+                testResults.createTransformation = result.data;
+                showResult('createTransformationResult', 
+                    `✅ Succès!\n\nStatus: ${result.data.status}\nTransformation ID: ${result.data.transformationId}\nPosition ID: ${result.data.positionId}\n\nDétails:\n${JSON.stringify(result.data, null, 2)}`, 
+                    'success'
+                );
+            } else {
+                showResult('createTransformationResult', 
+                    `❌ Erreur ${result.status}: ${result.error || result.data?.message || 'Erreur inconnue'}\n\nDétails:\n${JSON.stringify(result, null, 2)}`, 
+                    'error'
+                );
+            }
+            
+            updateSummary();
+        }
+
+        async function testGetTransformations() {
+            console.log('📋 Test: Liste des transformations');
+            
+            const result = await makeRequest('/vendor/transformations');
+            
+            if (result.success) {
+                testResults.transformations = result.data;
+                const transformations = result.data.transformations || [];
+                showResult('transformationsResult', 
+                    `✅ Succès!\n\nNombre de prototypes: ${transformations.length}\n\nListe:\n${transformations.map(t => `- ID: ${t.id} | ${t.autoGeneratedName}`).join('\n')}\n\nDétails:\n${JSON.stringify(result.data, null, 2)}`, 
+                    'success'
+                );
+            } else {
+                showResult('transformationsResult', 
+                    `❌ Erreur ${result.status}: ${result.error || result.data?.message || 'Erreur inconnue'}\n\nDétails:\n${JSON.stringify(result, null, 2)}`, 
+                    'error'
+                );
+            }
+            
+            updateSummary();
+        }
+
+        async function testPublishTransformation() {
+            console.log('📦 Test: Publication de transformation');
+            
+            const transformationId = document.getElementById('transformationId').value;
+            if (!transformationId) {
+                showResult('publishResult', 
+                    '❌ Erreur: Veuillez spécifier un ID de transformation', 
+                    'error'
+                );
+                return;
+            }
+
+            const payload = {
+                name: "T-shirt Test Premium",
+                description: "Design de test appliqué via le système de transformation",
+                price: 40000,
+                stock: 30,
+                selectedColors: testResults.adminProduct?.colorVariations?.slice(0, 1) || [],
+                selectedSizes: testResults.adminProduct?.sizes?.slice(0, 1) || []
+            };
+
+            const result = await makeRequest(`/vendor/transformations/${transformationId}/publish`, 'POST', payload);
+            
+            if (result.success && result.data.status === 'PUBLISHED') {
+                testResults.publish = result.data;
+                showResult('publishResult', 
+                    `✅ Succès!\n\nStatus: ${result.data.status}\nProduit ID: ${result.data.productId}\nMessage: ${result.data.message}\n\nDétails:\n${JSON.stringify(result.data, null, 2)}`, 
+                    'success'
+                );
+            } else {
+                showResult('publishResult', 
+                    `❌ Erreur ${result.status}: ${result.error || result.data?.message || 'Erreur inconnue'}\n\nDétails:\n${JSON.stringify(result, null, 2)}`, 
+                    'error'
+                );
+            }
+            
+            updateSummary();
+        }
+
+        async function testCleanupTransformations() {
+            console.log('🧹 Test: Nettoyage des transformations');
+            
+            const result = await makeRequest('/vendor/transformations/cleanup?olderThanDays=14', 'DELETE');
+            
+            if (result.success) {
+                testResults.cleanup = result.data;
+                showResult('cleanupResult', 
+                    `✅ Succès!\n\nPrototypes supprimés: ${result.data.removed}\nMessage: ${result.data.message || 'Nettoyage terminé'}\n\nDétails:\n${JSON.stringify(result.data, null, 2)}`, 
+                    'success'
+                );
+            } else {
+                showResult('cleanupResult', 
+                    `❌ Erreur ${result.status}: ${result.error || result.data?.message || 'Erreur inconnue'}\n\nDétails:\n${JSON.stringify(result, null, 2)}`, 
+                    'error'
+                );
+            }
+            
+            updateSummary();
+        }
+
+        async function testErrorHandling(errorCode) {
+            console.log(`⚠️ Test: Gestion d'erreur ${errorCode}`);
+            
+            let endpoint = '/vendor/transformations/test-error';
+            let method = 'GET';
+            
+            // Simuler différents types d'erreurs
+            switch (errorCode) {
+                case 400:
+                    endpoint = '/vendor/products';
+                    method = 'POST';
+                    break;
+                case 403:
+                    endpoint = '/vendor/transformations/999999/publish';
+                    method = 'POST';
+                    break;
+                case 404:
+                    endpoint = '/vendor/transformations/999999';
+                    method = 'GET';
+                    break;
+                case 409:
+                    endpoint = '/vendor/products';
+                    method = 'POST';
+                    break;
+                case 500:
+                    endpoint = '/vendor/transformations/invalid';
+                    method = 'DELETE';
+                    break;
+            }
+            
+            const result = await makeRequest(endpoint, method, errorCode === 400 ? {} : null);
+            
+            const errorTypes = {
+                400: 'Mauvais payload',
+                403: 'Permission refusée',
+                404: 'Ressource introuvable',
+                409: 'Doublon',
+                500: 'Erreur serveur'
+            };
+            
+            showResult('errorHandlingResult', 
+                `Test erreur ${errorCode} (${errorTypes[errorCode]}):\n\nStatus: ${result.status}\nMessage: ${result.error || result.data?.message || 'Aucun message'}\n\nDétails:\n${JSON.stringify(result, null, 2)}`, 
+                result.status === errorCode ? 'success' : 'error'
+            );
+        }
+
+        function updateSummary() {
+            const tests = [
+                { name: 'Produit admin', result: testResults.adminProduct, icon: '📋' },
+                { name: 'Création transformation', result: testResults.createTransformation, icon: '🚀' },
+                { name: 'Liste transformations', result: testResults.transformations, icon: '📜' },
+                { name: 'Publication', result: testResults.publish, icon: '📦' },
+                { name: 'Nettoyage', result: testResults.cleanup, icon: '🧹' }
+            ];
+
+            const summary = tests.map(test => {
+                const status = test.result ? 'success' : 'pending';
+                return `<div style="margin-bottom: 10px;">
+                    <span class="status-indicator ${status}"></span>
+                    ${test.icon} ${test.name}: ${test.result ? '✅ Réussi' : '⏳ En attente'}
+                </div>`;
+            }).join('');
+
+            const passedTests = tests.filter(test => test.result).length;
+            const totalTests = tests.length;
+
+            showResult('summaryContent', 
+                `<h4>Progression: ${passedTests}/${totalTests} tests réussis</h4>\n${summary}`, 
+                passedTests === totalTests ? 'success' : 'info'
+            );
+        }
+
+        // Initialiser le résumé
+        updateSummary();
+    </script>
+</body>
+</html> 

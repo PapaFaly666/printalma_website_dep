@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Intégration des dimensions de design</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .test-section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test - Intégration des dimensions de design</h1>
+        
+        <div class="test-section">
+            <h2>📋 Configuration du test</h2>
+            <div class="grid">
+                <div class="input-group">
+                    <label for="vendorProductId">Vendor Product ID:</label>
+                    <input type="number" id="vendorProductId" value="2" min="1">
+                </div>
+                <div class="input-group">
+                    <label for="designId">Design ID:</label>
+                    <input type="number" id="designId" value="42" min="1">
+                </div>
+                <div class="input-group">
+                    <label for="positionX">Position X:</label>
+                    <input type="number" id="positionX" value="50.5" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label for="positionY">Position Y:</label>
+                    <input type="number" id="positionY" value="30.2" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label for="scale">Scale:</label>
+                    <input type="number" id="scale" value="1.0" step="0.1" min="0.1" max="5">
+                </div>
+                <div class="input-group">
+                    <label for="rotation">Rotation:</label>
+                    <input type="number" id="rotation" value="0" step="1" min="0" max="360">
+                </div>
+                <div class="input-group">
+                    <label for="designWidth">🆕 Design Width (px):</label>
+                    <input type="number" id="designWidth" value="200.0" step="0.1" min="10" max="1000">
+                </div>
+                <div class="input-group">
+                    <label for="designHeight">🆕 Design Height (px):</label>
+                    <input type="number" id="designHeight" value="150.0" step="0.1" min="10" max="1000">
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Tests</h2>
+            <button onclick="testSaveWithDimensions()">1. Sauvegarder avec dimensions</button>
+            <button onclick="testGetPosition()">2. Récupérer position</button>
+            <button onclick="testUpdateDimensions()">3. Mettre à jour dimensions</button>
+            <button onclick="testValidation()">4. Test validation</button>
+            <button onclick="clearResults()">Effacer résultats</button>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Résultats</h2>
+            <div id="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📖 Documentation</h2>
+            <div class="info">
+                <strong>Nouveaux champs ajoutés :</strong>
+                <br>• design_width : Largeur finale du design en pixels (nullable, 10-1000px)
+                <br>• design_height : Hauteur finale du design en pixels (nullable, 10-1000px)
+                <br>
+                <br><strong>Endpoint :</strong> POST /vendor/design-position
+                <br><strong>Format :</strong> application/json
+                <br><strong>Rétrocompatibilité :</strong> Les anciennes positions fonctionnent toujours
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+        let resultCounter = 0;
+
+        function addResult(title, content, type = 'info') {
+            resultCounter++;
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<strong>${resultCounter}. ${title}</strong>\n${content}`;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function getFormData() {
+            return {
+                vendorProductId: parseInt(document.getElementById('vendorProductId').value),
+                designId: parseInt(document.getElementById('designId').value),
+                position: {
+                    x: parseFloat(document.getElementById('positionX').value),
+                    y: parseFloat(document.getElementById('positionY').value),
+                    scale: parseFloat(document.getElementById('scale').value),
+                    rotation: parseInt(document.getElementById('rotation').value),
+                    designWidth: parseFloat(document.getElementById('designWidth').value),
+                    designHeight: parseFloat(document.getElementById('designHeight').value)
+                }
+            };
+        }
+
+        async function testSaveWithDimensions() {
+            try {
+                const data = getFormData();
+                const payload = {
+                    vendorProductId: data.vendorProductId,
+                    designId: data.designId,
+                    position: {
+                        x: data.position.x,
+                        y: data.position.y,
+                        scale: data.position.scale,
+                        rotation: data.position.rotation
+                    },
+                    // 🆕 Nouveaux champs
+                    design_width: data.position.designWidth,
+                    design_height: data.position.designHeight
+                };
+
+                addResult('Sauvegarde avec dimensions', `Payload envoyé :\n${JSON.stringify(payload, null, 2)}`);
+
+                const response = await fetch(`${API_BASE_URL}/vendor/design-position`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                addResult('Sauvegarde réussie', `Réponse :\n${JSON.stringify(result, null, 2)}`, 'success');
+            } catch (error) {
+                addResult('Erreur sauvegarde', `Erreur : ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetPosition() {
+            try {
+                const data = getFormData();
+                const response = await fetch(`${API_BASE_URL}/vendor-products/${data.vendorProductId}/designs/${data.designId}/position/direct`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                addResult('Position récupérée', `Réponse :\n${JSON.stringify(result, null, 2)}`, 'success');
+            } catch (error) {
+                addResult('Erreur récupération', `Erreur : ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpdateDimensions() {
+            try {
+                const data = getFormData();
+                const payload = {
+                    vendorProductId: data.vendorProductId,
+                    designId: data.designId,
+                    position: {
+                        x: data.position.x + 10,
+                        y: data.position.y + 10,
+                        scale: data.position.scale,
+                        rotation: data.position.rotation
+                    },
+                    // 🆕 Dimensions mises à jour
+                    design_width: data.position.designWidth + 50,
+                    design_height: data.position.designHeight + 30
+                };
+
+                addResult('Mise à jour dimensions', `Nouvelles dimensions :\n${JSON.stringify(payload, null, 2)}`);
+
+                const response = await fetch(`${API_BASE_URL}/vendor/design-position`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                addResult('Mise à jour réussie', `Réponse :\n${JSON.stringify(result, null, 2)}`, 'success');
+            } catch (error) {
+                addResult('Erreur mise à jour', `Erreur : ${error.message}`, 'error');
+            }
+        }
+
+        async function testValidation() {
+            try {
+                const data = getFormData();
+                const invalidPayload = {
+                    vendorProductId: data.vendorProductId,
+                    designId: data.designId,
+                    position: {
+                        x: data.position.x,
+                        y: data.position.y,
+                        scale: data.position.scale,
+                        rotation: data.position.rotation
+                    },
+                    // 🆕 Dimensions invalides pour tester la validation
+                    design_width: 5, // Trop petit (min 10)
+                    design_height: 2500 // Trop grand (max 1000)
+                };
+
+                addResult('Test validation', `Payload invalide :\n${JSON.stringify(invalidPayload, null, 2)}`);
+
+                const response = await fetch(`${API_BASE_URL}/vendor/design-position`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(invalidPayload)
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    addResult('Validation échouée (attendu)', `Erreur de validation :\n${JSON.stringify(result, null, 2)}`, 'info');
+                } else {
+                    addResult('Validation inattendue', `Aucune erreur détectée (problème) :\n${JSON.stringify(result, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                addResult('Erreur test validation', `Erreur : ${error.message}`, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            resultCounter = 0;
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            addResult('Initialisation', 'Page de test chargée. Prêt pour les tests !', 'info');
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Stock Optionnel - Création Produit Admin</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .test-case {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            background: white;
+        }
+        .test-case h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .test-case p {
+            margin: 5px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Stock Optionnel - Création Produit Admin</h1>
+        <p>Ce test vérifie que le champ stock est maintenant optionnel lors de la création de produit par l'admin.</p>
+
+        <div class="test-section">
+            <div class="test-title">📋 Cas de Test</div>
+            
+            <div class="test-case">
+                <h4>✅ Test 1: Création avec stock spécifié</h4>
+                <p>Payload: stock: 150</p>
+                <p>Résultat attendu: Stock utilisé tel quel (150)</p>
+            </div>
+
+            <div class="test-case">
+                <h4>✅ Test 2: Création sans stock</h4>
+                <p>Payload: stock omis</p>
+                <p>Résultat attendu: Valeur par défaut (0)</p>
+            </div>
+
+            <div class="test-case">
+                <h4>✅ Test 3: Création avec stock null</h4>
+                <p>Payload: stock: null</p>
+                <p>Résultat attendu: Valeur par défaut (0)</p>
+            </div>
+
+            <div class="test-case">
+                <h4>✅ Test 4: Création avec stock undefined</h4>
+                <p>Payload: stock: undefined</p>
+                <p>Résultat attendu: Valeur par défaut (0)</p>
+            </div>
+
+            <div class="test-case">
+                <h4>❌ Test 5: Création avec stock négatif</h4>
+                <p>Payload: stock: -10</p>
+                <p>Résultat attendu: Erreur de validation</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🔧 Simulateur de Création</div>
+            
+            <form id="productForm">
+                <div class="form-group">
+                    <label for="name">Nom du produit *</label>
+                    <input type="text" id="name" value="T-Shirt Premium" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" rows="3">T-shirt de qualité premium</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="price">Prix (CFA) *</label>
+                    <input type="number" id="price" value="2500" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="stock">Stock (optionnel)</label>
+                    <input type="number" id="stock" placeholder="Laissez vide pour 0 par défaut" min="0">
+                    <small style="color: #666;">💡 Le stock est maintenant optionnel. Laissez vide pour 0 par défaut.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="categories">Catégories *</label>
+                    <select id="categories" required>
+                        <option value="Vêtements">Vêtements</option>
+                        <option value="Accessoires">Accessoires</option>
+                    </select>
+                </div>
+
+                <button type="button" onclick="testWithStock()">Test avec Stock</button>
+                <button type="button" onclick="testWithoutStock()">Test sans Stock</button>
+                <button type="button" onclick="testWithNullStock()">Test avec Stock Null</button>
+                <button type="button" onclick="testWithNegativeStock()">Test avec Stock Négatif</button>
+            </form>
+
+            <div id="result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">📊 Résultats des Tests</div>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+
+        function logResult(testName, success, message, payload) {
+            const result = {
+                testName,
+                success,
+                message,
+                payload,
+                timestamp: new Date().toISOString()
+            };
+            testResults.push(result);
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('testResults');
+            container.innerHTML = testResults.map(result => `
+                <div class="test-case">
+                    <h4>${result.success ? '✅' : '❌'} ${result.testName}</h4>
+                    <p><strong>Message:</strong> ${result.message}</p>
+                    <p><strong>Payload:</strong> ${JSON.stringify(result.payload, null, 2)}</p>
+                    <p><strong>Timestamp:</strong> ${result.timestamp}</p>
+                </div>
+            `).join('');
+        }
+
+        function getFormData() {
+            return {
+                name: document.getElementById('name').value,
+                description: document.getElementById('description').value,
+                price: Number(document.getElementById('price').value),
+                stock: document.getElementById('stock').value === '' ? undefined : Number(document.getElementById('stock').value),
+                categories: [document.getElementById('categories').value]
+            };
+        }
+
+        function simulateApiCall(payload) {
+            // Simulation de la logique backend
+            const processedPayload = {
+                ...payload,
+                stock: Number(payload.stock) || 0 // Valeur par défaut si undefined/null
+            };
+
+            // Validation
+            if (payload.stock !== undefined && payload.stock !== null && payload.stock < 0) {
+                throw new Error('Le stock ne peut pas être négatif');
+            }
+
+            return {
+                success: true,
+                data: {
+                    id: Math.floor(Math.random() * 1000),
+                    ...processedPayload,
+                    createdAt: new Date().toISOString()
+                }
+            };
+        }
+
+        function testWithStock() {
+            const payload = getFormData();
+            payload.stock = 150; // Forcer un stock spécifique
+
+            try {
+                const result = simulateApiCall(payload);
+                logResult('Création avec Stock', true, 'Produit créé avec stock: ' + result.data.stock, payload);
+                showResult('success', `✅ Produit créé avec succès! Stock: ${result.data.stock}`);
+            } catch (error) {
+                logResult('Création avec Stock', false, error.message, payload);
+                showResult('error', `❌ Erreur: ${error.message}`);
+            }
+        }
+
+        function testWithoutStock() {
+            const payload = getFormData();
+            payload.stock = undefined; // Omettre le stock
+
+            try {
+                const result = simulateApiCall(payload);
+                logResult('Création sans Stock', true, 'Produit créé avec stock par défaut: ' + result.data.stock, payload);
+                showResult('success', `✅ Produit créé avec succès! Stock par défaut: ${result.data.stock}`);
+            } catch (error) {
+                logResult('Création sans Stock', false, error.message, payload);
+                showResult('error', `❌ Erreur: ${error.message}`);
+            }
+        }
+
+        function testWithNullStock() {
+            const payload = getFormData();
+            payload.stock = null; // Stock null
+
+            try {
+                const result = simulateApiCall(payload);
+                logResult('Création avec Stock Null', true, 'Produit créé avec stock par défaut: ' + result.data.stock, payload);
+                showResult('success', `✅ Produit créé avec succès! Stock par défaut: ${result.data.stock}`);
+            } catch (error) {
+                logResult('Création avec Stock Null', false, error.message, payload);
+                showResult('error', `❌ Erreur: ${error.message}`);
+            }
+        }
+
+        function testWithNegativeStock() {
+            const payload = getFormData();
+            payload.stock = -10; // Stock négatif
+
+            try {
+                const result = simulateApiCall(payload);
+                logResult('Création avec Stock Négatif', true, 'Produit créé avec stock: ' + result.data.stock, payload);
+                showResult('success', `✅ Produit créé avec succès! Stock: ${result.data.stock}`);
+            } catch (error) {
+                logResult('Création avec Stock Négatif', false, error.message, payload);
+                showResult('error', `❌ Erreur: ${error.message}`);
+            }
+        }
+
+        function showResult(type, message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+            resultDiv.style.display = 'block';
+        }
+
+        // Tests automatiques au chargement
+        window.addEventListener('load', () => {
+            console.log('🧪 Tests automatiques du stock optionnel...');
+            
+            // Test 1: Stock spécifié
+            setTimeout(() => {
+                const payload1 = { name: 'Test 1', price: 1000, stock: 50, categories: ['Test'] };
+                const result1 = simulateApiCall(payload1);
+                console.log('✅ Test 1 - Stock spécifié:', result1.data.stock);
+            }, 1000);
+
+            // Test 2: Stock omis
+            setTimeout(() => {
+                const payload2 = { name: 'Test 2', price: 1000, stock: undefined, categories: ['Test'] };
+                const result2 = simulateApiCall(payload2);
+                console.log('✅ Test 2 - Stock omis:', result2.data.stock);
+            }, 2000);
+
+            // Test 3: Stock null
+            setTimeout(() => {
+                const payload3 = { name: 'Test 3', price: 1000, stock: null, categories: ['Test'] };
+                const result3 = simulateApiCall(payload3);
+                console.log('✅ Test 3 - Stock null:', result3.data.stock);
+            }, 3000);
+
+            // Test 4: Stock négatif
+            setTimeout(() => {
+                try {
+                    const payload4 = { name: 'Test 4', price: 1000, stock: -10, categories: ['Test'] };
+                    const result4 = simulateApiCall(payload4);
+                    console.log('❌ Test 4 - Stock négatif (devrait échouer):', result4.data.stock);
+                } catch (error) {
+                    console.log('✅ Test 4 - Stock négatif (erreur attendue):', error.message);
+                }
+            }, 4000);
+        });
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

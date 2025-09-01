@@ -1,0 +1,146 @@
+import { 
+  Controller, 
+  Post, 
+  Get, 
+  Patch, 
+  Delete, 
+  Body, 
+  Param, 
+  Query, 
+  UseGuards 
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { Role } from '../../auth/enums/role.enum';
+import { MockupService } from '../services/mockup.service';
+import { CreateMockupDto, MockupResponseDto, MockupGenre } from '../dto/create-mockup.dto';
+
+@ApiTags('Mockups')
+@Controller('mockups')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth()
+export class MockupController {
+
+  constructor(private readonly mockupService: MockupService) {}
+
+  /**
+   * POST /mockups - Créer un mockup avec genre
+   */
+  @Post()
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @ApiOperation({ 
+    summary: 'Créer un nouveau mockup',
+    description: 'Créer un mockup avec genre spécifié (HOMME, FEMME, BEBE, UNISEXE)'
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Mockup créé avec succès',
+    type: MockupResponseDto
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Données invalides ou isReadyProduct doit être false'
+  })
+  async createMockup(@Body() createMockupDto: CreateMockupDto): Promise<MockupResponseDto> {
+    return await this.mockupService.createMockup(createMockupDto);
+  }
+
+  /**
+   * PATCH /mockups/:id - Mettre à jour un mockup avec genre
+   */
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @ApiOperation({ 
+    summary: 'Mettre à jour un mockup',
+    description: 'Mettre à jour les informations d\'un mockup existant'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Mockup mis à jour avec succès',
+    type: MockupResponseDto
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Mockup non trouvé'
+  })
+  async updateMockup(
+    @Param('id') id: number,
+    @Body() updateMockupDto: Partial<CreateMockupDto>
+  ): Promise<MockupResponseDto> {
+    return await this.mockupService.updateMockup(id, updateMockupDto);
+  }
+
+  /**
+   * GET /mockups/by-genre/:genre - Récupérer les mockups par genre
+   */
+  @Get('by-genre/:genre')
+  @ApiOperation({ 
+    summary: 'Récupérer les mockups par genre',
+    description: 'Récupérer tous les mockups d\'un genre spécifique'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Liste des mockups du genre spécifié',
+    type: [MockupResponseDto]
+  })
+  async getMockupsByGenre(@Param('genre') genre: MockupGenre): Promise<MockupResponseDto[]> {
+    return await this.mockupService.getMockupsByGenre(genre);
+  }
+
+  /**
+   * GET /mockups/genres - Récupérer tous les genres disponibles
+   */
+  @Get('genres')
+  @ApiOperation({ 
+    summary: 'Récupérer les genres disponibles',
+    description: 'Récupérer la liste de tous les genres de mockups disponibles'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Liste des genres disponibles',
+    type: [String]
+  })
+  async getAvailableMockupGenres(): Promise<string[]> {
+    return await this.mockupService.getAvailableMockupGenres();
+  }
+
+  /**
+   * GET /mockups - Récupérer tous les mockups avec filtre par genre
+   */
+  @Get()
+  @ApiOperation({ 
+    summary: 'Récupérer tous les mockups',
+    description: 'Récupérer tous les mockups avec possibilité de filtrer par genre'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Liste de tous les mockups',
+    type: [MockupResponseDto]
+  })
+  async getAllMockups(@Query('genre') genre?: MockupGenre): Promise<MockupResponseDto[]> {
+    return await this.mockupService.getAllMockups(genre);
+  }
+
+  /**
+   * DELETE /mockups/:id - Supprimer un mockup
+   */
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @ApiOperation({ 
+    summary: 'Supprimer un mockup',
+    description: 'Supprimer un mockup (soft delete)'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Mockup supprimé avec succès'
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Mockup non trouvé'
+  })
+  async deleteMockup(@Param('id') id: number): Promise<void> {
+    return await this.mockupService.deleteMockup(id);
+  }
+} 

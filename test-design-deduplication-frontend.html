@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Système de Déduplication des Designs</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; margin-right: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #cce7ff; color: #004085; }
+        .log-entry { margin-bottom: 8px; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+        .log-success { background-color: #d1f2eb; border-left: 4px solid #00d4aa; }
+        .log-error { background-color: #fadbd8; border-left: 4px solid #e74c3c; }
+        .log-info { background-color: #d6eaf8; border-left: 4px solid #3498db; }
+        .log-warning { background-color: #fcf3cf; border-left: 4px solid #f39c12; }
+        .design-preview { max-width: 100px; max-height: 100px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- En-tête -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">🎨 Test - Système de Déduplication des Designs</h1>
+                <p class="text-gray-600">Interface de test pour le système de déduplication globale des designs avec gestion des brouillons</p>
+                <div class="mt-4 flex space-x-2">
+                    <span class="status-badge info">✅ Déduplication globale</span>
+                    <span class="status-badge success">📝 Gestion des brouillons</span>
+                    <span class="status-badge warning">🔄 Validation en cascade</span>
+                    <span class="status-badge error">📤 Publication manuelle</span>
+                </div>
+            </div>
+
+            <!-- Configuration API -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">⚙️ Configuration</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">URL API</label>
+                        <input type="text" id="apiUrl" value="http://localhost:3004" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Authentification</label>
+                        <select id="authMethod" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="cookies">🍪 Cookies (credentials: include)</option>
+                            <option value="token">🔑 Token Bearer</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Statut API</label>
+                        <div id="apiStatus" class="status-badge error">🔴 Non testé</div>
+                    </div>
+                </div>
+                <button onclick="testConnection()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                    Test Connexion API
+                </button>
+            </div>
+
+            <!-- Création de Produit avec Déduplication -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">🆕 Créer un Produit</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Formulaire -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom du produit</label>
+                            <input type="text" id="productName" placeholder="Mon super produit personnalisé" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                            <textarea id="productDescription" placeholder="Description détaillée du produit..." rows="3"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prix (€)</label>
+                            <input type="number" id="productPrice" placeholder="29.99" step="0.01" min="0"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Stock</label>
+                            <input type="number" id="productStock" placeholder="100" min="0" value="100"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Action après validation</label>
+                            <select id="postValidationAction" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="AUTO_PUBLISH">📤 Publication automatique</option>
+                                <option value="TO_DRAFT">📝 Garder en brouillon</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">
+                                <span id="actionDescription">Produit publié automatiquement après validation admin</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Design Upload -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Design à appliquer</label>
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                                <input type="file" id="designFile" accept="image/*" class="hidden" onchange="handleDesignUpload(this)">
+                                <div id="uploadArea" class="cursor-pointer" onclick="document.getElementById('designFile').click()">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                    </svg>
+                                    <p class="text-sm text-gray-600">Cliquez pour sélectionner un fichier</p>
+                                    <p class="text-xs text-gray-500">PNG, JPG, SVG jusqu'à 5MB</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="designPreview" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Aperçu du design</label>
+                            <img id="previewImage" class="design-preview mx-auto">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button onclick="resetForm()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                        Réinitialiser
+                    </button>
+                    <button onclick="createProduct()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+                        Créer le produit
+                    </button>
+                </div>
+            </div>
+
+            <!-- Gestion des Produits -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-900">📦 Mes Produits</h2>
+                    <div class="flex space-x-2">
+                        <button onclick="loadProducts()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                            <span class="loader hidden" id="loadProductsLoader"></span>
+                            Actualiser
+                        </button>
+                        <select id="productFilter" onchange="loadProducts()" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Tous les produits</option>
+                            <option value="PUBLISHED">Publiés</option>
+                            <option value="DRAFT">Brouillons</option>
+                            <option value="PENDING">En attente</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Statistiques -->
+                <div id="productStats" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-2xl font-bold text-gray-900" id="totalProducts">0</div>
+                        <div class="text-sm text-gray-600">Total</div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <div class="text-2xl font-bold text-green-700" id="publishedProducts">0</div>
+                        <div class="text-sm text-green-600">Publiés</div>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <div class="text-2xl font-bold text-blue-700" id="draftProducts">0</div>
+                        <div class="text-sm text-blue-600">Brouillons</div>
+                        <div class="text-xs text-blue-500" id="validatedDrafts"></div>
+                    </div>
+                    <div class="bg-orange-50 p-4 rounded-lg">
+                        <div class="text-2xl font-bold text-orange-700" id="pendingProducts">0</div>
+                        <div class="text-sm text-orange-600">En attente</div>
+                    </div>
+                </div>
+
+                <!-- Liste des produits -->
+                <div id="productsList" class="space-y-4">
+                    <!-- Les produits seront affichés ici -->
+                </div>
+            </div>
+
+            <!-- Tests API -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">🧪 Tests API</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="testUpdatePostValidationAction()" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors">
+                        Test Changement Action
+                    </button>
+                    <button onclick="testPublishDraft()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+                        Test Publication Brouillon
+                    </button>
+                    <button onclick="testValidationStats()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                        Test Statistiques
+                    </button>
+                    <button onclick="testDesignValidation()" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors">
+                        Test Validation Design
+                    </button>
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-900">📋 Logs</h2>
+                    <button onclick="clearLogs()" class="text-red-600 hover:text-red-800 text-sm">
+                        Effacer les logs
+                    </button>
+                </div>
+                <div id="logContainer" class="max-h-96 overflow-y-auto space-y-2">
+                    <!-- Les logs seront affichés ici -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentProducts = [];
+        let designData = null;
+
+        // Utilitaires
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value.replace(/\/$/, '');
+        }
+
+        function getAuthHeaders() {
+            const method = document.getElementById('authMethod').value;
+            const headers = { 'Content-Type': 'application/json' };
+            
+            if (method === 'cookies') {
+                // Utiliser credentials: 'include' pour l'authentification par cookies
+                return { headers, credentials: 'include' };
+            } else {
+                // Utiliser token Bearer si disponible
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                return { headers };
+            }
+        }
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        // Test de connexion
+        async function testConnection() {
+            const apiUrl = getApiUrl();
+            const authConfig = getAuthHeaders();
+            const statusDiv = document.getElementById('apiStatus');
+            
+            try {
+                log('🔄 Test de connexion API...', 'info');
+                statusDiv.textContent = '🟡 Test en cours...';
+                statusDiv.className = 'status-badge warning';
+                
+                const response = await fetch(`${apiUrl}/api/health`, {
+                    method: 'GET',
+                    ...authConfig
+                });
+                
+                if (response.ok) {
+                    statusDiv.textContent = '🟢 Connecté';
+                    statusDiv.className = 'status-badge success';
+                    log('✅ Connexion API réussie', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                statusDiv.textContent = '🔴 Erreur';
+                statusDiv.className = 'status-badge error';
+                log(`❌ Erreur de connexion: ${error.message}`, 'error');
+            }
+        }
+
+        // Gestion du design
+        function handleDesignUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                designData = e.target.result;
+                
+                // Afficher l'aperçu
+                const previewDiv = document.getElementById('designPreview');
+                const previewImage = document.getElementById('previewImage');
+                previewImage.src = designData;
+                previewDiv.classList.remove('hidden');
+                
+                log(`📎 Design chargé: ${file.name} (${(file.size/1024).toFixed(1)}KB)`, 'info');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Mise à jour de la description de l'action
+        document.getElementById('postValidationAction').addEventListener('change', function() {
+            const action = this.value;
+            const description = document.getElementById('actionDescription');
+            
+            if (action === 'AUTO_PUBLISH') {
+                description.textContent = 'Produit publié automatiquement après validation admin';
+            } else {
+                description.textContent = 'Produit restera en brouillon après validation, publication manuelle requise';
+            }
+        });
+
+        // Création de produit
+        async function createProduct() {
+            const apiUrl = getApiUrl();
+            const authConfig = getAuthHeaders();
+            
+            if (!designData) {
+                log('❌ Veuillez sélectionner un design', 'error');
+                return;
+            }
+            
+            const productData = {
+                baseProductId: 1, // ID du produit de base (à adapter)
+                vendorName: document.getElementById('productName').value,
+                vendorDescription: document.getElementById('productDescription').value,
+                vendorPrice: parseFloat(document.getElementById('productPrice').value) * 100, // En centimes
+                vendorStock: parseInt(document.getElementById('productStock').value),
+                selectedColors: [
+                    { id: 1, name: 'Noir', hexCode: '#000000' },
+                    { id: 2, name: 'Blanc', hexCode: '#FFFFFF' }
+                ],
+                selectedSizes: [
+                    { id: 1, name: 'M' },
+                    { id: 2, name: 'L' }
+                ],
+                finalImagesBase64: {
+                    design: designData
+                },
+                postValidationAction: document.getElementById('postValidationAction').value,
+                productStructure: {
+                    adminProduct: { id: 1, name: 'Produit de base' },
+                    designApplication: { scale: 0.6 }
+                }
+            };
+            
+            try {
+                log('🚀 Création du produit...', 'info');
+                
+                const response = await fetch(`${apiUrl}/api/vendor/products`, {
+                    method: 'POST',
+                    body: JSON.stringify(productData),
+                    ...authConfig
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log('✅ Produit créé avec succès!', 'success');
+                    
+                    // Vérifier la déduplication
+                    if (result.isDesignReused) {
+                        log(`♻️ Design existant réutilisé (ID: ${result.designId}) - Déduplication réussie!`, 'success');
+                    } else {
+                        log(`🆕 Nouveau design créé (ID: ${result.designId})`, 'info');
+                    }
+                    
+                    // Informer sur l'action post-validation
+                    if (productData.postValidationAction === 'TO_DRAFT') {
+                        log('📝 Produit sera en brouillon après validation admin', 'info');
+                    } else {
+                        log('📤 Produit sera publié automatiquement après validation admin', 'info');
+                    }
+                    
+                    // Recharger la liste des produits
+                    loadProducts();
+                    resetForm();
+                } else {
+                    log(`❌ Erreur: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur lors de la création: ${error.message}`, 'error');
+            }
+        }
+
+        // Chargement des produits
+        async function loadProducts() {
+            const apiUrl = getApiUrl();
+            const authConfig = getAuthHeaders();
+            const filter = document.getElementById('productFilter').value;
+            const loader = document.getElementById('loadProductsLoader');
+            
+            try {
+                loader.classList.remove('hidden');
+                log('🔄 Chargement des produits...', 'info');
+                
+                let url = `${apiUrl}/api/vendor/products`;
+                if (filter) {
+                    url += `?status=${filter}`;
+                }
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    ...authConfig
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                const products = result.data?.products || result.products || result;
+                
+                currentProducts = Array.isArray(products) ? products : [];
+                
+                displayProducts(currentProducts);
+                updateProductStats(currentProducts);
+                
+                log(`✅ ${currentProducts.length} produits chargés`, 'success');
+                
+            } catch (error) {
+                log(`❌ Erreur chargement produits: ${error.message}`, 'error');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        // Affichage des produits
+        function displayProducts(products) {
+            const container = document.getElementById('productsList');
+            
+            if (products.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-gray-500">Aucun produit trouvé</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = products.map(product => `
+                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900">${product.vendorName}</h3>
+                            <p class="text-sm text-gray-600">${product.vendorDescription}</p>
+                        </div>
+                        <div class="ml-4">
+                            ${getStatusBadge(product)}
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <span class="text-sm text-gray-500">Prix:</span>
+                            <span class="font-medium">${(product.vendorPrice / 100).toFixed(2)} €</span>
+                        </div>
+                        <div>
+                            <span class="text-sm text-gray-500">Stock:</span>
+                            <span class="font-medium">${product.vendorStock}</span>
+                        </div>
+                    </div>
+                    
+                    ${product.designId ? `
+                        <div class="mb-3 p-2 bg-gray-50 rounded">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium text-gray-600">Design ID: ${product.designId}</span>
+                                ${product.designCloudinaryUrl ? `
+                                    <img src="${product.designCloudinaryUrl}" alt="Design" class="w-6 h-6 object-contain border rounded">
+                                ` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${product.status === 'DRAFT' && !product.isValidated ? `
+                        <div class="mb-3 p-2 bg-orange-50 border border-orange-200 rounded">
+                            <p class="text-xs text-orange-800 font-medium">⚠️ Brouillon non validé</p>
+                            <p class="text-xs text-orange-700">Vous pouvez publier ce produit sous votre responsabilité.</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="text-xs text-gray-500">
+                            Créé: ${new Date(product.createdAt).toLocaleDateString()}
+                        </div>
+                        <div class="flex space-x-2">
+                            ${product.status === 'DRAFT' ? `
+                                <button onclick="publishProduct(${product.id})" 
+                                        class="${product.isValidated ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'} text-white px-3 py-1 rounded text-sm transition-colors"
+                                        title="${product.isValidated ? 'Publier (validé)' : 'Publier (non validé)'}">
+                                    📤 ${product.isValidated ? 'Publier' : 'Publier quand même'}
+                                </button>
+                            ` : ''}
+                            ${product.status === 'PENDING' ? `
+                                <button onclick="changePostValidationAction(${product.id})" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors">
+                                    🔄 Changer Action
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Badge de statut
+        function getStatusBadge(product) {
+            if (product.status === 'PUBLISHED') {
+                return '<span class="status-badge success">✅ Publié</span>';
+            }
+            if (product.status === 'DRAFT' && product.isValidated) {
+                return '<span class="status-badge info">🎯 Prêt à publier</span>';
+            }
+            if (product.status === 'DRAFT' && !product.isValidated) {
+                return '<span class="status-badge warning">📝 Brouillon (non validé)</span>';
+            }
+            if (product.status === 'PENDING') {
+                const actionText = product.postValidationAction === 'AUTO_PUBLISH' ? 'Auto-pub' : 'Manuel';
+                return `<span class="status-badge warning">⏳ En attente (${actionText})</span>`;
+            }
+            return '<span class="status-badge error">📝 Brouillon</span>';
+        }
+
+        // Statistiques
+        function updateProductStats(products) {
+            const total = products.length;
+            const published = products.filter(p => p.status === 'PUBLISHED').length;
+            const draft = products.filter(p => p.status === 'DRAFT').length;
+            const pending = products.filter(p => p.status === 'PENDING').length;
+            const validatedDrafts = products.filter(p => p.status === 'DRAFT' && p.isValidated).length;
+            
+            document.getElementById('totalProducts').textContent = total;
+            document.getElementById('publishedProducts').textContent = published;
+            document.getElementById('draftProducts').textContent = draft;
+            document.getElementById('pendingProducts').textContent = pending;
+            
+            const validatedDraftsElement = document.getElementById('validatedDrafts');
+            if (validatedDrafts > 0) {
+                validatedDraftsElement.textContent = `${validatedDrafts} prêts à publier`;
+            } else {
+                validatedDraftsElement.textContent = '';
+            }
+        }
+
+        // Actions sur les produits
+        async function publishProduct(productId) {
+            const apiUrl = getApiUrl();
+            const authConfig = getAuthHeaders();
+            
+            try {
+                log(`📤 Publication du produit ${productId}...`, 'info');
+                
+                const response = await fetch(`${apiUrl}/api/vendor/products/${productId}/publish`, {
+                    method: 'POST',
+                    ...authConfig
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`✅ Produit ${productId} publié avec succès!`, 'success');
+                    loadProducts();
+                } else {
+                    log(`❌ Erreur: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur publication: ${error.message}`, 'error');
+            }
+        }
+
+        async function changePostValidationAction(productId) {
+            const currentProduct = currentProducts.find(p => p.id === productId);
+            if (!currentProduct) return;
+            
+            const newAction = currentProduct.postValidationAction === 'AUTO_PUBLISH' ? 'TO_DRAFT' : 'AUTO_PUBLISH';
+            
+            const apiUrl = getApiUrl();
+            const authConfig = getAuthHeaders();
+            
+            try {
+                log(`🔄 Changement d'action pour le produit ${productId}...`, 'info');
+                
+                const response = await fetch(`${apiUrl}/api/vendor-product-validation/post-validation-action/${productId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ postValidationAction: newAction }),
+                    ...authConfig
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`✅ Action changée pour ${newAction}`, 'success');
+                    loadProducts();
+                } else {
+                    log(`❌ Erreur: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur changement action: ${error.message}`, 'error');
+            }
+        }
+
+        // Tests API
+        async function testUpdatePostValidationAction() {
+            if (currentProducts.length === 0) {
+                log('❌ Aucun produit disponible pour le test', 'error');
+                return;
+            }
+            
+            const product = currentProducts[0];
+            await changePostValidationAction(product.id);
+        }
+
+        async function testPublishDraft() {
+            // Chercher d'abord un brouillon validé, sinon n'importe quel brouillon
+            let draftProduct = currentProducts.find(p => p.status === 'DRAFT' && p.isValidated);
+            
+            if (!draftProduct) {
+                draftProduct = currentProducts.find(p => p.status === 'DRAFT');
+            }
+            
+            if (!draftProduct) {
+                log('❌ Aucun brouillon disponible pour le test', 'error');
+                return;
+            }
+            
+            if (draftProduct.isValidated) {
+                log(`🎯 Test de publication d'un brouillon validé (ID: ${draftProduct.id})`, 'info');
+            } else {
+                log(`⚠️ Test de publication d'un brouillon non validé (ID: ${draftProduct.id})`, 'warning');
+            }
+            
+            await publishProduct(draftProduct.id);
+        }
+
+        async function testValidationStats() {
+            const apiUrl = getApiUrl();
+            const authConfig = getAuthHeaders();
+            
+            try {
+                log('📊 Test des statistiques de validation...', 'info');
+                
+                const response = await fetch(`${apiUrl}/api/vendor-product-validation/stats`, {
+                    method: 'GET',
+                    ...authConfig
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`✅ Statistiques: ${JSON.stringify(result.data, null, 2)}`, 'success');
+                
+            } catch (error) {
+                log(`❌ Erreur test statistiques: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDesignValidation() {
+            const apiUrl = getApiUrl();
+            const authConfig = getAuthHeaders();
+            
+            try {
+                log('🎨 Test de validation des designs...', 'info');
+                
+                const response = await fetch(`${apiUrl}/api/designs/1/validate`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ action: 'VALIDATE' }),
+                    ...authConfig
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`✅ Design validé: ${JSON.stringify(result.data, null, 2)}`, 'success');
+                
+            } catch (error) {
+                log(`❌ Erreur test validation design: ${error.message}`, 'error');
+            }
+        }
+
+        // Réinitialisation du formulaire
+        function resetForm() {
+            document.getElementById('productName').value = '';
+            document.getElementById('productDescription').value = '';
+            document.getElementById('productPrice').value = '';
+            document.getElementById('productStock').value = '100';
+            document.getElementById('postValidationAction').value = 'AUTO_PUBLISH';
+            document.getElementById('designFile').value = '';
+            document.getElementById('designPreview').classList.add('hidden');
+            document.getElementById('actionDescription').textContent = 'Produit publié automatiquement après validation admin';
+            designData = null;
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Interface de test initialisée', 'info');
+            log('ℹ️ Testez d\'abord la connexion API avant de procéder', 'info');
+            
+            // Charger les produits au démarrage
+            loadProducts();
+        });
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 

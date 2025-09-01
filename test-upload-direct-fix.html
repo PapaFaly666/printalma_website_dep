@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Direct Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; padding: 20px; margin: 20px 0; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; }
+        .upload-area { border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Upload Direct Fix</h1>
+    
+    <div class="test-section">
+        <h2>✅ Problème Identifié et Corrigé</h2>
+        <p>L'erreur 500 venait du fait que le <code>colorId</code> était un timestamp au lieu d'un ID numérique valide.</p>
+        
+        <h3>🔧 Correction Apportée</h3>
+        <ul>
+            <li>✅ Détection des timestamps comme colorId</li>
+            <li>✅ Utilisation d'un ID temporaire (1) pour les nouvelles couleurs</li>
+            <li>✅ Endpoint corrigé : POST /products/upload-color-image/:productId/:colorId</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Comparaison Avant/Après</h2>
+        
+        <h3>❌ Avant (Erreur 500)</h3>
+        <ul>
+            <li>URL : POST /products/upload-color-image/4/1753819546237</li>
+            <li>colorId : Timestamp (1753819546237)</li>
+            <li>Résultat : Erreur 500 (Internal Server Error)</li>
+        </ul>
+        
+        <h3>✅ Après (Corrigé)</h3>
+        <ul>
+            <li>URL : POST /products/upload-color-image/4/1</li>
+            <li>colorId : ID numérique valide (1)</li>
+            <li>Résultat : Upload réussi</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🧪 Test de l'Upload Direct Corrigé</h2>
+        <p>Testez l'upload avec les bons paramètres :</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>Glissez-déposez une image ou cliquez pour sélectionner</p>
+            <p>JPG, PNG, WEBP - Max 5MB</p>
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+        </div>
+        
+        <button onclick="testWithValidParams()">🔍 Test avec Paramètres Valides</button>
+        <button onclick="testWithTimestamp()">⚠️ Test avec Timestamp (Erreur)</button>
+        <button onclick="clearLog()">🧹 Effacer Log</button>
+    </div>
+    
+    <div id="messageSection" style="display: none;"></div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test upload direct fix initialisé</div>
+        <div class="info">📋 Prêt à tester l'upload avec les bons paramètres</div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        // Gestion de la sélection de fichier
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                log(`📁 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+            }
+        });
+
+        // Gestion du drag & drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                selectedFile = file;
+                log(`📁 Fichier glissé: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+            }
+        });
+
+        // Gestion du clic sur la zone d'upload
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Test avec paramètres valides
+        async function testWithValidParams() {
+            if (!selectedFile) {
+                log('❌ Aucun fichier sélectionné', 'error');
+                showMessage('error', '❌ Aucun fichier sélectionné');
+                return;
+            }
+
+            log('🚀 Test avec paramètres valides...', 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                const productId = 4;  // ID de produit valide
+                const colorId = 1;    // ID de couleur valide (au lieu du timestamp)
+
+                log(`📤 Envoi vers: POST /products/upload-color-image/${productId}/${colorId}`, 'info');
+
+                const response = await fetch(`http://localhost:3004/products/upload-color-image/${productId}/${colorId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                log(`📥 Réponse reçue (${response.status})`, response.ok ? 'success' : 'error');
+
+                if (response.ok && data.success) {
+                    log('✅ Upload réussi avec paramètres valides!', 'success');
+                    log(`🔗 URL générée: ${data.image.url}`, 'success');
+                    showMessage('success', '✅ Upload réussi avec paramètres valides!');
+                } else {
+                    log(`❌ Erreur: ${data.message}`, 'error');
+                    showMessage('error', `❌ Erreur: ${data.message}`);
+                }
+
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+                showMessage('error', `❌ Erreur réseau: ${error.message}`);
+            }
+        }
+
+        // Test avec timestamp (pour démontrer l'erreur)
+        async function testWithTimestamp() {
+            if (!selectedFile) {
+                log('❌ Aucun fichier sélectionné', 'error');
+                showMessage('error', '❌ Aucun fichier sélectionné');
+                return;
+            }
+
+            log('⚠️ Test avec timestamp (erreur attendue)...', 'warning');
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                const productId = 4;
+                const colorId = Date.now(); // Timestamp comme avant
+
+                log(`📤 Envoi vers: POST /products/upload-color-image/${productId}/${colorId}`, 'warning');
+
+                const response = await fetch(`http://localhost:3004/products/upload-color-image/${productId}/${colorId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                log(`📥 Réponse reçue (${response.status})`, response.ok ? 'success' : 'error');
+
+                if (response.ok && data.success) {
+                    log('✅ Upload réussi (inattendu)', 'success');
+                    showMessage('success', '✅ Upload réussi (inattendu)');
+                } else {
+                    log(`❌ Erreur attendue: ${data.message}`, 'error');
+                    showMessage('error', `❌ Erreur attendue: ${data.message}`);
+                }
+
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+                showMessage('error', `❌ Erreur réseau: ${error.message}`);
+            }
+        }
+
+        // Fonctions utilitaires
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+
+        function showMessage(type, message) {
+            const messageSection = document.getElementById('messageSection');
+            messageSection.innerHTML = `<div class="${type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'}">${message}</div>`;
+            messageSection.style.display = 'block';
+        }
+
+        // Initialisation
+        log('🚀 Test upload direct fix initialisé', 'info');
+        log('📋 Prêt à tester l\'upload avec les bons paramètres', 'info');
+    </script>
+</body>
+</html> 

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Intégration Vendeur - PrintAlma</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f8fafc;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+    .header p {
+      color: #64748b;
+      margin: 0;
+    }
+    .test-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .test-section h3 {
+      color: #374151;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+    .button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    .button:hover {
+      background: #2563eb;
+    }
+    .button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .success {
+      background: #10b981;
+    }
+    .success:hover {
+      background: #059669;
+    }
+    .error {
+      background: #ef4444;
+    }
+    .error:hover {
+      background: #dc2626;
+    }
+    .log-container {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-left: 10px;
+    }
+    .status.pending {
+      background: #fbbf24;
+      color: #92400e;
+    }
+    .status.success {
+      background: #10b981;
+      color: white;
+    }
+    .status.error {
+      background: #ef4444;
+      color: white;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #3b82f6;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+    .image-preview {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+    .image-preview img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 2px solid #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 Test Intégration Vendeur</h1>
+      <p>Testez le système de publication vendeur avec images multi-couleurs</p>
+    </div>
+
+    <!-- Test 1: Conversion Blob vers Base64 -->
+    <div class="test-section">
+      <h3>📝 Test 1: Conversion Blob vers Base64</h3>
+      <p>Teste la conversion d'images blob en base64 pour l'envoi au backend.</p>
+      
+      <input type="file" id="imageInput" accept="image/*" style="margin-bottom: 15px;">
+      <br>
+      <button class="button" onclick="testBlobConversion()">Tester Conversion</button>
+      <span id="conversionStatus" class="status pending">En attente</span>
+      
+      <div id="imagePreview" class="image-preview"></div>
+      <div id="conversionResult" style="margin-top: 15px; font-size: 13px; color: #64748b;"></div>
+    </div>
+
+    <!-- Test 2: Simulation Publication -->
+    <div class="test-section">
+      <h3>🚀 Test 2: Simulation Publication Backend</h3>
+      <p>Simule l'envoi vers l'endpoint de publication vendeur.</p>
+      
+      <button class="button" onclick="testBackendPublish()">Simuler Publication</button>
+      <span id="publishStatus" class="status pending">En attente</span>
+      
+      <div class="progress-bar">
+        <div id="publishProgress" class="progress-fill"></div>
+      </div>
+      <div id="publishStep" style="font-size: 13px; color: #64748b; margin-top: 5px;">
+        Prêt à publier...
+      </div>
+    </div>
+
+    <!-- Test 3: Validation des Données -->
+    <div class="test-section">
+      <h3>✅ Test 3: Validation des Données</h3>
+      <p>Teste la validation des données produit avant envoi.</p>
+      
+      <button class="button" onclick="testDataValidation()">Tester Validation</button>
+      <span id="validationStatus" class="status pending">En attente</span>
+    </div>
+
+    <!-- Test 4: Endpoint Backend -->
+    <div class="test-section">
+      <h3>🔗 Test 4: Connectivité Backend</h3>
+      <p>Vérifie la disponibilité de l'endpoint backend.</p>
+      
+      <input type="text" id="backendUrl" placeholder="http://localhost:3000/api/vendor/publish" 
+             style="width: 60%; padding: 8px; margin-right: 10px; border: 1px solid #d1d5db; border-radius: 4px;">
+      <button class="button" onclick="testBackendConnectivity()">Tester Endpoint</button>
+      <span id="connectivityStatus" class="status pending">En attente</span>
+    </div>
+
+    <!-- Console de logs -->
+    <div class="test-section">
+      <h3>📋 Console de Test</h3>
+      <div id="logContainer" class="log-container">
+        <div>🚀 PrintAlma Vendor Integration Test Console</div>
+        <div>📅 Initialisé le: <span id="timestamp"></span></div>
+        <div>---</div>
+      </div>
+      <button class="button" onclick="clearLogs()" style="margin-top: 10px;">Effacer Console</button>
+    </div>
+  </div>
+
+  <script>
+    // Initialisation
+    document.getElementById('timestamp').textContent = new Date().toLocaleString('fr-FR');
+    document.getElementById('backendUrl').value = 'http://localhost:3000/api/vendor/publish';
+
+    // Utilitaires de log
+    function log(message, type = 'info') {
+      const logContainer = document.getElementById('logContainer');
+      const timestamp = new Date().toLocaleTimeString('fr-FR');
+      const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warn' ? '⚠️' : '📝';
+      
+      const logEntry = document.createElement('div');
+      logEntry.innerHTML = `<span style="color: #9ca3af;">[${timestamp}]</span> ${icon} ${message}`;
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function updateStatus(elementId, status, text) {
+      const element = document.getElementById(elementId);
+      element.className = `status ${status}`;
+      element.textContent = text || status.toUpperCase();
+    }
+
+    function clearLogs() {
+      const logContainer = document.getElementById('logContainer');
+      logContainer.innerHTML = `
+        <div>🚀 PrintAlma Vendor Integration Test Console</div>
+        <div>📅 Console effacée le: ${new Date().toLocaleString('fr-FR')}</div>
+        <div>---</div>
+      `;
+    }
+
+    // Test 1: Conversion Blob vers Base64
+    async function testBlobConversion() {
+      const fileInput = document.getElementById('imageInput');
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        log('Veuillez sélectionner une image d\'abord', 'error');
+        updateStatus('conversionStatus', 'error', 'Pas de fichier');
+        return;
+      }
+      
+      log(`🔄 Début conversion: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+      updateStatus('conversionStatus', 'pending', 'Conversion...');
+      
+      try {
+        // Créer blob URL
+        const blobUrl = URL.createObjectURL(file);
+        log(`📎 Blob URL créé: ${blobUrl.substring(0, 50)}...`);
+        
+        // Afficher preview
+        const preview = document.getElementById('imagePreview');
+        preview.innerHTML = `<img src="${blobUrl}" alt="Preview">`;
+        
+        // Simuler conversion base64 (comme dans le service)
+        const base64 = await convertBlobToBase64(blobUrl);
+        const base64Size = (base64.length / 1024).toFixed(1);
+        
+        log(`✅ Conversion réussie: ${base64Size} KB en base64`, 'success');
+        updateStatus('conversionStatus', 'success', 'Succès');
+        
+        document.getElementById('conversionResult').innerHTML = `
+          <strong>Résultat:</strong><br>
+          Taille originale: ${(file.size / 1024).toFixed(1)} KB<br>
+          Taille base64: ${base64Size} KB<br>
+          Ratio: x${(base64.length / file.size).toFixed(2)}<br>
+          Type: ${file.type}
+        `;
+        
+        // Cleanup
+        URL.revokeObjectURL(blobUrl);
+        
+      } catch (error) {
+        log(`❌ Erreur conversion: ${error.message}`, 'error');
+        updateStatus('conversionStatus', 'error', 'Erreur');
+      }
+    }
+
+    // Fonction utilitaire de conversion (réplique du service)
+    function convertBlobToBase64(blobUrl) {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const response = await fetch(blobUrl);
+          const blob = await response.blob();
+          
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Erreur FileReader'));
+          reader.readAsDataURL(blob);
+        } catch (error) {
+          reject(new Error('Erreur fetch blob: ' + error.message));
+        }
+      });
+    }
+
+    // Test 2: Simulation Publication Backend
+    async function testBackendPublish() {
+      log('🚀 Début simulation publication backend');
+      updateStatus('publishStatus', 'pending', 'En cours...');
+      
+      const steps = [
+        { name: 'Capture des images...', progress: 25 },
+        { name: 'Conversion en base64...', progress: 50 },
+        { name: 'Préparation des données...', progress: 75 },
+        { name: 'Envoi vers le backend...', progress: 90 },
+        { name: 'Finalisation...', progress: 100 }
+      ];
+      
+      const progressBar = document.getElementById('publishProgress');
+      const stepText = document.getElementById('publishStep');
+      
+      try {
+        for (const step of steps) {
+          log(`📊 ${step.name} (${step.progress}%)`);
+          stepText.textContent = step.name;
+          progressBar.style.width = step.progress + '%';
+          
+          // Simulation délai
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+        
+        // Simulation réponse backend
+        const mockResponse = {
+          success: true,
+          productId: 456,
+          message: 'Produit publié avec succès',
+          imagesProcessed: 6
+        };
+        
+        log(`✅ Publication simulée réussie: ${JSON.stringify(mockResponse)}`, 'success');
+        updateStatus('publishStatus', 'success', 'Publié');
+        stepText.textContent = 'Publication terminée avec succès !';
+        
+      } catch (error) {
+        log(`❌ Erreur simulation: ${error.message}`, 'error');
+        updateStatus('publishStatus', 'error', 'Erreur');
+        stepText.textContent = 'Erreur lors de la publication';
+      }
+    }
+
+    // Test 3: Validation des Données
+    function testDataValidation() {
+      log('✅ Test validation des données produit');
+      updateStatus('validationStatus', 'pending', 'Validation...');
+      
+      // Données de test
+      const testData = {
+        baseProductId: 123,
+        vendorName: 'T-shirt Test Design',
+        vendorPrice: 15000,
+        basePriceAdmin: 12000,
+        selectedColors: [
+          { id: 1, name: 'Rouge', colorCode: '#ff0000' },
+          { id: 2, name: 'Vert', colorCode: '#00ff00' }
+        ],
+        selectedSizes: [
+          { id: 1, sizeName: 'S' },
+          { id: 2, sizeName: 'M' },
+          { id: 3, sizeName: 'L' }
+        ],
+        finalImages: {
+          statistics: { totalImagesGenerated: 6 }
+        }
+      };
+      
+      // Simulation validation
+      const errors = [];
+      
+      if (!testData.baseProductId) errors.push('ID produit manquant');
+      if (!testData.vendorName?.trim()) errors.push('Nom produit requis');
+      if (testData.vendorPrice <= 0) errors.push('Prix invalide');
+      if (testData.vendorPrice < testData.basePriceAdmin) errors.push('Prix trop bas');
+      if (!testData.selectedColors?.length) errors.push('Aucune couleur');
+      if (!testData.selectedSizes?.length) errors.push('Aucune taille');
+      if (!testData.finalImages?.statistics?.totalImagesGenerated) errors.push('Aucune image');
+      
+      if (errors.length === 0) {
+        log('✅ Validation réussie: toutes les données sont valides', 'success');
+        updateStatus('validationStatus', 'success', 'Valide');
+      } else {
+        log(`❌ Erreurs de validation: ${errors.join(', ')}`, 'error');
+        updateStatus('validationStatus', 'error', 'Invalide');
+      }
+      
+      log(`📋 Données testées: ${JSON.stringify(testData, null, 2)}`);
+    }
+
+    // Test 4: Connectivité Backend
+    async function testBackendConnectivity() {
+      const url = document.getElementById('backendUrl').value;
+      
+      if (!url.trim()) {
+        log('❌ URL backend manquante', 'error');
+        updateStatus('connectivityStatus', 'error', 'URL manquante');
+        return;
+      }
+      
+      log(`🔗 Test connectivité: ${url}`);
+      updateStatus('connectivityStatus', 'pending', 'Test...');
+      
+      try {
+        // Test OPTIONS pour CORS
+        const optionsResponse = await fetch(url, {
+          method: 'OPTIONS',
+          headers: { 'Content-Type': 'application/json' }
+        }).catch(() => null);
+        
+        if (optionsResponse) {
+          log(`✅ CORS preflight OK: ${optionsResponse.status}`, 'success');
+        } else {
+          log('⚠️ CORS preflight impossible (normal en dev)', 'warn');
+        }
+        
+        // Test POST simulé (sans auth pour éviter erreurs)
+        const testPayload = { test: true, timestamp: Date.now() };
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(testPayload)
+        });
+        
+        log(`📡 Réponse backend: ${response.status} ${response.statusText}`);
+        
+        if (response.ok) {
+          const data = await response.json().catch(() => null);
+          log(`✅ Backend accessible: ${JSON.stringify(data)}`, 'success');
+          updateStatus('connectivityStatus', 'success', 'Accessible');
+        } else if (response.status === 401) {
+          log('🔐 Backend accessible mais authentification requise (normal)', 'success');
+          updateStatus('connectivityStatus', 'success', 'Auth requis');
+        } else {
+          log(`⚠️ Backend répond avec erreur: ${response.status}`, 'warn');
+          updateStatus('connectivityStatus', 'error', `Erreur ${response.status}`);
+        }
+        
+      } catch (error) {
+        log(`❌ Impossible de contacter le backend: ${error.message}`, 'error');
+        updateStatus('connectivityStatus', 'error', 'Inaccessible');
+        
+        if (error.message.includes('fetch')) {
+          log('💡 Vérifiez que le backend est démarré et accessible', 'warn');
+        }
+      }
+    }
+
+    // Logs initiaux
+    log('🏁 Tests d\'intégration initialisés');
+    log('📋 4 tests disponibles: Conversion, Publication, Validation, Connectivité');
+    log('💡 Commencez par sélectionner une image pour le test de conversion');
+  </script>
+</body>
+</html> 

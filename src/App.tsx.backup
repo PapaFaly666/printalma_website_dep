@@ -1,0 +1,154 @@
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import './App.css';
+import Wrapper from './components/Wrapper';
+import Landing from './pages/Landing';
+import FilteredProducts from './pages/FilteredProducts';
+import DetailsProduct from './pages/DetailsProduct';
+import FilteredArticlesPage from './pages/FilteredArticlesPage';
+import CartPage from './components/CartPage';
+import AllMarques from './components/AllMarques';
+import MarqueDetails from './components/MarqueDetails';
+import AdminDashboard from './pages/AdminDashboard';
+import ProductList from './pages/ProductList';
+import Dashboard from './pages/Dashboard';
+import PaiementRequest from './pages/PaiementRequest';
+import Sale from './pages/Sale';
+import ProductForm from './pages/ProductForm';
+import ProductDetailPage from './pages/ProductDetailPage';
+import CategoryManagement from './pages/CategoryManagement';
+import ProductAnalytics from './pages/ProductAnalytics';
+import DeletedProducts from './pages/DeletedProducts';
+import ClientManagement from './pages/ClientManagement';
+import { CategoryProvider } from './contexts/CategoryContext';
+import VendorDashboard from './pages/VendorDashboard';
+import VendorProductList from './pages/vendor/VendorProductList';
+import VendorDeletedProducts from './pages/vendor/VendorDeletedProducts';
+import VendorSales from './pages/vendor/VendorSales';
+import ModernProductDetail from './pages/ModernProductDetail';
+
+// Nouveaux composants d'authentification
+import { AuthProvider } from './contexts/AuthContext';
+import LoginForm from './components/auth/LoginForm';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+import ProtectedRoute, { AdminRoute, VendeurRoute, PublicRoute } from './components/auth/ProtectedRoute';
+
+// Nouveaux composants de réinitialisation de mot de passe
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+
+// Composants de gestion des commandes
+import OrdersManagement from './pages/admin/OrdersManagement';
+import { MyOrders } from './pages/MyOrders';
+
+// 🔌 Interface de test d'intégration backend
+import BackendIntegrationDemo from './components/BackendIntegrationDemo';
+
+// Import du CSS pour les commandes et WebSocket
+import './styles/orders.css';
+import './styles/websocket.css';
+
+import { Dashboard } from './pages/admin/Dashboard';
+import { UserManagement } from './pages/admin/UserManagement';
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <CategoryProvider>
+          <Wrapper>
+            <Routes>
+              {/* Routes publiques */}
+              <Route path='/login' element={
+                <PublicRoute>
+                  <LoginForm />
+                </PublicRoute>
+              } />
+              
+              <Route path='/forgot-password' element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              } />
+              
+              <Route path='/reset-password' element={
+                <PublicRoute>
+                  <ResetPassword />
+                </PublicRoute>
+              } />
+              
+              <Route path='/change-password' element={<ChangePasswordPage />} />
+              
+              {/* Routes publiques du site */}
+              <Route path="/" element={<Landing />} />
+              <Route path='/filtered-products' element={<FilteredProducts />} />
+              <Route path="/product-details" element={<DetailsProduct />} />
+              <Route path="/product/:id" element={<ModernProductDetail />} />
+              <Route path="/filtered-articles" element={<FilteredArticlesPage />} />
+              <Route path='/cart' element={<CartPage />} />
+              <Route path="/all-marques" element={<AllMarques />} />
+              <Route path="/marque-details" element={<MarqueDetails />} />
+              <Route path='/products' element={<ProductList />} />
+              <Route path='/products/:id' element={<ModernProductDetail />} />
+              
+              {/* 🔌 Interface de test d'intégration backend */}
+              <Route path='/integration-test' element={<BackendIntegrationDemo />} />
+              
+              {/* Route client protégée pour les commandes */}
+              <Route path='/my-orders' element={
+                <ProtectedRoute>
+                  <MyOrders />
+                </ProtectedRoute>
+              } />
+              
+              {/* Routes admin protégées */}
+              <Route path='/admin' element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }>
+                <Route path="products" element={<ProductList />} />
+                <Route path="deleted-products" element={<DeletedProducts />} />
+                <Route path="categories" element={<CategoryManagement />} />
+                <Route path="clients" element={<ClientManagement />} />
+                <Route path="orders" element={<OrdersManagement />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="analytics" element={<ProductAnalytics />} />
+                <Route path='payment-requests' element={<PaiementRequest />} />
+                <Route path='sales' element={<Sale />} />
+                <Route path='product-form' element={<ProductForm />} />
+                <Route path='add-product' element={<Navigate to="/admin/product-form" replace />} />
+                <Route path='products/:id' element={<ProductDetailPage products={[]} isDarkMode={false} />} />
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              </Route>
+              
+              {/* Routes vendeur protégées */}
+              <Route path='/vendeur' element={
+                <VendeurRoute>
+                  <VendorDashboard />
+                </VendeurRoute>
+              }>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="products" element={<VendorProductList />} />
+                <Route path="deleted-products" element={<VendorDeletedProducts />} />
+                <Route path="product-form" element={<ProductForm />} />
+                <Route path="add-product" element={<Navigate to="/vendeur/product-form" replace />} />
+                <Route path="sales" element={<VendorSales />} />
+                <Route path='products/:id' element={<ProductDetailPage products={[]} isDarkMode={false} />} />
+                <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
+              </Route>
+
+              {/* Route par défaut - redirection intelligente */}
+              <Route path='/dashboard' element={
+                <ProtectedRoute>
+                  <Navigate to="/admin/dashboard" replace />
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </Wrapper>
+        </CategoryProvider>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;

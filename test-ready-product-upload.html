@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Produit Prêt</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        .form-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .image-preview { max-width: 200px; max-height: 200px; margin: 10px 0; }
+        .color-variation { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Test Upload Produit Prêt</h1>
+    
+    <div class="test-section">
+        <h2>Formulaire de test</h2>
+        <form id="productForm">
+            <div class="form-group">
+                <label>Nom du produit:</label>
+                <input type="text" id="productName" value="Test Produit Prêt" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Description:</label>
+                <textarea id="productDescription" rows="3" required>Description de test pour un produit prêt</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Prix (en centimes):</label>
+                <input type="number" id="productPrice" value="2500" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Stock:</label>
+                <input type="number" id="productStock" value="100" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Catégories (séparées par des virgules):</label>
+                <input type="text" id="productCategories" value="T-shirts, Prêt-à-porter" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Tailles (séparées par des virgules):</label>
+                <input type="text" id="productSizes" value="S, M, L, XL">
+            </div>
+            
+            <div class="form-group">
+                <label>Image de test:</label>
+                <input type="file" id="testImage" accept="image/*" required>
+                <img id="imagePreview" class="image-preview" style="display: none;">
+            </div>
+            
+            <button type="button" onclick="testUpload()">Tester l'upload</button>
+        </form>
+    </div>
+
+    <div class="test-section">
+        <h2>Résultats</h2>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        // Prévisualisation de l'image
+        document.getElementById('testImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function testUpload() {
+            log('🧪 Test: Upload produit prêt', 'info');
+            
+            try {
+                // Récupérer les données du formulaire
+                const productName = document.getElementById('productName').value;
+                const productDescription = document.getElementById('productDescription').value;
+                const productPrice = parseInt(document.getElementById('productPrice').value);
+                const productStock = parseInt(document.getElementById('productStock').value);
+                const productCategories = document.getElementById('productCategories').value.split(',').map(c => c.trim());
+                const productSizes = document.getElementById('productSizes').value.split(',').map(s => s.trim());
+                const testImageFile = document.getElementById('testImage').files[0];
+
+                if (!testImageFile) {
+                    log('❌ Erreur: Aucune image sélectionnée', 'error');
+                    return;
+                }
+
+                log(`📦 Préparation des données: ${productName}`, 'info');
+
+                // Créer le FormData
+                const formData = new FormData();
+                
+                // Données du produit
+                const productData = {
+                    name: productName,
+                    description: productDescription,
+                    price: productPrice,
+                    stock: productStock,
+                    status: 'draft',
+                    categories: productCategories,
+                    sizes: productSizes,
+                    isReadyProduct: true, // ← Automatiquement true pour les produits prêts
+                    colorVariations: [
+                        {
+                            name: 'Test Color',
+                            colorCode: '#000000',
+                            images: [
+                                {
+                                    fileId: 'test_image_1',
+                                    view: 'Front'
+                                }
+                            ]
+                        }
+                    ]
+                };
+
+                formData.append('productData', JSON.stringify(productData));
+                formData.append('test_image_1', testImageFile);
+
+                log(`📊 Données préparées: ${JSON.stringify(productData, null, 2)}`, 'info');
+                log(`📁 Fichier ajouté: ${testImageFile.name} (${testImageFile.size} bytes)`, 'info');
+
+                // Envoyer la requête
+                const response = await fetch('http://localhost:3004/products/ready', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                log(`📡 Réponse reçue: ${response.status} ${response.statusText}`, 'info');
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                const result = await response.json();
+                log(`✅ Succès: Produit créé avec l'ID ${result.id}`, 'success');
+                log(`📋 Détails: ${JSON.stringify(result, null, 2)}`, 'info');
+
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+                console.error('Erreur complète:', error);
+            }
+        }
+
+        log('🚀 Test Upload Produit Prêt prêt', 'info');
+    </script>
+</body>
+</html> 

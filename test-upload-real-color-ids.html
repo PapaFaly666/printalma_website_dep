@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload avec Vrais IDs de Couleur</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; padding: 20px; margin: 20px 0; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; }
+        .upload-area { border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; }
+        .color-info { background: #e8f4fd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .color-button { margin: 5px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; }
+        .color-button:hover { background: #f0f0f0; }
+        .color-button.selected { background: #007bff; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🎨 Test Upload avec Vrais IDs de Couleur</h1>
+    
+    <div class="test-section">
+        <h2>✅ Problème Identifié et Corrigé</h2>
+        <p>Le problème venait du fait que le frontend utilisait l'ID de couleur <code>1</code> alors que les couleurs du produit 4 ont les IDs <code>16</code>, <code>17</code>, et <code>23</code>.</p>
+        
+        <h3>🔧 Correction Apportée</h3>
+        <ul>
+            <li>✅ Utilisation des vrais IDs de couleur (16, 17, 23)</li>
+            <li>✅ Suppression de la conversion en ID temporaire (1)</li>
+            <li>✅ Validation avec les couleurs disponibles</li>
+            <li>✅ Messages d'erreur informatifs avec les IDs disponibles</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Comparaison Avant/Après</h2>
+        
+        <h3>❌ Avant (Erreur 404)</h3>
+        <ul>
+            <li>colorId utilisé : 1 (incorrect)</li>
+            <li>URL : POST /products/upload-color-image/4/1</li>
+            <li>Résultat : 404 Not Found</li>
+            <li>Message : "Variation couleur introuvable pour ce produit"</li>
+        </ul>
+        
+        <h3>✅ Après (Corrigé)</h3>
+        <ul>
+            <li>colorId utilisé : 16, 17, ou 23 (correct)</li>
+            <li>URL : POST /products/upload-color-image/4/16</li>
+            <li>Résultat : Upload réussi</li>
+            <li>Message : "Image couleur uploadée avec succès"</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎨 Couleurs du Produit 4</h2>
+        <div class="color-info" id="colorInfo">
+            <p>Chargement des couleurs...</p>
+        </div>
+        
+        <h3>Sélectionnez une couleur pour tester l'upload :</h3>
+        <div id="colorButtons"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📤 Upload d'Image</h2>
+        <div class="upload-area" id="uploadArea">
+            <p>Glissez-déposez une image ou cliquez pour sélectionner</p>
+            <p>JPG, PNG, WEBP - Max 5MB</p>
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+        </div>
+        <button onclick="uploadImage()" id="uploadButton" disabled>📤 Upload Image</button>
+        <div id="uploadResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🧪 Tests Automatiques</h2>
+        <button onclick="testAllColors()">🚀 Test Toutes les Couleurs</button>
+        <button onclick="testWrongColorId()">❌ Test ID Incorrect</button>
+        <button onclick="clearLog()">🧹 Effacer Log</button>
+    </div>
+    
+    <div id="messageSection" style="display: none;"></div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test upload avec vrais IDs de couleur initialisé</div>
+        <div class="info">📋 Chargement des couleurs du produit 4...</div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let selectedColorId = null;
+        let productColors = [];
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('uploadButton');
+
+        // Gestion de la sélection de fichier
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                log(`📁 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+                updateUploadButton();
+            }
+        });
+
+        // Gestion du drag & drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                selectedFile = file;
+                log(`📁 Fichier glissé: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+                updateUploadButton();
+            }
+        });
+
+        // Gestion du clic sur la zone d'upload
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Charger les couleurs du produit
+        async function loadProductColors() {
+            try {
+                log('🔍 Chargement des couleurs du produit 4...', 'info');
+                
+                const response = await fetch('http://localhost:3004/products/4', {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Produit 4 non trouvé (${response.status})`);
+                }
+                
+                const product = await response.json();
+                productColors = product.colorVariations || [];
+                
+                log('✅ Produit chargé:', 'success');
+                log(`📋 Nombre de couleurs: ${productColors.length}`, 'info');
+                
+                displayColors();
+                
+            } catch (error) {
+                log(`❌ Erreur chargement produit: ${error.message}`, 'error');
+                document.getElementById('colorInfo').innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        // Afficher les couleurs
+        function displayColors() {
+            const colorInfo = document.getElementById('colorInfo');
+            const colorButtons = document.getElementById('colorButtons');
+            
+            if (productColors.length === 0) {
+                colorInfo.innerHTML = '<div class="error">❌ Aucune couleur trouvée</div>';
+                return;
+            }
+            
+            // Afficher les informations des couleurs
+            let colorInfoHtml = '<h4>Couleurs disponibles :</h4><ul>';
+            productColors.forEach(color => {
+                colorInfoHtml += `<li><strong>ID: ${color.id}</strong> - ${color.name} (${color.colorCode})</li>`;
+            });
+            colorInfoHtml += '</ul>';
+            colorInfo.innerHTML = colorInfoHtml;
+            
+            // Créer les boutons de sélection
+            let buttonsHtml = '';
+            productColors.forEach(color => {
+                buttonsHtml += `
+                    <button class="color-button" onclick="selectColor(${color.id}, '${color.name}')">
+                        🎨 ${color.name} (ID: ${color.id})
+                    </button>
+                `;
+            });
+            colorButtons.innerHTML = buttonsHtml;
+            
+            log('✅ Couleurs affichées', 'success');
+        }
+
+        // Sélectionner une couleur
+        function selectColor(colorId, colorName) {
+            selectedColorId = colorId;
+            
+            // Mettre à jour l'apparence des boutons
+            document.querySelectorAll('.color-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+            
+            log(`✅ Couleur sélectionnée: ${colorName} (ID: ${colorId})`, 'success');
+            updateUploadButton();
+        }
+
+        // Mettre à jour le bouton d'upload
+        function updateUploadButton() {
+            const hasFile = selectedFile !== null;
+            const hasColor = selectedColorId !== null;
+            
+            uploadButton.disabled = !(hasFile && hasColor);
+            
+            if (hasFile && hasColor) {
+                uploadButton.textContent = `📤 Upload vers couleur ${selectedColorId}`;
+            } else {
+                uploadButton.textContent = '📤 Upload Image';
+            }
+        }
+
+        // Upload d'image
+        async function uploadImage() {
+            const resultDiv = document.getElementById('uploadResult');
+            
+            if (!selectedFile) {
+                log('❌ Aucun fichier sélectionné', 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Aucun fichier sélectionné</div>`;
+                return;
+            }
+            
+            if (!selectedColorId) {
+                log('❌ Aucune couleur sélectionnée', 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Aucune couleur sélectionnée</div>`;
+                return;
+            }
+            
+            log(`🚀 Début de l'upload pour la couleur ${selectedColorId}...`, 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                const productId = 4;
+                const colorId = selectedColorId;
+
+                log(`📤 Envoi vers: POST /products/upload-color-image/${productId}/${colorId}`, 'info');
+
+                const response = await fetch(`http://localhost:3004/products/upload-color-image/${productId}/${colorId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                log(`📥 Réponse reçue (${response.status})`, response.ok ? 'success' : 'error');
+
+                if (response.ok && data.success) {
+                    log('✅ Upload réussi!', 'success');
+                    log(`🔗 URL générée: ${data.image.url}`, 'success');
+                    resultDiv.innerHTML = `<div class="success">✅ Upload réussi! URL: ${data.image.url}</div>`;
+                    showMessage('success', `✅ Upload réussi pour la couleur ${selectedColorId}!`);
+                } else {
+                    log(`❌ Erreur: ${data.message}`, 'error');
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.message}</div>`;
+                    showMessage('error', `❌ Erreur: ${data.message}`);
+                }
+
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Erreur réseau: ${error.message}</div>`;
+                showMessage('error', `❌ Erreur réseau: ${error.message}`);
+            }
+        }
+
+        // Test toutes les couleurs
+        async function testAllColors() {
+            log('🚀 Test de toutes les couleurs...', 'info');
+            
+            for (const color of productColors) {
+                log(`🧪 Test de la couleur ${color.name} (ID: ${color.id})...`, 'info');
+                
+                // Simuler un fichier de test
+                const testFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('image', testFile);
+
+                    const response = await fetch(`http://localhost:3004/products/upload-color-image/4/${color.id}`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        log(`✅ ${color.name} (ID: ${color.id}) - OK`, 'success');
+                    } else {
+                        const error = await response.json();
+                        log(`❌ ${color.name} (ID: ${color.id}) - ${error.message}`, 'error');
+                    }
+                } catch (error) {
+                    log(`❌ ${color.name} (ID: ${color.id}) - ${error.message}`, 'error');
+                }
+            }
+            
+            log('✅ Test de toutes les couleurs terminé', 'success');
+        }
+
+        // Test avec un ID incorrect
+        async function testWrongColorId() {
+            log('🧪 Test avec un ID incorrect (1)...', 'info');
+            
+            try {
+                const testFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
+                const formData = new FormData();
+                formData.append('image', testFile);
+
+                const response = await fetch('http://localhost:3004/products/upload-color-image/4/1', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    log(`❌ Test ID incorrect réussi - Erreur attendue: ${data.message}`, 'warning');
+                } else {
+                    log('⚠️ Test ID incorrect échoué - Upload réussi (inattendu)', 'warning');
+                }
+            } catch (error) {
+                log(`❌ Test ID incorrect - Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        // Fonctions utilitaires
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+
+        function showMessage(type, message) {
+            const messageSection = document.getElementById('messageSection');
+            messageSection.innerHTML = `<div class="${type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'}">${message}</div>`;
+            messageSection.style.display = 'block';
+        }
+
+        // Initialisation
+        log('🚀 Test upload avec vrais IDs de couleur initialisé', 'info');
+        loadProductColors();
+    </script>
+</body>
+</html> 

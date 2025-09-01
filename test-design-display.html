@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Design Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .image-container {
+            position: relative;
+            display: inline-block;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .product-image {
+            display: block;
+            max-width: 400px;
+            height: auto;
+        }
+        .design-overlay {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .delimitation-debug {
+            position: absolute;
+            border: 2px dashed #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            z-index: 5;
+            pointer-events: none;
+        }
+        .debug-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎨 Test Design Display</h1>
+        <p>Cette page teste l'affichage du design dans les délimitations avec vos données réelles.</p>
+        
+        <div class="image-container" id="imageContainer">
+            <!-- L'image et le design seront injectés par JavaScript -->
+        </div>
+        
+        <div class="debug-info" id="debugInfo">
+            <h3>Debug Info:</h3>
+            <div id="debugContent">Chargement...</div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <label>
+                <input type="checkbox" id="showDelimitations" checked> 
+                Afficher les délimitations (Debug)
+            </label>
+        </div>
+    </div>
+
+    <script>
+        // Données de test basées sur vos logs
+        const testData = {
+            productImage: {
+                id: 32,
+                url: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1751244567/printalma/1751244566380-Mug_noir.jpg",
+                viewType: "Front",
+                delimitations: [{
+                    coordinateType: "PERCENTAGE",
+                    height: 182.9991315816982,
+                    width: 178.9489263775327,
+                    x: 150.8770913297143,
+                    y: 156.5435080770967
+                }]
+            },
+            designUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1751388932/vendor-designs/vendor_9_design_1751388932489.png",
+            designConfig: {
+                positioning: 'CENTER',
+                scale: 0.8
+            }
+        };
+
+        function updateDebugInfo(info) {
+            document.getElementById('debugContent').innerHTML = info;
+        }
+
+        function calculateCoordinates(delimitation, containerWidth, containerHeight) {
+            if (delimitation.coordinateType === 'PERCENTAGE') {
+                return {
+                    x: (delimitation.x / 100) * containerWidth,
+                    y: (delimitation.y / 100) * containerHeight,
+                    width: (delimitation.width / 100) * containerWidth,
+                    height: (delimitation.height / 100) * containerHeight
+                };
+            }
+            return delimitation; // Pour ABSOLUTE, on garde tel quel
+        }
+
+        function calculateDesignStyle(delimitation, containerWidth, containerHeight, designConfig) {
+            const coords = calculateCoordinates(delimitation, containerWidth, containerHeight);
+            
+            const designWidth = coords.width * designConfig.scale;
+            const designHeight = coords.height * designConfig.scale;
+
+            let designX = coords.x;
+            let designY = coords.y;
+
+            // Appliquer le positionnement
+            switch (designConfig.positioning) {
+                case 'CENTER':
+                    designX += (coords.width - designWidth) / 2;
+                    designY += (coords.height - designHeight) / 2;
+                    break;
+                case 'TOP':
+                    designX += (coords.width - designWidth) / 2;
+                    designY += 10;
+                    break;
+                case 'BOTTOM':
+                    designX += (coords.width - designWidth) / 2;
+                    designY += coords.height - designHeight - 10;
+                    break;
+            }
+
+            return {
+                left: `${designX}px`,
+                top: `${designY}px`,
+                width: `${designWidth}px`,
+                height: `${designHeight}px`
+            };
+        }
+
+        function renderTest() {
+            const container = document.getElementById('imageContainer');
+            const showDelimitations = document.getElementById('showDelimitations').checked;
+            
+            // Créer l'image
+            const img = document.createElement('img');
+            img.src = testData.productImage.url;
+            img.className = 'product-image';
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = function() {
+                const containerWidth = img.offsetWidth;
+                const containerHeight = img.offsetHeight;
+                
+                console.log('📏 Image loaded:', {
+                    containerWidth,
+                    containerHeight,
+                    naturalWidth: img.naturalWidth,
+                    naturalHeight: img.naturalHeight
+                });
+
+                // Créer le design overlay
+                testData.productImage.delimitations.forEach((delimitation, index) => {
+                    const coords = calculateCoordinates(delimitation, containerWidth, containerHeight);
+                    
+                    // Afficher délimitation en debug
+                    if (showDelimitations) {
+                        const delimDiv = document.createElement('div');
+                        delimDiv.className = 'delimitation-debug';
+                        delimDiv.style.left = coords.x + 'px';
+                        delimDiv.style.top = coords.y + 'px';
+                        delimDiv.style.width = coords.width + 'px';
+                        delimDiv.style.height = coords.height + 'px';
+                        delimDiv.title = `Délimitation ${index + 1}: ${delimitation.coordinateType}`;
+                        container.appendChild(delimDiv);
+                    }
+
+                    // Créer le design
+                    const designImg = document.createElement('img');
+                    designImg.src = testData.designUrl;
+                    designImg.className = 'design-overlay';
+                    designImg.crossOrigin = 'anonymous';
+                    
+                    const designStyle = calculateDesignStyle(delimitation, containerWidth, containerHeight, testData.designConfig);
+                    Object.assign(designImg.style, designStyle);
+                    
+                    designImg.onload = () => {
+                        console.log(`✅ Design ${index + 1} loaded successfully`);
+                    };
+                    
+                    designImg.onerror = (e) => {
+                        console.error(`❌ Design ${index + 1} failed to load:`, testData.designUrl, e);
+                    };
+                    
+                    container.appendChild(designImg);
+                    
+                    console.log(`🎨 Design ${index + 1} created with style:`, designStyle);
+                });
+
+                // Update debug info
+                updateDebugInfo(`
+                    <strong>Image:</strong> ${testData.productImage.url}<br>
+                    <strong>Design:</strong> ${testData.designUrl}<br>
+                    <strong>Container:</strong> ${containerWidth}x${containerHeight}px<br>
+                    <strong>Natural:</strong> ${img.naturalWidth}x${img.naturalHeight}px<br>
+                    <strong>Délimitations:</strong> ${testData.productImage.delimitations.length}<br>
+                    <strong>Coordonnées calculées:</strong> ${JSON.stringify(calculateCoordinates(testData.productImage.delimitations[0], containerWidth, containerHeight), null, 2)}
+                `);
+            };
+            
+            img.onerror = function() {
+                console.error('❌ Image failed to load:', testData.productImage.url);
+                updateDebugInfo('❌ Erreur de chargement de l\'image');
+            };
+            
+            // Clear container and add image
+            container.innerHTML = '';
+            container.appendChild(img);
+        }
+
+        // Event listeners
+        document.getElementById('showDelimitations').addEventListener('change', renderTest);
+
+        // Initial render
+        renderTest();
+    </script>
+</body>
+</html> 

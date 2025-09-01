@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Immédiat Final - Images Couleurs</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fafafa;
+        }
+        
+        .test-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-description {
+            color: #6b7280;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .upload-form {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        
+        .file-input-label:hover {
+            background: #2563eb;
+        }
+        
+        .selected-file {
+            margin-top: 10px;
+            padding: 10px;
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            color: #166534;
+            font-size: 14px;
+        }
+        
+        .button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+        
+        .button.secondary {
+            background: #6b7280;
+        }
+        
+        .button.secondary:hover {
+            background: #4b5563;
+        }
+        
+        .log {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-success { color: #10b981; }
+        .log-warning { color: #f59e0b; }
+        .log-error { color: #ef4444; }
+        .log-info { color: #3b82f6; }
+        
+        .response-section {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .response-title {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+        
+        .response-data {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        .success-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #166534;
+        }
+        
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #dc2626;
+        }
+        
+        .endpoint-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .endpoint-title {
+            font-weight: 600;
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+        
+        .endpoint-details {
+            color: #0c4a6e;
+            line-height: 1.6;
+        }
+        
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .comparison-card {
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .comparison-card.before {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+        
+        .comparison-card.after {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        
+        .comparison-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .comparison-card.before .comparison-title {
+            color: #dc2626;
+        }
+        
+        .comparison-card.after .comparison-title {
+            color: #16a34a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Test Upload Immédiat Final</h1>
+            <p>Vérification de l'upload immédiat des images de couleurs avec le bon endpoint</p>
+        </div>
+        
+        <div class="content">
+            <div class="test-section">
+                <div class="test-title">
+                    🎯 Objectif du Test
+                </div>
+                <div class="test-description">
+                    Vérifier que l'upload immédiat des images de couleurs fonctionne correctement avec l'endpoint 
+                    <code>POST /products/upload-color-image/:productId/:colorId</code> et que l'utilisateur reçoit 
+                    le message "Image couleur uploadée avec succès" au lieu de "Image ajoutée localement".
+                </div>
+                
+                <div class="endpoint-info">
+                    <div class="endpoint-title">🔗 Endpoint Correct</div>
+                    <div class="endpoint-details">
+                        <strong>URL:</strong> POST /products/upload-color-image/:productId/:colorId<br>
+                        <strong>Content-Type:</strong> multipart/form-data<br>
+                        <strong>Body Field:</strong> image (File)<br>
+                        <strong>Authentication:</strong> Required (JWT token)<br>
+                        <strong>Response:</strong> JSON avec URL de l'image uploadée
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    📊 Comparaison Avant/Après
+                </div>
+                <div class="test-description">
+                    Différences entre l'ancien système (problématique) et le nouveau système (corrigé).
+                </div>
+                
+                <div class="comparison">
+                    <div class="comparison-card before">
+                        <div class="comparison-title">❌ Avant (Problématique)</div>
+                        <ul>
+                            <li>Endpoint: POST /upload/color-image (404)</li>
+                            <li>Message: "Image ajoutée localement. Elle sera enregistrée lors de la validation."</li>
+                            <li>Upload: Local seulement</li>
+                            <li>URL: Temporaire (blob:)</li>
+                            <li>UX: Frustrante</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="comparison-card after">
+                        <div class="comparison-title">✅ Après (Corrigé)</div>
+                        <ul>
+                            <li>Endpoint: POST /products/upload-color-image/:productId/:colorId</li>
+                            <li>Message: "Image couleur uploadée avec succès"</li>
+                            <li>Upload: Serveur immédiat</li>
+                            <li>URL: Permanente (serveur)</li>
+                            <li>UX: Fluide et intuitive</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    🧪 Test Upload Image Couleur
+                </div>
+                <div class="test-description">
+                    Formulaire de test pour vérifier que l'upload immédiat fonctionne correctement.
+                </div>
+                
+                <div class="upload-form">
+                    <form id="uploadForm">
+                        <div class="form-group">
+                            <label class="form-label">📁 Sélectionner une image</label>
+                            <input type="file" id="fileInput" class="file-input" accept="image/jpeg,image/png,image/webp" />
+                            <label for="fileInput" class="file-input-label">Choisir un fichier</label>
+                            <div id="selectedFile" class="selected-file" style="display: none;"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">🆔 ID du produit</label>
+                            <input type="number" id="productId" class="form-input" value="1" min="1" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">🎨 ID de la couleur</label>
+                            <input type="number" id="colorId" class="form-input" value="1" min="1" />
+                        </div>
+                        
+                        <div style="text-align: center; margin: 20px 0;">
+                            <button type="submit" class="button">🚀 Upload Image</button>
+                            <button type="button" class="button secondary" onclick="testEndpoint()">🔍 Test Endpoint</button>
+                            <button type="button" class="button secondary" onclick="clearLog()">🧹 Effacer Log</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="response-section" id="responseSection" style="display: none;">
+                    <div class="response-title">📤 Réponse du Serveur</div>
+                    <div class="response-data" id="responseData"></div>
+                </div>
+                
+                <div id="messageSection" style="display: none;"></div>
+                
+                <div class="log" id="log">
+                    <div class="log-entry log-info">🚀 Test upload immédiat final initialisé</div>
+                    <div class="log-entry log-info">📋 Prêt à tester l'upload immédiat des images de couleurs</div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    ✅ Résultats Attendus
+                </div>
+                <div class="test-description">
+                    Ce qui devrait se passer lors d'un upload réussi.
+                </div>
+                
+                <div class="success-message">
+                    <strong>✅ Upload Réussi :</strong>
+                    <ul>
+                        <li>Message affiché : "Image couleur uploadée avec succès"</li>
+                        <li>URL générée : https://res.cloudinary.com/.../image.jpg</li>
+                        <li>Image disponible immédiatement sur le serveur</li>
+                        <li>Aucune sauvegarde locale nécessaire</li>
+                        <li>UX fluide et intuitive</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        // Gestion de la sélection de fichier
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                document.getElementById('selectedFile').textContent = `📁 ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+                document.getElementById('selectedFile').style.display = 'block';
+                log(`📁 Fichier sélectionné: ${file.name}`, 'info');
+            }
+        });
+
+        // Gestion du formulaire d'upload
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!selectedFile) {
+                log('❌ Aucun fichier sélectionné', 'error');
+                return;
+            }
+
+            const productId = document.getElementById('productId').value;
+            const colorId = document.getElementById('colorId').value;
+
+            log('🚀 Début de l\'upload immédiat...', 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                log(`📤 Envoi vers: POST /products/upload-color-image/${productId}/${colorId}`, 'info');
+                log(`📋 Paramètres: productId=${productId}, colorId=${colorId}`, 'info');
+
+                const response = await fetch(`http://localhost:3004/products/upload-color-image/${productId}/${colorId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                log(`📥 Réponse reçue (${response.status})`, response.ok ? 'success' : 'error');
+                
+                // Afficher la réponse
+                document.getElementById('responseSection').style.display = 'block';
+                document.getElementById('responseData').textContent = JSON.stringify(data, null, 2);
+
+                if (response.ok && data.success) {
+                    log('✅ Upload immédiat réussi!', 'success');
+                    log(`🔗 URL générée: ${data.image.url}`, 'success');
+                    log(`🆔 Image ID: ${data.image.id}`, 'success');
+                    log(`📊 Taille: ${(selectedFile.size / 1024).toFixed(2)} KB`, 'success');
+                    
+                    // Afficher le message de succès
+                    showMessage('success', '✅ Image couleur uploadée avec succès !');
+                } else {
+                    log(`❌ Erreur: ${data.message}`, 'error');
+                    showMessage('error', `❌ Erreur: ${data.message}`);
+                }
+
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+                showMessage('error', `❌ Erreur réseau: ${error.message}`);
+            }
+        });
+
+        // Test de disponibilité de l'endpoint
+        async function testEndpoint() {
+            log('🔍 Test de disponibilité de l\'endpoint...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3004/products/upload-color-image/1/1', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.status === 400) {
+                    log('✅ Endpoint disponible (erreur 400 attendue - pas de fichier)', 'success');
+                    showMessage('success', '✅ Endpoint disponible');
+                } else if (response.status === 401) {
+                    log('⚠️ Endpoint disponible mais authentification requise', 'warning');
+                    showMessage('warning', '⚠️ Endpoint disponible mais authentification requise');
+                } else if (response.status === 404) {
+                    log('❌ Endpoint non disponible (404)', 'error');
+                    showMessage('error', '❌ Endpoint non disponible (404)');
+                } else {
+                    log(`⚠️ Endpoint répond avec ${response.status}`, 'warning');
+                    showMessage('warning', `⚠️ Endpoint répond avec ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur de connexion: ${error.message}`, 'error');
+                showMessage('error', `❌ Erreur de connexion: ${error.message}`);
+            }
+        }
+
+        // Fonctions utilitaires
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+
+        function showMessage(type, message) {
+            const messageSection = document.getElementById('messageSection');
+            messageSection.innerHTML = `<div class="${type === 'success' ? 'success-message' : type === 'error' ? 'error-message' : 'warning-message'}">${message}</div>`;
+            messageSection.style.display = 'block';
+        }
+
+        // Initialisation
+        log('🚀 Test upload immédiat final initialisé', 'info');
+        log('📋 Prêt à tester l\'upload immédiat des images de couleurs', 'info');
+    </script>
+</body>
+</html> 

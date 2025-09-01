@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Logique de Publication Vendeur</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .scenario {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .scenario h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .mode-selector {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f0f8ff;
+            border-radius: 6px;
+            border: 1px solid #b3d9ff;
+        }
+        .result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        .result.published {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result.pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .result.draft {
+            background: #e2e3e5;
+            color: #383d41;
+            border: 1px solid #d1d3d4;
+        }
+        .buttons {
+            margin: 10px 0;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-auto {
+            background: #007bff;
+            color: white;
+        }
+        .btn-manual {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-publish {
+            background: #28a745;
+            color: white;
+        }
+        .design-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .design-validated {
+            background: #d4edda;
+            color: #155724;
+        }
+        .design-not-validated {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test - Logique de Publication Vendeur</h1>
+        <p>Test des différents scénarios de publication selon le mode choisi et la validation du design.</p>
+
+        <div class="scenario">
+            <h3>📋 Scénario 1 : Design Validé par l'Admin</h3>
+            <p>Le design a été validé par l'administrateur 
+                <span class="design-status design-validated">✅ VALIDÉ</span>
+            </p>
+            
+            <div class="mode-selector">
+                <h4>Mode de Publication :</h4>
+                <div class="buttons">
+                    <button class="btn-auto" onclick="testScenario(1, 'auto', true)">
+                        📤 Publication Automatique
+                    </button>
+                    <button class="btn-manual" onclick="testScenario(1, 'manual', true)">
+                        ✋ Publication Manuelle
+                    </button>
+                </div>
+            </div>
+            
+            <div id="result1" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="scenario">
+            <h3>📋 Scénario 2 : Design Non Validé</h3>
+            <p>Le design n'a pas encore été validé par l'administrateur
+                <span class="design-status design-not-validated">❌ NON VALIDÉ</span>
+            </p>
+            
+            <div class="mode-selector">
+                <h4>Mode de Publication :</h4>
+                <div class="buttons">
+                    <button class="btn-auto" onclick="testScenario(2, 'auto', false)">
+                        📤 Publication Automatique
+                    </button>
+                    <button class="btn-manual" onclick="testScenario(2, 'manual', false)">
+                        ✋ Publication Manuelle
+                    </button>
+                </div>
+            </div>
+            
+            <div id="result2" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="scenario">
+            <h3>📋 Scénario 3 : Actions Disponibles dans /vendor/products</h3>
+            <p>Boutons disponibles selon le statut du produit :</p>
+            
+            <div style="margin: 15px 0;">
+                <h4>Produit PUBLIÉ :</h4>
+                <div class="buttons">
+                    <button style="background: #6c757d; color: white;">👁️ Aperçu</button>
+                    <button style="background: #6c757d; color: white;">✏️ Modifier</button>
+                    <button style="background: #dc3545; color: white;">🗑️ Supprimer</button>
+                </div>
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <h4>Produit EN ATTENTE :</h4>
+                <div class="buttons">
+                    <button style="background: #6c757d; color: white;">👁️ Aperçu</button>
+                    <button style="background: #6c757d; color: white;">✏️ Modifier</button>
+                    <button style="background: #dc3545; color: white;">🗑️ Supprimer</button>
+                </div>
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <h4>Produit BROUILLON (design validé) :</h4>
+                <div class="buttons">
+                    <button class="btn-publish">✅ Publier</button>
+                    <button style="background: #6c757d; color: white;">👁️ Aperçu</button>
+                    <button style="background: #6c757d; color: white;">✏️ Modifier</button>
+                    <button style="background: #dc3545; color: white;">🗑️ Supprimer</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h3>📋 Résumé de la Logique</h3>
+            <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th style="border: 1px solid #ddd; padding: 10px;">Mode Publication</th>
+                        <th style="border: 1px solid #ddd; padding: 10px;">Design Validé</th>
+                        <th style="border: 1px solid #ddd; padding: 10px;">Statut Final</th>
+                        <th style="border: 1px solid #ddd; padding: 10px;">Action Vendeur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Automatique</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">✅ Oui</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; background: #d4edda;">PUBLIÉ</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Aucune (automatique)</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Automatique</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">❌ Non</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; background: #fff3cd;">EN ATTENTE</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Attendre validation</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Manuelle</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">✅ Oui</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; background: #e2e3e5;">BROUILLON</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Publier manuellement</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Manuelle</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">❌ Non</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; background: #fff3cd;">EN ATTENTE</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Attendre validation</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function testScenario(scenario, mode, isDesignValidated) {
+            let status, message, className;
+            
+            if (mode === 'auto') {
+                if (isDesignValidated) {
+                    status = 'PUBLIÉ';
+                    message = '✅ Produit publié automatiquement ! Il est maintenant visible par les clients.';
+                    className = 'published';
+                } else {
+                    status = 'EN ATTENTE';
+                    message = '⏳ Produit en attente de validation du design par l\'administrateur.';
+                    className = 'pending';
+                }
+            } else { // manual
+                if (isDesignValidated) {
+                    status = 'BROUILLON';
+                    message = '📝 Produit créé en brouillon. Vous pouvez le publier manuellement depuis la page produits.';
+                    className = 'draft';
+                } else {
+                    status = 'EN ATTENTE';
+                    message = '⏳ Produit en attente de validation du design par l\'administrateur.';
+                    className = 'pending';
+                }
+            }
+            
+            const resultDiv = document.getElementById(`result${scenario}`);
+            resultDiv.style.display = 'block';
+            resultDiv.className = `result ${className}`;
+            resultDiv.innerHTML = `
+                <strong>Statut Final : ${status}</strong><br>
+                ${message}
+            `;
+        }
+    </script>
+</body>
+</html> 

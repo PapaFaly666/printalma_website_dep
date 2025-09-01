@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Pixels Relatifs Directs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .test-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: white;
+        }
+        .error { color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #dc2626; }
+        .success { color: #059669; background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #059669; }
+        .loading { color: #6b7280; text-align: center; padding: 20px; }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .product-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        .product-preview {
+            width: 100%;
+            height: 300px;
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .product-info {
+            padding: 16px;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .direct-pixels {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .position-info {
+            background: #fefce8;
+            border: 1px solid #eab308;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test - Pixels Relatifs Directs</h1>
+        <p>Test avec utilisation directe des valeurs x,y comme pixels relatifs (sans conversion)</p>
+        
+        <div class="direct-pixels">
+            <h3>📋 Logique Pixels Relatifs Directs</h3>
+            <ul>
+                <li>✅ <strong>Utilisation directe</strong> : <code>translate(${x}px, ${y}px) scale(${scale}) rotate(${rotation}deg)</code></li>
+                <li>✅ <strong>Pas de conversion</strong> : Les valeurs x,y de l'API sont utilisées telles quelles</li>
+                <li>✅ <strong>Même format que localStorage</strong> : {x: 70, y: -65} → translate(70px, -65px)</li>
+                <li>✅ <strong>TransformOrigin</strong> : top left</li>
+                <li>✅ <strong>Taille design</strong> : w-24 h-auto (96px width)</li>
+            </ul>
+        </div>
+        
+        <div class="test-card">
+            <h2>📋 Chargement des produits</h2>
+            <button onclick="loadProducts()" class="btn">
+                Charger les produits (Pixels relatifs directs)
+            </button>
+            <div id="loading-status">Cliquez pour charger</div>
+            
+            <div id="products-grid" class="product-grid" style="display: none;">
+                <!-- Les produits seront affichés ici -->
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h2>🔍 Analyse des transformations</h2>
+            <div id="transform-analysis">
+                <em>Chargez les produits pour voir l'analyse des transformations</em>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+        
+        function log(message) {
+            console.log(message);
+        }
+
+        function getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        // 🎯 Fonction pour calculer les transformations CSS (pixels relatifs directs)
+        function getDirectPixelsTransform(product) {
+            // Valeurs par défaut
+            let x = 0;
+            let y = 0;
+            let scale = product.designApplication.scale || 1.0;
+            let rotation = 0;
+
+            if (product.designPositions && product.designPositions.length > 0) {
+                const position = product.designPositions[0].position;
+                
+                // Utiliser les données directement comme pixels relatifs
+                x = position.x;
+                y = position.y;
+                scale = position.scale;
+                rotation = position.rotation;
+            }
+
+            console.log(`🎨 Position appliquée pour produit ${product.id} (pixels relatifs directs):`, {
+                apiValues: product.designPositions?.[0]?.position,
+                directValues: { x, y, scale, rotation },
+                finalTransform: `translate(${x}px, ${y}px) scale(${scale}) rotate(${rotation}deg)`
+            });
+
+            // Utiliser les valeurs directement comme pixels relatifs
+            return `translate(${x}px, ${y}px) scale(${scale}) rotate(${rotation}deg)`;
+        }
+
+        // 🔧 Fonction pour créer un aperçu avec pixels relatifs directs
+        function createDirectPixelsPreview(product) {
+            const preview = document.createElement('div');
+            preview.className = 'product-preview';
+            
+            // Image produit
+            const baseImageUrl = product.adminProduct.colorVariations[0]?.images[0]?.url;
+            
+            if (!baseImageUrl) {
+                preview.innerHTML = '<div style="color: #dc2626; display: flex; align-items: center; justify-content: center; height: 100%;">❌ Aucune image produit</div>';
+                return preview;
+            }
+            
+            // Image du produit
+            const productImg = document.createElement('img');
+            productImg.src = baseImageUrl;
+            productImg.alt = product.adminProduct.name;
+            productImg.style.width = '100%';
+            productImg.style.height = '100%';
+            productImg.style.objectFit = 'contain';
+            preview.appendChild(productImg);
+            
+            // Design superposé (pixels relatifs directs)
+            if (product.designApplication.hasDesign && product.designApplication.designUrl) {
+                const designDiv = document.createElement('div');
+                designDiv.style.position = 'absolute';
+                designDiv.style.top = '0';
+                designDiv.style.left = '0';
+                designDiv.style.transform = getDirectPixelsTransform(product);
+                designDiv.style.transformOrigin = 'top left';
+                
+                const designImg = document.createElement('img');
+                designImg.src = product.designApplication.designUrl;
+                designImg.alt = `Design ${product.designId}`;
+                designImg.style.width = '96px'; // w-24
+                designImg.style.height = 'auto';
+                
+                designDiv.appendChild(designImg);
+                preview.appendChild(designDiv);
+                
+                console.log(`🎨 Design appliqué pour produit ${product.id} avec pixels directs`);
+            } else {
+                // Indicateur pas de design
+                const noDesignBadge = document.createElement('div');
+                noDesignBadge.style.position = 'absolute';
+                noDesignBadge.style.top = '8px';
+                noDesignBadge.style.left = '8px';
+                noDesignBadge.style.background = '#f59e0b';
+                noDesignBadge.style.color = 'white';
+                noDesignBadge.style.padding = '4px 8px';
+                noDesignBadge.style.borderRadius = '4px';
+                noDesignBadge.style.fontSize = '10px';
+                noDesignBadge.style.fontWeight = '600';
+                noDesignBadge.textContent = 'Pas de design';
+                preview.appendChild(noDesignBadge);
+            }
+            
+            return preview;
+        }
+
+        // Fonction pour analyser les transformations
+        function analyzeTransforms(products) {
+            const analysis = document.getElementById('transform-analysis');
+            let html = '<h4>📊 Analyse des transformations avec pixels relatifs directs :</h4>';
+            
+            products.forEach(product => {
+                const hasPosition = product.designPositions && product.designPositions.length > 0;
+                const position = hasPosition ? product.designPositions[0].position : null;
+                
+                if (hasPosition) {
+                    html += `
+                        <div class="position-info">
+                            <strong>Produit ${product.id} (${product.vendorName})</strong><br>
+                            <strong>Données API:</strong> x=${position.x}, y=${position.y}, scale=${position.scale}, rotation=${position.rotation}<br>
+                            <strong>Transform CSS:</strong> translate(${position.x}px, ${position.y}px) scale(${position.scale}) rotate(${position.rotation}deg)<br>
+                            <strong>Comparaison localStorage:</strong> Même format que {x: ${position.x}, y: ${position.y}}
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="position-info">
+                            <strong>Produit ${product.id} (${product.vendorName})</strong><br>
+                            Pas de position sauvegardée - Utilise valeurs par défaut (0, 0)
+                        </div>
+                    `;
+                }
+            });
+            
+            analysis.innerHTML = html;
+        }
+
+        // Fonction pour créer une carte produit
+        function createProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            // Créer l'aperçu avec pixels relatifs directs
+            const preview = createDirectPixelsPreview(product);
+            
+            // Informations du produit
+            const info = document.createElement('div');
+            info.className = 'product-info';
+            
+            const hasPosition = product.designPositions && product.designPositions.length > 0;
+            const position = hasPosition ? product.designPositions[0].position : null;
+            
+            info.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 16px;">${product.vendorName}</div>
+                <div style="font-size: 12px; color: #6b7280; margin-top: 8px;">
+                    <strong>Base:</strong> ${product.adminProduct.name}<br>
+                    <strong>Design:</strong> ${product.designApplication.hasDesign ? 'Oui' : 'Non'}<br>
+                    ${hasPosition ? 
+                        `<strong>Position:</strong> x=${position.x}px, y=${position.y}px<br>
+                         <strong>Scale:</strong> ${position.scale}, <strong>Rotation:</strong> ${position.rotation}°` :
+                        '<strong>Position:</strong> Valeurs par défaut (0, 0)'
+                    }
+                </div>
+            `;
+            
+            card.appendChild(preview);
+            card.appendChild(info);
+            
+            return card;
+        }
+
+        // Fonction principale pour charger les produits
+        async function loadProducts() {
+            const statusDiv = document.getElementById('loading-status');
+            const gridDiv = document.getElementById('products-grid');
+            
+            statusDiv.innerHTML = '<div class="loading">Chargement des produits...</div>';
+            gridDiv.style.display = 'none';
+            
+            try {
+                log('📡 Chargement des produits avec pixels relatifs directs...');
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products?limit=20&offset=0`, {
+                    credentials: 'include',
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log('📋 Réponse API complète reçue');
+                
+                if (!result.success || !result.data || !result.data.products) {
+                    throw new Error('Format de réponse invalide');
+                }
+
+                const products = result.data.products;
+                log(`✅ ${products.length} produits chargés`);
+
+                // Analyser les transformations
+                analyzeTransforms(products);
+
+                // Afficher les produits
+                gridDiv.innerHTML = '';
+                
+                for (const product of products) {
+                    const card = createProductCard(product);
+                    gridDiv.appendChild(card);
+                }
+                
+                gridDiv.style.display = 'grid';
+                statusDiv.innerHTML = `<div class="success">✅ ${products.length} produits chargés avec pixels relatifs directs</div>`;
+                
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`);
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-test au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Page de test Pixels Relatifs Directs chargée');
+        });
+    </script>
+</body>
+</html> 

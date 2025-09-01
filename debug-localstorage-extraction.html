@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug - Extraction LocalStorage</title>
+    <style>
+        body { font-family: monospace; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; background: white; padding: 20px; border-radius: 8px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .pass { background: #d4edda; border-color: #c3e6cb; }
+        .fail { background: #f8d7da; border-color: #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug - Extraction LocalStorage</h1>
+        
+        <button onclick="runTests()">🧪 Exécuter Tests</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function runTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h3>Tests en cours...</h3>';
+            
+            // Test 1: Problème avec || vs ??
+            const test1 = testNullishCoalescing();
+            
+            // Test 2: Extraction de données réelles
+            const test2 = testRealDataExtraction();
+            
+            // Test 3: Simulation complète
+            const test3 = testCompleteExtraction();
+            
+            // Afficher les résultats
+            resultsDiv.innerHTML = `
+                <h3>📊 Résultats des Tests</h3>
+                ${test1}
+                ${test2}
+                ${test3}
+            `;
+        }
+        
+        function testNullishCoalescing() {
+            const testData = {
+                x: 0,        // Valeur critique : 0
+                y: -13,      // Valeur critique : négative
+                scale: 1,    // Valeur critique : 1
+                designWidth: 25
+            };
+            
+            // Test avec || (INCORRECT)
+            const withOr = {
+                x: testData.x || 0.5,
+                y: testData.y || 0.5,
+                scale: testData.scale || 0.6
+            };
+            
+            // Test avec ?? (CORRECT)
+            const withNullish = {
+                x: testData.x ?? 0.5,
+                y: testData.y ?? 0.5,
+                scale: testData.scale ?? 0.6
+            };
+            
+            const pass = (withNullish.x === 0 && withNullish.y === -13 && withNullish.scale === 1);
+            
+            return `
+                <div class="test ${pass ? 'pass' : 'fail'}">
+                    <h4>Test 1: Opérateur || vs ?? ${pass ? '✅' : '❌'}</h4>
+                    <p><strong>Données originales:</strong> x: ${testData.x}, y: ${testData.y}, scale: ${testData.scale}</p>
+                    <p><strong>Avec || (incorrect):</strong> x: ${withOr.x}, y: ${withOr.y}, scale: ${withOr.scale}</p>
+                    <p><strong>Avec ?? (correct):</strong> x: ${withNullish.x}, y: ${withNullish.y}, scale: ${withNullish.scale}</p>
+                    <p><strong>Résultat:</strong> ${pass ? 'Les valeurs 0 et négatives sont préservées' : 'ÉCHEC - Les valeurs 0 sont perdues'}</p>
+                </div>
+            `;
+        }
+        
+        function testRealDataExtraction() {
+            // Simuler vos vraies données localStorage
+            const realData = {
+                designId: 1,
+                baseProductId: 13,
+                position: {
+                    x: 0,
+                    y: -13,
+                    scale: 1,
+                    rotation: 0,
+                    designWidth: 25,
+                    designHeight: 37.675070028011206,
+                    designScale: 1
+                },
+                timestamp: 1754669433932,
+                vendorId: 2
+            };
+            
+            // Simuler l'extraction comme dans le code corrigé
+            let positionData = realData.position || realData;
+            
+            const extractedDimensions = {
+                designWidth: positionData.designWidth ?? realData.designWidth ?? 200,
+                designHeight: positionData.designHeight ?? realData.designHeight ?? 200,
+                designScale: positionData.scale ?? positionData.designScale ?? realData.scale ?? 0.6,
+                rotation: positionData.rotation ?? realData.rotation ?? 0,
+                x: positionData.x ?? realData.x ?? 0.5,
+                y: positionData.y ?? realData.y ?? 0.5
+            };
+            
+            const pass = (
+                extractedDimensions.x === 0 &&
+                extractedDimensions.y === -13 &&
+                extractedDimensions.scale === 1 &&
+                extractedDimensions.designWidth === 25 &&
+                Math.abs(extractedDimensions.designHeight - 37.675070028011206) < 0.001
+            );
+            
+            return `
+                <div class="test ${pass ? 'pass' : 'fail'}">
+                    <h4>Test 2: Extraction Données Réelles ${pass ? '✅' : '❌'}</h4>
+                    <p><strong>Attendu:</strong> x: 0, y: -13, scale: 1, designWidth: 25</p>
+                    <p><strong>Extrait:</strong> x: ${extractedDimensions.x}, y: ${extractedDimensions.y}, scale: ${extractedDimensions.scale}, designWidth: ${extractedDimensions.designWidth}</p>
+                    <pre>${JSON.stringify(extractedDimensions, null, 2)}</pre>
+                </div>
+            `;
+        }
+        
+        function testCompleteExtraction() {
+            // Stocker et récupérer comme dans le vrai code
+            const testKey = 'design_position_13_1';
+            const testData = {
+                designId: 1,
+                baseProductId: 13,
+                position: {
+                    x: 0,
+                    y: -13,
+                    scale: 1,
+                    rotation: 0,
+                    designWidth: 25,
+                    designHeight: 37.675070028011206
+                },
+                timestamp: Date.now(),
+                vendorId: 2
+            };
+            
+            // Stocker
+            localStorage.setItem(testKey, JSON.stringify(testData));
+            
+            // Récupérer et extraire
+            const retrieved = JSON.parse(localStorage.getItem(testKey) || '{}');
+            let positionData = retrieved.position || retrieved;
+            
+            const finalDimensions = {
+                designWidth: positionData.designWidth ?? retrieved.designWidth ?? 200,
+                designHeight: positionData.designHeight ?? retrieved.designHeight ?? 200,
+                designScale: positionData.scale ?? positionData.designScale ?? retrieved.scale ?? 0.6,
+                rotation: positionData.rotation ?? retrieved.rotation ?? 0,
+                x: positionData.x ?? retrieved.x ?? 0.5,
+                y: positionData.y ?? retrieved.y ?? 0.5
+            };
+            
+            // Nettoyer
+            localStorage.removeItem(testKey);
+            
+            const pass = (
+                finalDimensions.x === 0 &&
+                finalDimensions.y === -13 &&
+                finalDimensions.scale === 1
+            );
+            
+            return `
+                <div class="test ${pass ? 'pass' : 'fail'}">
+                    <h4>Test 3: Cycle Complet LocalStorage ${pass ? '✅' : '❌'}</h4>
+                    <p><strong>Simulation complète:</strong> Stockage → Récupération → Extraction</p>
+                    <p><strong>Résultat final:</strong></p>
+                    <pre>${JSON.stringify(finalDimensions, null, 2)}</pre>
+                    <p><strong>Status:</strong> ${pass ? 'Les valeurs critiques sont préservées' : 'ÉCHEC - Valeurs incorrectes'}</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html> 

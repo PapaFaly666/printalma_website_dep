@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Real API Positioning - Produit 36</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .preview-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        // Données exactes de votre API http://localhost:3004/vendor/products/36
+        const realProduct = {
+            id: 36,
+            vendorName: "Tshirt",
+            vendorDescription: "Tshirt prenium",
+            vendorPrice: 12000,
+            vendorStock: 12,
+            status: "PENDING",
+            adminProduct: {
+                id: 1,
+                name: "Tshirt",
+                description: "Tshirt prenium",
+                price: 12000,
+                colorVariations: [
+                    {
+                        id: 1,
+                        name: "Blanc",
+                        colorCode: "#e5e6e1",
+                        images: [
+                            {
+                                id: 1,
+                                url: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752018200/printalma/1752018198359-T-Shirt_Premium_Blanc.jpg",
+                                viewType: "Front",
+                                delimitations: [
+                                    {
+                                        x: 158.7095343254858,
+                                        y: 103.5952197959822,
+                                        width: 166.6666600439286,
+                                        height: 272.2222114050834,
+                                        coordinateType: "PERCENTAGE"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        name: "Blue",
+                        colorCode: "#2a68a7",
+                        images: [
+                            {
+                                id: 2,
+                                url: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752018202/printalma/1752018201718-T-Shirt_Premium_Bleu.jpg",
+                                viewType: "Front",
+                                delimitations: [
+                                    {
+                                        x: 158.7095343254858,
+                                        y: 103.5952197959822,
+                                        width: 166.6666600439286,
+                                        height: 272.2222114050834,
+                                        coordinateType: "PERCENTAGE"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        name: "Noir",
+                        colorCode: "#000000",
+                        images: [
+                            {
+                                id: 3,
+                                url: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752018203/printalma/1752018203288-T-Shirt_Premium_Noir.jpg",
+                                viewType: "Front",
+                                delimitations: [
+                                    {
+                                        x: 158.7095343254858,
+                                        y: 103.5952197959822,
+                                        width: 166.6666600439286,
+                                        height: 272.2222114050834,
+                                        coordinateType: "PERCENTAGE"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 4,
+                        name: "Rouge",
+                        colorCode: "#b42827",
+                        images: [
+                            {
+                                id: 4,
+                                url: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752018205/printalma/1752018204914-T-Shirt_Premium_Rouge.jpg",
+                                viewType: "Front",
+                                delimitations: [
+                                    {
+                                        x: 158.7095343254858,
+                                        y: 103.5952197959822,
+                                        width: 166.6666600439286,
+                                        height: 272.2222114050834,
+                                        coordinateType: "PERCENTAGE"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            designApplication: {
+                hasDesign: true,
+                designUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752064540/vendor-designs/vendor_2_design_1752064537980.png",
+                designCloudinaryPublicId: "vendor-designs/vendor_2_design_1752064537980",
+                positioning: "CENTER",
+                scale: 0.6,
+                mode: "PRESERVED"
+            },
+            design: {
+                id: 9,
+                name: "solo-leveling-logo-01",
+                description: "",
+                category: "LOGO",
+                imageUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752064540/vendor-designs/vendor_2_design_1752064537980.png",
+                cloudinaryPublicId: "vendor-designs/vendor_2_design_1752064537980",
+                tags: [],
+                isValidated: false,
+                validatedAt: null,
+                createdAt: "2025-07-09T12:35:44.391Z"
+            },
+            designTransforms: [
+                {
+                    id: 21,
+                    designUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752064540/vendor-designs/vendor_2_design_1752064537980.png",
+                    transforms: {
+                        "0": {
+                            x: 70,
+                            y: -52,
+                            scale: 0.5083333333333333
+                        }
+                    },
+                    lastModified: "2025-07-10T18:19:09.954Z",
+                    createdAt: "2025-07-10T18:19:10.007Z"
+                }
+            ],
+            designPositions: [
+                {
+                    designId: 9,
+                    position: {
+                        x: 70,
+                        y: -52,
+                        scale: 0.5083333333333333,
+                        rotation: 0,
+                        constraints: {}
+                    },
+                    createdAt: "2025-07-10T18:19:09.895Z",
+                    updatedAt: "2025-07-10T18:19:10.032Z"
+                }
+            ],
+            vendor: {
+                id: 2,
+                fullName: "Tasha Faly",
+                shop_name: "Papa Faly"
+            },
+            selectedSizes: [
+                { id: 1, sizeName: "XS" },
+                { id: 2, sizeName: "S" },
+                { id: 3, sizeName: "M" },
+                { id: 4, sizeName: "L" },
+                { id: 5, sizeName: "XL" },
+                { id: 6, sizeName: "XXL" },
+                { id: 7, sizeName: "3XL" }
+            ],
+            selectedColors: [
+                { id: 1, name: "Blanc", colorCode: "#e5e6e1" },
+                { id: 2, name: "Blue", colorCode: "#2a68a7" },
+                { id: 3, name: "Noir", colorCode: "#000000" },
+                { id: 4, name: "Rouge", colorCode: "#b42827" }
+            ],
+            designId: 9,
+            createdAt: "2025-07-10T18:19:09.866Z",
+            updatedAt: "2025-07-10T18:19:09.866Z"
+        };
+
+        // Composant avec délimitations visibles et debug détaillé
+        const ProductPreviewWithDebug = ({ product, showDelimitations = true, className = '' }) => {
+            const containerRef = useRef(null);
+            const imgRef = useRef(null);
+            const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+            const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+            const [currentColorId, setCurrentColorId] = useState(product.selectedColors[0]?.id || 0);
+            const [debugInfo, setDebugInfo] = useState({});
+
+            // Couleur actuelle
+            const currentColor = product.selectedColors.find(c => c.id === currentColorId) || product.selectedColors[0];
+            
+            // Trouver la variation de couleur correspondante
+            const colorVariation = product.adminProduct.colorVariations.find(
+                cv => cv.id === currentColor?.id
+            );
+            
+            // Prendre la première image (ou celle avec viewType "Front")
+            const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front') 
+                || colorVariation?.images[0];
+
+            // Fonction pour obtenir la position du design depuis l'API
+            const getDesignPosition = () => {
+                // 1. Essayer d'abord designPositions
+                if (product.designPositions && product.designPositions.length > 0) {
+                    const designPos = product.designPositions[0];
+                    console.log('📍 Position depuis designPositions:', designPos.position);
+                    return {
+                        x: designPos.position.x,
+                        y: designPos.position.y,
+                        scale: designPos.position.scale,
+                        rotation: designPos.position.rotation || 0,
+                        source: 'designPositions'
+                    };
+                }
+
+                // 2. Fallback sur designTransforms
+                if (product.designTransforms && product.designTransforms.length > 0) {
+                    const designTransform = product.designTransforms[0];
+                    const transform = designTransform.transforms['0']; // Délimitation 0
+                    if (transform) {
+                        console.log('📍 Position depuis designTransforms:', transform);
+                        return {
+                            x: transform.x,
+                            y: transform.y,
+                            scale: transform.scale,
+                            rotation: 0,
+                            source: 'designTransforms'
+                        };
+                    }
+                }
+
+                // 3. Fallback sur designApplication.scale
+                console.log('📍 Position par défaut avec scale:', product.designApplication.scale);
+                return {
+                    x: 0,
+                    y: 0,
+                    scale: product.designApplication.scale || 1,
+                    rotation: 0,
+                    source: 'designApplication'
+                };
+            };
+
+            // Observer natural image size
+            useEffect(() => {
+                if (imgRef.current && imgRef.current.complete) {
+                    setNaturalSize({ width: imgRef.current.naturalWidth, height: imgRef.current.naturalHeight });
+                }
+            }, [mockupImage?.url]);
+
+            // Observe container resize
+            useEffect(() => {
+                if (!containerRef.current) return;
+                const update = () => {
+                    const rect = containerRef.current.getBoundingClientRect();
+                    setContainerSize({ width: rect.width, height: rect.height });
+                };
+                update();
+                const ro = new ResizeObserver(update);
+                ro.observe(containerRef.current);
+                window.addEventListener('resize', update);
+                return () => {
+                    ro.disconnect();
+                    window.removeEventListener('resize', update);
+                };
+            }, []);
+
+            // Fonction pour calculer la position des délimitations
+            const computePxPosition = (delim) => {
+                const isPixel = delim.coordinateType === 'PIXEL' || delim.x > 100 || delim.y > 100;
+
+                const imgW = naturalSize.width || 1;
+                const imgH = naturalSize.height || 1;
+
+                let pct = {
+                    x: isPixel ? (delim.x / imgW) * 100 : delim.x,
+                    y: isPixel ? (delim.y / imgH) * 100 : delim.y,
+                    w: isPixel ? (delim.width / imgW) * 100 : delim.width,
+                    h: isPixel ? (delim.height / imgH) * 100 : delim.height,
+                };
+
+                const { width: contW, height: contH } = containerSize;
+                if (contW === 0 || contH === 0) return { left: 0, top: 0, width: 0, height: 0 };
+
+                const imgRatio = imgW / imgH;
+                const contRatio = contW / contH;
+
+                let dispW, dispH, offsetX, offsetY;
+                if (imgRatio > contRatio) {
+                    dispW = contW;
+                    dispH = contW / imgRatio;
+                    offsetX = 0;
+                    offsetY = (contH - dispH) / 2;
+                } else {
+                    dispH = contH;
+                    dispW = contH * imgRatio;
+                    offsetX = (contW - dispW) / 2;
+                    offsetY = 0;
+                }
+
+                return {
+                    left: offsetX + (pct.x / 100) * dispW,
+                    top: offsetY + (pct.y / 100) * dispH,
+                    width: (pct.w / 100) * dispW,
+                    height: (pct.h / 100) * dispH,
+                    debug: {
+                        originalDelim: delim,
+                        isPixel,
+                        imgDimensions: { width: imgW, height: imgH },
+                        pct,
+                        containerDimensions: { width: contW, height: contH },
+                        imgRatio,
+                        contRatio,
+                        displayDimensions: { width: dispW, height: dispH },
+                        offset: { x: offsetX, y: offsetY }
+                    }
+                };
+            };
+
+            if (!mockupImage) {
+                return (
+                    <div className={`aspect-square bg-gray-100 flex items-center justify-center rounded-lg ${className}`}>
+                        <span className="text-gray-500">Aucune image</span>
+                    </div>
+                );
+            }
+
+            const delimitations = mockupImage.delimitations || [];
+            const designPosition = getDesignPosition();
+
+            // Mettre à jour les infos de debug
+            useEffect(() => {
+                if (delimitations.length > 0) {
+                    const pos = computePxPosition(delimitations[0]);
+                    setDebugInfo({
+                        naturalSize,
+                        containerSize,
+                        designPosition,
+                        delimitationPosition: pos,
+                        currentColor: currentColor.name
+                    });
+                }
+            }, [naturalSize, containerSize, currentColorId]);
+
+            return (
+                <div className={`grid-container ${className}`}>
+                    {/* Aperçu du produit */}
+                    <div>
+                        <h3 className="text-lg font-semibold mb-2">Aperçu - {currentColor.name}</h3>
+                        <div ref={containerRef} className="aspect-square relative bg-white rounded-lg overflow-hidden border-2 border-gray-200">
+                            {/* Image du produit */}
+                            <img
+                                ref={imgRef}
+                                src={mockupImage.url}
+                                alt={product.adminProduct.name}
+                                className="w-full h-full object-contain"
+                                onLoad={(e) => {
+                                    const img = e.target;
+                                    setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                                }}
+                            />
+                            
+                            {/* Délimitations visibles */}
+                            {showDelimitations && delimitations.map((delim, idx) => {
+                                const pos = computePxPosition(delim);
+                                if (pos.width <= 0 || pos.height <= 0) return null;
+                                
+                                return (
+                                    <div
+                                        key={`delim-${idx}`}
+                                        className="absolute border-2 border-red-500 bg-red-100 bg-opacity-30"
+                                        style={{
+                                            left: pos.left,
+                                            top: pos.top,
+                                            width: pos.width,
+                                            height: pos.height,
+                                        }}
+                                    >
+                                        <div className="absolute top-0 left-0 bg-red-500 text-white px-1 text-xs">
+                                            Délimitation {idx}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            
+                            {/* Design superposé DANS LES DÉLIMITATIONS */}
+                            {product.designApplication.hasDesign && product.designApplication.designUrl && delimitations.map((delim, idx) => {
+                                const pos = computePxPosition(delim);
+                                if (pos.width <= 0 || pos.height <= 0) return null;
+                                
+                                // Utiliser les données directement de l'API
+                                const { x, y, scale, rotation } = designPosition;
+                                
+                                // Limiter le déplacement pour rester dans la délimitation
+                                const maxX = (1 - scale) * pos.width / 2;
+                                const minX = -(1 - scale) * pos.width / 2;
+                                const maxY = (1 - scale) * pos.height / 2;
+                                const minY = -(1 - scale) * pos.height / 2;
+                                const constrainedX = Math.max(minX, Math.min(x, maxX));
+                                const constrainedY = Math.max(minY, Math.min(y, maxY));
+                                
+                                console.log(`🎨 Transform pour délimitation ${idx} du produit ${product.id}:`, {
+                                    apiPosition: designPosition,
+                                    constrainedX,
+                                    constrainedY,
+                                    finalTransform: `translate(${constrainedX}px, ${constrainedY}px) scale(${scale}) rotate(${rotation}deg)`
+                                });
+                                
+                                return (
+                                    <div
+                                        key={`design-${idx}`}
+                                        className="absolute overflow-hidden"
+                                        style={{
+                                            left: pos.left,
+                                            top: pos.top,
+                                            width: pos.width,
+                                            height: pos.height,
+                                            border: '2px solid blue',
+                                            outline: 'none',
+                                        }}
+                                    >
+                                        <img
+                                            src={product.designApplication.designUrl}
+                                            alt={`Design ${product.designId}`}
+                                            className="w-full h-full object-contain pointer-events-none select-none"
+                                            style={{
+                                                transform: `translate(${constrainedX}px, ${constrainedY}px) scale(${scale}) rotate(${rotation}deg)`,
+                                                transformOrigin: 'top left',
+                                                border: '1px solid green',
+                                                outline: 'none',
+                                                boxShadow: 'none',
+                                            }}
+                                            draggable={false}
+                                        />
+                                    </div>
+                                );
+                            })}
+
+                            {/* Indicateur de données utilisées */}
+                            <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
+                                {designPosition.source}
+                            </div>
+                        </div>
+
+                        {/* Slider de couleurs */}
+                        <div className="mt-4 flex items-center justify-center gap-2">
+                            {product.selectedColors.map((color) => (
+                                <button
+                                    key={color.id}
+                                    onClick={() => setCurrentColorId(color.id)}
+                                    className={`w-10 h-10 rounded-full border-2 transition-all ${
+                                        color.id === currentColorId ? 'border-blue-500 scale-110 shadow-lg' : 'border-gray-300'
+                                    }`}
+                                    style={{ backgroundColor: color.colorCode }}
+                                    title={color.name}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Informations de debug */}
+                    <div>
+                        <h3 className="text-lg font-semibold mb-2">Debug Info</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="font-semibold text-blue-600">Position Design</h4>
+                                <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
+                                    {JSON.stringify(designPosition, null, 2)}
+                                </pre>
+                            </div>
+                            
+                            <div>
+                                <h4 className="font-semibold text-green-600">Dimensions</h4>
+                                <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
+                                    {JSON.stringify({
+                                        naturalSize,
+                                        containerSize,
+                                        currentColor: currentColor.name
+                                    }, null, 2)}
+                                </pre>
+                            </div>
+                            
+                            {debugInfo.delimitationPosition && (
+                                <div>
+                                    <h4 className="font-semibold text-purple-600">Délimitation Debug</h4>
+                                    <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-40">
+                                        {JSON.stringify(debugInfo.delimitationPosition.debug, null, 2)}
+                                    </pre>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Application principale
+        const App = () => {
+            const [showDelimitations, setShowDelimitations] = useState(true);
+
+            return (
+                <div>
+                    <h1 className="text-2xl font-bold mb-6">🧪 Test Real API Positioning - Produit 36</h1>
+                    
+                    <div className="debug-panel">
+                        <div className="flex items-center gap-4 mb-4">
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={showDelimitations}
+                                    onChange={(e) => setShowDelimitations(e.target.checked)}
+                                />
+                                Afficher les délimitations
+                            </label>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <h4 className="font-semibold text-orange-600">Délimitations API</h4>
+                                <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
+                                    {JSON.stringify(realProduct.adminProduct.colorVariations[0].images[0].delimitations, null, 2)}
+                                </pre>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-indigo-600">Design Positions API</h4>
+                                <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
+                                    {JSON.stringify(realProduct.designPositions, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="preview-container">
+                        <ProductPreviewWithDebug 
+                            product={realProduct} 
+                            showDelimitations={showDelimitations}
+                        />
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html> 

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cascade Validation V3 - Frontend</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .log-success { background-color: #d1fae5; color: #065f46; }
+        .log-error { background-color: #fee2e2; color: #991b1b; }
+        .log-info { background-color: #dbeafe; color: #1e40af; }
+        .log-warning { background-color: #fef3c7; color: #92400e; }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .badge-pending { background-color: #fef3c7; color: #92400e; }
+        .badge-draft { background-color: #dbeafe; color: #1e40af; }
+        .badge-published { background-color: #d1fae5; color: #065f46; }
+        .badge-validated { background-color: #c7d2fe; color: #3730a3; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen py-8">
+    <div class="max-w-6xl mx-auto px-4">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">🧪 Test Cascade Validation V3 - Frontend</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">📊 Statistiques</h2>
+            <div id="stats-container" class="grid grid-cols-5 gap-4 mb-4">
+                <div class="text-center">
+                    <div id="total-products" class="text-3xl font-bold text-blue-600">0</div>
+                    <div class="text-sm text-gray-500">Total Produits</div>
+                </div>
+                <div class="text-center">
+                    <div id="pending-products" class="text-3xl font-bold text-yellow-600">0</div>
+                    <div class="text-sm text-gray-500">En Attente</div>
+                </div>
+                <div class="text-center">
+                    <div id="published-products" class="text-3xl font-bold text-green-600">0</div>
+                    <div class="text-sm text-gray-500">Publiés</div>
+                </div>
+                <div class="text-center">
+                    <div id="draft-products" class="text-3xl font-bold text-blue-600">0</div>
+                    <div class="text-sm text-gray-500">Brouillons</div>
+                </div>
+                <div class="text-center">
+                    <div id="validated-products" class="text-3xl font-bold text-purple-600">0</div>
+                    <div class="text-sm text-gray-500">Validés</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Tests Vendeur -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">👤 Tests Vendeur</h2>
+                
+                <!-- Création Produit V3 -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-3">📦 Créer Produit V3</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="vendor-name" placeholder="Nom du produit" class="w-full p-2 border rounded">
+                        <input type="text" id="vendor-description" placeholder="Description" class="w-full p-2 border rounded">
+                        <input type="number" id="vendor-price" placeholder="Prix (centimes)" class="w-full p-2 border rounded">
+                        <input type="number" id="vendor-stock" placeholder="Stock" class="w-full p-2 border rounded">
+                        <input type="number" id="base-product-id" placeholder="ID Produit Base" class="w-full p-2 border rounded">
+                        <input type="text" id="design-url" placeholder="URL Design Cloudinary" class="w-full p-2 border rounded">
+                        <select id="post-validation-action" class="w-full p-2 border rounded">
+                            <option value="AUTO_PUBLISH">Publication Automatique</option>
+                            <option value="TO_DRAFT">Brouillon après validation</option>
+                        </select>
+                        <button onclick="createVendorProduct()" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                            Créer Produit V3
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modification Action -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-3">🔄 Modifier Action Post-Validation</h3>
+                    <div class="space-y-3">
+                        <input type="number" id="modify-product-id" placeholder="ID Produit" class="w-full p-2 border rounded">
+                        <select id="new-action" class="w-full p-2 border rounded">
+                            <option value="AUTO_PUBLISH">Publication Automatique</option>
+                            <option value="TO_DRAFT">Brouillon après validation</option>
+                        </select>
+                        <button onclick="updatePostValidationAction()" class="w-full bg-yellow-600 text-white py-2 px-4 rounded hover:bg-yellow-700">
+                            Modifier Action
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Publication Manuelle -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-3">🚀 Publier Manuellement</h3>
+                    <div class="space-y-3">
+                        <input type="number" id="publish-product-id" placeholder="ID Produit" class="w-full p-2 border rounded">
+                        <button onclick="publishProduct()" class="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700">
+                            Publier Produit
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Charger Produits -->
+                <div class="mb-6">
+                    <button onclick="loadVendorProducts()" class="w-full bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700">
+                        🔄 Charger Mes Produits
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tests Admin -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">👨‍💼 Tests Admin</h2>
+                
+                <!-- Validation Design -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-3">🎨 Validation Design (Cascade)</h3>
+                    <div class="space-y-3">
+                        <input type="number" id="design-id" placeholder="ID Design" class="w-full p-2 border rounded">
+                        <select id="validation-action" class="w-full p-2 border rounded">
+                            <option value="VALIDATE">Valider</option>
+                            <option value="REJECT">Rejeter</option>
+                        </select>
+                        <textarea id="rejection-reason" placeholder="Raison du rejet (optionnel)" class="w-full p-2 border rounded h-20"></textarea>
+                        <button onclick="validateDesign()" class="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700">
+                            Valider Design
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Produits en Attente -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-3">📋 Produits en Attente</h3>
+                    <button onclick="loadPendingProducts()" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                        Charger Produits en Attente
+                    </button>
+                </div>
+
+                <!-- Statistiques -->
+                <div class="mb-6">
+                    <button onclick="loadStats()" class="w-full bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700">
+                        📊 Charger Statistiques
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Affichage des Produits -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mt-8">
+            <h2 class="text-xl font-semibold mb-4">📦 Produits</h2>
+            <div id="products-container" class="space-y-4">
+                <!-- Les produits seront affichés ici -->
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mt-8">
+            <h2 class="text-xl font-semibold mb-4">📋 Logs</h2>
+            <div class="max-h-96 overflow-y-auto border p-4 rounded bg-gray-50">
+                <div id="logs-container">
+                    <!-- Les logs seront affichés ici -->
+                </div>
+            </div>
+            <button onclick="clearLogs()" class="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                Effacer Logs
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration API V3
+        const API_BASE_URL = 'http://localhost:3004/api';
+        
+        // Fonction utilitaire pour les requêtes avec credentials
+        function apiRequest(endpoint, options = {}) {
+            return fetch(`${API_BASE_URL}${endpoint}`, {
+                ...options,
+                credentials: 'include', // ⭐ ESSENTIEL pour l'authentification V3
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+        }
+
+        // Logging
+        function log(message, type = 'info') {
+            const container = document.getElementById('logs-container');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs-container').innerHTML = '';
+        }
+
+        // Tests Vendeur V3
+        async function createVendorProduct() {
+            const vendorName = document.getElementById('vendor-name').value;
+            const vendorDescription = document.getElementById('vendor-description').value;
+            const vendorPrice = parseInt(document.getElementById('vendor-price').value);
+            const vendorStock = parseInt(document.getElementById('vendor-stock').value);
+            const baseProductId = parseInt(document.getElementById('base-product-id').value);
+            const designUrl = document.getElementById('design-url').value;
+            const postValidationAction = document.getElementById('post-validation-action').value;
+
+            if (!vendorName || !vendorPrice || !baseProductId || !designUrl) {
+                log('Veuillez remplir tous les champs obligatoires', 'error');
+                return;
+            }
+
+            try {
+                log(`🔄 V3: Création produit vendeur...`, 'info');
+                
+                const productData = {
+                    baseProductId: baseProductId,
+                    productStructure: {}, // Structure minimale pour le test
+                    vendorPrice: vendorPrice,
+                    vendorName: vendorName,
+                    vendorDescription: vendorDescription,
+                    vendorStock: vendorStock,
+                    selectedColors: [], // Couleurs pour le test
+                    selectedSizes: [], // Tailles pour le test
+                    finalImagesBase64: { design: designUrl },
+                    postValidationAction: postValidationAction
+                };
+
+                const response = await apiRequest('/vendor/products', {
+                    method: 'POST',
+                    body: JSON.stringify(productData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ V3: Produit créé avec succès: ${JSON.stringify(result)}`, 'success');
+                    
+                    // Effacer les champs
+                    document.getElementById('vendor-name').value = '';
+                    document.getElementById('vendor-description').value = '';
+                    document.getElementById('vendor-price').value = '';
+                    document.getElementById('vendor-stock').value = '';
+                    document.getElementById('base-product-id').value = '';
+                    document.getElementById('design-url').value = '';
+                    
+                    // Recharger les produits
+                    await loadVendorProducts();
+                    await loadStats();
+                } else {
+                    const error = await response.json();
+                    log(`❌ V3: Erreur création produit: ${error.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ V3: Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        async function updatePostValidationAction() {
+            const productId = parseInt(document.getElementById('modify-product-id').value);
+            const newAction = document.getElementById('new-action').value;
+
+            if (!productId) {
+                log('Veuillez saisir un ID de produit', 'error');
+                return;
+            }
+
+            try {
+                log(`🔄 V3: Modification action post-validation produit ${productId}...`, 'info');
+                
+                const response = await apiRequest(`/vendor-product-validation/post-validation-action/${productId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ postValidationAction: newAction })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ V3: Action modifiée avec succès: ${JSON.stringify(result)}`, 'success');
+                    await loadVendorProducts();
+                } else {
+                    const error = await response.json();
+                    log(`❌ V3: Erreur modification action: ${error.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ V3: Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        async function publishProduct() {
+            const productId = parseInt(document.getElementById('publish-product-id').value);
+
+            if (!productId) {
+                log('Veuillez saisir un ID de produit', 'error');
+                return;
+            }
+
+            try {
+                log(`🚀 V3: Publication du produit ${productId}...`, 'info');
+                
+                const response = await apiRequest(`/vendor-product-validation/publish/${productId}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ V3: Produit publié avec succès: ${JSON.stringify(result)}`, 'success');
+                    await loadVendorProducts();
+                    await loadStats();
+                } else {
+                    const error = await response.json();
+                    log(`❌ V3: Erreur publication: ${error.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ V3: Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadVendorProducts() {
+            try {
+                log('🔄 V3: Chargement des produits vendeur...', 'info');
+                
+                const response = await apiRequest('/vendor/products');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const products = data.products || data;
+                    
+                    log(`✅ V3: ${products.length} produits chargés`, 'success');
+                    displayProducts(products);
+                } else {
+                    const error = await response.json();
+                    log(`❌ V3: Erreur chargement produits: ${error.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ V3: Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        // Tests Admin V3
+        async function validateDesign() {
+            const designId = parseInt(document.getElementById('design-id').value);
+            const action = document.getElementById('validation-action').value;
+            const rejectionReason = document.getElementById('rejection-reason').value;
+
+            if (!designId) {
+                log('Veuillez saisir un ID de design', 'error');
+                return;
+            }
+
+            try {
+                log(`🎨 V3: Validation design ${designId} avec action ${action}...`, 'info');
+                
+                const body = { action };
+                if (action === 'REJECT' && rejectionReason) {
+                    body.rejectionReason = rejectionReason;
+                }
+
+                const response = await apiRequest(`/designs/${designId}/validate`, {
+                    method: 'PUT',
+                    body: JSON.stringify(body)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ V3: Design ${action === 'VALIDATE' ? 'validé' : 'rejeté'} avec succès: ${JSON.stringify(result)}`, 'success');
+                    
+                    // Afficher les résultats de la cascade
+                    if (result.cascadeResults) {
+                        log(`🌊 V3: Cascade - ${result.cascadeResults.productsUpdated} produits mis à jour, ${result.cascadeResults.autoPublished} auto-publiés, ${result.cascadeResults.toDraft} en brouillon`, 'info');
+                    }
+                    
+                    await loadStats();
+                    await loadVendorProducts();
+                } else {
+                    const error = await response.json();
+                    log(`❌ V3: Erreur validation design: ${error.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ V3: Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadPendingProducts() {
+            try {
+                log('🔄 V3: Chargement des produits en attente...', 'info');
+                
+                const response = await apiRequest('/vendor-product-validation/pending');
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const products = result.data.products || [];
+                    
+                    log(`✅ V3: ${products.length} produits en attente chargés`, 'success');
+                    displayProducts(products, 'Produits en Attente');
+                } else {
+                    const error = await response.json();
+                    log(`❌ V3: Erreur chargement produits en attente: ${error.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ V3: Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadStats() {
+            try {
+                log('📊 V3: Chargement des statistiques...', 'info');
+                
+                const response = await apiRequest('/vendor-product-validation/stats');
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const stats = result.data;
+                    
+                    log(`✅ V3: Statistiques chargées: ${JSON.stringify(stats)}`, 'success');
+                    
+                    // Mettre à jour l'affichage
+                    document.getElementById('total-products').textContent = stats.totalProducts || 0;
+                    document.getElementById('pending-products').textContent = stats.pendingProducts || 0;
+                    document.getElementById('published-products').textContent = stats.publishedProducts || 0;
+                    document.getElementById('draft-products').textContent = stats.draftProducts || 0;
+                    document.getElementById('validated-products').textContent = stats.validatedProducts || 0;
+                } else {
+                    const error = await response.json();
+                    log(`❌ V3: Erreur chargement statistiques: ${error.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ V3: Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        // Affichage des produits
+        function displayProducts(products, title = 'Produits') {
+            const container = document.getElementById('products-container');
+            
+            if (!products || products.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-500">Aucun produit à afficher</div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <h3 class="text-lg font-medium mb-4">${title} (${products.length})</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${products.map(product => `
+                        <div class="border rounded-lg p-4 bg-gray-50">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-medium text-lg">${product.vendorName || 'Nom non défini'}</h4>
+                                <span class="badge badge-${product.status.toLowerCase()}">${product.status}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-2">${product.vendorDescription || 'Pas de description'}</p>
+                            <div class="text-sm space-y-1">
+                                <div><strong>ID:</strong> ${product.id}</div>
+                                <div><strong>Prix:</strong> ${product.vendorPrice || 0} centimes</div>
+                                <div><strong>Stock:</strong> ${product.vendorStock || 0}</div>
+                                <div><strong>Validé:</strong> ${product.isValidated ? '✅' : '❌'}</div>
+                                <div><strong>Action:</strong> ${product.postValidationAction || 'Non définie'}</div>
+                                <div><strong>Design ID:</strong> ${product.designId || 'NULL'}</div>
+                                ${product.validatedAt ? `<div><strong>Validé le:</strong> ${new Date(product.validatedAt).toLocaleString()}</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Chargement initial
+        document.addEventListener('DOMContentLoaded', async function() {
+            log('🚀 V3: Initialisation de la page de test...', 'info');
+            
+            // Charger les données initiales
+            await loadStats();
+            await loadVendorProducts();
+            
+            log('✅ V3: Page de test initialisée', 'success');
+        });
+
+        // Auto-refresh toutes les 30 secondes
+        setInterval(async () => {
+            log('⏰ V3: Auto-refresh des données...', 'info');
+            await loadStats();
+            await loadVendorProducts();
+        }, 30000);
+    </script>
+</body>
+</html> 
+ 
+ 

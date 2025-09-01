@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - SimpleProductPreview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .test-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: white;
+        }
+        .error { color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #dc2626; }
+        .success { color: #059669; background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #059669; }
+        .loading { color: #6b7280; text-align: center; padding: 20px; }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .product-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        .product-preview {
+            width: 100%;
+            height: 300px;
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .product-info {
+            padding: 16px;
+        }
+        .product-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: #1f2937;
+        }
+        .product-meta {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-published { background: #dcfce7; color: #166534; }
+        .status-pending { background: #fef3c7; color: #d97706; }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        pre { background: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 11px; }
+        
+        /* Styles pour le composant SimpleProductPreview */
+        .simple-product-preview {
+            aspect-ratio: 1;
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .simple-product-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .design-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: top left;
+        }
+        
+        .design-overlay img {
+            width: 96px;
+            height: auto;
+        }
+        
+        .color-slider {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .color-nav {
+            padding: 8px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .color-nav:hover {
+            background: #e5e7eb;
+        }
+        
+        .color-dots {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
+            margin: 0 12px;
+        }
+        
+        .color-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #d1d5db;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .color-dot.active {
+            border-color: #3b82f6;
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .no-design-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #f59e0b;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test - SimpleProductPreview</h1>
+        <p>Test du nouveau composant SimpleProductPreview avec positionnement exact comme sell-design</p>
+        
+        <div class="test-card">
+            <h2>📋 Chargement des produits</h2>
+            <button onclick="loadProducts()" class="btn">
+                Charger les produits avec SimpleProductPreview
+            </button>
+            <div id="loading-status">Cliquez pour charger</div>
+            
+            <div id="products-grid" class="product-grid" style="display: none;">
+                <!-- Les produits seront affichés ici -->
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h2>🔍 Données brutes</h2>
+            <div id="raw-data" style="max-height: 300px; overflow-y: auto;">
+                <em>Chargez les produits pour voir les données brutes</em>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+        
+        function log(message) {
+            console.log(message);
+        }
+
+        function getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        // 🎯 Fonction pour calculer les transformations CSS selon la documentation backend
+        function getDesignTransform(product) {
+            // Valeurs par défaut selon la doc
+            const defaultPos = {
+                x: 0,
+                y: 0,
+                scale: product.designApplication.scale || 0.6,
+                rotation: 0
+            };
+
+            // Récupérer la position sauvegardée ou utiliser les valeurs par défaut
+            const apiPos = product.designPositions?.[0]?.position;
+            const position = apiPos ? { ...apiPos } : defaultPos;
+
+            console.log(`🎨 Position appliquée pour produit ${product.id}:`, {
+                hasApiPosition: !!apiPos,
+                position: position,
+                defaultScale: product.designApplication.scale,
+                finalTransform: `translate(${position.x}px, ${position.y}px) scale(${position.scale}) rotate(${position.rotation}deg)`
+            });
+
+            // Selon la documentation : les coordonnées sont en pixels relatifs
+            // CSS transform avec translate en pixels, pas en pourcentage
+            return `translate(${position.x}px, ${position.y}px) scale(${position.scale}) rotate(${position.rotation}deg)`;
+        }
+
+        // 🔧 Fonction pour créer un aperçu produit SimpleProductPreview
+        function createSimpleProductPreview(product, selectedColorId) {
+            const preview = document.createElement('div');
+            preview.className = 'simple-product-preview';
+            
+            // Couleur actuelle
+            const currentColor = product.selectedColors.find(c => c.id === selectedColorId) || product.selectedColors[0];
+            
+            // Trouver la variation de couleur correspondante
+            const colorVariation = product.adminProduct.colorVariations.find(
+                cv => cv.id === currentColor.id
+            );
+            
+            // Prendre la première image
+            const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front') 
+                || colorVariation?.images[0];
+            
+            if (!mockupImage) {
+                preview.innerHTML = '<div style="color: #dc2626; display: flex; align-items: center; justify-content: center; height: 100%;">❌ Aucune image</div>';
+                return preview;
+            }
+            
+            // Image du produit
+            const productImg = document.createElement('img');
+            productImg.src = mockupImage.url;
+            productImg.alt = product.adminProduct.name;
+            preview.appendChild(productImg);
+            
+            // Design positionné (si disponible)
+            if (product.designApplication.hasDesign && product.designApplication.designUrl) {
+                const designImg = document.createElement('img');
+                designImg.src = product.designApplication.designUrl;
+                designImg.alt = `Design ${product.designId}`;
+                designImg.style.position = 'absolute';
+                designImg.style.left = '0';
+                designImg.style.top = '0';
+                designImg.style.transform = getDesignTransform(product);
+                designImg.style.transformOrigin = 'top left';
+                designImg.style.pointerEvents = 'none';
+                designImg.style.maxWidth = 'none'; // Permettre au design de dépasser si nécessaire
+                designImg.style.height = 'auto';
+                
+                preview.appendChild(designImg);
+                
+                console.log(`🎨 Design appliqué pour produit ${product.id} avec transform:`, getDesignTransform(product));
+            } else {
+                // Indicateur pas de design
+                const noDesignBadge = document.createElement('div');
+                noDesignBadge.className = 'no-design-badge';
+                noDesignBadge.textContent = 'Pas de design';
+                preview.appendChild(noDesignBadge);
+            }
+            
+            // Slider de couleurs (si plusieurs couleurs)
+            if (product.selectedColors.length > 1) {
+                const slider = document.createElement('div');
+                slider.className = 'color-slider';
+                
+                // Bouton précédent
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'color-nav';
+                prevBtn.innerHTML = '‹';
+                prevBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const currentIndex = product.selectedColors.findIndex(c => c.id === selectedColorId);
+                    const prevIndex = currentIndex > 0 ? currentIndex - 1 : product.selectedColors.length - 1;
+                    const newColorId = product.selectedColors[prevIndex].id;
+                    
+                    // Recréer l'aperçu avec la nouvelle couleur
+                    const newPreview = createSimpleProductPreview(product, newColorId);
+                    preview.parentNode.replaceChild(newPreview, preview);
+                    
+                    console.log(`🎨 Couleur précédente pour produit ${product.id}: ${newColorId}`);
+                };
+                
+                // Dots de couleurs
+                const colorDots = document.createElement('div');
+                colorDots.className = 'color-dots';
+                
+                product.selectedColors.forEach(color => {
+                    const dot = document.createElement('button');
+                    dot.className = `color-dot ${color.id === selectedColorId ? 'active' : ''}`;
+                    dot.style.backgroundColor = color.colorCode;
+                    dot.title = color.name;
+                    dot.onclick = (e) => {
+                        e.stopPropagation();
+                        if (color.id !== selectedColorId) {
+                            const newPreview = createSimpleProductPreview(product, color.id);
+                            preview.parentNode.replaceChild(newPreview, preview);
+                            
+                            console.log(`🎨 Couleur sélectionnée pour produit ${product.id}: ${color.id}`);
+                        }
+                    };
+                    colorDots.appendChild(dot);
+                });
+                
+                // Bouton suivant
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'color-nav';
+                nextBtn.innerHTML = '›';
+                nextBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const currentIndex = product.selectedColors.findIndex(c => c.id === selectedColorId);
+                    const nextIndex = currentIndex < product.selectedColors.length - 1 ? currentIndex + 1 : 0;
+                    const newColorId = product.selectedColors[nextIndex].id;
+                    
+                    const newPreview = createSimpleProductPreview(product, newColorId);
+                    preview.parentNode.replaceChild(newPreview, preview);
+                    
+                    console.log(`🎨 Couleur suivante pour produit ${product.id}: ${newColorId}`);
+                };
+                
+                slider.appendChild(prevBtn);
+                slider.appendChild(colorDots);
+                slider.appendChild(nextBtn);
+                
+                preview.appendChild(slider);
+            }
+            
+            return preview;
+        }
+
+        // Fonction pour créer une carte produit
+        function createProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            const currentColorId = product.selectedColors[0]?.id || 0;
+            const statusClass = `status-${product.status.toLowerCase()}`;
+            
+            // Créer l'aperçu
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'product-preview';
+            const preview = createSimpleProductPreview(product, currentColorId);
+            previewContainer.appendChild(preview);
+            
+            // Informations du produit
+            const info = document.createElement('div');
+            info.className = 'product-info';
+            info.innerHTML = `
+                <div class="product-title">${product.vendorName}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 8px 0;">
+                    <span style="font-weight: 600; color: #059669;">${product.price}€</span>
+                    <span class="status-badge ${statusClass}">${product.status}</span>
+                </div>
+                <div class="product-meta">
+                    <strong>Base:</strong> ${product.adminProduct.name}<br>
+                    <strong>Couleurs:</strong> ${product.selectedColors.length}<br>
+                    <strong>Design:</strong> ${product.designApplication.hasDesign ? 'Oui' : 'Non'}<br>
+                    <strong>Position:</strong> ${product.designPositions?.length > 0 ? 'Oui' : 'Non'}
+                </div>
+            `;
+            
+            card.appendChild(previewContainer);
+            card.appendChild(info);
+            
+            return card;
+        }
+
+        // Fonction principale pour charger les produits
+        async function loadProducts() {
+            const statusDiv = document.getElementById('loading-status');
+            const gridDiv = document.getElementById('products-grid');
+            const rawDataDiv = document.getElementById('raw-data');
+            
+            statusDiv.innerHTML = '<div class="loading">Chargement des produits...</div>';
+            gridDiv.style.display = 'none';
+            
+            try {
+                log('📡 Chargement des produits avec SimpleProductPreview...');
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products?limit=20&offset=0`, {
+                    credentials: 'include',
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log('📋 Réponse API complète reçue');
+                
+                if (!result.success || !result.data || !result.data.products) {
+                    throw new Error('Format de réponse invalide');
+                }
+
+                const products = result.data.products;
+                log(`✅ ${products.length} produits chargés`);
+
+                // Afficher les données brutes
+                rawDataDiv.innerHTML = `<pre>${JSON.stringify(result.data.products.slice(0, 2), null, 2)}</pre>`;
+
+                // Afficher les produits
+                gridDiv.innerHTML = '';
+                
+                for (const product of products) {
+                    const card = createProductCard(product);
+                    gridDiv.appendChild(card);
+                }
+                
+                gridDiv.style.display = 'grid';
+                statusDiv.innerHTML = `<div class="success">✅ ${products.length} produits chargés avec SimpleProductPreview</div>`;
+                
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`);
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-test au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Page de test SimpleProductPreview chargée');
+        });
+    </script>
+</body>
+</html> 

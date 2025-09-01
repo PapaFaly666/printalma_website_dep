@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Ajout Produits au Thème</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .product-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .product-card.selected {
+            border-color: #007bff;
+            background: #f0f8ff;
+        }
+        .product-image {
+            width: 100%;
+            height: 150px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .product-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .price {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-published { background: #d4edda; color: #155724; }
+        .status-draft { background: #fff3cd; color: #856404; }
+        .type-badge {
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            background: #e9ecef;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Ajout Produits au Thème</h1>
+        
+        <div class="status info">
+            <h3>📋 Test de la fonctionnalité d'ajout de produits</h3>
+            <p>Ce test vérifie l'ajout de produits à un thème existant.</p>
+        </div>
+        
+        <div class="status info">
+            <h4>🎯 Étapes du test :</h4>
+            <ol>
+                <li>Charger les thèmes disponibles</li>
+                <li>Sélectionner un thème</li>
+                <li>Charger les produits disponibles</li>
+                <li>Sélectionner des produits</li>
+                <li>Ajouter les produits au thème</li>
+            </ol>
+        </div>
+        
+        <button onclick="loadThemes()">1. Charger les thèmes</button>
+        <button onclick="loadProducts()">2. Charger les produits</button>
+        <button onclick="addProductsToTheme()">3. Ajouter au thème</button>
+        
+        <div id="results"></div>
+        
+        <div id="themes-section" style="display: none;">
+            <h3>🎨 Thèmes disponibles</h3>
+            <div id="themes-list"></div>
+        </div>
+        
+        <div id="products-section" style="display: none;">
+            <h3>📦 Produits disponibles</h3>
+            <div class="product-grid" id="products-grid"></div>
+            <div style="margin-top: 20px;">
+                <button onclick="addSelectedProducts()" id="add-button" disabled>
+                    Ajouter les produits sélectionnés
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:3004';
+        let themes = [];
+        let products = [];
+        let selectedTheme = null;
+        let selectedProducts = new Set();
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function loadThemes() {
+            log('🎨 Chargement des thèmes...', 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/themes`);
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.data) {
+                    themes = Array.isArray(data.data) ? data.data : [];
+                    log(`✅ ${themes.length} thème(s) chargé(s)`, 'success');
+                    
+                    if (themes.length > 0) {
+                        selectedTheme = themes[0];
+                        displayThemes();
+                    } else {
+                        log('⚠️ Aucun thème disponible', 'warning');
+                    }
+                } else {
+                    log('❌ Erreur lors du chargement des thèmes', 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        function displayThemes() {
+            const themesSection = document.getElementById('themes-section');
+            const themesList = document.getElementById('themes-list');
+            
+            themesSection.style.display = 'block';
+            themesList.innerHTML = themes.map(theme => `
+                <div class="product-card ${selectedTheme?.id === theme.id ? 'selected' : ''}" 
+                     onclick="selectTheme(${theme.id})">
+                    <h4>${theme.name}</h4>
+                    <p>${theme.description}</p>
+                    <div class="product-info">
+                        <span>${theme.productCount || 0} produits</span>
+                        <span class="status-badge status-${theme.status}">${theme.status}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function selectTheme(themeId) {
+            selectedTheme = themes.find(t => t.id === themeId);
+            displayThemes();
+            log(`✅ Thème sélectionné: ${selectedTheme.name}`, 'success');
+        }
+        
+        async function loadProducts() {
+            if (!selectedTheme) {
+                log('❌ Veuillez d\'abord sélectionner un thème', 'error');
+                return;
+            }
+            
+            log('📦 Chargement des produits...', 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/products`);
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.data) {
+                    products = Array.isArray(data.data) ? data.data : [];
+                    log(`✅ ${products.length} produit(s) chargé(s)`, 'success');
+                    displayProducts();
+                } else {
+                    log('❌ Erreur lors du chargement des produits', 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        function displayProducts() {
+            const productsSection = document.getElementById('products-section');
+            const productsGrid = document.getElementById('products-grid');
+            
+            productsSection.style.display = 'block';
+            productsGrid.innerHTML = products.map(product => `
+                <div class="product-card" onclick="toggleProduct(${product.id})">
+                    <div class="product-image">
+                        ${product.coverImage ? 
+                            `<img src="${product.coverImage}" alt="${product.name}" style="width: 100%; height: 100%; object-fit: cover;">` :
+                            '📦'
+                        }
+                    </div>
+                    <h4>${product.name}</h4>
+                    <p style="font-size: 12px; color: #666;">${product.description}</p>
+                    <div class="product-info">
+                        <span class="price">${(product.price / 100).toFixed(2)}€</span>
+                        <span class="status-badge status-${product.status}">${product.status}</span>
+                    </div>
+                    <div style="margin-top: 5px;">
+                        <span class="type-badge">
+                            ${product.isReadyProduct ? 'Produit prêt' : 'Produit mockup'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function toggleProduct(productId) {
+            const card = event.currentTarget;
+            
+            if (selectedProducts.has(productId)) {
+                selectedProducts.delete(productId);
+                card.classList.remove('selected');
+            } else {
+                selectedProducts.add(productId);
+                card.classList.add('selected');
+            }
+            
+            const addButton = document.getElementById('add-button');
+            addButton.disabled = selectedProducts.size === 0;
+            addButton.textContent = `Ajouter ${selectedProducts.size} produit(s)`;
+            
+            log(`✅ ${selectedProducts.size} produit(s) sélectionné(s)`, 'success');
+        }
+        
+        async function addSelectedProducts() {
+            if (!selectedTheme || selectedProducts.size === 0) {
+                log('❌ Veuillez sélectionner un thème et des produits', 'error');
+                return;
+            }
+            
+            log(`🎯 Ajout de ${selectedProducts.size} produit(s) au thème "${selectedTheme.name}"...`, 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/themes/${selectedTheme.id}/products`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        productIds: Array.from(selectedProducts)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    log(`✅ ${selectedProducts.size} produit(s) ajouté(s) avec succès !`, 'success');
+                    selectedProducts.clear();
+                    document.getElementById('add-button').disabled = true;
+                    document.getElementById('add-button').textContent = 'Ajouter les produits sélectionnés';
+                    
+                    // Recharger les thèmes pour voir le nouveau compteur
+                    setTimeout(() => loadThemes(), 1000);
+                } else {
+                    log(`❌ Erreur lors de l'ajout: ${data.message || 'Erreur inconnue'}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test automatique au chargement
+        window.onload = function() {
+            log('🚀 Test d\'ajout de produits au thème', 'info');
+        };
+    </script>
+</body>
+</html> 

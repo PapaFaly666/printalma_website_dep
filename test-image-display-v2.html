@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🖼️ Test Affichage Images Architecture V2 - Credentials Include</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2563eb;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+        
+        .product-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .image-error {
+            color: #ef4444;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .product-info {
+            padding: 15px;
+        }
+        
+        .product-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .product-details {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .image-url {
+            font-family: monospace;
+            font-size: 10px;
+            background: #f8f9fa;
+            padding: 5px;
+            border-radius: 4px;
+            word-break: break-all;
+            max-height: 60px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-success { background: #22c55e; color: white; }
+        .status-error { background: #ef4444; color: white; }
+        .status-warning { background: #f59e0b; color: white; }
+        
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #f0f0f0;
+        }
+        
+        button.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .success-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .warning-message {
+            background: #fffbeb;
+            border: 1px solid #fed7aa;
+            color: #92400e;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .endpoint-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖼️ Test Affichage Images - Architecture V2 (Credentials Include)</h1>
+            <p>Diagnostic et test des différentes stratégies d'affichage d'images avec cookies de session</p>
+        </div>
+
+        <div class="controls">
+            <button onclick="testImageDisplay()">🧪 Tester avec API réelle</button>
+            <button onclick="testMockData()">📝 Données de test</button>
+            <button onclick="clearResults()">🧹 Effacer</button>
+            <button onclick="diagnoseEndpoints()">🔍 Diagnostic endpoints</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Configuration de l'API avec credentials include
+        const API_BASE = 'http://localhost:3001/api';
+
+        // 🔍 Diagnostic des endpoints disponibles
+        async function diagnoseEndpoints() {
+            showLoading();
+            console.log('🔍 === DIAGNOSTIC ENDPOINTS PRINTALMA V2 ===');
+            
+            const endpoints = [
+                { name: 'Produits Admin', url: '/api/products' },
+                { name: 'Produits Vendeur V2', url: '/api/vendor/products' },
+                { name: 'Health Check Vendeur', url: '/api/vendor/health' },
+                { name: 'User Profile', url: '/api/auth/profile' }
+            ];
+
+            const results = [];
+
+            for (const endpoint of endpoints) {
+                try {
+                    console.log(`\n🧪 Test: ${endpoint.name} (${endpoint.url})`);
+                    
+                    const response = await fetch(`${API_BASE}${endpoint.url}`, {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+                    
+                    const result = {
+                        name: endpoint.name,
+                        url: endpoint.url,
+                        status: response.status,
+                        success: response.ok,
+                        data: data,
+                        analysis: analyzeEndpointResponse(data)
+                    };
+                    
+                    results.push(result);
+                    console.log(`✅ ${endpoint.name}:`, result);
+                    
+                } catch (error) {
+                    const result = {
+                        name: endpoint.name,
+                        url: endpoint.url,
+                        status: 'ERROR',
+                        success: false,
+                        error: error.message,
+                        analysis: { type: 'error', message: error.message }
+                    };
+                    
+                    results.push(result);
+                    console.error(`❌ ${endpoint.name}:`, error);
+                }
+            }
+
+            displayDiagnosticResults(results);
+        }
+
+        // 🔍 Analyser la réponse d'un endpoint
+        function analyzeEndpointResponse(data) {
+            if (!data) return { type: 'empty', message: 'Réponse vide' };
+            
+            // Architecture V2 Vendeur
+            if (data.architecture === 'v2_preserved_admin') {
+                return {
+                    type: 'v2_vendor',
+                    message: 'Architecture V2 Vendeur détectée ✅',
+                    products: data.data?.products?.length || 0,
+                    hasImages: data.data?.products?.some(p => p.images?.primaryImageUrl) || false
+                };
+            }
+            
+            // Produits Admin
+            if (data.products && Array.isArray(data.products)) {
+                const firstProduct = data.products[0];
+                if (firstProduct && (firstProduct.workflow || firstProduct.pendingAutoPublish !== undefined)) {
+                    return {
+                        type: 'admin_products',
+                        message: 'Produits Admin détectés ⚠️',
+                        products: data.products.length,
+                        hasWorkflow: !!firstProduct.workflow
+                    };
+                }
+                return {
+                    type: 'unknown_products',
+                    message: 'Produits de type inconnu',
+                    products: data.products.length
+                };
+            }
+            
+            // User profile
+            if (data.user || data.id) {
+                return {
+                    type: 'user_profile',
+                    message: 'Profil utilisateur',
+                    userId: data.id || data.user?.id
+                };
+            }
+            
+            // Health check
+            if (data.status || data.health) {
+                return {
+                    type: 'health',
+                    message: 'Health check',
+                    status: data.status || 'unknown'
+                };
+            }
+            
+            return { type: 'unknown', message: 'Type de données inconnu' };
+        }
+
+        // 🎯 Fonction principale de test
+        async function testImageDisplay() {
+            showLoading();
+
+            try {
+                console.log('🚀 Début du test d\'affichage images avec credentials include...');
+                
+                // Récupérer les produits vendeur avec credentials include
+                const products = await fetchVendorProducts();
+                console.log('📦 Produits récupérés:', products.length);
+
+                if (products.length === 0) {
+                    showWarning('Aucun produit vendeur trouvé. Essayez de créer des produits d\'abord ou vérifiez que vous êtes connecté.');
+                    return;
+                }
+
+                // Analyser et afficher
+                await analyzeAndDisplayProducts(products);
+
+            } catch (error) {
+                console.error('❌ Erreur test:', error);
+                showError(`Erreur: ${error.message}`);
+            }
+        }
+
+        // 📡 Récupérer les produits vendeur avec credentials include
+        async function fetchVendorProducts() {
+            console.log('📡 Récupération produits vendeur...');
+            
+            const response = await fetch(`${API_BASE}/vendor/products`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            console.log('📋 Réponse API complète:', result);
+
+            // Vérifier l'architecture V2
+            if (result.architecture !== 'v2_preserved_admin') {
+                console.warn('⚠️ Architecture V2 non détectée:', result);
+                showWarning(`Architecture non-V2 détectée: ${result.architecture || 'undefined'}`);
+            }
+
+            return result.data?.products || result.products || [];
+        }
+
+        // 📊 Afficher les résultats du diagnostic
+        function displayDiagnosticResults(results) {
+            const container = document.getElementById('results');
+            container.innerHTML = '';
+
+            const section = document.createElement('div');
+            section.className = 'test-section';
+            
+            section.innerHTML = `
+                <div class="test-title">🔍 Diagnostic Endpoints (credentials: include)</div>
+                <div id="diagnostic-content"></div>
+            `;
+
+            const content = section.querySelector('#diagnostic-content');
+            
+            results.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin-bottom: 15px;';
+                
+                const statusColor = result.success ? '#22c55e' : '#ef4444';
+                const analysisColor = result.analysis?.type === 'v2_vendor' ? '#22c55e' : 
+                                    result.analysis?.type === 'admin_products' ? '#f59e0b' : '#6b7280';
+                
+                resultDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <strong style="color: #374151;">${result.name}</strong>
+                        <span class="status-badge" style="background: ${statusColor};">
+                            ${result.success ? `${result.status} ✅` : `${result.status} ❌`}
+                        </span>
+                    </div>
+                    
+                    <div class="endpoint-info">
+                        <strong>URL:</strong> ${result.url}<br>
+                        <strong>Method:</strong> GET with credentials: 'include'
+                    </div>
+                    
+                    <div style="margin: 10px 0; padding: 10px; background: ${analysisColor}20; border-radius: 4px; border-left: 4px solid ${analysisColor};">
+                        <strong>Analyse:</strong> ${result.analysis?.message || 'Aucune analyse'}<br>
+                        ${result.analysis?.products ? `<strong>Produits:</strong> ${result.analysis.products}<br>` : ''}
+                        ${result.analysis?.hasImages ? `<strong>Images:</strong> ✅ Présentes<br>` : ''}
+                        ${result.analysis?.hasWorkflow ? `<strong>Workflow:</strong> ✅ Détecté<br>` : ''}
+                    </div>
+                    
+                    ${result.error ? `
+                        <div style="color: #dc2626; font-size: 12px; margin-top: 10px;">
+                            <strong>Erreur:</strong> ${result.error}
+                        </div>
+                    ` : ''}
+                    
+                    <details style="margin-top: 10px;">
+                        <summary style="cursor: pointer; font-weight: bold;">📝 Données complètes</summary>
+                        <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 11px; max-height: 200px; overflow-y: auto; margin-top: 10px;">${JSON.stringify(result.data || result.error, null, 2)}</pre>
+                    </details>
+                `;
+                
+                content.appendChild(resultDiv);
+            });
+
+            // Résumé et recommandations
+            const summary = document.createElement('div');
+            summary.style.cssText = 'background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 20px; margin-top: 20px;';
+            
+            const v2Endpoint = results.find(r => r.analysis?.type === 'v2_vendor');
+            const adminEndpoint = results.find(r => r.analysis?.type === 'admin_products');
+            
+            summary.innerHTML = `
+                <h3 style="color: #1d4ed8; margin-top: 0;">📋 Résumé et Recommandations</h3>
+                
+                ${v2Endpoint ? `
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                        ✅ <strong>Architecture V2 trouvée:</strong> ${v2Endpoint.url}<br>
+                        📦 <strong>Produits vendeur:</strong> ${v2Endpoint.analysis.products}<br>
+                        🖼️ <strong>Images:</strong> ${v2Endpoint.analysis.hasImages ? 'Présentes' : 'Manquantes'}
+                    </div>
+                ` : `
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                        ❌ <strong>Aucune architecture V2 détectée</strong><br>
+                        Vérifiez que le backend est configuré pour l'architecture V2
+                    </div>
+                `}
+                
+                ${adminEndpoint ? `
+                    <div style="background: #fffbeb; border: 1px solid #fed7aa; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                        ⚠️ <strong>Produits admin détectés:</strong> ${adminEndpoint.url}<br>
+                        Ces données ne sont pas adaptées pour l'affichage frontend
+                    </div>
+                ` : ''}
+                
+                <div style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                    <strong>🎯 Action recommandée:</strong><br>
+                    ${v2Endpoint && v2Endpoint.analysis.products > 0 ? 
+                        '✅ Utilisez l\'endpoint /api/vendor/products pour récupérer les produits V2' :
+                        '⚠️ Créez des produits vendeur ou vérifiez la configuration du backend'
+                    }
+                </div>
+            `;
+            
+            content.appendChild(summary);
+            container.appendChild(section);
+        }
+
+        // 🔍 Analyser et afficher les produits
+        async function analyzeAndDisplayProducts(products) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+
+            // Section 1: Vue d'ensemble
+            createOverviewSection(products, resultsContainer);
+
+            // Section 2: Stratégies d'extraction d'images
+            createImageExtractionSection(products, resultsContainer);
+
+            // Section 3: Test d'affichage
+            createDisplayTestSection(products, resultsContainer);
+
+            // Section 4: Données détaillées
+            createDetailedDataSection(products, resultsContainer);
+        }
+
+        // 📊 Section vue d'ensemble
+        function createOverviewSection(products, container) {
+            const section = document.createElement('div');
+            section.className = 'test-section';
+            
+            let totalImages = 0;
+            let validImages = 0;
+            let hasAdminProducts = 0;
+            let hasDesigns = 0;
+
+            products.forEach(product => {
+                const analysis = analyzeProductImages(product);
+                totalImages += analysis.imageCount;
+                validImages += analysis.validImageCount;
+                if (analysis.hasAdminProduct) hasAdminProducts++;
+                if (analysis.hasDesign) hasDesigns++;
+            });
+
+            section.innerHTML = `
+                <div class="test-title">📊 Vue d'ensemble (${products.length} produits)</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #0ea5e9;">${products.length}</div>
+                        <div style="font-size: 14px; color: #0369a1;">Produits total</div>
+                    </div>
+                    <div style="background: ${validImages > 0 ? '#f0fdf4' : '#fef2f2'}; padding: 15px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: ${validImages > 0 ? '#22c55e' : '#ef4444'};">${validImages}/${totalImages}</div>
+                        <div style="font-size: 14px; color: ${validImages > 0 ? '#166534' : '#dc2626'};">Images valides</div>
+                    </div>
+                    <div style="background: #fefce8; padding: 15px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #ca8a04;">${hasAdminProducts}</div>
+                        <div style="font-size: 14px; color: #a16207;">Structure Admin V2</div>
+                    </div>
+                    <div style="background: #fdf4ff; padding: 15px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #a855f7;">${hasDesigns}</div>
+                        <div style="font-size: 14px; color: #7c3aed;">Avec designs</div>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(section);
+        }
+
+        // 🖼️ Section test extraction d'images
+        function createImageExtractionSection(products, container) {
+            const section = document.createElement('div');
+            section.className = 'test-section';
+            
+            section.innerHTML = `
+                <div class="test-title">🔍 Stratégies d'extraction d'images</div>
+                <div id="extraction-results"></div>
+            `;
+
+            const extractionContainer = section.querySelector('#extraction-results');
+            
+            products.forEach((product, index) => {
+                const analysis = analyzeProductImages(product);
+                const urls = extractImageUrls(product);
+                
+                const productDiv = document.createElement('div');
+                productDiv.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin-bottom: 15px;';
+                
+                productDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <strong style="color: #374151;">${product.vendorName || product.name || `Produit ${index + 1}`}</strong>
+                        <span class="status-badge ${analysis.validImageCount > 0 ? 'status-success' : 'status-error'}">
+                            ${analysis.validImageCount} image(s)
+                        </span>
+                    </div>
+                    
+                    <div style="font-size: 12px; margin-bottom: 10px;">
+                        <strong>Stratégies testées:</strong><br>
+                        ${urls.map((urlData, i) => `
+                            <div style="margin: 5px 0; padding: 5px; background: ${urlData.success ? '#f0fdf4' : '#fef2f2'}; border-radius: 4px;">
+                                <strong>${i + 1}. ${urlData.strategy}:</strong> 
+                                <span style="color: ${urlData.success ? '#166534' : '#dc2626'};">
+                                    ${urlData.success ? '✅ Trouvée' : '❌ Échec'}
+                                </span>
+                                ${urlData.url ? `<br><code style="font-size: 10px; word-break: break-all;">${urlData.url.substring(0, 80)}${urlData.url.length > 80 ? '...' : ''}</code>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                extractionContainer.appendChild(productDiv);
+            });
+
+            container.appendChild(section);
+        }
+
+        // 🖼️ Section test d'affichage
+        function createDisplayTestSection(products, container) {
+            const section = document.createElement('div');
+            section.className = 'test-section';
+            
+            section.innerHTML = `
+                <div class="test-title">🖼️ Test d'affichage réel</div>
+                <div class="product-grid" id="display-grid"></div>
+            `;
+
+            const grid = section.querySelector('#display-grid');
+            
+            products.forEach((product, index) => {
+                const finalUrl = getProductImageUrl(product);
+                const analysis = analyzeProductImages(product);
+                
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                
+                card.innerHTML = `
+                    <div class="product-image">
+                        ${finalUrl && finalUrl !== '/placeholder-image.jpg' ? 
+                            `<img src="${finalUrl}" alt="${product.vendorName || product.name}" onerror="this.parentElement.innerHTML='<div class=\\"image-error\\">❌ Erreur chargement<br>${finalUrl.substring(0, 30)}...</div>'" />` :
+                            `<div class="image-error">🚫 Aucune image<br>Placeholder utilisé</div>`
+                        }
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${product.vendorName || product.name || `Produit ${index + 1}`}</div>
+                        ${product.originalAdminName ? `<div style="font-size: 11px; color: #6b7280;">Base: ${product.originalAdminName}</div>` : ''}
+                        <div class="product-details">
+                            Images: ${analysis.validImageCount}/${analysis.imageCount} |
+                            Admin V2: ${analysis.hasAdminProduct ? '✅' : '❌'} |
+                            Design: ${analysis.hasDesign ? '✅' : '❌'}
+                        </div>
+                        <div class="image-url">
+                            <strong>URL finale:</strong><br>
+                            ${finalUrl || 'Aucune'}
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+
+            container.appendChild(section);
+        }
+
+        // 📋 Section données détaillées
+        function createDetailedDataSection(products, container) {
+            const section = document.createElement('div');
+            section.className = 'test-section';
+            
+            section.innerHTML = `
+                <div class="test-title">📋 Données détaillées (Debug)</div>
+                <div id="detailed-data"></div>
+            `;
+
+            const detailedContainer = section.querySelector('#detailed-data');
+            
+            products.forEach((product, index) => {
+                const productDiv = document.createElement('div');
+                productDiv.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 15px;';
+                
+                productDiv.innerHTML = `
+                    <div style="background: #f9fafb; padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">
+                        ${product.vendorName || product.name || `Produit ${index + 1}`}
+                    </div>
+                    <div style="padding: 15px;">
+                        <details>
+                            <summary style="cursor: pointer; font-weight: bold; margin-bottom: 10px;">
+                                📝 Structure JSON complète
+                            </summary>
+                            <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 11px; max-height: 300px; overflow-y: auto;">${JSON.stringify(product, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+                
+                detailedContainer.appendChild(productDiv);
+            });
+
+            container.appendChild(section);
+        }
+
+        // 🔍 Analyser les images d'un produit
+        function analyzeProductImages(product) {
+            const analysis = {
+                hasBasicInfo: !!(product.id && (product.vendorName || product.name)),
+                hasImageUrl: !!(product.imageUrl && product.imageUrl.trim()),
+                hasColorVariations: !!(product.colorVariations?.length > 0),
+                hasAdminProduct: !!(product.adminProduct),
+                hasDesignApplication: !!(product.designApplication),
+                hasImagesStructure: !!(product.images),
+                hasDesign: false,
+                imageCount: 0,
+                validImageCount: 0,
+                imageUrls: []
+            };
+
+            // Vérifier si le produit a un design
+            analysis.hasDesign = !!(
+                product.designApplication?.hasDesign ||
+                product.designApplication?.designBase64 ||
+                product.designUrl ||
+                product.design
+            );
+
+            // Compter les images
+            if (product.adminProduct?.colorVariations) {
+                product.adminProduct.colorVariations.forEach(cv => {
+                    if (cv.images?.length > 0) {
+                        cv.images.forEach(img => {
+                            analysis.imageCount++;
+                            if (img.url && img.url.trim()) {
+                                analysis.validImageCount++;
+                                analysis.imageUrls.push(img.url);
+                            }
+                        });
+                    }
+                });
+            }
+
+            if (product.colorVariations) {
+                product.colorVariations.forEach(cv => {
+                    if (cv.images?.length > 0) {
+                        cv.images.forEach(img => {
+                            analysis.imageCount++;
+                            if (img.url && img.url.trim()) {
+                                analysis.validImageCount++;
+                                analysis.imageUrls.push(img.url);
+                            }
+                        });
+                    }
+                });
+            }
+
+            if (product.images?.primaryImageUrl) {
+                analysis.imageCount++;
+                if (product.images.primaryImageUrl.trim()) {
+                    analysis.validImageCount++;
+                    analysis.imageUrls.push(product.images.primaryImageUrl);
+                }
+            }
+
+            if (product.imageUrl) {
+                analysis.imageCount++;
+                if (product.imageUrl.trim()) {
+                    analysis.validImageCount++;
+                    analysis.imageUrls.push(product.imageUrl);
+                }
+            }
+
+            return analysis;
+        }
+
+        // 🎯 Extraire les URLs d'images selon les différentes stratégies
+        function extractImageUrls(product) {
+            const strategies = [];
+
+            // Stratégie 1: Images admin préservées (Architecture V2)
+            if (product.adminProduct?.colorVariations?.length > 0) {
+                const colorVar = product.adminProduct.colorVariations[0];
+                if (colorVar?.images?.length > 0) {
+                    const url = colorVar.images[0].url;
+                    strategies.push({
+                        strategy: 'Images admin V2',
+                        url: url,
+                        success: !!(url && url.trim())
+                    });
+                } else {
+                    strategies.push({
+                        strategy: 'Images admin V2',
+                        url: null,
+                        success: false
+                    });
+                }
+            } else {
+                strategies.push({
+                    strategy: 'Images admin V2',
+                    url: null,
+                    success: false
+                });
+            }
+
+            // Stratégie 2: Images dans structure "images" V2
+            strategies.push({
+                strategy: 'Images structure V2',
+                url: product.images?.primaryImageUrl || null,
+                success: !!(product.images?.primaryImageUrl && product.images.primaryImageUrl.trim())
+            });
+
+            // Stratégie 3: ColorVariations legacy
+            if (product.colorVariations?.length > 0) {
+                const variation = product.colorVariations[0];
+                if (variation?.images?.length > 0) {
+                    const url = variation.images[0].url;
+                    strategies.push({
+                        strategy: 'ColorVariations legacy',
+                        url: url,
+                        success: !!(url && url.trim())
+                    });
+                } else {
+                    strategies.push({
+                        strategy: 'ColorVariations legacy',
+                        url: null,
+                        success: false
+                    });
+                }
+            } else {
+                strategies.push({
+                    strategy: 'ColorVariations legacy',
+                    url: null,
+                    success: false
+                });
+            }
+
+            // Stratégie 4: Propriété directe imageUrl
+            strategies.push({
+                strategy: 'Propriété imageUrl',
+                url: product.imageUrl || null,
+                success: !!(product.imageUrl && product.imageUrl.trim())
+            });
+
+            // Stratégie 5: Design comme fallback
+            strategies.push({
+                strategy: 'Design fallback',
+                url: product.designApplication?.designBase64 || null,
+                success: !!(product.designApplication?.designBase64)
+            });
+
+            return strategies;
+        }
+
+        // 🎯 Obtenir l'URL d'image finale (même logique que ModernVendorProductCard)
+        function getProductImageUrl(product, selectedColorIndex = 0) {
+            // Architecture V2 - même logique que ModernVendorProductCard
+            if (product.adminProduct?.colorVariations?.length > 0) {
+                const colorVariation = product.adminProduct.colorVariations[selectedColorIndex] || product.adminProduct.colorVariations[0];
+                if (colorVariation?.images?.length > 0) {
+                    return colorVariation.images[0].url;
+                }
+            }
+
+            if (product.images?.primaryImageUrl) {
+                return product.images.primaryImageUrl;
+            }
+
+            if (product.images?.adminReferences?.length > 0) {
+                return product.images.adminReferences[0].adminImageUrl;
+            }
+
+            if (product.colorVariations?.length > 0) {
+                const variation = product.colorVariations[selectedColorIndex] || product.colorVariations[0];
+                if (variation?.images?.length > 0) {
+                    return variation.images[0].url;
+                }
+            }
+
+            if (product.imageUrl && product.imageUrl.trim() && product.imageUrl !== '') {
+                return product.imageUrl;
+            }
+
+            if (product.designApplication?.designBase64) {
+                return product.designApplication.designBase64;
+            }
+
+            return '/placeholder-image.jpg';
+        }
+
+        // 📝 Tester avec des données mockées
+        function testMockData() {
+            const mockProducts = [
+                {
+                    id: 1,
+                    vendorName: "T-shirt Dragon Rouge Premium",
+                    originalAdminName: "T-shirt Basique",
+                    price: 25000,
+                    status: "DRAFT",
+                    adminProduct: {
+                        id: 1,
+                        name: "T-shirt Basique",
+                        colorVariations: [
+                            {
+                                id: 1,
+                                name: "Blanc",
+                                colorCode: "#FFFFFF",
+                                images: [
+                                    {
+                                        url: "https://via.placeholder.com/400x400/ffffff/000000?text=T-shirt+Blanc",
+                                        viewType: "FRONT",
+                                        delimitations: [{ x: 100, y: 100, width: 200, height: 200 }]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    images: {
+                        primaryImageUrl: "https://via.placeholder.com/400x400/ffffff/000000?text=Primary+Image",
+                        adminReferences: [{
+                            colorName: "Blanc",
+                            colorCode: "#FFFFFF",
+                            adminImageUrl: "https://via.placeholder.com/400x400/ffffff/000000?text=Admin+Ref"
+                        }]
+                    },
+                    designApplication: {
+                        hasDesign: true,
+                        designBase64: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzNzNkYyIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRlc2lnbjwvdGV4dD48L3N2Zz4=",
+                        positioning: "CENTER",
+                        scale: 0.6
+                    },
+                    selectedColors: [
+                        { id: 1, name: "Blanc", colorCode: "#FFFFFF" },
+                        { id: 2, name: "Noir", colorCode: "#000000" }
+                    ],
+                    architecture: "v2_preserved_admin"
+                },
+                {
+                    id: 2,
+                    vendorName: "Casquette Logo Moderne",
+                    originalAdminName: "Casquette Basique", 
+                    price: 15000,
+                    status: "PENDING",
+                    colorVariations: [
+                        {
+                            id: 1,
+                            name: "Rouge",
+                            images: [
+                                { url: "https://via.placeholder.com/400x400/ff0000/ffffff?text=Casquette+Rouge" }
+                            ]
+                        }
+                    ],
+                    selectedColors: [
+                        { id: 1, name: "Rouge", colorCode: "#FF0000" }
+                    ]
+                },
+                {
+                    id: 3,
+                    vendorName: "Produit URL Directe",
+                    originalAdminName: "Test Direct",
+                    price: 10000,
+                    imageUrl: "https://via.placeholder.com/400x400/00ff00/000000?text=URL+Directe"
+                },
+                {
+                    id: 4,
+                    vendorName: "Produit Sans Image",
+                    originalAdminName: "Test Vide",
+                    price: 5000,
+                    // Pas d'images du tout pour tester le fallback
+                }
+            ];
+
+            analyzeAndDisplayProducts(mockProducts);
+            showSuccess('Données de test Architecture V2 chargées avec succès !');
+        }
+
+        // 🧹 Effacer les résultats
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // 📺 Fonctions d'affichage des messages
+        function showLoading() {
+            document.getElementById('results').innerHTML = `
+                <div class="loading">
+                    <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                    <div>Chargement et test en cours (credentials: include)...</div>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            document.getElementById('results').appendChild(errorDiv);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            document.getElementById('results').appendChild(successDiv);
+        }
+
+        function showWarning(message) {
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'warning-message';
+            warningDiv.textContent = message;
+            document.getElementById('results').appendChild(warningDiv);
+        }
+
+        // 🎯 Auto-démarrage avec test des données mockées
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Test d\'affichage images Architecture V2 - Credentials Include');
+            console.log('📋 Pour tester avec des données réelles, assurez-vous d\'être connecté et cliquez sur "🧪 Tester avec API réelle"');
+            console.log('📝 Pour voir les exemples, cliquez sur "📝 Données de test"');
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Gestion Centralisée des Délimitations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+        .sync-test {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success-test {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .product-section {
+            border: 2px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+        .color-section {
+            border: 1px solid #eee;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .image-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+            padding: 5px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        .delimitation-item {
+            background: #e3f2fd;
+            padding: 5px;
+            margin: 2px 0;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .log-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 Test - Gestion Centralisée des Délimitations</h1>
+    
+    <div class="test-section">
+        <h2>🎯 Test de Synchronisation Centralisée</h2>
+        <p>Test de la gestion centralisée des délimitations pour éviter les doublons et maintenir la cohérence.</p>
+        
+        <button onclick="testCentralizedSync()">Tester Synchronisation Centralisée</button>
+        <button onclick="testDuplicateHandling()">Tester Gestion des Doublons</button>
+        <button onclick="testProductConsistency()">Tester Cohérence Produit</button>
+        <button onclick="clearResults()">Effacer les Résultats</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 État du Produit</h2>
+        <div id="product-state">
+            <!-- L'état du produit sera affiché ici -->
+        </div>
+    </div>
+
+    <script>
+        // Simulation d'un produit avec délimitations
+        let mockProduct = {
+            colorVariations: [
+                {
+                    id: '1',
+                    name: 'Rouge',
+                    colorCode: '#ff0000',
+                    images: [
+                        {
+                            id: 'img1',
+                            url: 'https://example.com/red-front.jpg',
+                            view: 'Front',
+                            delimitations: [
+                                { id: 'delim1', name: 'Zone Logo', x: 100, y: 50, width: 200, height: 100 }
+                            ]
+                        },
+                        {
+                            id: 'img2',
+                            url: 'https://example.com/red-back.jpg',
+                            view: 'Back',
+                            delimitations: [
+                                { id: 'delim2', name: 'Zone Texte', x: 150, y: 75, width: 250, height: 125 }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: '2',
+                    name: 'Bleu',
+                    colorCode: '#0000ff',
+                    images: [
+                        {
+                            id: 'img3',
+                            url: 'https://example.com/blue-front.jpg',
+                            view: 'Front',
+                            delimitations: []
+                        },
+                        {
+                            id: 'img4',
+                            url: 'https://example.com/blue-back.jpg',
+                            view: 'Back',
+                            delimitations: []
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Service de gestion centralisée des délimitations
+        class CentralizedDelimitationService {
+            constructor() {
+                this.logs = [];
+            }
+
+            log(message) {
+                this.logs.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+                console.log(message);
+            }
+
+            // Synchroniser les délimitations de manière centralisée
+            synchronizeDelimitations(product, newDelimitations) {
+                this.log('🔄 Début de la synchronisation centralisée');
+                
+                // 1. Collecter toutes les délimitations existantes
+                const uniqueDelimitations = new Map();
+                
+                product.colorVariations.forEach(colorVar => {
+                    colorVar.images.forEach(img => {
+                        if (img.delimitations) {
+                            img.delimitations.forEach(delim => {
+                                const key = delim.name || `zone_${delim.id}`;
+                                if (!uniqueDelimitations.has(key)) {
+                                    uniqueDelimitations.set(key, delim);
+                                    this.log(`📋 Délimitation existante: ${key}`);
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                // 2. Ajouter les nouvelles délimitations
+                newDelimitations.forEach(delim => {
+                    const key = delim.name || `zone_${delim.id}`;
+                    if (!uniqueDelimitations.has(key)) {
+                        uniqueDelimitations.set(key, delim);
+                        this.log(`✅ Nouvelle délimitation ajoutée: ${key}`);
+                    } else {
+                        this.log(`⚠️ Délimitation déjà existante, ignorée: ${key}`);
+                    }
+                });
+                
+                // 3. Générer de nouveaux IDs uniques
+                const allDelimitations = Array.from(uniqueDelimitations.values()).map((delim, index) => ({
+                    ...delim,
+                    id: `product_delim_${Date.now()}_${index}`,
+                    name: delim.name || `Zone ${index + 1}`
+                }));
+                
+                this.log(`📊 Total délimitations uniques: ${allDelimitations.length}`);
+                
+                // 4. Appliquer à toutes les images du produit
+                const updatedProduct = {
+                    ...product,
+                    colorVariations: product.colorVariations.map(colorVar => ({
+                        ...colorVar,
+                        images: colorVar.images.map(img => ({
+                            ...img,
+                            delimitations: [...allDelimitations]
+                        }))
+                    }))
+                };
+                
+                this.log('✅ Synchronisation terminée');
+                return updatedProduct;
+            }
+
+            // Vérifier la cohérence du produit
+            checkProductConsistency(product) {
+                this.log('🔍 Vérification de la cohérence du produit');
+                
+                const allImages = [];
+                product.colorVariations.forEach(colorVar => {
+                    colorVar.images.forEach(img => allImages.push(img));
+                });
+                
+                if (allImages.length === 0) {
+                    return { isConsistent: true, message: 'Aucune image dans le produit' };
+                }
+                
+                const firstImageDelimitations = allImages[0].delimitations || [];
+                const firstImageDelimitationNames = firstImageDelimitations.map(d => d.name).sort();
+                
+                let isConsistent = true;
+                const inconsistencies = [];
+                
+                allImages.forEach((img, index) => {
+                    const imgDelimitations = img.delimitations || [];
+                    const imgDelimitationNames = imgDelimitations.map(d => d.name).sort();
+                    
+                    if (JSON.stringify(firstImageDelimitationNames) !== JSON.stringify(imgDelimitationNames)) {
+                        isConsistent = false;
+                        inconsistencies.push(`Image ${index + 1}: ${imgDelimitationNames.join(', ')}`);
+                    }
+                });
+                
+                return {
+                    isConsistent,
+                    totalImages: allImages.length,
+                    totalDelimitations: firstImageDelimitations.length,
+                    inconsistencies
+                };
+            }
+
+            getLogs() {
+                return this.logs.join('\n');
+            }
+
+            clearLogs() {
+                this.logs = [];
+            }
+        }
+
+        const syncService = new CentralizedDelimitationService();
+
+        // Tests globaux
+        window.testCentralizedSync = () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test de Synchronisation Centralisée</h3>';
+
+            try {
+                syncService.log('📋 Début du test de synchronisation centralisée');
+                
+                // Simuler l'ajout de nouvelles délimitations
+                const newDelimitations = [
+                    { id: 'new1', name: 'Zone Logo', x: 100, y: 50, width: 200, height: 100 },
+                    { id: 'new2', name: 'Zone Texte', x: 150, y: 75, width: 250, height: 125 }
+                ];
+                
+                const updatedProduct = syncService.synchronizeDelimitations(mockProduct, newDelimitations);
+                mockProduct = updatedProduct;
+                
+                resultsDiv.innerHTML += `
+                    <div class="test-result success-test">
+                        <strong>✅ Synchronisation réussie:</strong><br>
+                        <div class="log-section">${syncService.getLogs()}</div>
+                        <p>Produit mis à jour avec ${updatedProduct.colorVariations.reduce((total, cv) => 
+                            total + cv.images.reduce((imgTotal, img) => imgTotal + (img.delimitations?.length || 0), 0), 0
+                        )} délimitations totales</p>
+                    </div>
+                `;
+                
+                renderProductState();
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.testDuplicateHandling = () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test de Gestion des Doublons</h3>';
+
+            try {
+                syncService.log('📋 Test de gestion des doublons');
+                
+                // Essayer d'ajouter des délimitations qui existent déjà
+                const duplicateDelimitations = [
+                    { id: 'dup1', name: 'Zone Logo', x: 100, y: 50, width: 200, height: 100 }, // Doublon
+                    { id: 'dup2', name: 'Zone Texte', x: 150, y: 75, width: 250, height: 125 }, // Doublon
+                    { id: 'new3', name: 'Zone Nouvelle', x: 200, y: 100, width: 300, height: 150 } // Nouvelle
+                ];
+                
+                const updatedProduct = syncService.synchronizeDelimitations(mockProduct, duplicateDelimitations);
+                mockProduct = updatedProduct;
+                
+                resultsDiv.innerHTML += `
+                    <div class="test-result sync-test">
+                        <strong>🔄 Gestion des doublons:</strong><br>
+                        <div class="log-section">${syncService.getLogs()}</div>
+                        <p>Les doublons ont été automatiquement filtrés</p>
+                    </div>
+                `;
+                
+                renderProductState();
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.testProductConsistency = () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test de Cohérence du Produit</h3>';
+
+            try {
+                const consistency = syncService.checkProductConsistency(mockProduct);
+                
+                if (consistency.isConsistent) {
+                    resultsDiv.innerHTML += `
+                        <div class="test-result success-test">
+                            <strong>✅ Produit cohérent:</strong><br>
+                            <p>Images: ${consistency.totalImages}</p>
+                            <p>Délimitations par image: ${consistency.totalDelimitations}</p>
+                            <p>Toutes les images ont les mêmes délimitations</p>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML += `
+                        <div class="test-result test-error">
+                            <strong>❌ Produit incohérent:</strong><br>
+                            <p>Images: ${consistency.totalImages}</p>
+                            <p>Incohérences détectées:</p>
+                            <ul>
+                                ${consistency.inconsistencies.map(inc => `<li>${inc}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.clearResults = () => {
+            document.getElementById('test-results').innerHTML = '';
+            syncService.clearLogs();
+            console.log('🗑️ Résultats effacés');
+        };
+
+        // Fonction pour afficher l'état du produit
+        function renderProductState() {
+            const container = document.getElementById('product-state');
+            
+            container.innerHTML = mockProduct.colorVariations.map(colorVar => `
+                <div class="product-section">
+                    <h3>🎨 ${colorVar.name}</h3>
+                    ${colorVar.images.map(img => `
+                        <div class="color-section">
+                            <h4>📷 ${img.view} (${img.delimitations?.length || 0} délimitations)</h4>
+                            ${img.delimitations?.map(delim => `
+                                <div class="delimitation-item">
+                                    <strong>${delim.name}</strong> - ID: ${delim.id}
+                                </div>
+                            `).join('') || '<p>Aucune délimitation</p>'}
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        // Initialiser l'affichage
+        window.addEventListener('load', () => {
+            console.log('🔄 Service de synchronisation centralisée initialisé');
+            renderProductState();
+        });
+    </script>
+</body>
+</html> 

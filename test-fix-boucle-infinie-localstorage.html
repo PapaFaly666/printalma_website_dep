@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Correction Boucle Infinie - localStorage</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fafafa;
+        }
+        
+        .test-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-description {
+            color: #6b7280;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .problem-section {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .solution-section {
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .log {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-success { color: #10b981; }
+        .log-warning { color: #f59e0b; }
+        .log-error { color: #ef4444; }
+        .log-info { color: #3b82f6; }
+        
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .button.secondary {
+            background: #6b7280;
+        }
+        
+        .button.secondary:hover {
+            background: #4b5563;
+        }
+        
+        .button.success {
+            background: #10b981;
+        }
+        
+        .button.success:hover {
+            background: #059669;
+        }
+        
+        .button.danger {
+            background: #ef4444;
+        }
+        
+        .button.danger:hover {
+            background: #dc2626;
+        }
+        
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 5px;
+        }
+        
+        .status-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Test Correction Boucle Infinie</h1>
+            <p>Vérification de la correction de la boucle infinie localStorage</p>
+        </div>
+        
+        <div class="content">
+            <div class="test-section">
+                <div class="test-title">
+                    ❌ Problème Identifié
+                </div>
+                <div class="test-description">
+                    La boucle infinie était causée par le chargement depuis localStorage qui déclenchait 
+                    des modifications, lesquelles sauvegardaient à nouveau dans localStorage, créant un cycle infini.
+                </div>
+                
+                <div class="problem-section">
+                    <h4 style="margin-top: 0; color: #991b1b;">🔄 Cycle Infini Détecté</h4>
+                    <ul style="color: #7f1d1d; line-height: 1.6;">
+                        <li>Chargement depuis localStorage → addDelimitation()</li>
+                        <li>addDelimitation() → onDelimitationChange()</li>
+                        <li>onDelimitationChange() → setHasUnsavedChanges(true)</li>
+                        <li>setHasUnsavedChanges(true) → autoSave()</li>
+                        <li>autoSave() → saveToLocalStorage()</li>
+                        <li>saveToLocalStorage() → localStorage.setItem()</li>
+                        <li>localStorage.setItem() → Déclenchement du useEffect de chargement</li>
+                        <li>useEffect de chargement → Retour à l'étape 1 (BOUCLE INFINIE)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    ✅ Solution Appliquée
+                </div>
+                <div class="test-description">
+                    Ajout d'un état <code>isLoadingFromStorage</code> pour éviter la sauvegarde 
+                    pendant le chargement et empêcher la boucle infinie.
+                </div>
+                
+                <div class="solution-section">
+                    <h4 style="margin-top: 0; color: #166534;">🔧 Corrections Implémentées</h4>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <strong style="color: #166534;">1. Nouvel état de protection :</strong>
+                        <div class="code-block">
+const [isLoadingFromStorage, setIsLoadingFromStorage] = useState(false);
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <strong style="color: #166534;">2. Protection du chargement :</strong>
+                        <div class="code-block">
+useEffect(() => {
+  if (isLoadingFromStorage) return; // Éviter la boucle infinie
+  
+  const saved = localStorage.getItem(localStorageKey);
+  if (saved) {
+    try {
+      setIsLoadingFromStorage(true);
+      // ... chargement des données
+    } finally {
+      setIsLoadingFromStorage(false);
+    }
+  }
+}, [localStorageKey, addDelimitation, isLoadingFromStorage]);
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <strong style="color: #166534;">3. Protection de la sauvegarde :</strong>
+                        <div class="code-block">
+const saveToLocalStorage = useCallback((delimitations) => {
+  if (isLoadingFromStorage) return; // Éviter la sauvegarde pendant le chargement
+  
+  localStorage.setItem(localStorageKey, JSON.stringify(delimitations));
+}, [localStorageKey, isLoadingFromStorage]);
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <strong style="color: #166534;">4. Protection de l'auto-sauvegarde :</strong>
+                        <div class="code-block">
+const autoSave = useCallback(() => {
+  if (isLoadingFromStorage) return; // Éviter la sauvegarde pendant le chargement
+  
+  // ... logique de sauvegarde
+}, [delimitation, hasUnsavedChanges, isLoadingFromStorage]);
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    🧪 Simulation du Comportement Corrigé
+                </div>
+                <div class="test-description">
+                    Simulation du comportement attendu après la correction de la boucle infinie.
+                </div>
+                
+                <div style="text-align: center; margin: 20px 0;">
+                    <button class="button" onclick="simulateFixedBehavior()">Simuler Comportement Corrigé</button>
+                    <button class="button secondary" onclick="simulateOldBehavior()">Simuler Ancien Comportement</button>
+                    <button class="button danger" onclick="simulateInfiniteLoop()">Simuler Boucle Infinie</button>
+                    <button class="button secondary" onclick="clearLog()">Effacer Log</button>
+                </div>
+                
+                <div class="log" id="log">
+                    <div class="log-entry log-info">🚀 Test de correction de boucle infinie localStorage initialisé</div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    📋 Checklist de Vérification
+                </div>
+                <div class="test-description">
+                    Comment vérifier que la correction fonctionne correctement.
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 10px;">✅ Avant la correction</div>
+                        <ul style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                            <li>❌ Boucle infinie de chargement/sauvegarde</li>
+                            <li>❌ Console spammée de logs répétitifs</li>
+                            <li>❌ Performance dégradée de l'interface</li>
+                            <li>❌ Délimitations ajoutées en double</li>
+                            <li>❌ localStorage surchargé de données</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 10px;">✅ Après la correction</div>
+                        <ul style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                            <li>✅ Chargement unique depuis localStorage</li>
+                            <li>✅ Sauvegarde uniquement lors de modifications réelles</li>
+                            <li>✅ Performance normale de l'interface</li>
+                            <li>✅ Pas de délimitations en double</li>
+                            <li>✅ localStorage propre et fonctionnel</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    🔍 Vérification Technique
+                </div>
+                <div class="test-description">
+                    Étapes pour vérifier que la correction fonctionne.
+                </div>
+                
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px;">
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #374151;">🔍 Étapes de Vérification :</strong>
+                    </div>
+                    <ol style="color: #6b7280; line-height: 1.6;">
+                        <li>Ouvrir les outils de développement (F12)</li>
+                        <li>Aller dans l'onglet Console</li>
+                        <li>Charger une page avec DelimitationCanvas</li>
+                        <li>Vérifier qu'il n'y a plus de boucle infinie dans les logs</li>
+                        <li>Modifier une délimitation et vérifier la sauvegarde</li>
+                        <li>Recharger la page et confirmer la restauration</li>
+                        <li>Vérifier qu'il n'y a pas de délimitations en double</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let loopCount = 0;
+        let isInfiniteLoop = false;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function simulateFixedBehavior() {
+            log('✅ Simulation du comportement corrigé...', 'success');
+            
+            // Simuler le chargement depuis localStorage
+            log('📂 Chargement depuis localStorage (une seule fois)', 'info');
+            
+            // Simuler l'ajout de délimitation
+            log('➕ Ajout de délimitation au canvas', 'info');
+            
+            // Simuler la modification
+            log('✏️ Modification de délimitation', 'info');
+            
+            // Simuler la sauvegarde
+            log('💾 Sauvegarde localStorage (une seule fois)', 'success');
+            
+            log('✅ Comportement corrigé : Pas de boucle infinie', 'success');
+        }
+
+        function simulateOldBehavior() {
+            log('⚠️ Simulation de l\'ancien comportement problématique...', 'warning');
+            
+            for (let i = 1; i <= 3; i++) {
+                log(`🔄 Cycle ${i}: Chargement → Modification → Sauvegarde`, 'warning');
+            }
+            
+            log('⚠️ Ancien comportement : Risque de boucle infinie', 'warning');
+        }
+
+        function simulateInfiniteLoop() {
+            if (isInfiniteLoop) {
+                log('🛑 Arrêt de la simulation de boucle infinie', 'error');
+                isInfiniteLoop = false;
+                return;
+            }
+            
+            isInfiniteLoop = true;
+            log('🚨 DÉMARRAGE SIMULATION BOUCLE INFINIE', 'error');
+            
+            function infiniteLoop() {
+                if (!isInfiniteLoop) return;
+                
+                loopCount++;
+                log(`🔄 Boucle infinie #${loopCount}: Chargement → Sauvegarde → Chargement...`, 'error');
+                
+                if (loopCount < 10) {
+                    setTimeout(infiniteLoop, 500);
+                } else {
+                    log('🛑 Simulation arrêtée après 10 cycles', 'error');
+                    isInfiniteLoop = false;
+                    loopCount = 0;
+                }
+            }
+            
+            infiniteLoop();
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+            loopCount = 0;
+            isInfiniteLoop = false;
+        }
+
+        // Initialisation
+        log('🚀 Test de correction de boucle infinie localStorage initialisé', 'info');
+        log('📋 Prêt à tester les différents comportements', 'info');
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 

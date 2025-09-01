@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Direct Final</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .upload-area { border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Test Upload Direct Final</h1>
+    
+    <div class="upload-area" id="uploadArea">
+        <p>Glissez-déposez une image ou cliquez pour sélectionner</p>
+        <p>JPG, PNG, WEBP - Max 5MB</p>
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+    </div>
+    
+    <button onclick="testEndpoint()">🔍 Test Endpoint</button>
+    <button onclick="clearLog()">🧹 Effacer Log</button>
+    
+    <div id="responseSection" style="display: none;">
+        <h3>📤 Réponse du Serveur</h3>
+        <pre id="responseData"></pre>
+    </div>
+    
+    <div id="messageSection" style="display: none;"></div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test upload direct final initialisé</div>
+        <div class="info">📋 Prêt à tester l'upload direct des images de couleurs</div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        // Gestion de la sélection de fichier
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                log(`📁 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+                handleFileUpload(file);
+            }
+        });
+
+        // Gestion du drag & drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                selectedFile = file;
+                log(`📁 Fichier glissé: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+                handleFileUpload(file);
+            }
+        });
+
+        // Gestion du clic sur la zone d'upload
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Fonction d'upload direct
+        async function handleFileUpload(file) {
+            // Validation du fichier
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                log('❌ Format d\'image non supporté. Utilisez JPG, PNG ou WEBP.', 'error');
+                showMessage('error', '❌ Format d\'image non supporté. Utilisez JPG, PNG ou WEBP.');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) { // 5MB max
+                log('❌ L\'image est trop volumineuse. Taille maximum: 5MB.', 'error');
+                showMessage('error', '❌ L\'image est trop volumineuse. Taille maximum: 5MB.');
+                return;
+            }
+
+            log('🚀 Début de l\'upload direct...', 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const productId = 1; // Test avec un ID de produit
+                const colorId = 1;   // Test avec un ID de couleur
+
+                log(`📤 Envoi vers: POST /products/upload-color-image/${productId}/${colorId}`, 'info');
+
+                const response = await fetch(`http://localhost:3004/products/upload-color-image/${productId}/${colorId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                log(`📥 Réponse reçue (${response.status})`, response.ok ? 'success' : 'error');
+                
+                // Afficher la réponse
+                document.getElementById('responseSection').style.display = 'block';
+                document.getElementById('responseData').textContent = JSON.stringify(data, null, 2);
+
+                if (response.ok && data.success) {
+                    log('✅ Upload direct réussi!', 'success');
+                    log(`🔗 URL générée: ${data.image.url}`, 'success');
+                    showMessage('success', '✅ Image couleur uploadée avec succès !');
+                } else {
+                    log(`❌ Erreur: ${data.message}`, 'error');
+                    showMessage('error', `❌ Erreur: ${data.message}`);
+                }
+
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+                showMessage('error', `❌ Erreur réseau: ${error.message}`);
+            }
+        }
+
+        // Test de disponibilité de l'endpoint
+        async function testEndpoint() {
+            log('🔍 Test de disponibilité de l\'endpoint...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3004/products/upload-color-image/1/1', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.status === 400) {
+                    log('✅ Endpoint disponible (erreur 400 attendue - pas de fichier)', 'success');
+                    showMessage('success', '✅ Endpoint disponible');
+                } else if (response.status === 401) {
+                    log('⚠️ Endpoint disponible mais authentification requise', 'warning');
+                    showMessage('warning', '⚠️ Endpoint disponible mais authentification requise');
+                } else if (response.status === 404) {
+                    log('❌ Endpoint non disponible (404)', 'error');
+                    showMessage('error', '❌ Endpoint non disponible (404)');
+                } else {
+                    log(`⚠️ Endpoint répond avec ${response.status}`, 'warning');
+                    showMessage('warning', `⚠️ Endpoint répond avec ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur de connexion: ${error.message}`, 'error');
+                showMessage('error', `❌ Erreur de connexion: ${error.message}`);
+            }
+        }
+
+        // Fonctions utilitaires
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+
+        function showMessage(type, message) {
+            const messageSection = document.getElementById('messageSection');
+            messageSection.innerHTML = `<div class="${type === 'success' ? 'success' : type === 'error' ? 'error' : 'info'}">${message}</div>`;
+            messageSection.style.display = 'block';
+        }
+
+        // Initialisation
+        log('🚀 Test upload direct final initialisé', 'info');
+        log('📋 Prêt à tester l\'upload direct des images de couleurs', 'info');
+    </script>
+</body>
+</html> 

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Ready Products JSON Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        input, textarea { margin: 5px; padding: 5px; width: 200px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Test Ready Products JSON Fix</h1>
+    
+    <div class="test-section">
+        <h2>Test de gestion des réponses JSON</h2>
+        <button onclick="testEmptyResponse()">Test Réponse Vide</button>
+        <button onclick="testNonJsonResponse()">Test Réponse Non-JSON</button>
+        <button onclick="testValidJsonResponse()">Test Réponse JSON Valide</button>
+        <button onclick="test404Error()">Test Erreur 404</button>
+        <button onclick="testNetworkError()">Test Erreur Réseau</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test API Ready Products</h2>
+        <button onclick="testGetReadyProducts()">GET /products/ready</button>
+        <button onclick="testCreateReadyProduct()">POST /products/ready</button>
+        <button onclick="testGetReadyProductById()">GET /products/ready/1</button>
+        <button onclick="testUpdateReadyProduct()">PATCH /products/ready/1</button>
+        <button onclick="testDeleteReadyProduct()">DELETE /products/ready/1</button>
+    </div>
+
+    <div id="logs"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        // Simuler des réponses du serveur
+        async function mockFetch(url, options = {}) {
+            log(`🔄 Mock fetch: ${options.method || 'GET'} ${url}`, 'info');
+            
+            // Simuler un délai réseau
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Simuler différents types de réponses
+            if (url.includes('/empty')) {
+                return new Response('', { status: 200 });
+            }
+            
+            if (url.includes('/non-json')) {
+                return new Response('Produit créé avec succès', { status: 200 });
+            }
+            
+            if (url.includes('/valid-json')) {
+                return new Response(JSON.stringify({ 
+                    id: 1, 
+                    name: 'Test Product', 
+                    success: true 
+                }), { 
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            if (url.includes('/404')) {
+                return new Response('Not Found', { status: 404 });
+            }
+            
+            if (url.includes('/network-error')) {
+                throw new Error('Network error');
+            }
+            
+            // Réponses par défaut pour les endpoints ready products
+            if (url.includes('/products/ready')) {
+                if (options.method === 'GET') {
+                    return new Response(JSON.stringify({
+                        products: [
+                            { id: 1, name: 'T-Shirt Prêt', status: 'PUBLISHED' }
+                        ]
+                    }), { 
+                        status: 200,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                
+                if (options.method === 'POST') {
+                    return new Response('', { status: 201 }); // Réponse vide
+                }
+                
+                if (options.method === 'PATCH') {
+                    return new Response('Produit mis à jour', { status: 200 }); // Réponse texte
+                }
+                
+                if (options.method === 'DELETE') {
+                    return new Response('', { status: 204 }); // Réponse vide
+                }
+            }
+            
+            return new Response('Not Found', { status: 404 });
+        }
+
+        // Utilitaire pour gérer les réponses HTTP (comme apiHelpers.ts)
+        async function handleApiResponse(response) {
+            try {
+                if (!response.ok) {
+                    let errorText = '';
+                    try {
+                        errorText = await response.text();
+                    } catch (textError) {
+                        errorText = `Erreur ${response.status}: ${response.statusText}`;
+                    }
+                    return {
+                        error: `HTTP ${response.status}: ${errorText}`,
+                        status: response.status
+                    };
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    try {
+                        const responseText = await response.text();
+                        log(`⚠️ Réponse non-JSON reçue: "${responseText}"`, 'warning');
+                        
+                        if (!responseText || responseText.trim() === '') {
+                            data = { success: true, message: 'Opération réussie' };
+                        } else {
+                            try {
+                                data = JSON.parse(responseText);
+                            } catch (parseError) {
+                                data = { 
+                                    success: true, 
+                                    message: responseText || 'Opération réussie',
+                                    rawResponse: responseText 
+                                };
+                            }
+                        }
+                    } catch (textError) {
+                        data = { 
+                            success: true, 
+                            message: 'Opération réussie (réponse non-parseable)',
+                            error: jsonError instanceof Error ? jsonError.message : 'Erreur de parsing'
+                        };
+                    }
+                }
+                
+                return {
+                    data,
+                    status: response.status
+                };
+            } catch (error) {
+                return {
+                    error: `Erreur de parsing: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+                    status: response.status
+                };
+            }
+        }
+
+        // Tests de gestion des réponses
+        async function testEmptyResponse() {
+            log('🧪 Test: Réponse vide', 'info');
+            try {
+                const response = await mockFetch('/empty');
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNonJsonResponse() {
+            log('🧪 Test: Réponse non-JSON', 'info');
+            try {
+                const response = await mockFetch('/non-json');
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testValidJsonResponse() {
+            log('🧪 Test: Réponse JSON valide', 'info');
+            try {
+                const response = await mockFetch('/valid-json');
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function test404Error() {
+            log('🧪 Test: Erreur 404', 'info');
+            try {
+                const response = await mockFetch('/404');
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur attendue: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès inattendu: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNetworkError() {
+            log('🧪 Test: Erreur réseau', 'info');
+            try {
+                const response = await mockFetch('/network-error');
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception attendue: ${error.message}`, 'error');
+            }
+        }
+
+        // Tests des endpoints ready products
+        async function testGetReadyProducts() {
+            log('🧪 Test: GET /products/ready', 'info');
+            try {
+                const response = await mockFetch('http://localhost:3004/products/ready');
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreateReadyProduct() {
+            log('🧪 Test: POST /products/ready', 'info');
+            try {
+                const formData = new FormData();
+                formData.append('productData', JSON.stringify({
+                    name: 'Test Product',
+                    description: 'Test Description',
+                    price: 2500
+                }));
+                
+                const response = await mockFetch('http://localhost:3004/products/ready', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetReadyProductById() {
+            log('🧪 Test: GET /products/ready/1', 'info');
+            try {
+                const response = await mockFetch('http://localhost:3004/products/ready/1');
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpdateReadyProduct() {
+            log('🧪 Test: PATCH /products/ready/1', 'info');
+            try {
+                const response = await mockFetch('http://localhost:3004/products/ready/1', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'published' })
+                });
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteReadyProduct() {
+            log('🧪 Test: DELETE /products/ready/1', 'info');
+            try {
+                const response = await mockFetch('http://localhost:3004/products/ready/1', {
+                    method: 'DELETE'
+                });
+                const result = await handleApiResponse(response);
+                
+                if (result.error) {
+                    log(`❌ Erreur: ${result.error}`, 'error');
+                } else {
+                    log(`✅ Succès: ${JSON.stringify(result.data)}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        log('🚀 Tests Ready Products JSON Fix prêts', 'info');
+    </script>
+</body>
+</html> 

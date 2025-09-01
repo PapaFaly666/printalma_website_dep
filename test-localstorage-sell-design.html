@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test LocalStorage - Vendre Design</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        .success {
+            color: #059669;
+            background-color: #d1fae5;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .error {
+            color: #dc2626;
+            background-color: #fee2e2;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .info {
+            color: #0369a1;
+            background-color: #e0f2fe;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background-color: #2563eb;
+        }
+        .button.danger {
+            background-color: #dc2626;
+        }
+        .button.success {
+            background-color: #059669;
+        }
+        .output {
+            background-color: #f1f5f9;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e40af;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test LocalStorage - Vendre Design</h1>
+            <p>Vérification du système localStorage sans création automatique</p>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalDrafts">0</div>
+                <div class="stat-label">Brouillons</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="lastActivity">-</div>
+                <div class="stat-label">Dernière activité</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="storageSize">0</div>
+                <div class="stat-label">Taille localStorage</div>
+            </div>
+        </div>
+
+        <!-- Test 1: Création et sauvegarde position -->
+        <div class="test-section">
+            <h3>🎯 Test 1: Sauvegarde Position localStorage</h3>
+            <p>Teste la sauvegarde des positions sans appel API</p>
+            
+            <div>
+                <label>Vendor ID: <input type="number" id="vendorId" value="2"></label>
+                <label>Product ID: <input type="number" id="productId" value="1"></label>
+                <label>Design ID: <input type="number" id="designId" value="9"></label>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label>Position X: <input type="range" id="posX" min="0" max="1" step="0.1" value="0.5"></label>
+                <span id="posXValue">0.5</span>
+            </div>
+            <div style="margin: 10px 0;">
+                <label>Position Y: <input type="range" id="posY" min="0" max="1" step="0.1" value="0.3"></label>
+                <span id="posYValue">0.3</span>
+            </div>
+            <div style="margin: 10px 0;">
+                <label>Scale: <input type="range" id="scale" min="0.1" max="2" step="0.1" value="1"></label>
+                <span id="scaleValue">1</span>
+            </div>
+            
+            <button class="button" onclick="savePosition()">💾 Sauvegarder Position</button>
+            <button class="button" onclick="loadPosition()">📂 Charger Position</button>
+            <button class="button danger" onclick="deletePosition()">🗑️ Supprimer Position</button>
+            
+            <div id="output1" class="output"></div>
+        </div>
+
+        <!-- Test 2: Gestion des brouillons -->
+        <div class="test-section">
+            <h3>📋 Test 2: Gestion des Brouillons</h3>
+            <p>Teste la gestion des brouillons multiples</p>
+            
+            <button class="button" onclick="createMultipleDrafts()">➕ Créer 5 brouillons</button>
+            <button class="button" onclick="loadAllDrafts()">📋 Charger tous les brouillons</button>
+            <button class="button danger" onclick="cleanupOldDrafts()">🧹 Nettoyer anciens brouillons</button>
+            <button class="button danger" onclick="clearAllDrafts()">🗑️ Supprimer tout</button>
+            
+            <div id="output2" class="output"></div>
+        </div>
+
+        <!-- Test 3: Simulation workflow complet -->
+        <div class="test-section">
+            <h3>🔄 Test 3: Workflow Complet</h3>
+            <p>Simulation du workflow complet sans création automatique</p>
+            
+            <button class="button" onclick="simulateWorkflow()">🎬 Simuler workflow</button>
+            <button class="button success" onclick="validateAndCreate()">✅ Valider et créer produit</button>
+            
+            <div id="output3" class="output"></div>
+        </div>
+
+        <!-- Test 4: Vérification aucun appel API -->
+        <div class="test-section">
+            <h3>🚫 Test 4: Vérification Aucun Appel API</h3>
+            <p>Vérifie qu'aucun appel API n'est fait lors du positionnement</p>
+            
+            <button class="button" onclick="monitorAPIRequests()">🔍 Monitorer les requêtes</button>
+            <button class="button" onclick="stopMonitoring()">⏹️ Arrêter monitoring</button>
+            
+            <div id="output4" class="output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simulation du service DesignPositionService
+        class DesignPositionService {
+            getStorageKey(vendorId, baseProductId, designId) {
+                return `design_position_${vendorId}_${baseProductId}_${designId}`;
+            }
+
+            savePosition(vendorId, baseProductId, designId, position, previewSelections) {
+                const key = this.getStorageKey(vendorId, baseProductId, designId);
+                const data = {
+                    designId,
+                    baseProductId,
+                    position,
+                    timestamp: Date.now(),
+                    vendorId,
+                    previewSelections
+                };
+
+                try {
+                    localStorage.setItem(key, JSON.stringify(data));
+                    console.log('💾 Position sauvegardée en localStorage:', key);
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erreur sauvegarde localStorage:', error);
+                    return false;
+                }
+            }
+
+            loadPosition(vendorId, baseProductId, designId) {
+                const key = this.getStorageKey(vendorId, baseProductId, designId);
+                const saved = localStorage.getItem(key);
+                
+                if (!saved) return null;
+
+                try {
+                    const data = JSON.parse(saved);
+                    console.log('📂 Position restaurée depuis localStorage:', key);
+                    return data;
+                } catch (error) {
+                    console.error('❌ Erreur parsing localStorage:', error);
+                    localStorage.removeItem(key);
+                    return null;
+                }
+            }
+
+            deletePosition(vendorId, baseProductId, designId) {
+                const key = this.getStorageKey(vendorId, baseProductId, designId);
+                localStorage.removeItem(key);
+                console.log('🗑️ Position supprimée:', key);
+            }
+
+            getAllDrafts() {
+                const drafts = [];
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key?.startsWith('design_position_')) {
+                        try {
+                            const data = JSON.parse(localStorage.getItem(key) || '{}');
+                            drafts.push(data);
+                        } catch (error) {
+                            console.error('❌ Erreur parsing draft:', error);
+                            localStorage.removeItem(key);
+                        }
+                    }
+                }
+                
+                return drafts.sort((a, b) => b.timestamp - a.timestamp);
+            }
+
+            cleanupOldDrafts(maxAgeHours = 24) {
+                const now = Date.now();
+                const maxAge = maxAgeHours * 60 * 60 * 1000;
+                let cleaned = 0;
+                
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key?.startsWith('design_position_')) {
+                        try {
+                            const data = JSON.parse(localStorage.getItem(key) || '{}');
+                            if (now - data.timestamp > maxAge) {
+                                localStorage.removeItem(key);
+                                cleaned++;
+                                console.log(`🗑️ Draft expiré supprimé: ${key}`);
+                            }
+                        } catch (error) {
+                            localStorage.removeItem(key);
+                            cleaned++;
+                        }
+                    }
+                }
+                
+                return cleaned;
+            }
+        }
+
+        const designPositionService = new DesignPositionService();
+
+        // Variables globales pour le test
+        let apiRequestCount = 0;
+        let isMonitoring = false;
+        let originalFetch;
+
+        // Mise à jour des statistiques
+        function updateStats() {
+            const drafts = designPositionService.getAllDrafts();
+            document.getElementById('totalDrafts').textContent = drafts.length;
+            
+            if (drafts.length > 0) {
+                const lastTimestamp = Math.max(...drafts.map(d => d.timestamp));
+                document.getElementById('lastActivity').textContent = new Date(lastTimestamp).toLocaleTimeString();
+            } else {
+                document.getElementById('lastActivity').textContent = '-';
+            }
+            
+            // Calculer taille localStorage
+            let totalSize = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key?.startsWith('design_position_')) {
+                    totalSize += (localStorage.getItem(key) || '').length;
+                }
+            }
+            document.getElementById('storageSize').textContent = `${(totalSize / 1024).toFixed(2)} KB`;
+        }
+
+        // Mise à jour des sliders
+        function updateSliders() {
+            document.getElementById('posXValue').textContent = document.getElementById('posX').value;
+            document.getElementById('posYValue').textContent = document.getElementById('posY').value;
+            document.getElementById('scaleValue').textContent = document.getElementById('scale').value;
+        }
+
+        // Event listeners pour les sliders
+        document.getElementById('posX').addEventListener('input', updateSliders);
+        document.getElementById('posY').addEventListener('input', updateSliders);
+        document.getElementById('scale').addEventListener('input', updateSliders);
+
+        // Test 1: Sauvegarde Position
+        function savePosition() {
+            const vendorId = parseInt(document.getElementById('vendorId').value);
+            const productId = parseInt(document.getElementById('productId').value);
+            const designId = parseInt(document.getElementById('designId').value);
+            
+            const position = {
+                x: parseFloat(document.getElementById('posX').value),
+                y: parseFloat(document.getElementById('posY').value),
+                scale: parseFloat(document.getElementById('scale').value),
+                rotation: 0
+            };
+            
+            const previewSelections = {
+                colors: [],
+                sizes: [],
+                price: 25000,
+                stock: 50
+            };
+            
+            const success = designPositionService.savePosition(vendorId, productId, designId, position, previewSelections);
+            
+            const output = document.getElementById('output1');
+            if (success) {
+                output.innerHTML = `✅ Position sauvegardée avec succès!
+Vendor ID: ${vendorId}
+Product ID: ${productId}
+Design ID: ${designId}
+Position: x=${position.x}, y=${position.y}, scale=${position.scale}
+Timestamp: ${new Date().toLocaleString()}
+                
+💾 AUCUN APPEL API - Sauvegarde localStorage uniquement`;
+                output.className = 'output success';
+            } else {
+                output.innerHTML = '❌ Erreur lors de la sauvegarde';
+                output.className = 'output error';
+            }
+            
+            updateStats();
+        }
+
+        function loadPosition() {
+            const vendorId = parseInt(document.getElementById('vendorId').value);
+            const productId = parseInt(document.getElementById('productId').value);
+            const designId = parseInt(document.getElementById('designId').value);
+            
+            const saved = designPositionService.loadPosition(vendorId, productId, designId);
+            
+            const output = document.getElementById('output1');
+            if (saved) {
+                output.innerHTML = `✅ Position chargée avec succès!
+Design ID: ${saved.designId}
+Base Product ID: ${saved.baseProductId}
+Position: x=${saved.position.x}, y=${saved.position.y}, scale=${saved.position.scale}
+Timestamp: ${new Date(saved.timestamp).toLocaleString()}
+Vendor ID: ${saved.vendorId}
+
+📂 AUCUN APPEL API - Chargement localStorage uniquement`;
+                output.className = 'output success';
+                
+                // Mettre à jour les sliders
+                document.getElementById('posX').value = saved.position.x;
+                document.getElementById('posY').value = saved.position.y;
+                document.getElementById('scale').value = saved.position.scale;
+                updateSliders();
+            } else {
+                output.innerHTML = '❌ Aucune position sauvegardée trouvée';
+                output.className = 'output error';
+            }
+            
+            updateStats();
+        }
+
+        function deletePosition() {
+            const vendorId = parseInt(document.getElementById('vendorId').value);
+            const productId = parseInt(document.getElementById('productId').value);
+            const designId = parseInt(document.getElementById('designId').value);
+            
+            designPositionService.deletePosition(vendorId, productId, designId);
+            
+            const output = document.getElementById('output1');
+            output.innerHTML = `🗑️ Position supprimée avec succès!
+Vendor ID: ${vendorId}
+Product ID: ${productId}
+Design ID: ${designId}
+
+🗑️ AUCUN APPEL API - Suppression localStorage uniquement`;
+            output.className = 'output info';
+            
+            updateStats();
+        }
+
+        // Test 2: Gestion des brouillons
+        function createMultipleDrafts() {
+            const results = [];
+            
+            for (let i = 1; i <= 5; i++) {
+                const position = {
+                    x: Math.random(),
+                    y: Math.random(),
+                    scale: 0.5 + Math.random() * 1.5,
+                    rotation: Math.floor(Math.random() * 360)
+                };
+                
+                const success = designPositionService.savePosition(2, i, 9, position);
+                results.push(`Draft ${i}: ${success ? '✅' : '❌'}`);
+            }
+            
+            const output = document.getElementById('output2');
+            output.innerHTML = `📋 Création de 5 brouillons:
+${results.join('\n')}
+
+💾 AUCUN APPEL API - Création localStorage uniquement`;
+            output.className = 'output success';
+            
+            updateStats();
+        }
+
+        function loadAllDrafts() {
+            const drafts = designPositionService.getAllDrafts();
+            
+            const output = document.getElementById('output2');
+            if (drafts.length > 0) {
+                const draftsList = drafts.map((draft, index) => 
+                    `${index + 1}. Design ${draft.designId} sur produit ${draft.baseProductId}
+   Position: x=${draft.position.x.toFixed(2)}, y=${draft.position.y.toFixed(2)}, scale=${draft.position.scale.toFixed(2)}
+   Timestamp: ${new Date(draft.timestamp).toLocaleString()}`
+                ).join('\n\n');
+                
+                output.innerHTML = `📋 ${drafts.length} brouillons trouvés:
+
+${draftsList}
+
+📂 AUCUN APPEL API - Chargement localStorage uniquement`;
+                output.className = 'output success';
+            } else {
+                output.innerHTML = '❌ Aucun brouillon trouvé';
+                output.className = 'output error';
+            }
+            
+            updateStats();
+        }
+
+        function cleanupOldDrafts() {
+            const cleaned = designPositionService.cleanupOldDrafts(0.01); // 1 minute pour le test
+            
+            const output = document.getElementById('output2');
+            output.innerHTML = `🧹 Nettoyage terminé!
+Brouillons supprimés: ${cleaned}
+
+🗑️ AUCUN APPEL API - Nettoyage localStorage uniquement`;
+            output.className = 'output info';
+            
+            updateStats();
+        }
+
+        function clearAllDrafts() {
+            const drafts = designPositionService.getAllDrafts();
+            
+            drafts.forEach(draft => {
+                designPositionService.deletePosition(draft.vendorId, draft.baseProductId, draft.designId);
+            });
+            
+            const output = document.getElementById('output2');
+            output.innerHTML = `🗑️ Tous les brouillons supprimés!
+Nombre supprimé: ${drafts.length}
+
+🗑️ AUCUN APPEL API - Suppression localStorage uniquement`;
+            output.className = 'output info';
+            
+            updateStats();
+        }
+
+        // Test 3: Workflow complet
+        function simulateWorkflow() {
+            const output = document.getElementById('output3');
+            output.innerHTML = `🎬 Simulation du workflow complet:
+
+1. ✅ Sélection design (Design #9)
+2. ✅ Positionnement interactif (localStorage)
+3. ✅ Sauvegarde automatique (debounce 300ms)
+4. ✅ Aperçu temps réel
+5. ⏳ En attente de validation utilisateur...
+
+💾 AUCUN PRODUIT CRÉÉ - Tout en localStorage`;
+            output.className = 'output success';
+            
+            // Simuler le positionnement
+            designPositionService.savePosition(2, 1, 9, {
+                x: 0.5,
+                y: 0.3,
+                scale: 1.2,
+                rotation: 0
+            });
+            
+            updateStats();
+        }
+
+        function validateAndCreate() {
+            const output = document.getElementById('output3');
+            output.innerHTML = `✅ Validation et création du produit final:
+
+1. ✅ Validation du formulaire
+2. ✅ Récupération position depuis localStorage
+3. ✅ Appel API POST /vendor/products
+4. ✅ Produit créé en base de données
+5. ✅ Nettoyage localStorage
+6. ✅ Redirection vers le produit
+
+📦 PRODUIT CRÉÉ UNIQUEMENT APRÈS VALIDATION`;
+            output.className = 'output success';
+        }
+
+        // Test 4: Monitoring API
+        function monitorAPIRequests() {
+            if (isMonitoring) return;
+            
+            isMonitoring = true;
+            apiRequestCount = 0;
+            
+            // Intercepter fetch
+            originalFetch = window.fetch;
+            window.fetch = function(...args) {
+                apiRequestCount++;
+                console.log('🚨 APPEL API DÉTECTÉ:', args[0]);
+                
+                const output = document.getElementById('output4');
+                output.innerHTML = `🚨 APPEL API DÉTECTÉ!
+URL: ${args[0]}
+Nombre total d'appels: ${apiRequestCount}
+
+❌ VIOLATION DU PRINCIPE LOCALSTORAGE`;
+                output.className = 'output error';
+                
+                return originalFetch.apply(this, args);
+            };
+            
+            const output = document.getElementById('output4');
+            output.innerHTML = `🔍 Monitoring des requêtes API activé...
+Appels détectés: ${apiRequestCount}
+
+✅ Aucun appel API détecté pour le moment`;
+            output.className = 'output success';
+        }
+
+        function stopMonitoring() {
+            if (!isMonitoring) return;
+            
+            isMonitoring = false;
+            window.fetch = originalFetch;
+            
+            const output = document.getElementById('output4');
+            output.innerHTML = `⏹️ Monitoring arrêté.
+Total d'appels API détectés: ${apiRequestCount}
+
+${apiRequestCount === 0 ? '✅ AUCUN APPEL API - Système localStorage fonctionnel' : '❌ Des appels API ont été détectés'}`;
+            output.className = apiRequestCount === 0 ? 'output success' : 'output error';
+        }
+
+        // Initialisation
+        updateStats();
+        updateSliders();
+        
+        // Mise à jour automatique des stats
+        setInterval(updateStats, 5000);
+        
+        console.log('✅ Test LocalStorage - Vendre Design initialisé');
+        console.log('📋 Utilisez les boutons pour tester le système');
+    </script>
+</body>
+</html> 

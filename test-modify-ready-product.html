@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Modification Produit Prêt</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Modification Produit Prêt</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Récupération du produit</h2>
+        <input type="number" id="productId" placeholder="ID du produit (ex: 36)" value="36">
+        <button onclick="testGetProduct()">Récupérer le produit</button>
+        <div id="test1-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Modification du produit</h2>
+        <input type="text" id="newName" placeholder="Nouveau nom" value="T-Shirt Modifié">
+        <input type="text" id="newDescription" placeholder="Nouvelle description" value="Description modifiée">
+        <input type="number" id="newPrice" placeholder="Nouveau prix" value="3000">
+        <input type="number" id="newStock" placeholder="Nouveau stock" value="150">
+        <button onclick="testModifyProduct()">Modifier le produit</button>
+        <div id="test2-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Vérification après modification</h2>
+        <button onclick="testVerifyProduct()">Vérifier le produit</button>
+        <div id="test3-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Logs</h2>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let currentProduct = null;
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        async function testGetProduct() {
+            const productId = document.getElementById('productId').value;
+            log(`🧪 Test 1: Récupération du produit ${productId}`, 'info');
+            
+            try {
+                const response = await fetch(`http://localhost:3004/products/${productId}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                log(`📡 Réponse: ${response.status} ${response.statusText}`, 'info');
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                const product = await response.json();
+                currentProduct = product;
+                
+                log(`✅ Produit récupéré: ${product.name}`, 'success');
+                log(`📋 isReadyProduct: ${product.isReadyProduct}`, 'info');
+                log(`📋 Status: ${product.status}`, 'info');
+
+                const resultDiv = document.getElementById('test1-result');
+                resultDiv.innerHTML = `
+                    <h3>✅ Produit récupéré:</h3>
+                    <pre>${JSON.stringify(product, null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testModifyProduct() {
+            if (!currentProduct) {
+                log('❌ Erreur: Aucun produit récupéré', 'error');
+                return;
+            }
+
+            const productId = document.getElementById('productId').value;
+            const newName = document.getElementById('newName').value;
+            const newDescription = document.getElementById('newDescription').value;
+            const newPrice = parseInt(document.getElementById('newPrice').value);
+            const newStock = parseInt(document.getElementById('newStock').value);
+
+            log(`🧪 Test 2: Modification du produit ${productId}`, 'info');
+
+            // Préparer les données selon la documentation
+            const productData = {
+                name: newName,
+                description: newDescription,
+                price: newPrice,
+                stock: newStock,
+                status: currentProduct.status.toLowerCase(),
+                categories: currentProduct.categories.map(cat => cat.name),
+                sizes: currentProduct.sizes.map(size => size.sizeName),
+                isReadyProduct: true, // ← TOUJOURS TRUE pour les produits prêts
+                colorVariations: currentProduct.colorVariations.map(variation => ({
+                    name: variation.name,
+                    colorCode: variation.colorCode,
+                    images: variation.images.map(img => {
+                        // ✅ Gérer les différents types d'images selon la documentation
+                        if (img.url && img.url.startsWith('http')) {
+                            // Image existante avec URL
+                            return {
+                                url: img.url,
+                                view: img.view,
+                                naturalWidth: img.naturalWidth,
+                                naturalHeight: img.naturalHeight
+                            };
+                        } else if (img.id && typeof img.id === 'number') {
+                            // Image existante avec ID de base de données
+                            return {
+                                id: img.id,
+                                view: img.view
+                            };
+                        } else {
+                            // Image temporaire (ignorée)
+                            console.warn(`Image temporaire ignorée: ${img.id}`);
+                            return null;
+                        }
+                    }).filter(img => img !== null) // Filtrer les images null
+                }))
+            };
+
+            log(`📦 Données de modification:`, 'info');
+            log(`   - Nom: ${productData.name}`, 'info');
+            log(`   - Description: ${productData.description}`, 'info');
+            log(`   - Prix: ${productData.price}`, 'info');
+            log(`   - Stock: ${productData.stock}`, 'info');
+            log(`   - Status: ${productData.status}`, 'info');
+            log(`   - isReadyProduct: ${productData.isReadyProduct}`, 'info');
+
+            try {
+                // Créer FormData selon la documentation
+                const formData = new FormData();
+                formData.append('productData', JSON.stringify(productData));
+
+                // Utiliser le bon endpoint selon la documentation
+                const response = await fetch(`http://localhost:3004/products/ready/${productId}`, {
+                    method: 'PATCH',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                log(`📡 Réponse: ${response.status} ${response.statusText}`, 'info');
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    
+                    const resultDiv = document.getElementById('test2-result');
+                    resultDiv.innerHTML = `
+                        <h3>❌ Erreur de modification:</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Message:</strong> ${errorText}</p>
+                        <h4>Données envoyées:</h4>
+                        <pre>${JSON.stringify(productData, null, 2)}</pre>
+                    `;
+                    return;
+                }
+
+                const result = await response.json();
+                log(`✅ Produit modifié avec succès`, 'success');
+
+                const resultDiv = document.getElementById('test2-result');
+                resultDiv.innerHTML = `
+                    <h3>✅ Modification réussie:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVerifyProduct() {
+            const productId = document.getElementById('productId').value;
+            log(`🧪 Test 3: Vérification du produit ${productId}`, 'info');
+            
+            try {
+                const response = await fetch(`http://localhost:3004/products/${productId}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                const product = await response.json();
+                
+                log(`✅ Produit vérifié: ${product.name}`, 'success');
+                log(`📋 Prix: ${product.price}`, 'info');
+                log(`📋 Stock: ${product.stock}`, 'info');
+
+                const resultDiv = document.getElementById('test3-result');
+                resultDiv.innerHTML = `
+                    <h3>✅ Produit vérifié:</h3>
+                    <pre>${JSON.stringify(product, null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        log('🚀 Test Modification Produit Prêt prêt', 'info');
+    </script>
+</body>
+</html> 

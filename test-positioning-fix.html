@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Correction Positionnement Design</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .test-section { 
+            margin: 30px 0; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+        }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        .code { 
+            background: #f8f9fa; 
+            border: 1px solid #e9ecef; 
+            border-radius: 4px; 
+            padding: 10px; 
+            font-family: monospace; 
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .btn { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn.danger { background: #dc3545; }
+        .btn.danger:hover { background: #c82333; }
+        .btn.success { background: #28a745; }
+        .btn.success:hover { background: #218838; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test - Correction Positionnement Design</h1>
+        <p><strong>Objectif :</strong> Vérifier que les corrections apportées éliminent la boucle infinie et restaurent le positionnement correct des designs.</p>
+        
+        <div class="test-section info">
+            <h2>📋 Résumé des Corrections</h2>
+            <ul>
+                <li><strong>useDesignTransforms.ts :</strong> Optimisation avec useMemo et prévention des boucles infinies</li>
+                <li><strong>ProductImageWithDesign.tsx :</strong> Support du vendorProductId et utilisation du système de positionnement isolé</li>
+                <li><strong>useVendorPublish.ts :</strong> Sécurisation des transformations contre les valeurs null/undefined</li>
+                <li><strong>Tous les composants :</strong> Ajout du prop vendorProductId pour identifier correctement les produits</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Tests à Effectuer</h2>
+            
+            <h3>1. Test Boucle Infinie</h3>
+            <p>Ouvrir la console et vérifier qu'il n'y a plus d'appels API répétés :</p>
+            <div class="code">// Avant : Appels répétés toutes les secondes
+🚀 API Request: GET /vendor/design-transforms/1
+🚀 API Request: GET /vendor/design-transforms/1
+🚀 API Request: GET /vendor/design-transforms/1
+...
+
+// Après : Un seul appel par changement de paramètres
+🚀 API Request: GET /vendor/design-transforms/1
+✅ API Response: 200 {success: true, data: {...}}
+🔄 Chargement ignoré - paramètres identiques</div>
+            
+            <h3>2. Test Positionnement</h3>
+            <p>Vérifier que les designs s'affichent à la position sauvegardée :</p>
+            <div class="code">// Le design doit apparaître à la position exacte où vous l'avez placé
+// Plus de reset automatique à la position par défaut</div>
+            
+            <h3>3. Test Publication</h3>
+            <p>Vérifier que la publication fonctionne sans erreur :</p>
+            <div class="code">// Avant :
+❌ Erreur création structure pour Tshirt: TypeError: Cannot convert undefined or null to object
+
+// Après :
+✅ 0 transformation(s) récupérée(s) pour Tshirt
+✅ Payload créé pour Tshirt avec 0 transformation(s)</div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔍 Outils de Diagnostic</h2>
+            <p>Utilisez ces commandes dans la console pour diagnostiquer :</p>
+            
+            <button class="btn" onclick="testTransformLoad()">Test Chargement Transformations</button>
+            <button class="btn" onclick="testPositionSave()">Test Sauvegarde Position</button>
+            <button class="btn" onclick="checkAPILoop()">Vérifier Boucles API</button>
+            <button class="btn danger" onclick="clearAllTransforms()">Nettoyer Transformations</button>
+            
+            <div id="diagnostic-output" class="code" style="min-height: 100px; margin-top: 20px;">
+Résultats des diagnostics s'afficheront ici...
+            </div>
+        </div>
+
+        <div class="test-section success" id="success-section" style="display: none;">
+            <h2>✅ Tests Réussis</h2>
+            <p>Toutes les corrections fonctionnent correctement !</p>
+        </div>
+
+        <div class="test-section error" id="error-section" style="display: none;">
+            <h2>❌ Problèmes Détectés</h2>
+            <div id="error-details"></div>
+        </div>
+    </div>
+
+    <script>
+        let diagnosticOutput = document.getElementById('diagnostic-output');
+        let apiCallCount = 0;
+        let apiCallTimer = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            diagnosticOutput.innerHTML += `${prefix} [${timestamp}] ${message}\n`;
+            diagnosticOutput.scrollTop = diagnosticOutput.scrollHeight;
+        }
+
+        function testTransformLoad() {
+            log('Test chargement transformations...', 'info');
+            
+            // Simuler le chargement de transformations
+            if (typeof window.loadDesignTransforms === 'function') {
+                window.loadDesignTransforms(1, 'test-design-url')
+                    .then(result => {
+                        log(`Transformations chargées: ${JSON.stringify(result)}`, 'success');
+                    })
+                    .catch(error => {
+                        log(`Erreur chargement: ${error.message}`, 'error');
+                    });
+            } else {
+                log('Fonction loadDesignTransforms non disponible', 'error');
+            }
+        }
+
+        function testPositionSave() {
+            log('Test sauvegarde position...', 'info');
+            
+            const testPosition = {
+                x: 10,
+                y: 20,
+                scale: 1.2,
+                rotation: 0
+            };
+            
+            if (typeof window.designPositionManager !== 'undefined') {
+                window.designPositionManager.savePosition(1, 1, testPosition)
+                    .then(() => {
+                        log('Position sauvegardée avec succès', 'success');
+                    })
+                    .catch(error => {
+                        log(`Erreur sauvegarde: ${error.message}`, 'error');
+                    });
+            } else {
+                log('designPositionManager non disponible', 'error');
+            }
+        }
+
+        function checkAPILoop() {
+            log('Surveillance des appels API pendant 10 secondes...', 'info');
+            apiCallCount = 0;
+            
+            // Intercepter les appels fetch
+            const originalFetch = window.fetch;
+            window.fetch = function(...args) {
+                const url = args[0];
+                if (typeof url === 'string' && url.includes('design-transforms')) {
+                    apiCallCount++;
+                    log(`Appel API détecté: ${url} (Total: ${apiCallCount})`, apiCallCount > 3 ? 'error' : 'info');
+                }
+                return originalFetch.apply(this, args);
+            };
+            
+            setTimeout(() => {
+                window.fetch = originalFetch;
+                if (apiCallCount <= 3) {
+                    log(`✅ Pas de boucle détectée (${apiCallCount} appels)`, 'success');
+                    document.getElementById('success-section').style.display = 'block';
+                } else {
+                    log(`❌ Boucle possible détectée (${apiCallCount} appels)`, 'error');
+                    document.getElementById('error-section').style.display = 'block';
+                    document.getElementById('error-details').innerHTML = `Trop d'appels API détectés: ${apiCallCount}`;
+                }
+            }, 10000);
+        }
+
+        function clearAllTransforms() {
+            log('Nettoyage de toutes les transformations...', 'info');
+            
+            // Nettoyer localStorage
+            const keys = Object.keys(localStorage);
+            let cleaned = 0;
+            
+            keys.forEach(key => {
+                if (key.includes('design-transforms') || key.includes('design_transforms')) {
+                    localStorage.removeItem(key);
+                    cleaned++;
+                }
+            });
+            
+            log(`${cleaned} entrées nettoyées du localStorage`, 'success');
+            
+            // Nettoyer les mappings si disponibles
+            if (typeof window.designPositionManager !== 'undefined' && 
+                typeof window.designPositionManager.clearMappings === 'function') {
+                window.designPositionManager.clearMappings();
+                log('Mappings de position nettoyés', 'success');
+            }
+        }
+
+        // Auto-test au chargement
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('Page chargée - Démarrage des tests automatiques', 'info');
+                checkAPILoop();
+            }, 2000);
+        });
+
+        // Surveiller les erreurs
+        window.addEventListener('error', (event) => {
+            log(`Erreur JavaScript: ${event.message}`, 'error');
+        });
+
+        // Surveiller les erreurs de promesses
+        window.addEventListener('unhandledrejection', (event) => {
+            log(`Promesse rejetée: ${event.reason}`, 'error');
+        });
+    </script>
+</body>
+</html> 
+ 
+ 

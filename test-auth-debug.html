@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Auth Debug - PrintAlma</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        button:hover { background: #0056b3; }
+        .result { 
+            margin-top: 20px; 
+            padding: 15px; 
+            border-radius: 4px; 
+            white-space: pre-wrap; 
+            font-family: monospace;
+        }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Test Authentification PrintAlma</h1>
+        <p>Diagnostic des problèmes de connexion frontend vs backend déployé</p>
+
+        <h2>Tests disponibles:</h2>
+        
+        <button onclick="testBasicFetch()">1. Test Fetch Basique</button>
+        <button onclick="testWithCredentials()">2. Test avec Credentials</button>
+        <button onclick="testCorsPreflightCheck()">3. Test CORS Preflight</button>
+        <button onclick="testFullLogin()">4. Test Login Complet</button>
+        <button onclick="clearResults()">Effacer les résultats</button>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://printalma-back-dep.onrender.com';
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // 1. Test fetch basique sans credentials
+        async function testBasicFetch() {
+            addResult('🔄 Test 1: Fetch basique vers /auth/login...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'pfdiagne35@gmail.com',
+                        password: 'printalmatest123'
+                    })
+                });
+
+                addResult(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                addResult(`Réponse: ${JSON.stringify(data, null, 2)}`, 'success');
+                
+            } catch (error) {
+                addResult(`❌ Erreur: ${error.message}`, 'error');
+                addResult(`Détails: ${error.stack}`, 'error');
+            }
+        }
+
+        // 2. Test avec credentials
+        async function testWithCredentials() {
+            addResult('🔄 Test 2: Fetch avec credentials...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'pfdiagne35@gmail.com',
+                        password: 'printalmatest123'
+                    })
+                });
+
+                addResult(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                // Afficher les headers de réponse
+                const headers = {};
+                for (let [key, value] of response.headers.entries()) {
+                    headers[key] = value;
+                }
+                addResult(`Headers de réponse: ${JSON.stringify(headers, null, 2)}`, 'info');
+                
+                const data = await response.json();
+                addResult(`Réponse: ${JSON.stringify(data, null, 2)}`, 'success');
+                
+            } catch (error) {
+                addResult(`❌ Erreur: ${error.message}`, 'error');
+                addResult(`Type d'erreur: ${error.name}`, 'error');
+            }
+        }
+
+        // 3. Test CORS Preflight
+        async function testCorsPreflightCheck() {
+            addResult('🔄 Test 3: Vérification CORS...');
+            
+            try {
+                // Test OPTIONS request
+                const optionsResponse = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'OPTIONS'
+                });
+                
+                addResult(`OPTIONS Status: ${optionsResponse.status}`, optionsResponse.ok ? 'success' : 'error');
+                
+                // Vérifier les headers CORS
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': optionsResponse.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': optionsResponse.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': optionsResponse.headers.get('Access-Control-Allow-Headers'),
+                    'Access-Control-Allow-Credentials': optionsResponse.headers.get('Access-Control-Allow-Credentials')
+                };
+                
+                addResult(`Headers CORS: ${JSON.stringify(corsHeaders, null, 2)}`, 'info');
+                
+            } catch (error) {
+                addResult(`❌ Erreur CORS: ${error.message}`, 'error');
+            }
+        }
+
+        // 4. Test complet comme dans l'application
+        async function testFullLogin() {
+            addResult('🔄 Test 4: Login exactement comme dans l\'app...');
+            
+            const API_CONFIG = {
+                BASE_URL: 'https://printalma-back-dep.onrender.com',
+                HEADERS: {
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            try {
+                const response = await fetch(`${API_CONFIG.BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        ...API_CONFIG.HEADERS
+                    },
+                    body: JSON.stringify({
+                        email: 'pfdiagne35@gmail.com',
+                        password: 'printalmatest123'
+                    })
+                });
+
+                addResult(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addResult(`Erreur du serveur: ${errorText}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                addResult(`✅ Connexion réussie!`, 'success');
+                addResult(`Utilisateur: ${data.user.firstName} ${data.user.lastName} (${data.user.role})`, 'success');
+                addResult(`Données complètes: ${JSON.stringify(data, null, 2)}`, 'info');
+                
+            } catch (error) {
+                addResult(`❌ Erreur de connexion: ${error.message}`, 'error');
+                addResult(`Type: ${error.name}`, 'error');
+                
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    addResult('🔍 Cela ressemble à un problème CORS ou de réseau', 'error');
+                }
+            }
+        }
+        
+        // Auto-run du premier test au chargement
+        window.onload = function() {
+            addResult('🚀 Page de diagnostic chargée. URL du backend: ' + API_BASE, 'info');
+            addResult('Cliquez sur les boutons pour lancer les tests.', 'info');
+        };
+    </script>
+</body>
+</html>

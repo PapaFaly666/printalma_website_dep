@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cascade Validation - Intégration Finale</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        .success { border-left-color: #28a745; background-color: #d4edda; }
+        .error { border-left-color: #dc3545; background-color: #f8d7da; }
+        .warning { border-left-color: #ffc107; background-color: #fff3cd; }
+        .info { border-left-color: #17a2b8; background-color: #d1ecf1; }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        
+        .workflow-demo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .workflow-step {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .workflow-step.active {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+        
+        .workflow-step.completed {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-draft { background: #f8f9fa; color: #6c757d; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-published { background: #d4edda; color: #155724; }
+        .status-ready { background: #cce5ff; color: #0066cc; }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        
+        .integration-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .status-card {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .status-card.operational {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .status-card.warning {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        .status-card.error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 Test Cascade Validation - Intégration Finale</h1>
+    
+    <div class="test-section">
+        <h2>📋 État de l'intégration</h2>
+        <div class="integration-status">
+            <div class="status-card operational">
+                <h3>✅ Frontend</h3>
+                <p>Composants cascade intégrés</p>
+                <small>ProductStatusBadgeIntegrated, PublishButtonIntegrated</small>
+            </div>
+            <div class="status-card operational">
+                <h3>✅ Pages</h3>
+                <p>VendorProductsPage, SellDesignPage</p>
+                <small>Hooks cascade intégrés</small>
+            </div>
+            <div class="status-card warning">
+                <h3>⚠️ Backend</h3>
+                <p>Nécessite mise à jour</p>
+                <small>isValidated, workflow handling</small>
+            </div>
+            <div class="status-card operational">
+                <h3>✅ API</h3>
+                <p>Payload étendu</p>
+                <small>postValidationAction, workflow</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 Workflow Cascade Validation</h2>
+        <div class="workflow-demo">
+            <div class="workflow-step" id="step1">
+                <h3>1️⃣ Création Produit</h3>
+                <p>Vendeur crée un produit</p>
+                <div class="test-controls">
+                    <button onclick="testProductCreation('AUTO_PUBLISH')">🚀 Auto-Publication</button>
+                    <button onclick="testProductCreation('TO_DRAFT')">📝 Publication Manuelle</button>
+                </div>
+                <div id="creation-result"></div>
+            </div>
+            
+            <div class="workflow-step" id="step2">
+                <h3>2️⃣ État Initial</h3>
+                <p>Produit en attente de validation</p>
+                <span class="status-badge status-pending">PENDING</span>
+                <div id="initial-state"></div>
+            </div>
+            
+            <div class="workflow-step" id="step3">
+                <h3>3️⃣ Validation Admin</h3>
+                <p>Admin valide le design</p>
+                <div class="test-controls">
+                    <button onclick="simulateAdminValidation()">✅ Valider Design</button>
+                    <button onclick="simulateAdminRejection()">❌ Rejeter Design</button>
+                </div>
+                <div id="validation-result"></div>
+            </div>
+            
+            <div class="workflow-step" id="step4">
+                <h3>4️⃣ Cascade Automatique</h3>
+                <p>Action selon le choix vendeur</p>
+                <div id="cascade-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Tests Composants</h2>
+        
+        <h3>ProductStatusBadgeIntegrated</h3>
+        <div class="test-controls">
+            <button onclick="testStatusBadge('workflow')">Test Système Workflow</button>
+            <button onclick="testStatusBadge('cascade')">Test Système Cascade</button>
+            <button onclick="testStatusBadge('legacy')">Test Système Legacy</button>
+        </div>
+        <div id="badge-test-result"></div>
+        
+        <h3>PublishButtonIntegrated</h3>
+        <div class="test-controls">
+            <button onclick="testPublishButton('ready')">Test Prêt à Publier</button>
+            <button onclick="testPublishButton('not-ready')">Test Non Prêt</button>
+        </div>
+        <div id="publish-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🛠️ Tests Backend</h2>
+        <div class="test-controls">
+            <button onclick="testBackendEndpoints()">Test Endpoints</button>
+            <button onclick="testCascadeLogic()">Test Logique Cascade</button>
+            <button onclick="testWorkflowCompatibility()">Test Compatibilité Workflow</button>
+        </div>
+        <div id="backend-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Données Debug</h2>
+        <div class="test-controls">
+            <button onclick="showCurrentState()">Afficher État Actuel</button>
+            <button onclick="showWorkflowMapping()">Mapping Workflow</button>
+            <button onclick="clearDebugData()">Effacer Debug</button>
+        </div>
+        <div id="debug-data"></div>
+    </div>
+
+    <script>
+        // État global pour les tests
+        let testState = {
+            currentProduct: null,
+            currentAction: null,
+            validationStatus: null,
+            workflow: null
+        };
+
+        // Simulation de création de produit
+        function testProductCreation(action) {
+            const step1 = document.getElementById('step1');
+            const result = document.getElementById('creation-result');
+            
+            step1.classList.add('active');
+            
+            testState.currentAction = action;
+            testState.currentProduct = {
+                id: Date.now(),
+                name: 'Produit Test',
+                status: 'PENDING',
+                postValidationAction: action,
+                workflow: action === 'AUTO_PUBLISH' ? 'AUTO-PUBLISH' : 'MANUAL-PUBLISH',
+                isValidated: false,
+                readyToPublish: false,
+                pendingAutoPublish: action === 'AUTO_PUBLISH'
+            };
+            
+            result.innerHTML = `
+                <div class="test-result info">
+                    <h4>✅ Produit créé</h4>
+                    <p><strong>Action:</strong> ${action}</p>
+                    <p><strong>Workflow:</strong> ${testState.currentProduct.workflow}</p>
+                    <p><strong>Statut:</strong> ${testState.currentProduct.status}</p>
+                </div>
+            `;
+            
+            updateInitialState();
+            setTimeout(() => step1.classList.remove('active'), 1000);
+        }
+
+        // Mise à jour de l'état initial
+        function updateInitialState() {
+            const result = document.getElementById('initial-state');
+            if (!testState.currentProduct) return;
+            
+            result.innerHTML = `
+                <div class="test-result">
+                    <p><strong>ID:</strong> ${testState.currentProduct.id}</p>
+                    <p><strong>Status:</strong> <span class="status-badge status-${testState.currentProduct.status.toLowerCase()}">${testState.currentProduct.status}</span></p>
+                    <p><strong>Workflow:</strong> ${testState.currentProduct.workflow}</p>
+                    <p><strong>Validated:</strong> ${testState.currentProduct.isValidated ? '✅' : '❌'}</p>
+                </div>
+            `;
+        }
+
+        // Simulation validation admin
+        function simulateAdminValidation() {
+            if (!testState.currentProduct) {
+                alert('Créez d\'abord un produit !');
+                return;
+            }
+            
+            const step3 = document.getElementById('step3');
+            const result = document.getElementById('validation-result');
+            
+            step3.classList.add('active');
+            
+            // Simulation de la validation
+            testState.currentProduct.isValidated = true;
+            testState.validationStatus = 'VALIDATED';
+            
+            // Logique cascade selon l'action
+            if (testState.currentProduct.postValidationAction === 'AUTO_PUBLISH') {
+                testState.currentProduct.status = 'PUBLISHED';
+                testState.currentProduct.pendingAutoPublish = false;
+            } else {
+                testState.currentProduct.status = 'DRAFT';
+                testState.currentProduct.readyToPublish = true;
+            }
+            
+            result.innerHTML = `
+                <div class="test-result success">
+                    <h4>✅ Design validé par admin</h4>
+                    <p>Cascade automatique déclenchée</p>
+                </div>
+            `;
+            
+            updateCascadeResult();
+            setTimeout(() => step3.classList.remove('active'), 1000);
+        }
+
+        // Simulation rejet admin
+        function simulateAdminRejection() {
+            if (!testState.currentProduct) {
+                alert('Créez d\'abord un produit !');
+                return;
+            }
+            
+            const result = document.getElementById('validation-result');
+            
+            testState.validationStatus = 'REJECTED';
+            testState.currentProduct.status = 'DRAFT';
+            testState.currentProduct.isValidated = false;
+            
+            result.innerHTML = `
+                <div class="test-result error">
+                    <h4>❌ Design rejeté par admin</h4>
+                    <p>Produit reste en brouillon</p>
+                </div>
+            `;
+            
+            updateCascadeResult();
+        }
+
+        // Mise à jour du résultat cascade
+        function updateCascadeResult() {
+            const result = document.getElementById('cascade-result');
+            if (!testState.currentProduct) return;
+            
+            let statusClass = 'info';
+            let statusText = '';
+            
+            if (testState.currentProduct.status === 'PUBLISHED') {
+                statusClass = 'success';
+                statusText = '🚀 Publié automatiquement';
+            } else if (testState.currentProduct.readyToPublish) {
+                statusClass = 'info';
+                statusText = '🎯 Prêt à publier manuellement';
+            } else {
+                statusClass = 'warning';
+                statusText = '📝 Reste en brouillon';
+            }
+            
+            result.innerHTML = `
+                <div class="test-result ${statusClass}">
+                    <h4>${statusText}</h4>
+                    <p><strong>Nouveau statut:</strong> <span class="status-badge status-${testState.currentProduct.status.toLowerCase()}">${testState.currentProduct.status}</span></p>
+                    <p><strong>Action:</strong> ${testState.currentProduct.postValidationAction}</p>
+                    <p><strong>Peut publier:</strong> ${testState.currentProduct.readyToPublish ? '✅' : '❌'}</p>
+                </div>
+            `;
+        }
+
+        // Test du badge de statut
+        function testStatusBadge(system) {
+            const result = document.getElementById('badge-test-result');
+            
+            let testProduct = {};
+            
+            switch(system) {
+                case 'workflow':
+                    testProduct = {
+                        id: 1,
+                        name: 'Test Workflow',
+                        status: 'DRAFT',
+                        workflow: 'MANUAL-PUBLISH',
+                        isValidated: false,
+                        readyToPublish: false,
+                        pendingAutoPublish: false
+                    };
+                    break;
+                case 'cascade':
+                    testProduct = {
+                        id: 2,
+                        name: 'Test Cascade',
+                        status: 'PENDING',
+                        postValidationAction: 'AUTO_PUBLISH',
+                        isValidated: false
+                    };
+                    break;
+                case 'legacy':
+                    testProduct = {
+                        id: 3,
+                        name: 'Test Legacy',
+                        status: 'PUBLISHED'
+                    };
+                    break;
+            }
+            
+            result.innerHTML = `
+                <div class="test-result info">
+                    <h4>🏷️ Test Badge ${system.toUpperCase()}</h4>
+                    <p><strong>Produit:</strong> ${JSON.stringify(testProduct, null, 2)}</p>
+                    <p><strong>Badge attendu:</strong> Selon la logique du système ${system}</p>
+                </div>
+            `;
+        }
+
+        // Test du bouton de publication
+        function testPublishButton(state) {
+            const result = document.getElementById('publish-test-result');
+            
+            let testProduct = {};
+            
+            if (state === 'ready') {
+                testProduct = {
+                    id: 1,
+                    status: 'DRAFT',
+                    workflow: 'MANUAL-PUBLISH',
+                    isValidated: true,
+                    readyToPublish: true
+                };
+            } else {
+                testProduct = {
+                    id: 2,
+                    status: 'PENDING',
+                    workflow: 'AUTO-PUBLISH',
+                    isValidated: false,
+                    readyToPublish: false
+                };
+            }
+            
+            result.innerHTML = `
+                <div class="test-result info">
+                    <h4>🚀 Test Bouton Publication</h4>
+                    <p><strong>État:</strong> ${state}</p>
+                    <p><strong>Produit:</strong> ${JSON.stringify(testProduct, null, 2)}</p>
+                    <p><strong>Bouton visible:</strong> ${state === 'ready' ? '✅' : '❌'}</p>
+                </div>
+            `;
+        }
+
+        // Test endpoints backend
+        function testBackendEndpoints() {
+            const result = document.getElementById('backend-test-result');
+            
+            result.innerHTML = `
+                <div class="test-result info">
+                    <h4>🛠️ Test Endpoints Backend</h4>
+                    <p><strong>Requis:</strong></p>
+                    <ul>
+                        <li>POST /api/vendor/products - Support postValidationAction</li>
+                        <li>PUT /api/vendor/products/:id - Update workflow</li>
+                        <li>POST /api/admin/designs/:id/validate - Trigger cascade</li>
+                        <li>GET /api/vendor/products - Return workflow data</li>
+                    </ul>
+                    <p><strong>Status:</strong> ⚠️ Nécessite implémentation backend</p>
+                </div>
+            `;
+        }
+
+        // Test logique cascade
+        function testCascadeLogic() {
+            const result = document.getElementById('backend-test-result');
+            
+            result.innerHTML = `
+                <div class="test-result warning">
+                    <h4>🔄 Test Logique Cascade</h4>
+                    <p><strong>Problème actuel:</strong> isValidated reste false</p>
+                    <p><strong>Solution:</strong> Backend doit mettre à jour isValidated=true quand admin valide le design</p>
+                    <p><strong>Workflow:</strong></p>
+                    <ol>
+                        <li>Admin valide design → isValidated=true</li>
+                        <li>Si workflow=AUTO-PUBLISH → status=PUBLISHED</li>
+                        <li>Si workflow=MANUAL-PUBLISH → status=DRAFT, readyToPublish=true</li>
+                    </ol>
+                </div>
+            `;
+        }
+
+        // Test compatibilité workflow
+        function testWorkflowCompatibility() {
+            const result = document.getElementById('backend-test-result');
+            
+            result.innerHTML = `
+                <div class="test-result info">
+                    <h4>🔄 Test Compatibilité Workflow</h4>
+                    <p><strong>Mapping:</strong></p>
+                    <ul>
+                        <li>AUTO_PUBLISH → AUTO-PUBLISH</li>
+                        <li>TO_DRAFT → MANUAL-PUBLISH</li>
+                    </ul>
+                    <p><strong>Colonnes DB:</strong></p>
+                    <ul>
+                        <li>postValidationAction (nouveau)</li>
+                        <li>workflow (existant)</li>
+                        <li>isValidated (à corriger)</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Afficher l'état actuel
+        function showCurrentState() {
+            const result = document.getElementById('debug-data');
+            
+            result.innerHTML = `
+                <div class="test-result">
+                    <h4>📊 État Actuel</h4>
+                    <pre>${JSON.stringify(testState, null, 2)}</pre>
+                </div>
+            `;
+        }
+
+        // Afficher le mapping workflow
+        function showWorkflowMapping() {
+            const result = document.getElementById('debug-data');
+            
+            const mapping = {
+                "Frontend": {
+                    "PostValidationAction.AUTO_PUBLISH": "AUTO_PUBLISH",
+                    "PostValidationAction.TO_DRAFT": "TO_DRAFT"
+                },
+                "Backend": {
+                    "AUTO_PUBLISH": "AUTO-PUBLISH",
+                    "TO_DRAFT": "MANUAL-PUBLISH"
+                },
+                "Database": {
+                    "postValidationAction": "AUTO_PUBLISH | TO_DRAFT",
+                    "workflow": "AUTO-PUBLISH | MANUAL-PUBLISH"
+                }
+            };
+            
+            result.innerHTML = `
+                <div class="test-result">
+                    <h4>🔄 Mapping Workflow</h4>
+                    <pre>${JSON.stringify(mapping, null, 2)}</pre>
+                </div>
+            `;
+        }
+
+        // Effacer les données debug
+        function clearDebugData() {
+            document.getElementById('debug-data').innerHTML = '';
+            testState = {
+                currentProduct: null,
+                currentAction: null,
+                validationStatus: null,
+                workflow: null
+            };
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔄 Test Cascade Validation - Intégration Finale chargé');
+        });
+    </script>
+</body>
+</html> 

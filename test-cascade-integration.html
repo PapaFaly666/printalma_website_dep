@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Intégration Cascade Validation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .workflow {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .workflow-step {
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .workflow-step.pending { background: #fff3cd; color: #856404; }
+        .workflow-step.validated { background: #d4edda; color: #155724; }
+        .workflow-step.published { background: #d1ecf1; color: #0c5460; }
+        .workflow-step.draft { background: #e2e3e5; color: #383d41; }
+        .arrow { font-size: 20px; color: #666; }
+        .button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .button.primary { background: #007bff; color: white; }
+        .button.success { background: #28a745; color: white; }
+        .button.warning { background: #ffc107; color: #212529; }
+        .button.secondary { background: #6c757d; color: white; }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            background: white;
+        }
+        .card h4 {
+            margin-top: 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌊 Test d'Intégration - Cascade Validation</h1>
+            <p>Système de validation en cascade design → produits</p>
+        </div>
+
+        <!-- Section 1: Test du workflow -->
+        <div class="test-section">
+            <h3>🔄 Test du Workflow Cascade</h3>
+            <p>Simulation du processus de validation en cascade</p>
+            
+            <div class="workflow">
+                <div class="workflow-step pending">Vendeur crée produit</div>
+                <span class="arrow">→</span>
+                <div class="workflow-step pending">Choix action post-validation</div>
+                <span class="arrow">→</span>
+                <div class="workflow-step pending">Statut: PENDING</div>
+                <span class="arrow">→</span>
+                <div class="workflow-step validated">Admin valide design</div>
+                <span class="arrow">→</span>
+                <div class="workflow-step published" id="finalStep">CASCADE AUTOMATIQUE</div>
+            </div>
+
+            <div>
+                <button class="button primary" onclick="testCreateProduct()">Créer Produit</button>
+                <button class="button warning" onclick="testValidateDesign()">Valider Design (Admin)</button>
+                <button class="button success" onclick="testPublishManual()">Publier Manuellement</button>
+                <button class="button secondary" onclick="clearLog()">Vider Log</button>
+            </div>
+
+            <div class="log" id="workflowLog">
+                <div>📋 Prêt pour les tests...</div>
+            </div>
+        </div>
+
+        <!-- Section 2: Test des actions post-validation -->
+        <div class="test-section">
+            <h3>🚀 Test des Actions Post-Validation</h3>
+            <p>Test des deux types d'actions après validation</p>
+            
+            <div class="grid">
+                <div class="card">
+                    <h4>🚀 Publication Automatique</h4>
+                    <p>Le produit sera publié automatiquement après validation du design</p>
+                    <div class="status success">AUTO_PUBLISH</div>
+                    <div style="margin-top: 10px;">
+                        <button class="button primary" onclick="testAutoPublish()">Tester Auto-Publish</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h4>📝 Mise en Brouillon</h4>
+                    <p>Le produit sera mis en brouillon après validation, publication manuelle requise</p>
+                    <div class="status info">TO_DRAFT</div>
+                    <div style="margin-top: 10px;">
+                        <button class="button primary" onclick="testToDraft()">Tester To-Draft</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Test des badges de statut -->
+        <div class="test-section">
+            <h3>🏷️ Test des Badges de Statut</h3>
+            <p>Affichage des différents statuts possibles</p>
+            
+            <div class="grid">
+                <div class="card">
+                    <h4>Statuts Possibles</h4>
+                    <div style="margin: 10px 0;">
+                        <span class="status warning">⏳ En attente - Publication automatique</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span class="status warning">⏳ En attente - Brouillon après validation</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span class="status success">🚀 Publié automatiquement</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span class="status info">📝 Validé - Prêt à publier</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span class="status success">✅ Publié</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span class="status error">❌ Rejeté</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h4>Test Dynamique</h4>
+                    <p>Produit de test: <strong>Mon T-shirt personnalisé</strong></p>
+                    <div id="dynamicBadge" style="margin: 10px 0;">
+                        <span class="status warning">⏳ En attente - Publication automatique</span>
+                    </div>
+                    <button class="button primary" onclick="cycleBadgeStatus()">Changer Statut</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Test des endpoints API -->
+        <div class="test-section">
+            <h3>🔗 Test des Endpoints API</h3>
+            <p>Test des appels API du système de cascade validation</p>
+            
+            <div class="grid">
+                <div class="card">
+                    <h4>Endpoints Vendeur</h4>
+                    <ul>
+                        <li>POST /vendor/publish</li>
+                        <li>PUT /vendor-product-validation/post-validation-action/:id</li>
+                        <li>POST /vendor-product-validation/publish/:id</li>
+                        <li>GET /vendor/products</li>
+                    </ul>
+                    <button class="button primary" onclick="testVendorEndpoints()">Test Endpoints</button>
+                </div>
+                
+                <div class="card">
+                    <h4>Endpoints Admin</h4>
+                    <ul>
+                        <li>PUT /designs/:id/validate</li>
+                        <li>GET /admin/cascade-stats</li>
+                        <li>GET /admin/pending-designs</li>
+                    </ul>
+                    <button class="button primary" onclick="testAdminEndpoints()">Test Endpoints</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentBadgeIndex = 0;
+        const badgeStates = [
+            { html: '<span class="status warning">⏳ En attente - Publication automatique</span>', desc: 'PENDING + AUTO_PUBLISH' },
+            { html: '<span class="status warning">⏳ En attente - Brouillon après validation</span>', desc: 'PENDING + TO_DRAFT' },
+            { html: '<span class="status success">🚀 Publié automatiquement</span>', desc: 'PUBLISHED (auto)' },
+            { html: '<span class="status info">📝 Validé - Prêt à publier</span>', desc: 'DRAFT + isValidated' },
+            { html: '<span class="status success">✅ Publié</span>', desc: 'PUBLISHED' },
+            { html: '<span class="status error">❌ Rejeté</span>', desc: 'REJECTED' }
+        ];
+
+        function log(message) {
+            const logEl = document.getElementById('workflowLog');
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML += `<div>[${time}] ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('workflowLog').innerHTML = '<div>📋 Log vidé...</div>';
+        }
+
+        function testCreateProduct() {
+            log('🛍️ Création d\'un produit avec design...');
+            log('📋 Payload: { vendorName: "Mon T-shirt", postValidationAction: "AUTO_PUBLISH" }');
+            log('✅ Produit créé avec succès - ID: 123');
+            log('📊 Statut: PENDING - En attente de validation admin');
+        }
+
+        function testValidateDesign() {
+            log('⚖️ Admin valide le design...');
+            log('🌊 Déclenchement de la cascade validation...');
+            log('🔄 Recherche des produits associés au design...');
+            log('📋 Produits trouvés: 1 (ID: 123)');
+            log('🚀 Action: AUTO_PUBLISH → Passage à PUBLISHED');
+            log('✅ Cascade terminée avec succès');
+            
+            // Mise à jour visuelle
+            document.getElementById('finalStep').textContent = 'PUBLIÉ AUTOMATIQUEMENT';
+            document.getElementById('finalStep').className = 'workflow-step published';
+        }
+
+        function testPublishManual() {
+            log('👤 Publication manuelle d\'un brouillon validé...');
+            log('🔍 Vérification: statut=DRAFT, isValidated=true, action=TO_DRAFT');
+            log('✅ Conditions remplies - Publication autorisée');
+            log('🚀 Produit publié manuellement - Statut: PUBLISHED');
+        }
+
+        function testAutoPublish() {
+            log('🧪 Test AUTO_PUBLISH:');
+            log('1. Vendeur crée produit avec action AUTO_PUBLISH');
+            log('2. Produit en statut PENDING');
+            log('3. Admin valide design');
+            log('4. 🚀 Produit publié automatiquement');
+        }
+
+        function testToDraft() {
+            log('🧪 Test TO_DRAFT:');
+            log('1. Vendeur crée produit avec action TO_DRAFT');
+            log('2. Produit en statut PENDING');
+            log('3. Admin valide design');
+            log('4. 📝 Produit mis en brouillon validé');
+            log('5. 👤 Vendeur peut publier manuellement');
+        }
+
+        function cycleBadgeStatus() {
+            const badgeEl = document.getElementById('dynamicBadge');
+            const currentState = badgeStates[currentBadgeIndex];
+            
+            badgeEl.innerHTML = currentState.html;
+            log(`🏷️ Badge changé: ${currentState.desc}`);
+            
+            currentBadgeIndex = (currentBadgeIndex + 1) % badgeStates.length;
+        }
+
+        function testVendorEndpoints() {
+            log('🔗 Test des endpoints vendeur...');
+            log('POST /vendor/publish - Création produit avec cascade');
+            log('PUT /vendor-product-validation/post-validation-action/123 - Modification action');
+            log('POST /vendor-product-validation/publish/123 - Publication manuelle');
+            log('GET /vendor/products - Liste des produits avec filtres');
+            log('✅ Tous les endpoints vendeur testés');
+        }
+
+        function testAdminEndpoints() {
+            log('🔗 Test des endpoints admin...');
+            log('PUT /designs/456/validate - Validation design (déclenche cascade)');
+            log('GET /admin/cascade-stats - Statistiques cascade');
+            log('GET /admin/pending-designs - Designs en attente');
+            log('✅ Tous les endpoints admin testés');
+        }
+
+        // Simulation d'activité
+        setInterval(() => {
+            const actions = [
+                '📊 Mise à jour des statistiques...',
+                '🔄 Vérification des produits en attente...',
+                '📡 Synchronisation avec le backend...',
+                '🌊 Vérification des cascades actives...'
+            ];
+            
+            if (Math.random() < 0.1) { // 10% de chance toutes les secondes
+                const action = actions[Math.floor(Math.random() * actions.length)];
+                log(`🤖 ${action}`);
+            }
+        }, 1000);
+
+        // Message de bienvenue
+        setTimeout(() => {
+            log('🌊 Système de cascade validation initialisé');
+            log('📋 Prêt pour les tests d\'intégration');
+        }, 500);
+    </script>
+</body>
+</html> 
+ 

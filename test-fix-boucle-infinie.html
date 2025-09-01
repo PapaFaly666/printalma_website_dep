@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Correction Boucle Infinie - DelimitationCanvas</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fafafa;
+        }
+        
+        .test-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-description {
+            color: #6b7280;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .log {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-success { color: #10b981; }
+        .log-warning { color: #f59e0b; }
+        .log-error { color: #ef4444; }
+        .log-info { color: #3b82f6; }
+        
+        .fix-details {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .code-block {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Test Correction Boucle Infinie</h1>
+            <p>Vérification de la correction de la boucle infinie dans DelimitationCanvas</p>
+        </div>
+        
+        <div class="content">
+            <div class="test-section">
+                <div class="test-title">
+                    ✅ Problème Identifié et Corrigé
+                </div>
+                <div class="test-description">
+                    La boucle infinie était causée par le fait que <code>addDelimitation</code> était dans les dépendances du <code>useEffect</code>, 
+                    et <code>addDelimitation</code> modifie l'état du canvas, déclenchant à nouveau le <code>useEffect</code>.
+                </div>
+                
+                <div class="fix-details">
+                    <h4 style="margin-top: 0; color: #374151;">🔧 Corrections Appliquées</h4>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #374151; margin-bottom: 10px;">1. Ajout d'un état de tracking</h5>
+                        <div class="code-block">
+// Ajout d'un état pour tracker si les délimitations ont été chargées
+const [hasLoadedDelimitations, setHasLoadedDelimitations] = useState(false);
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #374151; margin-bottom: 10px;">2. Modification du useEffect</h5>
+                        <div class="code-block">
+// Avant (problématique)
+useEffect(() => {
+  if (existingDelimitations && existingDelimitations.length > 0 && canvas) {
+    addDelimitation(firstDelimitation);
+  }
+}, [existingDelimitations, canvas, addDelimitation]); // ❌ addDelimitation cause la boucle
+
+// Après (corrigé)
+useEffect(() => {
+  if (existingDelimitations && existingDelimitations.length > 0 && canvas && !hasLoadedDelimitations) {
+    addDelimitation(firstDelimitation);
+    setHasLoadedDelimitations(true); // ✅ Marquer comme chargé
+  }
+}, [existingDelimitations, canvas, hasLoadedDelimitations]); // ✅ Retiré addDelimitation
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #374151; margin-bottom: 10px;">3. Correction des erreurs de linter</h5>
+                        <div class="code-block">
+// Ajout de l'id manquant aux objets realCoords
+const realCoordsWithId = {
+  ...realCoords,
+  id: delimitation?.id || 'temp-id'
+};
+const feedback = calculateVisualFeedback(realCoordsWithId, { width: metrics.originalWidth, height: metrics.originalHeight });
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    🧪 Simulation du Comportement Corrigé
+                </div>
+                <div class="test-description">
+                    Simulation du comportement attendu après la correction de la boucle infinie.
+                </div>
+                
+                <div style="text-align: center; margin: 20px 0;">
+                    <button class="status-badge status-success" onclick="simulateFixedBehavior()">Simuler Comportement Corrigé</button>
+                    <button class="status-badge status-warning" onclick="simulateOldBehavior()">Simuler Ancien Comportement</button>
+                    <button class="status-badge status-error" onclick="clearLog()">Effacer Log</button>
+                </div>
+                
+                <div class="log" id="log">
+                    <div class="log-entry log-info">🚀 Test de correction de boucle infinie initialisé</div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    📋 Checklist de Vérification
+                </div>
+                <div class="test-description">
+                    Points à vérifier dans l'interface de modification des produits admin.
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <h4 style="margin-top: 0; color: #374151;">✅ Comportement Corrigé</h4>
+                        <ul style="color: #6b7280; line-height: 1.6;">
+                            <li>Délimitations chargées une seule fois</li>
+                            <li>Pas de boucle infinie dans la console</li>
+                            <li>Performance normale de l'interface</li>
+                            <li>Pas d'erreurs de linter</li>
+                            <li>Fonctionnalité préservée</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <h4 style="margin-top: 0; color: #374151;">❌ Ancien Problème</h4>
+                        <ul style="color: #6b7280; line-height: 1.6;">
+                            <li>Boucle infinie de chargement</li>
+                            <li>Console spammée de logs</li>
+                            <li>Performance dégradée</li>
+                            <li>Erreurs de linter</li>
+                            <li>Interface non responsive</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function simulateFixedBehavior() {
+            log('🔄 Simulation du comportement corrigé...', 'info');
+            
+            setTimeout(() => {
+                log('📦 Chargement du produit...', 'info');
+            }, 500);
+            
+            setTimeout(() => {
+                log('🎨 Délimitations trouvées: 1 zone', 'success');
+            }, 1000);
+            
+            setTimeout(() => {
+                log('✅ Délimitation chargée une seule fois', 'success');
+                log('✅ Pas de boucle infinie détectée', 'success');
+                log('✅ Interface responsive', 'success');
+            }, 1500);
+            
+            setTimeout(() => {
+                log('🎯 Test terminé - Comportement corrigé', 'success');
+            }, 2000);
+        }
+        
+        function simulateOldBehavior() {
+            log('⚠️ Simulation de l\'ancien comportement problématique...', 'warning');
+            
+            setTimeout(() => {
+                log('🔄 Affichage automatique des délimitations existantes...', 'info');
+            }, 500);
+            
+            setTimeout(() => {
+                log('✅ Délimitation existante affichée', 'success');
+            }, 1000);
+            
+            setTimeout(() => {
+                log('🔄 Affichage automatique des délimitations existantes...', 'info');
+                log('⚠️ BOUCLE INFINIE DÉTECTÉE!', 'error');
+            }, 1500);
+            
+            setTimeout(() => {
+                log('❌ Interface bloquée par la boucle infinie', 'error');
+                log('❌ Performance dégradée', 'error');
+            }, 2000);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+        
+        // Initialisation
+        log('🚀 Test de correction de boucle infinie initialisé', 'info');
+        log('📋 Prêt à simuler les comportements', 'info');
+    </script>
+</body>
+</html> 

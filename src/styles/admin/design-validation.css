@@ -1,0 +1,455 @@
+/* Styles pour l'interface de validation des designs - Décembre 2024 */
+
+/* Badges de statut */
+.badge-published {
+  background: #10b981;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.badge-draft {
+  background: #f59e0b;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.badge-pending {
+  background: #6b7280;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.badge-rejected {
+  background: #ef4444;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.badge-ready {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-publish-now {
+  background: #059669;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-publish-now:hover {
+  background: #047857;
+}
+
+/* Légende des statuts */
+.status-legend {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.status-legend ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+}
+
+.status-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* Cartes de produit */
+.product-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  background: white;
+}
+
+.design-info {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.design-info small {
+  display: block;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+/* Notifications */
+.info-banner {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  color: #1e40af;
+}
+
+/* NOUVEAUX STYLES POUR L'INTERFACE ADMIN */
+
+/* En-tête admin */
+.admin-header {
+  margin-bottom: 24px;
+}
+
+.admin-header h2 {
+  margin: 0 0 16px 0;
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Barre de statistiques */
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  min-width: 80px;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-item.pending .stat-number {
+  color: #f59e0b;
+}
+
+.stat-item.validated .stat-number {
+  color: #10b981;
+}
+
+.stat-item.rejected .stat-number {
+  color: #ef4444;
+}
+
+/* Filtres de statut */
+.status-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #6b7280;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.filter-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+/* Grille de designs */
+.designs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* Cartes de design améliorées */
+.design-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.design-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.design-image {
+  position: relative;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+}
+
+.design-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.status-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.pending {
+  background: rgba(107, 114, 128, 0.9);
+  color: white;
+}
+
+.status-badge.validated {
+  background: rgba(16, 185, 129, 0.9);
+  color: white;
+}
+
+.status-badge.rejected {
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+}
+
+.design-info {
+  padding: 16px;
+  border-top: none;
+}
+
+.design-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.vendor-info, .price, .category, .created-date {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.price {
+  font-weight: 600;
+  color: #059669;
+}
+
+.rejection-reason {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+.rejection-reason strong {
+  color: #dc2626;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rejection-reason p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #7f1d1d;
+}
+
+/* Actions de validation */
+.validation-actions {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.btn-validate, .btn-reject {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-validate {
+  background: #10b981;
+  color: white;
+}
+
+.btn-validate:hover {
+  background: #059669;
+}
+
+.btn-reject {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-reject:hover {
+  background: #dc2626;
+}
+
+/* Informations du validateur */
+.validator-info {
+  padding: 12px 16px;
+  background: #f3f4f6;
+  border-top: 1px solid #e5e7eb;
+}
+
+.validator-info small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* État vide */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #6b7280;
+}
+
+.empty-state p {
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stats-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .stat-item {
+    min-width: calc(50% - 4px);
+  }
+  
+  .status-filters {
+    flex-wrap: wrap;
+  }
+  
+  .designs-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .validation-actions {
+    flex-direction: column;
+  }
+}
+
+/* Mode sombre */
+@media (prefers-color-scheme: dark) {
+  .status-legend {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .product-card {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .design-info {
+    border-color: #374151;
+  }
+
+  .admin-header h2 {
+    color: #f9fafb;
+  }
+
+  .stats-bar {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .stat-item {
+    background: #111827;
+    border-color: #374151;
+  }
+
+  .stat-number {
+    color: #f9fafb;
+  }
+
+  .stat-label {
+    color: #9ca3af;
+  }
+
+  .filter-btn {
+    background: #1f2937;
+    color: #9ca3af;
+    border-color: #374151;
+  }
+
+  .filter-btn:hover {
+    background: #374151;
+    border-color: #4b5563;
+  }
+
+  .design-card {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .design-info h3 {
+    color: #f9fafb;
+  }
+
+  .validator-info {
+    background: #374151;
+    border-color: #4b5563;
+  }
+
+  .validation-actions {
+    background: #374151;
+    border-color: #4b5563;
+  }
+} 

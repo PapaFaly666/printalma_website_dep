@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Vérification des Endpoints Corrigés</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .destructive {
+            background-color: #dc3545;
+        }
+        .destructive:hover {
+            background-color: #c82333;
+        }
+        .success-btn {
+            background-color: #28a745;
+        }
+        .success-btn:hover {
+            background-color: #218838;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .old-endpoint {
+            background-color: #ffe6e6;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+        }
+        .new-endpoint {
+            background-color: #e6ffe6;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Vérification des Endpoints Corrigés</h1>
+    
+    <div class="test-container">
+        <h2>📋 Comparaison des Endpoints</h2>
+        <div class="comparison">
+            <div class="old-endpoint">
+                <h3>❌ Anciens Endpoints (Erreurs)</h3>
+                <ul>
+                    <li><code>GET /api/auth/me</code> → 404 Not Found</li>
+                    <li><code>GET /api/designs/my-designs</code> → 400 Bad Request</li>
+                    <li><code>GET /api/vendor-products</code> → ✅ OK</li>
+                </ul>
+            </div>
+            <div class="new-endpoint">
+                <h3>✅ Nouveaux Endpoints (Corrigés)</h3>
+                <ul>
+                    <li><code>GET /auth/profile</code> → ✅ OK</li>
+                    <li><code>GET /vendor/designs</code> → ✅ OK</li>
+                    <li><code>GET /vendor/products</code> → ✅ OK</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>🧪 Tests des Endpoints</h2>
+        <button onclick="testAllEndpoints()">🚀 Tester tous les endpoints</button>
+        <button onclick="testUserProfile()">👤 Tester profil utilisateur</button>
+        <button onclick="testDesigns()">🎨 Tester designs</button>
+        <button onclick="testVendorProducts()">📦 Tester produits vendeur</button>
+        <button onclick="clearResults()">🧹 Nettoyer résultats</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>🛡️ Test du Système d'Isolation</h2>
+        <button onclick="testIsolationSystem()">🔍 Test diagnostic complet</button>
+        <button onclick="testPositionSave()">💾 Test sauvegarde position</button>
+        <button onclick="testAutoFix()">🔧 Test correction automatique</button>
+        <div id="isolation-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>📊 Informations Système</h2>
+        <button onclick="showSystemInfo()">ℹ️ Afficher infos système</button>
+        <button onclick="testConsoleUtilities()">🔧 Tester utilitaires console</button>
+        <div id="system-info"></div>
+    </div>
+
+    <script>
+        // Utilitaires
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `${new Date().toLocaleTimeString()} - ${message}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('isolation-results').innerHTML = '';
+            document.getElementById('system-info').innerHTML = '';
+        }
+
+        // Tests des endpoints
+        async function testAllEndpoints() {
+            addResult('test-results', '🚀 Démarrage des tests des endpoints...', 'info');
+            
+            await testUserProfile();
+            await testDesigns();
+            await testVendorProducts();
+            
+            addResult('test-results', '✅ Tests des endpoints terminés', 'success');
+        }
+
+        async function testUserProfile() {
+            addResult('test-results', '👤 Test du profil utilisateur...', 'info');
+            
+            try {
+                const response = await fetch('/auth/profile', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('test-results', `✅ Profil utilisateur: ${data.email || 'Email non disponible'} (${data.role || 'Rôle non spécifié'})`, 'success');
+                } else {
+                    addResult('test-results', `❌ Erreur profil utilisateur: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addResult('test-results', `❌ Erreur requête profil: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDesigns() {
+            addResult('test-results', '🎨 Test des designs...', 'info');
+            
+            try {
+                const response = await fetch('/vendor/designs', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const designCount = Array.isArray(data) ? data.length : (data.data?.items?.length || 0);
+                    addResult('test-results', `✅ Designs récupérés: ${designCount} design(s) trouvé(s)`, 'success');
+                } else {
+                    addResult('test-results', `❌ Erreur designs: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addResult('test-results', `❌ Erreur requête designs: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVendorProducts() {
+            addResult('test-results', '📦 Test des produits vendeur...', 'info');
+            
+            try {
+                const response = await fetch('/vendor/products', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const productCount = Array.isArray(data) ? data.length : 0;
+                    addResult('test-results', `✅ Produits vendeur récupérés: ${productCount} produit(s) trouvé(s)`, 'success');
+                } else {
+                    addResult('test-results', `❌ Erreur produits vendeur: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addResult('test-results', `❌ Erreur requête produits vendeur: ${error.message}`, 'error');
+            }
+        }
+
+        // Tests du système d'isolation
+        async function testIsolationSystem() {
+            addResult('isolation-results', '🛡️ Test du système d\'isolation...', 'info');
+            
+            try {
+                // Test avec la console si disponible
+                if (window.quickDiagnose) {
+                    addResult('isolation-results', '🔍 Lancement du diagnostic rapide...', 'info');
+                    const result = await window.quickDiagnose(1, 1);
+                    addResult('isolation-results', `✅ Diagnostic terminé: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    addResult('isolation-results', '⚠️ Utilitaires console non disponibles', 'warning');
+                }
+            } catch (error) {
+                addResult('isolation-results', `❌ Erreur diagnostic: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPositionSave() {
+            addResult('isolation-results', '💾 Test de sauvegarde position...', 'info');
+            
+            try {
+                const testPosition = {
+                    x: Math.random() * 200,
+                    y: Math.random() * 200,
+                    scale: 1,
+                    rotation: 0,
+                    constraints: { adaptive: true }
+                };
+                
+                const response = await fetch('/api/vendor-products/1/designs/1/position/direct', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(testPosition)
+                });
+                
+                if (response.ok) {
+                    addResult('isolation-results', `✅ Position sauvegardée: x=${Math.round(testPosition.x)}, y=${Math.round(testPosition.y)}`, 'success');
+                } else {
+                    addResult('isolation-results', `❌ Erreur sauvegarde position: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addResult('isolation-results', `❌ Erreur requête sauvegarde: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAutoFix() {
+            addResult('isolation-results', '🔧 Test de correction automatique...', 'info');
+            
+            try {
+                if (window.testSavePosition) {
+                    const result = await window.testSavePosition(1, 1);
+                    if (result.success) {
+                        addResult('isolation-results', '✅ Correction automatique fonctionne', 'success');
+                    } else {
+                        addResult('isolation-results', `⚠️ Correction automatique échouée: ${result.error}`, 'warning');
+                    }
+                } else {
+                    addResult('isolation-results', '⚠️ Utilitaires console non disponibles', 'warning');
+                }
+            } catch (error) {
+                addResult('isolation-results', `❌ Erreur test correction: ${error.message}`, 'error');
+            }
+        }
+
+        // Informations système
+        async function showSystemInfo() {
+            addResult('system-info', '📊 Récupération des informations système...', 'info');
+            
+            try {
+                if (window.designSystemInfo) {
+                    await window.designSystemInfo();
+                    addResult('system-info', '✅ Informations système affichées dans la console', 'success');
+                } else {
+                    addResult('system-info', '⚠️ Utilitaires console non disponibles', 'warning');
+                }
+            } catch (error) {
+                addResult('system-info', `❌ Erreur informations système: ${error.message}`, 'error');
+            }
+        }
+
+        async function testConsoleUtilities() {
+            addResult('system-info', '🔧 Test des utilitaires console...', 'info');
+            
+            const utilities = [
+                'quickDiagnose',
+                'testSavePosition',
+                'designSystemInfo',
+                'cleanupDesignSystem',
+                'debugDesignPosition'
+            ];
+            
+            let availableCount = 0;
+            
+            utilities.forEach(util => {
+                if (window[util]) {
+                    addResult('system-info', `✅ ${util} - Disponible`, 'success');
+                    availableCount++;
+                } else {
+                    addResult('system-info', `❌ ${util} - Non disponible`, 'error');
+                }
+            });
+            
+            addResult('system-info', `📊 Résumé: ${availableCount}/${utilities.length} utilitaires disponibles`, 'info');
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            addResult('system-info', '🚀 Page de vérification chargée', 'info');
+            addResult('system-info', '💡 Testez les endpoints pour vérifier les corrections', 'info');
+        });
+    </script>
+</body>
+</html> 
+ 
+ 

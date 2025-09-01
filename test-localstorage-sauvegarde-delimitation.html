@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sauvegarde localStorage - DelimitationCanvas</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fafafa;
+        }
+        
+        .test-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-description {
+            color: #6b7280;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .canvas-simulation {
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f9fafb;
+            position: relative;
+            margin: 20px 0;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .delimitation-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 150px;
+            border: 3px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+        
+        .delimitation-box:hover {
+            border-color: #2563eb;
+            background: rgba(59, 130, 246, 0.3);
+        }
+        
+        .delimitation-box.dragging {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.3);
+        }
+        
+        .log {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-success { color: #10b981; }
+        .log-warning { color: #f59e0b; }
+        .log-error { color: #ef4444; }
+        .log-info { color: #3b82f6; }
+        
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .button.secondary {
+            background: #6b7280;
+        }
+        
+        .button.secondary:hover {
+            background: #4b5563;
+        }
+        
+        .button.success {
+            background: #10b981;
+        }
+        
+        .button.success:hover {
+            background: #059669;
+        }
+        
+        .localStorage-info {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .localStorage-key {
+            font-family: 'Monaco', 'Menlo', monospace;
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        
+        .localStorage-data {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💾 Test Sauvegarde localStorage</h1>
+            <p>Vérification de la sauvegarde automatique dans localStorage</p>
+        </div>
+        
+        <div class="content">
+            <div class="test-section">
+                <div class="test-title">
+                    🎯 Test 1: Sauvegarde Immédiate localStorage
+                </div>
+                <div class="test-description">
+                    Ce test vérifie que les délimitations sont sauvegardées immédiatement dans localStorage 
+                    à chaque modification, sans debounce.
+                </div>
+                
+                <div class="canvas-simulation">
+                    <div class="delimitation-box" id="delimitationBox">
+                        <div style="text-align: center; color: #1e40af; font-weight: 600; padding: 20px;">
+                            Zone de délimitation<br>
+                            <small>Glissez pour déplacer</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin: 20px 0;">
+                    <button class="button" onclick="simulateModification()">Simuler Modification</button>
+                    <button class="button secondary" onclick="checkLocalStorage()">Vérifier localStorage</button>
+                    <button class="button success" onclick="clearLocalStorage()">Effacer localStorage</button>
+                    <button class="button secondary" onclick="clearLog()">Effacer Log</button>
+                </div>
+                
+                <div class="log" id="log">
+                    <div class="log-entry log-info">🚀 Test de sauvegarde localStorage initialisé</div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    📋 Informations localStorage
+                </div>
+                <div class="test-description">
+                    Détails sur la clé de stockage et les données sauvegardées.
+                </div>
+                
+                <div class="localStorage-info">
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #374151;">🔑 Clé de stockage :</strong>
+                    </div>
+                    <div class="localStorage-key" id="storageKey">
+                        delimitation-canvas-test-image-no-design
+                    </div>
+                    
+                    <div style="margin: 15px 0;">
+                        <strong style="color: #374151;">📊 Données sauvegardées :</strong>
+                    </div>
+                    <div class="localStorage-data" id="storageData">
+                        Aucune donnée sauvegardée
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    🔧 Fonctionnalités localStorage
+                </div>
+                <div class="test-description">
+                    Détails des fonctionnalités implémentées pour la sauvegarde localStorage.
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 10px;">⚡ Sauvegarde Immédiate</div>
+                        <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                            Sauvegarde automatique dans localStorage à chaque modification, 
+                            sans délai ni debounce pour une réactivité maximale.
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 10px;">🔄 Chargement Automatique</div>
+                        <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                            Chargement automatique des délimitations depuis localStorage 
+                            au montage du composant pour restaurer l'état précédent.
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 10px;">🎯 Clé Unique</div>
+                        <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                            Clé de stockage unique basée sur l'URL de l'image et du design 
+                            pour éviter les conflits entre différents produits.
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 10px;">💾 Sauvegarde Complète</div>
+                        <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                            Sauvegarde de toutes les délimitations avec leurs propriétés 
+                            complètes (position, taille, rotation, etc.).
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 10px;">🛡️ Gestion d'Erreurs</div>
+                        <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                            Gestion robuste des erreurs de parsing et de stockage 
+                            avec logs détaillés pour le débogage.
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 10px;">📱 Compatibilité</div>
+                        <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                            Compatible avec tous les navigateurs modernes et 
+                            fonctionne même en mode hors ligne.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <div class="test-title">
+                    🔍 Vérification
+                </div>
+                <div class="test-description">
+                    Comment vérifier que la sauvegarde localStorage fonctionne correctement.
+                </div>
+                
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px;">
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #374151;">✅ Checklist de Vérification :</strong>
+                    </div>
+                    <ul style="color: #6b7280; line-height: 1.6;">
+                        <li>Ouvrir les outils de développement (F12)</li>
+                        <li>Aller dans l'onglet Application > Storage > Local Storage</li>
+                        <li>Modifier une délimitation dans le canvas</li>
+                        <li>Vérifier que les données apparaissent immédiatement dans localStorage</li>
+                        <li>Recharger la page et confirmer que les délimitations sont restaurées</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let modificationCount = 0;
+        const storageKey = 'delimitation-canvas-test-image-no-design';
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function simulateModification() {
+            modificationCount++;
+            log(`🔄 Modification #${modificationCount} simulée...`, 'info');
+            
+            // Simuler une délimitation
+            const delimitation = {
+                id: `delim-${Date.now()}`,
+                x: Math.random() * 100,
+                y: Math.random() * 100,
+                width: 150 + Math.random() * 50,
+                height: 100 + Math.random() * 50,
+                rotation: Math.random() * 360
+            };
+            
+            // Sauvegarder dans localStorage
+            try {
+                localStorage.setItem(storageKey, JSON.stringify([delimitation]));
+                log('💾 Sauvegarde localStorage réussie', 'success');
+                updateStorageDisplay();
+            } catch (e) {
+                log(`❌ Erreur de sauvegarde: ${e.message}`, 'error');
+            }
+            
+            // Simuler le déplacement visuel
+            const box = document.getElementById('delimitationBox');
+            box.style.transform = `translate(${delimitation.x}px, ${delimitation.y}px) rotate(${delimitation.rotation}deg)`;
+            box.style.width = `${delimitation.width}px`;
+            box.style.height = `${delimitation.height}px`;
+        }
+
+        function checkLocalStorage() {
+            log('🔍 Vérification localStorage...', 'info');
+            
+            try {
+                const saved = localStorage.getItem(storageKey);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    log(`✅ Données trouvées: ${data.length} délimitation(s)`, 'success');
+                    updateStorageDisplay();
+                } else {
+                    log('⚠️ Aucune donnée trouvée dans localStorage', 'warning');
+                }
+            } catch (e) {
+                log(`❌ Erreur de lecture: ${e.message}`, 'error');
+            }
+        }
+
+        function clearLocalStorage() {
+            try {
+                localStorage.removeItem(storageKey);
+                log('🧹 localStorage effacé', 'success');
+                updateStorageDisplay();
+                
+                // Réinitialiser la boîte
+                const box = document.getElementById('delimitationBox');
+                box.style.transform = 'translate(-50%, -50%)';
+                box.style.width = '200px';
+                box.style.height = '150px';
+            } catch (e) {
+                log(`❌ Erreur d'effacement: ${e.message}`, 'error');
+            }
+        }
+
+        function updateStorageDisplay() {
+            try {
+                const saved = localStorage.getItem(storageKey);
+                const dataElement = document.getElementById('storageData');
+                
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    dataElement.textContent = JSON.stringify(data, null, 2);
+                    dataElement.style.background = '#dcfce7';
+                    dataElement.style.borderColor = '#10b981';
+                } else {
+                    dataElement.textContent = 'Aucune donnée sauvegardée';
+                    dataElement.style.background = '#fef3c7';
+                    dataElement.style.borderColor = '#f59e0b';
+                }
+            } catch (e) {
+                const dataElement = document.getElementById('storageData');
+                dataElement.textContent = `Erreur de parsing: ${e.message}`;
+                dataElement.style.background = '#fee2e2';
+                dataElement.style.borderColor = '#ef4444';
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+
+        // Initialisation
+        log('🚀 Test de sauvegarde localStorage initialisé', 'info');
+        log('📋 Prêt à tester la sauvegarde automatique', 'info');
+        
+        // Vérifier l'état initial
+        checkLocalStorage();
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 

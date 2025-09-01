@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Affichage Produits Vendeur V2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .product-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .product-image {
+            width: 100%;
+            height: 200px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .product-canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .product-details {
+            padding: 15px;
+        }
+        .product-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .product-price {
+            color: #2563eb;
+            font-weight: bold;
+        }
+        .product-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .status-draft { background: #fef3c7; color: #92400e; }
+        .status-pending { background: #dbeafe; color: #1e40af; }
+        .status-published { background: #d1fae5; color: #065f46; }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            color: #ef4444;
+            background: #fef2f2;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #10b981;
+            background: #f0fdf4;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .workflow-step {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #3b82f6;
+            background: #f8fafc;
+        }
+        .api-endpoint {
+            background: #1f2937;
+            color: #10b981;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .position-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛒 Test - Affichage Produits Vendeur V2</h1>
+            <p>Démonstration du système d'affichage avec délimitations et positions absolues</p>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">📋 Workflow d'affichage selon la documentation</div>
+            <div class="workflow-step">
+                <strong>1. Récupération liste produits</strong>
+                <div class="api-endpoint">GET /vendor/products?limit=20&offset=0</div>
+            </div>
+            <div class="workflow-step">
+                <strong>2. Détails produit sélectionné</strong>
+                <div class="api-endpoint">GET /vendor/products/{productId}</div>
+            </div>
+            <div class="workflow-step">
+                <strong>3. Position design enregistrée</strong>
+                <div class="api-endpoint">GET /api/vendor-products/{vpId}/designs/{designId}/position/direct</div>
+            </div>
+            <div class="workflow-step">
+                <strong>4. Rendu avec délimitations</strong>
+                <p>Dessiner le mock-up + design dans la zone délimitation avec position exacte</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🎯 Calcul des positions (selon documentation)</div>
+            <div id="position-calculation">
+                <div class="loading">Calcul des positions en cours...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">📦 Produits vendeur avec designs positionnés</div>
+            <div id="product-display">
+                <div class="loading">Chargement des produits...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🔧 Logs et debug</div>
+            <div id="debug-logs" style="background: #f9fafb; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                <div>Initialisation du test...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration API
+        const API_BASE_URL = 'http://localhost:3004';
+        
+        // Fonction pour logger
+        function log(message, type = 'info') {
+            const debugLogs = document.getElementById('debug-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#374151';
+            debugLogs.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            debugLogs.scrollTop = debugLogs.scrollHeight;
+            console.log(message);
+        }
+
+        // Fonction pour obtenir les headers avec authentification
+        function getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        // Fonction pour charger une image
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        // Fonction pour calculer la position selon la documentation
+        function calculateDesignPosition(delimitation, savedPosition, fallbackScale, imageWidth, imageHeight) {
+            log(`🎯 Calcul position pour délimitation: ${JSON.stringify(delimitation)}`);
+            
+            // Adapter les unités de la délimitation
+            let delim = { ...delimitation };
+            if (delimitation.coordinateType === 'PERCENT') {
+                delim.x = (delimitation.x / 100) * imageWidth;
+                delim.y = (delimitation.y / 100) * imageHeight;
+                delim.width = (delimitation.width / 100) * imageWidth;
+                delim.height = (delimitation.height / 100) * imageHeight;
+                log(`📐 Conversion PERCENT -> PIXEL: ${JSON.stringify(delim)}`);
+            }
+
+            // Si position sauvegardée, l'utiliser
+            if (savedPosition) {
+                log(`💾 Position sauvegardée trouvée: ${JSON.stringify(savedPosition)}`);
+                return savedPosition;
+            }
+
+            // Fallback : centrer dans la délimitation
+            const centerX = delim.x + delim.width / 2;
+            const centerY = delim.y + delim.height / 2;
+            
+            const fallbackPosition = {
+                x: centerX,
+                y: centerY,
+                scale: fallbackScale,
+                rotation: 0
+            };
+            
+            log(`🎯 Position fallback (centré): ${JSON.stringify(fallbackPosition)}`);
+            return fallbackPosition;
+        }
+
+        // Fonction pour récupérer les détails d'un produit
+        async function fetchVendorProductDetail(vpId) {
+            try {
+                log(`📋 Récupération détails produit ${vpId}`);
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products/${vpId}`, {
+                    headers: getAuthHeaders(),
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (!result.success || !result.data) {
+                    throw new Error('Données produit invalides');
+                }
+
+                log(`✅ Détails produit récupérés: ${result.data.adminProduct.name}`, 'success');
+                return result.data;
+            } catch (error) {
+                log(`❌ Erreur récupération détails: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Fonction pour récupérer la position d'un design
+        async function fetchDesignPosition(vpId, designId) {
+            try {
+                log(`📍 Récupération position design ${designId} pour produit ${vpId}`);
+                
+                const response = await fetch(`${API_BASE_URL}/api/vendor-products/${vpId}/designs/${designId}/position/direct`, {
+                    headers: getAuthHeaders(),
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        log(`📍 Aucune position enregistrée pour design ${designId}`);
+                        return null;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (!result.data) {
+                    log(`📍 Aucune position dans la réponse`);
+                    return null;
+                }
+
+                log(`✅ Position récupérée: ${JSON.stringify(result.data)}`, 'success');
+                return result.data;
+            } catch (error) {
+                log(`❌ Erreur récupération position: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Fonction pour rendre un produit avec design
+        async function renderProductWithDesign(product, savedPosition, canvasId) {
+            try {
+                log(`🎨 Début rendu produit: ${product.adminProduct.name}`);
+                
+                const canvas = document.getElementById(canvasId);
+                const ctx = canvas.getContext('2d');
+                
+                // Choisir la couleur et l'image
+                const selectedColor = product.selectedColors[0];
+                const colorVariation = product.adminProduct.colorVariations.find(
+                    cv => cv.id === selectedColor.id
+                );
+                
+                if (!colorVariation || !colorVariation.images.length) {
+                    throw new Error(`Aucune image pour couleur ${selectedColor.name}`);
+                }
+                
+                const mockupImage = colorVariation.images.find(img => img.viewType === 'FRONT') 
+                    || colorVariation.images[0];
+                
+                if (!mockupImage.delimitations.length) {
+                    throw new Error('Aucune délimitation trouvée');
+                }
+                
+                // Charger les images
+                log(`📸 Chargement mock-up: ${mockupImage.url}`);
+                const mockupImg = await loadImage(mockupImage.url);
+                
+                log(`🎨 Chargement design: ${product.designApplication.designUrl}`);
+                const designImg = await loadImage(product.designApplication.designUrl);
+                
+                // Configurer le canvas
+                canvas.width = mockupImg.width;
+                canvas.height = mockupImg.height;
+                
+                // Dessiner le mock-up
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(mockupImg, 0, 0);
+                
+                // Calculer la position finale
+                const delimitation = mockupImage.delimitations[0];
+                const finalPosition = calculateDesignPosition(
+                    delimitation,
+                    savedPosition,
+                    product.designApplication.scale,
+                    mockupImg.width,
+                    mockupImg.height
+                );
+                
+                // Dessiner le design
+                ctx.save();
+                ctx.translate(finalPosition.x, finalPosition.y);
+                ctx.rotate((finalPosition.rotation * Math.PI) / 180);
+                ctx.scale(finalPosition.scale, finalPosition.scale);
+                
+                const designWidth = designImg.width;
+                const designHeight = designImg.height;
+                ctx.drawImage(designImg, -designWidth / 2, -designHeight / 2, designWidth, designHeight);
+                
+                ctx.restore();
+                
+                log(`✅ Rendu terminé pour: ${product.adminProduct.name}`, 'success');
+                return finalPosition;
+                
+            } catch (error) {
+                log(`❌ Erreur rendu: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Fonction pour afficher les calculs de position
+        function displayPositionCalculations() {
+            const container = document.getElementById('position-calculation');
+            
+            // Exemple de délimitation selon la documentation
+            const exampleDelimitation = {
+                x: 150,
+                y: 200,
+                width: 200,
+                height: 200,
+                coordinateType: 'PIXEL'
+            };
+            
+            const exampleSavedPosition = {
+                x: 250,
+                y: 300,
+                scale: 0.8,
+                rotation: 15
+            };
+            
+            const mockImageWidth = 800;
+            const mockImageHeight = 600;
+            
+            const calculatedPosition = calculateDesignPosition(
+                exampleDelimitation,
+                exampleSavedPosition,
+                0.6,
+                mockImageWidth,
+                mockImageHeight
+            );
+            
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4>📐 Délimitation exemple</h4>
+                        <pre>${JSON.stringify(exampleDelimitation, null, 2)}</pre>
+                    </div>
+                    <div>
+                        <h4>💾 Position sauvegardée</h4>
+                        <pre>${JSON.stringify(exampleSavedPosition, null, 2)}</pre>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <h4>🎯 Position finale calculée</h4>
+                        <pre>${JSON.stringify(calculatedPosition, null, 2)}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fonction principale pour charger les produits
+        async function loadVendorProducts() {
+            try {
+                log('📡 Chargement liste produits vendeur');
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products?limit=10&offset=0`, {
+                    headers: getAuthHeaders(),
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                let products = [];
+                
+                if (Array.isArray(result)) {
+                    products = result;
+                } else if (Array.isArray(result.data)) {
+                    products = result.data;
+                } else if (Array.isArray(result.products)) {
+                    products = result.products;
+                }
+
+                log(`✅ ${products.length} produits chargés`, 'success');
+                
+                // Afficher les produits
+                await displayProducts(products);
+                
+            } catch (error) {
+                log(`❌ Erreur chargement produits: ${error.message}`, 'error');
+                document.getElementById('product-display').innerHTML = 
+                    `<div class="error">Erreur: ${error.message}</div>`;
+            }
+        }
+
+        // Fonction pour afficher les produits
+        async function displayProducts(products) {
+            const container = document.getElementById('product-display');
+            
+            if (!products.length) {
+                container.innerHTML = '<div class="error">Aucun produit trouvé</div>';
+                return;
+            }
+
+            let html = '<div class="product-grid">';
+            
+            for (let i = 0; i < Math.min(products.length, 6); i++) {
+                const product = products[i];
+                const canvasId = `product-canvas-${product.id}`;
+                
+                html += `
+                    <div class="product-card">
+                        <div class="product-image">
+                            <canvas id="${canvasId}" class="product-canvas"></canvas>
+                        </div>
+                        <div class="product-details">
+                            <div class="product-name">${product.name || 'Produit'}</div>
+                            <div class="product-price">${product.price || 0}€</div>
+                            <div class="product-status status-${(product.status || 'draft').toLowerCase()}">
+                                ${product.status || 'DRAFT'}
+                            </div>
+                            <div class="position-info" id="position-info-${product.id}">
+                                Position: Calcul en cours...
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Rendre chaque produit
+            for (let i = 0; i < Math.min(products.length, 6); i++) {
+                const product = products[i];
+                try {
+                    // Récupérer les détails complets
+                    const productDetail = await fetchVendorProductDetail(product.id);
+                    
+                    // Récupérer la position si designId disponible
+                    let savedPosition = null;
+                    if (productDetail.designId) {
+                        savedPosition = await fetchDesignPosition(product.id, productDetail.designId);
+                    }
+                    
+                    // Rendre le produit
+                    const finalPosition = await renderProductWithDesign(
+                        productDetail, 
+                        savedPosition, 
+                        `product-canvas-${product.id}`
+                    );
+                    
+                    // Afficher les infos de position
+                    document.getElementById(`position-info-${product.id}`).innerHTML = 
+                        `Position: ${Math.round(finalPosition.x)}, ${Math.round(finalPosition.y)} | 
+                         Échelle: ${Math.round(finalPosition.scale * 100)}%`;
+                    
+                } catch (error) {
+                    log(`❌ Erreur rendu produit ${product.id}: ${error.message}`, 'error');
+                    document.getElementById(`position-info-${product.id}`).innerHTML = 
+                        `Erreur: ${error.message}`;
+                }
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            log('🚀 Initialisation du test V2');
+            
+            // Afficher les calculs de position
+            displayPositionCalculations();
+            
+            // Charger les produits
+            await loadVendorProducts();
+        });
+    </script>
+</body>
+</html> 

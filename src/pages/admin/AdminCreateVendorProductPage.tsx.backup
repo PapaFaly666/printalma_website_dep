@@ -1,0 +1,2617 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  User, 
+  Package, 
+  Palette, 
+  Settings, 
+  Eye, 
+  Save, 
+  Loader2,
+  AlertCircle,
+  Check,
+  Store,
+  ShoppingBag,
+  Users,
+  Search,
+  Filter,
+  ArrowRight,
+  MapPin,
+  Calendar,
+  DollarSign,
+  Plus,
+  X,
+  Ruler
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '../../components/ui/button';
+
+// Types basés sur la documentation
+interface VendorOption {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  shop_name?: string;
+  phone?: string;
+  country?: string;
+  vendeur_type: string;
+  status: boolean;
+  profile_photo_url?: string;
+  productCount: number;
+  designCount: number;
+  created_at: string;
+  last_login_at?: string;
+}
+
+interface BaseProduct {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  images: string[];
+  categories: Array<{
+    id: number;
+    name: string;
+    description: string;
+  }>;
+  colorVariations: Array<{
+    id: number;
+    name: string;
+    colorCode: string;
+    images: Array<{
+      id: number;
+      view: string;
+      url: string;
+      naturalWidth: number;
+      naturalHeight: number;
+      delimitations: Array<{
+        id: number;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        rotation: number;
+        name: string;
+        coordinateType: string;
+      }>;
+    }>;
+  }>;
+  sizes: Array<{
+    id: number;
+    sizeName: string;
+  }>;
+}
+
+interface Design {
+  id: number;
+  name: string;
+  imageUrl: string;
+  cloudinaryPublicId: string;
+  category: string;
+  format: string;
+  isValidated: boolean;
+  validatedAt?: string;
+  vendor: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    shop_name?: string;
+  };
+}
+
+interface AdminCreateVendorProductData {
+  // Étape 1: Vendeur
+  vendorId?: number;
+  selectedVendor?: VendorOption;
+  
+  // Étape 2: Produit de base
+  baseProductId?: number;
+  selectedBaseProduct?: BaseProduct;
+  
+  // Étape 3: Design (V2 - support des deux modes)
+  designMode?: 'existing' | 'new'; // Nouveau: choix entre design existant ou nouveau
+  designId?: number;
+  selectedDesign?: Design;
+  newDesign?: {
+    name: string;
+    description?: string;
+    category: string;
+    imageBase64?: string;
+    tags?: string[];
+    price?: number; // Ajout du prix pour le design
+  };
+  
+  // Étape 4: Configuration
+  vendorPrice?: number;
+  vendorName?: string;
+  vendorDescription?: string;
+  vendorStock?: number;
+  selectedColors?: Array<{
+    id: number;
+    name: string;
+    colorCode: string;
+  }>;
+  selectedSizes?: Array<{
+    id: number;
+    sizeName: string;
+  }>;
+  designPosition?: {
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+  };
+  
+  // Étape 5: Options avancées (V2)
+  forcedStatus?: string;
+  postValidationAction?: string;
+  bypassAdminValidation?: boolean;
+  
+  // Structure produit V2
+  productStructure?: {
+    adminProduct: {
+      id: number;
+      name: string;
+      description: string;
+      price: number;
+      images: {
+        colorVariations: Array<{
+          id: number;
+          name: string;
+          colorCode: string;
+          images: Array<{
+            id: number;
+            url: string;
+            viewType: string;
+            delimitations: Array<{
+              x: number;
+              y: number;
+              width: number;
+              height: number;
+              coordinateType: string;
+            }>;
+          }>;
+        }>;
+      };
+      sizes: Array<{
+        id: number;
+        sizeName: string;
+      }>;
+    };
+    designApplication: {
+      positioning: string;
+      scale: number;
+    };
+  };
+  
+  // Méta
+  currentStep: number;
+  lastSaved?: string;
+  previewColorId?: number; // Pour la prévisualisation
+  selectedMockupIds?: number[]; // Pour les mockups sélectionnés
+}
+
+const LOCALSTORAGE_KEY = 'admin_create_vendor_product_data';
+const STEPS = [
+  { id: 1, title: 'Vendeur', icon: User, description: 'Sélectionner le vendeur' },
+  { id: 2, title: 'Produit', icon: Package, description: 'Choisir le produit de base' },
+  { id: 3, title: 'Design', icon: Palette, description: 'Sélectionner le design' },
+  { id: 4, title: 'Configuration', icon: Settings, description: 'Configurer le produit' },
+  { id: 5, title: 'Aperçu', icon: Eye, description: 'Prévisualiser et finaliser' }
+];
+
+// Import des services
+import designService, { Design } from '../../services/designService';
+import { vendorProductService } from '../../services/vendorProductService';
+
+// Import du service de sauvegarde des transforms
+import { saveDesignTransforms } from '../../services/designTransformsAPI';
+
+// Composant de positionnement interactif pour l'admin copié de SellDesignPage.tsx
+interface AdminDesignPositionerProps {
+  product: BaseProduct;
+  design: Design | { imageBase64: string; name: string } | null;
+  selectedColorId?: number;
+  position: { x: number; y: number; scale: number; rotation: number };
+  onPositionChange: (position: { x: number; y: number; scale: number; rotation: number }) => void;
+}
+
+// Hook simplifié pour la sauvegarde localStorage dans l'admin
+const useAdminDesignTransforms = (productId: number, designUrl: string) => {
+  const [transformStates, setTransformStates] = React.useState<Record<number, { x: number; y: number; scale: number; rotation: number }>>({});
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [lastSaveTime, setLastSaveTime] = React.useState<number | null>(null);
+  const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Clé localStorage pour l'admin
+  const getStorageKey = React.useCallback(() => {
+    return `admin_design_position_${productId}_${designUrl.slice(-20)}`;
+  }, [productId, designUrl]);
+
+  // Charger les positions depuis localStorage
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem(getStorageKey());
+      if (saved) {
+        const parsedStates = JSON.parse(saved);
+        setTransformStates(parsedStates);
+        console.log('📥 Positions admin chargées depuis localStorage:', parsedStates);
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement positions admin:', error);
+    }
+  }, [getStorageKey]);
+
+  // Fonction pour sauvegarder avec debounce
+  const saveToLocalStorage = React.useCallback((states: Record<number, { x: number; y: number; scale: number; rotation: number }>) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    setIsSaving(true);
+    saveTimeoutRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(getStorageKey(), JSON.stringify(states));
+        setLastSaveTime(Date.now());
+        console.log('💾 Positions admin sauvegardées:', states);
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde positions admin:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 300);
+  }, [getStorageKey]);
+
+  const getTransform = React.useCallback((index: number) => {
+    return transformStates[index] || { x: 0, y: 0, scale: 1, rotation: 0 };
+  }, [transformStates]);
+
+  const updateTransform = React.useCallback((index: number, updates: Partial<{ x: number; y: number; scale: number; rotation: number }>) => {
+    const currentTransform = getTransform(index);
+    const newTransform = { ...currentTransform, ...updates };
+    
+    const newStates = {
+      ...transformStates,
+      [index]: newTransform
+    };
+    
+    setTransformStates(newStates);
+    saveToLocalStorage(newStates);
+  }, [transformStates, getTransform, saveToLocalStorage]);
+
+  const resetTransforms = React.useCallback(() => {
+    const resetStates = {};
+    setTransformStates(resetStates);
+    saveToLocalStorage(resetStates);
+  }, [saveToLocalStorage]);
+
+  const saveNow = React.useCallback(() => {
+    saveToLocalStorage(transformStates);
+  }, [transformStates, saveToLocalStorage]);
+
+  return {
+    getTransform,
+    updateTransform,
+    resetTransforms,
+    saveNow,
+    isSaving,
+    lastSaveTime
+  };
+};
+
+const AdminDesignPositioner: React.FC<AdminDesignPositionerProps> = ({
+  product,
+  design,
+  selectedColorId,
+  position,
+  onPositionChange
+}) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+  const [naturalSize, setNaturalSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [containerSize, setContainerSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  
+  // Hook pour la sauvegarde localStorage comme dans SellDesignPage
+  const {
+    getTransform,
+    updateTransform,
+    resetTransforms,
+    saveNow,
+    isSaving,
+    lastSaveTime
+  } = useAdminDesignTransforms(product.id, design ? ('imageUrl' in design ? design.imageUrl : design.imageBase64) : '');
+
+  const dragState = React.useRef<{ delimIdx: number | null; startX: number; startY: number; origX: number; origY: number; mode: 'move' | 'resize'; origScale: number } | null>(null);
+  const [hoveredIdx, setHoveredIdx] = React.useState<number | null>(null);
+
+  // Observer natural image size
+  React.useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      setNaturalSize({ width: imgRef.current.naturalWidth, height: imgRef.current.naturalHeight });
+    }
+  }, [product, selectedColorId]);
+
+  // Observe container resize
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+    const update = () => {
+      const rect = containerRef.current!.getBoundingClientRect();
+      setContainerSize({ width: rect.width, height: rect.height });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(containerRef.current);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  // Récupérer les délimitations pour la couleur sélectionnée
+  const getDelimitations = () => {
+    const selectedColor = product.colorVariations?.find(c => c.id === selectedColorId);
+    const firstImage = selectedColor?.images?.[0];
+    return firstImage?.delimitations || [];
+  };
+
+  const delimitations = getDelimitations();
+
+  const computePxPosition = React.useCallback((delim: any) => {
+    const isPixel = delim.coordinateType === 'PIXEL' || delim.x > 100 || delim.y > 100;
+
+    const imgW = naturalSize.width || 1;
+    const imgH = naturalSize.height || 1;
+
+    let pct = {
+      x: isPixel ? (delim.x / imgW) * 100 : delim.x,
+      y: isPixel ? (delim.y / imgH) * 100 : delim.y,
+      w: isPixel ? (delim.width / imgW) * 100 : delim.width,
+      h: isPixel ? (delim.height / imgH) * 100 : delim.height,
+    };
+
+    const { width: contW, height: contH } = containerSize;
+    if (contW === 0 || contH === 0) return { left: 0, top: 0, width: 0, height: 0 };
+
+    const imgRatio = imgW / imgH;
+    const contRatio = contW / contH;
+
+    let dispW: number, dispH: number, offsetX: number, offsetY: number;
+    if (imgRatio > contRatio) {
+      dispW = contW;
+      dispH = contW / imgRatio;
+      offsetX = 0;
+      offsetY = (contH - dispH) / 2;
+    } else {
+      dispH = contH;
+      dispW = contH * imgRatio;
+      offsetX = (contW - dispW) / 2;
+      offsetY = 0;
+    }
+
+    return {
+      left: offsetX + (pct.x / 100) * dispW,
+      top: offsetY + (pct.y / 100) * dispH,
+      width: (pct.w / 100) * dispW,
+      height: (pct.h / 100) * dispH,
+    };
+  }, [naturalSize.width, naturalSize.height, containerSize]);
+
+  // Exactement comme dans SellDesignPage.tsx
+  const handleMouseDown = (e: React.MouseEvent, idx: number) => {
+    e.preventDefault();
+    const currentTransform = getTransform(idx);
+    dragState.current = {
+      delimIdx: idx,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: currentTransform.x,
+      origY: currentTransform.y,
+      mode: 'move',
+      origScale: currentTransform.scale,
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent, idx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const currentTransform = getTransform(idx);
+    dragState.current = {
+      delimIdx: idx,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: currentTransform.x,
+      origY: currentTransform.y,
+      mode: 'resize',
+      origScale: currentTransform.scale,
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!dragState.current) return;
+    const { delimIdx, startX, startY, origX, origY, mode, origScale } = dragState.current;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    if (mode === 'move') {
+      updateTransform(delimIdx!, { x: origX + dx, y: origY + dy });
+    } else if (mode === 'resize') {
+      // Utilise le déplacement diagonal pour ajuster l'échelle
+      const delta = Math.max(dx, dy);
+      let newScale = origScale + delta / 120; // 120px = double taille
+      newScale = Math.max(0.2, Math.min(newScale, 3));
+      updateTransform(delimIdx!, { scale: newScale });
+    }
+  };
+
+  const handleMouseUp = () => {
+    dragState.current = null;
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  // Synchroniser avec le parent quand les transformations changent
+  React.useEffect(() => {
+    const transform = getTransform(0); // Délimitation principale
+    
+    // Convertir les valeurs en pixels vers pourcentages pour correspondre aux attentes du parent
+    const pos = delimitations[0] ? computePxPosition(delimitations[0]) : null;
+    if (pos && pos.width > 0 && pos.height > 0) {
+      // Convertir la position relative de la délimitation vers des pourcentages du container global
+      const globalX = ((pos.left + transform.x + pos.width / 2) / containerSize.width) * 100;
+      const globalY = ((pos.top + transform.y + pos.height / 2) / containerSize.height) * 100;
+      
+      const newPosition = {
+        x: globalX,
+        y: globalY,
+        scale: transform.scale,
+        rotation: transform.rotation
+      };
+
+      // Vérifier si la position a vraiment changé avant d'appeler onPositionChange
+      if (
+        Math.abs(newPosition.x - position.x) > 0.1 ||
+        Math.abs(newPosition.y - position.y) > 0.1 ||
+        Math.abs(newPosition.scale - position.scale) > 0.01 ||
+        Math.abs(newPosition.rotation - position.rotation) > 0.1
+      ) {
+        onPositionChange(newPosition);
+      }
+    }
+  }, [getTransform, delimitations, containerSize, computePxPosition, position, onPositionChange]);
+
+  return (
+    <div className="relative w-full aspect-square bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+      <div ref={containerRef} className="relative w-full h-full">
+        {/* Indicateur de sauvegarde comme dans SellDesignPage */}
+        {isSaving && (
+          <div className="absolute top-2 right-2 z-20 bg-blue-500 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Sauvegarde...
+          </div>
+        )}
+
+        {/* Image du produit */}
+        <img
+          ref={imgRef}
+          src={
+            product.colorVariations?.find(c => c.id === selectedColorId)?.images?.[0]?.url ||
+            product.colorVariations?.[0]?.images?.[0]?.url ||
+            product.images?.[0] ||
+            '/placeholder.png'
+          }
+          alt="Produit"
+          className="w-full h-full object-contain"
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+          }}
+        />
+
+        {/* Affichage des délimitations */}
+        {delimitations.map((delim, index) => {
+          const pos = computePxPosition(delim);
+          if (pos.width <= 0 || pos.height <= 0) return null;
+          
+          return (
+            <div
+              key={index}
+              className="absolute border-2 border-dashed border-blue-400 bg-blue-100 bg-opacity-20 pointer-events-none"
+              style={{
+                left: pos.left,
+                top: pos.top,
+                width: pos.width,
+                height: pos.height,
+                transform: delim.rotation ? `rotate(${delim.rotation}deg)` : undefined
+              }}
+            >
+              <div className="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded">
+                {delim.name || `Zone ${index + 1}`}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Design positionné - EXACTEMENT comme dans SellDesignPage.tsx */}
+        {design && delimitations.map((delim: any, idx: number) => {
+          const pos = computePxPosition(delim);
+          if (pos.width <= 0 || pos.height <= 0) return null;
+          
+          const t = getTransform(idx); // Utilisation du hook comme SellDesignPage
+          
+          // 🎯 CONTRAINTES EXACTES de SellDesignPage.tsx : Limiter le déplacement pour rester dans la délimitation
+          const maxX = (1 - t.scale) * pos.width / 2;
+          const minX = -(1 - t.scale) * pos.width / 2;
+          const maxY = (1 - t.scale) * pos.height / 2;
+          const minY = -(1 - t.scale) * pos.height / 2;
+          let x = Math.max(minX, Math.min(t.x, maxX));
+          let y = Math.max(minY, Math.min(t.y, maxY));
+          
+          return (
+            <div
+              key={idx}
+              className={`absolute overflow-hidden group ${hoveredIdx === idx ? 'z-10' : ''}`}
+              style={{
+                left: pos.left,
+                top: pos.top,
+                width: pos.width,
+                height: pos.height,
+                cursor: 'grab',
+              }}
+              onMouseDown={e => handleMouseDown(e, idx)}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              tabIndex={0}
+              title="Déplacez ou redimensionnez le design"
+            >
+              <div
+                className={`absolute inset-0 pointer-events-none rounded border-2 transition-all duration-150 ${hoveredIdx === idx ? 'border-indigo-500 shadow-lg' : 'border-transparent'}`}
+                style={{ zIndex: 2 }}
+              />
+              
+              {/* Design avec contraintes appliquées */}
+              <img
+                src={'imageUrl' in design ? design.imageUrl : design.imageBase64}
+                alt="Design"
+                className="w-full h-full object-contain pointer-events-none select-none"
+                style={{
+                  transform: `translate(${x}px, ${y}px) scale(${t.scale})`,
+                  transition: 'box-shadow 0.2s',
+                  boxShadow: hoveredIdx === idx ? '0 0 0 2px #6366f1' : undefined,
+                }}
+                draggable={false}
+              />
+              
+              {/* 4 poignées de resize exactement comme SellDesignPage */}
+              {hoveredIdx === idx && [
+                { corner: 'tl', style: { left: -8, top: -8, cursor: 'nwse-resize' } },
+                { corner: 'tr', style: { right: -8, top: -8, cursor: 'nesw-resize' } },
+                { corner: 'bl', style: { left: -8, bottom: -8, cursor: 'nesw-resize' } },
+                { corner: 'br', style: { right: -8, bottom: -8, cursor: 'nwse-resize' } },
+              ].map((h, i) => (
+                <div
+                  key={h.corner}
+                  className="absolute w-4 h-4 bg-white border-2 border-indigo-500 rounded-full shadow cursor-pointer z-20"
+                  style={h.style}
+                  onMouseDown={e => handleResizeMouseDown(e, idx)}
+                />
+              ))}
+            </div>
+          );
+        })}
+
+        {/* Boutons de contrôle comme SellDesignPage */}
+        <div className="absolute bottom-2 left-2 flex gap-2 z-20">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2 text-xs bg-white/90 hover:bg-white"
+            onClick={resetTransforms}
+            title="Réinitialiser les positions et tailles"
+          >
+            <Ruler className="h-3 w-3 mr-1" />
+            Reset
+          </Button>
+          
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2 text-xs bg-white/90 hover:bg-white"
+            onClick={saveNow}
+            title="Sauvegarder maintenant"
+          >
+            <Save className="h-3 w-3 mr-1" />
+            Sauver
+          </Button>
+        </div>
+        
+        {/* Status overlay */}
+        <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
+          🎯 Glissez le design dans les zones bleues
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const AdminCreateVendorProductPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [baseProducts, setBaseProducts] = useState<BaseProduct[]>([]);
+  const [vendorDesigns, setVendorDesigns] = useState<Design[]>([]);
+  const [searchVendor, setSearchVendor] = useState('');
+  const [searchProduct, setSearchProduct] = useState('');
+  const [searchDesign, setSearchDesign] = useState('');
+  
+  // États pour la modal de sélection des vendeurs
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [vendorTypeFilter, setVendorTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [countryFilter, setCountryFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'created_at' | 'productCount' | 'designCount'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
+  // Données du formulaire sauvegardées dans localStorage
+  const [formData, setFormData] = useState<AdminCreateVendorProductData>(() => {
+    try {
+      const saved = localStorage.getItem(LOCALSTORAGE_KEY);
+      if (saved) {
+        const parsedData = JSON.parse(saved);
+        // Validation basique des données
+        if (parsedData && typeof parsedData === 'object') {
+          return {
+            currentStep: parsedData.currentStep || 1,
+            lastSaved: new Date().toISOString(),
+            previewColorId: parsedData.previewColorId,
+            selectedMockupIds: parsedData.selectedMockupIds,
+            ...parsedData
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Erreur parsing localStorage:', e);
+      // Nettoyer le localStorage corrompu
+      localStorage.removeItem(LOCALSTORAGE_KEY);
+    }
+    
+    return {
+      currentStep: 1,
+      lastSaved: new Date().toISOString()
+    };
+  });
+
+  // Sauvegarde automatique dans localStorage
+  useEffect(() => {
+    const dataToSave = {
+      ...formData,
+      lastSaved: new Date().toISOString()
+    };
+    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(dataToSave));
+  }, [formData]);
+
+  // Charger les vendeurs
+  const fetchVendors = async () => {
+    try {
+      setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3004';
+      const res = await fetch(`${apiUrl}/vendor-product-validation/vendors`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      
+      // Debug: Vérifier la structure des données
+      console.log('🔍 [DEBUG] Données vendeurs brutes:', data);
+      if (data.vendors && data.vendors.length > 0) {
+        console.log('🔍 [DEBUG] Premier vendeur:', data.vendors[0]);
+        console.log('🔍 [DEBUG] Champs disponibles:', Object.keys(data.vendors[0]));
+      }
+      
+      setVendors(data.vendors || []);
+    } catch (err) {
+      console.error('Erreur chargement vendeurs:', err);
+      setError('Impossible de charger les vendeurs');
+      toast.error('Erreur chargement vendeurs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Charger les produits de base
+  const fetchBaseProducts = async () => {
+    try {
+      setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3004';
+      const res = await fetch(`${apiUrl}/products`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setBaseProducts(data.products || data || []);
+    } catch (err) {
+      console.error('Erreur chargement produits:', err);
+      setError('Impossible de charger les produits');
+      toast.error('Erreur chargement produits');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Charger les designs du vendeur sélectionné
+  const fetchVendorDesigns = async (vendorId: number) => {
+    try {
+      setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3004';
+      
+      // Utiliser le bon endpoint selon la documentation
+      const res = await fetch(`${apiUrl}/vendor-product-validation/vendors/${vendorId}/designs`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!res.ok) {
+        if (res.status === 404) {
+          console.log(`Aucun design trouvé pour le vendeur ${vendorId}`);
+          setVendorDesigns([]);
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+      
+      const data = await res.json();
+      setVendorDesigns(data.designs || data || []);
+    } catch (err) {
+      console.error('Erreur chargement designs:', err);
+      if (err.message.includes('404')) {
+        setVendorDesigns([]);
+        // Ne pas afficher d'erreur pour 404, c'est normal si le vendeur n'a pas de designs
+      } else {
+        setError('Impossible de charger les designs');
+        toast.error('Erreur chargement designs');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Charger les données initiales
+  useEffect(() => {
+    fetchVendors();
+    fetchBaseProducts();
+    
+    // Si un vendeur est déjà sélectionné, charger ses designs
+    if (formData.vendorId) {
+      fetchVendorDesigns(formData.vendorId);
+    }
+  }, []);
+
+  // Charger les designs quand le vendeur change
+  useEffect(() => {
+    if (formData.vendorId && formData.vendorId !== formData.selectedVendor?.id) {
+      fetchVendorDesigns(formData.vendorId);
+    }
+  }, [formData.vendorId]);
+
+  // Mettre à jour les données du formulaire
+  const updateFormData = (updates: Partial<AdminCreateVendorProductData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
+  // Fonction mémorisée pour éviter la boucle infinie
+  const handlePositionChange = useCallback((position: { x: number; y: number; scale: number; rotation: number }) => {
+    updateFormData({ designPosition: position });
+  }, []);
+
+  // Navigation entre les étapes
+  const goToStep = (step: number) => {
+    if (step >= 1 && step <= 5) {
+      updateFormData({ currentStep: step });
+    }
+  };
+
+  const nextStep = () => {
+    if (formData.currentStep < 5) {
+      updateFormData({ currentStep: formData.currentStep + 1 });
+    }
+  };
+
+  const prevStep = () => {
+    if (formData.currentStep > 1) {
+      updateFormData({ currentStep: formData.currentStep - 1 });
+    }
+  };
+
+  // Filtrer et trier les vendeurs
+  const filteredAndSortedVendors = React.useMemo(() => {
+    let filtered = vendors.filter(vendor => {
+      const matchesSearch = vendor.firstName.toLowerCase().includes(searchVendor.toLowerCase()) ||
+        vendor.lastName.toLowerCase().includes(searchVendor.toLowerCase()) ||
+        vendor.email.toLowerCase().includes(searchVendor.toLowerCase()) ||
+        vendor.shop_name?.toLowerCase().includes(searchVendor.toLowerCase());
+      
+      const matchesType = vendorTypeFilter === 'all' || vendor.vendeur_type === vendorTypeFilter;
+      const matchesStatus = statusFilter === 'all' || 
+        (statusFilter === 'active' && vendor.status) ||
+        (statusFilter === 'inactive' && !vendor.status);
+      const matchesCountry = countryFilter === 'all' || vendor.country === countryFilter;
+      
+      return matchesSearch && matchesType && matchesStatus && matchesCountry;
+    });
+
+    // Trier
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (sortBy) {
+        case 'name':
+          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+        case 'productCount':
+          aValue = a.productCount;
+          bValue = b.productCount;
+          break;
+        case 'designCount':
+          aValue = a.designCount;
+          bValue = b.designCount;
+          break;
+        default:
+          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    return filtered;
+  }, [vendors, searchVendor, vendorTypeFilter, statusFilter, countryFilter, sortBy, sortOrder]);
+
+  // Obtenir les pays uniques pour le filtre
+  const uniqueCountries = React.useMemo(() => {
+    const countries = vendors.map(v => v.country).filter(Boolean);
+    return [...new Set(countries)].sort();
+  }, [vendors]);
+
+  // Obtenir les types de vendeurs uniques
+  const uniqueVendorTypes = React.useMemo(() => {
+    const types = vendors.map(v => v.vendeur_type).filter(Boolean);
+    return [...new Set(types)].sort();
+  }, [vendors]);
+
+  // Sélectionner un vendeur
+  const selectVendor = (vendor: VendorOption) => {
+    updateFormData({
+      vendorId: vendor.id,
+      selectedVendor: vendor,
+      // Reset des étapes suivantes
+      designId: undefined,
+      selectedDesign: undefined,
+      selectedColors: undefined,
+      selectedSizes: undefined
+    });
+    setShowVendorModal(false);
+    toast.success(`Vendeur ${vendor.firstName} ${vendor.lastName} sélectionné`);
+    nextStep();
+  };
+
+  // Sélectionner un produit de base
+  const selectBaseProduct = (product: BaseProduct) => {
+    // Construire la structure produit V2
+    const productStructure = {
+      adminProduct: {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        images: {
+          colorVariations: (product.colorVariations || []).map(variation => ({
+            id: variation.id,
+            name: variation.name,
+            colorCode: variation.colorCode,
+            images: (variation.images || []).map(img => ({
+              id: img.id,
+              url: img.url,
+              viewType: img.view || 'FRONT',
+              delimitations: (img.delimitations || []).map(delim => ({
+                x: delim.x,
+                y: delim.y,
+                width: delim.width,
+                height: delim.height,
+                coordinateType: delim.coordinateType
+              }))
+            }))
+          }))
+        },
+        sizes: (product.sizes || []).map(size => ({
+          id: size.id,
+          sizeName: size.sizeName
+        }))
+      },
+      designApplication: {
+        positioning: 'CENTER',
+        scale: 0.75
+      }
+    };
+
+    updateFormData({
+      baseProductId: product.id,
+      selectedBaseProduct: product,
+      productStructure,
+      // Pré-remplir les données
+      vendorPrice: product.price,
+      vendorName: product.name,
+      vendorDescription: product.description,
+      vendorStock: product.stock,
+      selectedColors: (product.colorVariations || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        colorCode: c.colorCode
+      })),
+      selectedSizes: (product.sizes || []).map(s => ({
+        id: s.id,
+        sizeName: s.sizeName
+      })),
+      // Initialiser le mode design
+      designMode: 'existing',
+      // Initialiser la position du design
+      designPosition: {
+        x: 50,
+        y: 30,
+        scale: 1,
+        rotation: 0
+      },
+      // Initialiser la couleur de prévisualisation
+      previewColorId: product.colorVariations?.[0]?.id,
+      // Initialiser les mockups sélectionnés (tous par défaut)
+      selectedMockupIds: product.colorVariations?.[0]?.images?.map(img => img.id) || []
+    });
+    toast.success(`Produit "${product.name}" sélectionné`);
+    nextStep();
+  };
+
+  // Sélectionner un design
+  const selectDesign = (design: Design) => {
+    updateFormData({
+      designId: design.id,
+      selectedDesign: design,
+      designPosition: {
+        x: 50,
+        y: 30,
+        scale: 1,
+        rotation: 0
+      }
+    });
+    toast.success(`Design "${design.name}" sélectionné`);
+    nextStep();
+  };
+
+  // Vider le localStorage et recommencer
+  const clearData = () => {
+    localStorage.removeItem(LOCALSTORAGE_KEY);
+    setFormData({
+      currentStep: 1,
+      lastSaved: new Date().toISOString()
+    });
+    toast.success('Données effacées');
+  };
+
+  // Filtrer les vendeurs
+  const filteredVendors = vendors.filter(vendor => 
+    vendor.firstName.toLowerCase().includes(searchVendor.toLowerCase()) ||
+    vendor.lastName.toLowerCase().includes(searchVendor.toLowerCase()) ||
+    vendor.email.toLowerCase().includes(searchVendor.toLowerCase()) ||
+    vendor.shop_name?.toLowerCase().includes(searchVendor.toLowerCase())
+  );
+
+  // Filtrer les produits
+  const filteredProducts = baseProducts.filter(product =>
+    product.name.toLowerCase().includes(searchProduct.toLowerCase()) ||
+    product.description.toLowerCase().includes(searchProduct.toLowerCase())
+  );
+
+  // Filtrer les designs
+  const filteredDesigns = vendorDesigns.filter(design =>
+    design.name.toLowerCase().includes(searchDesign.toLowerCase()) ||
+    design.category.toLowerCase().includes(searchDesign.toLowerCase())
+  );
+
+  // Finaliser la création
+  const createProduct = async () => {
+    // Validation des données selon le mode
+    if (!formData.vendorId || !formData.baseProductId || !formData.productStructure) {
+      toast.error('Données manquantes pour la création');
+      return;
+    }
+
+    // Validation selon le mode design
+    if (formData.designMode === 'existing' && !formData.designId) {
+      toast.error('Veuillez sélectionner un design');
+      return;
+    }
+
+    if (formData.designMode === 'new') {
+      const newDesign = formData.newDesign;
+      if (!newDesign?.name || !newDesign?.category || !newDesign?.imageBase64 || !newDesign?.price) {
+        toast.error('Veuillez compléter toutes les informations du nouveau design (nom, catégorie, image, prix)');
+        return;
+      }
+    }
+
+    try {
+      setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3004';
+      
+      // 🔧 Récupérer les transforms depuis localStorage comme dans SellDesignPage.tsx
+      const designUrl = formData.designMode === 'existing' 
+        ? formData.selectedDesign?.imageUrl
+        : formData.newDesign?.imageBase64;
+      
+      let localStorageTransforms = formData.designPosition || { x: 50, y: 30, scale: 1, rotation: 0 };
+      
+      if (designUrl) {
+        const storageKey = `admin_design_position_${formData.baseProductId}_${designUrl.slice(-20)}`;
+        const savedTransforms = localStorage.getItem(storageKey);
+        
+        if (savedTransforms) {
+          try {
+            const parsedTransforms = JSON.parse(savedTransforms);
+            // Récupérer les transforms de la délimitation principale (index 0)
+            const mainTransform = parsedTransforms[0] || parsedTransforms;
+            if (mainTransform) {
+              localStorageTransforms = {
+                x: mainTransform.x || 0,
+                y: mainTransform.y || 0,
+                scale: mainTransform.scale || 1,
+                rotation: mainTransform.rotation || 0
+              };
+              console.log('📥 Transforms récupérés du localStorage:', localStorageTransforms);
+            }
+          } catch (e) {
+            console.warn('Erreur lors du parsing des transforms localStorage:', e);
+          }
+        }
+      }
+      
+      // Construction du payload selon l'API V2
+      const basePayload = {
+        vendorId: formData.vendorId,
+        baseProductId: formData.baseProductId,
+        productStructure: formData.productStructure,
+        vendorPrice: formData.vendorPrice,
+        vendorName: formData.vendorName,
+        vendorDescription: formData.vendorDescription,
+        vendorStock: formData.vendorStock,
+        selectedColors: formData.selectedColors,
+        selectedSizes: formData.selectedSizes,
+        forcedStatus: formData.forcedStatus || 'DRAFT',
+        postValidationAction: formData.postValidationAction || 'TO_DRAFT',
+        bypassAdminValidation: formData.bypassAdminValidation || false
+      };
+
+      // Ajouter designPosition avec les transforms du localStorage
+      basePayload.designPosition = localStorageTransforms;
+
+      let createData;
+
+      // Mode design existant
+      if (formData.designMode === 'existing' && formData.designId) {
+        createData = {
+          ...basePayload,
+          designId: formData.designId
+        };
+      }
+      // Mode nouveau design
+      else if (formData.designMode === 'new' && formData.newDesign) {
+        createData = {
+          ...basePayload,
+          newDesign: {
+            name: formData.newDesign.name,
+            description: formData.newDesign.description || '',
+            category: formData.newDesign.category,
+            imageBase64: formData.newDesign.imageBase64,
+            tags: formData.newDesign.tags || [],
+            price: formData.newDesign.price || 0 // Ajout du prix
+          }
+        };
+      } else {
+        throw new Error('Mode design invalide');
+      }
+
+      console.log('📤 Envoi données V2 avec transforms localStorage:', createData);
+
+      const res = await fetch(`${apiUrl}/vendor-product-validation/create-for-vendor`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createData)
+      });
+
+      if (!res.ok) {
+        const errorData = await res.text();
+        console.error('Erreur API:', res.status, errorData);
+        throw new Error(`HTTP ${res.status}: ${errorData}`);
+      }
+      
+      const result = await res.json();
+      console.log('✅ Réponse API V2:', result);
+      
+      // 🔧 Sauvegarder les transforms en base de données après la création comme dans SellDesignPage.tsx
+      if (result.productId && designUrl) {
+        const vendorProductId = result.productId;
+        
+        // Sauvegarder les transformations dans VendorDesignTransform
+        const transformsPayload = {
+          vendorProductId: vendorProductId,
+          designUrl: designUrl,
+          transforms: {
+            '0': {
+              x: localStorageTransforms.x / 100, // Convertir en pourcentage (0-1)
+              y: localStorageTransforms.y / 100,
+              scale: localStorageTransforms.scale
+            },
+            positioning: {
+              x: localStorageTransforms.x / 100,
+              y: localStorageTransforms.y / 100,
+              scale: localStorageTransforms.scale,
+              rotation: localStorageTransforms.rotation || 0
+            }
+          },
+          lastModified: Date.now()
+        };
+
+        try {
+          await saveDesignTransforms(transformsPayload);
+          console.log('✅ Transforms sauvegardés en base de données:', transformsPayload);
+        } catch (transformError) {
+          console.warn('⚠️ Erreur sauvegarde transforms (produit créé mais transforms non sauvegardés):', transformError);
+        }
+
+        // Sauvegarder la position dans ProductDesignPosition si designId existe
+        if (formData.designMode === 'existing' && formData.designId) {
+          const positionPayload = {
+            x: localStorageTransforms.x / 100,
+            y: localStorageTransforms.y / 100,
+            scale: localStorageTransforms.scale,
+            rotation: localStorageTransforms.rotation || 0
+          };
+
+          try {
+            await vendorProductService.saveDesignPosition(
+              vendorProductId,
+              formData.designId,
+              positionPayload
+            );
+            console.log('✅ Position sauvegardée dans ProductDesignPosition:', positionPayload);
+          } catch (positionError) {
+            console.warn('⚠️ Erreur sauvegarde position:', positionError);
+          }
+        }
+
+        // Nettoyer le localStorage après succès
+        if (designUrl) {
+          const storageKey = `admin_design_position_${formData.baseProductId}_${designUrl.slice(-20)}`;
+          localStorage.removeItem(storageKey);
+          console.log('🧹 localStorage nettoyé:', storageKey);
+        }
+      }
+      
+      // Gérer la réponse selon la documentation V2
+      let successMessage = `Produit créé avec succès !`;
+      if (result.newDesignCreated) {
+        successMessage += ` Un nouveau design a été créé (ID: ${result.designId})`;
+      }
+      
+      toast.success(successMessage);
+      
+      // Afficher les informations de la réponse
+      if (result.status === 'PENDING') {
+        toast.info('Le produit est en attente de validation');
+      }
+      
+      // Vider les données et rediriger
+      clearData();
+      navigate('/admin/vendor-products');
+      
+    } catch (err) {
+      console.error('Erreur création produit V2:', err);
+      
+      // Gestion des erreurs spécifiques selon la documentation
+      let errorMessage = 'Erreur lors de la création du produit';
+      
+      if (err.message.includes('400')) {
+        if (err.message.includes('Vous ne pouvez pas fournir à la fois')) {
+          errorMessage = 'Configuration de design invalide';
+        } else if (err.message.includes('Vous devez fournir soit un designId')) {
+          errorMessage = 'Veuillez sélectionner un design ou en créer un nouveau';
+        } else {
+          errorMessage = 'Données de création invalides';
+        }
+      } else if (err.message.includes('404')) {
+        errorMessage = 'Vendeur, design ou produit de base introuvable';
+      } else if (err.message.includes('403')) {
+        errorMessage = 'Accès refusé - permissions insuffisantes';
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fonction pour convertir un fichier en base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Gérer l'upload d'un nouveau design
+  const handleNewDesignUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      const base64 = await fileToBase64(file);
+      
+      updateFormData({
+        newDesign: {
+          ...formData.newDesign,
+          imageBase64: base64
+        }
+      });
+      
+      toast.success('Image chargée avec succès');
+    } catch (error) {
+      console.error('Erreur upload:', error);
+      toast.error('Erreur lors du chargement de l\'image');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Rendu des étapes
+  const renderStep = () => {
+    switch (formData.currentStep) {
+      case 1:
+        return renderVendorSelection();
+      case 2:
+        return renderProductSelection();
+      case 3:
+        return renderDesignSelection();
+      case 4:
+        return renderConfiguration();
+      case 5:
+        return renderPreview();
+      default:
+        return renderVendorSelection();
+    }
+  };
+
+  // Rendu sélection vendeur
+  const renderVendorSelection = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Sélectionner le vendeur
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Choisissez pour quel vendeur vous voulez créer le produit
+        </p>
+      </div>
+
+      {/* Vendeur sélectionné ou bouton de sélection */}
+      {formData.selectedVendor ? (
+        <div className="max-w-md mx-auto">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <img
+                  src={formData.selectedVendor.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.selectedVendor.firstName + ' ' + formData.selectedVendor.lastName)}&background=6366f1&color=ffffff&size=40`}
+                  alt={formData.selectedVendor.firstName}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {formData.selectedVendor.firstName} {formData.selectedVendor.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formData.selectedVendor.shop_name || formData.selectedVendor.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowVendorModal(true)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Changer
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center">
+          <button
+            onClick={() => setShowVendorModal(true)}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 mx-auto"
+          >
+            <Users className="h-5 w-5" />
+            <span>Choisir un vendeur</span>
+          </button>
+        </div>
+      )}
+
+      {/* Statistiques rapides */}
+      <div className="max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-blue-600">{vendors.length}</div>
+            <div className="text-sm text-gray-500">Vendeurs total</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-green-600">
+              {vendors.filter(v => v.status).length}
+            </div>
+            <div className="text-sm text-gray-500">Vendeurs actifs</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-purple-600">
+              {vendors.reduce((acc, v) => acc + v.productCount, 0)}
+            </div>
+            <div className="text-sm text-gray-500">Produits total</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal */}
+      {showVendorModal && <VendorSelectionModal />}
+    </div>
+  );
+
+  // Rendu sélection produit
+  const renderProductSelection = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Sélectionner le produit de base
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Choisissez le produit qui servira de base pour {formData.selectedVendor?.firstName} {formData.selectedVendor?.lastName}
+        </p>
+      </div>
+
+      {/* Recherche produit */}
+      <div className="relative max-w-md mx-auto">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={searchProduct}
+          onChange={(e) => setSearchProduct(e.target.value)}
+          placeholder="Rechercher un produit..."
+          className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-4 text-sm placeholder:text-gray-500 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+        />
+      </div>
+
+      {/* Liste des produits */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+        {filteredProducts.map(product => (
+          <div
+            key={product.id}
+            onClick={() => selectBaseProduct(product)}
+            className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          >
+            <div className="aspect-square rounded-lg overflow-hidden mb-3">
+              <img
+                src={
+                  product.images?.[0] || 
+                  product.colorVariations?.[0]?.images?.[0]?.url || 
+                  '/placeholder.png'
+                }
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h4 className="font-medium text-gray-900 truncate">{product.name}</h4>
+            <p className="text-sm text-gray-500 truncate">{product.description}</p>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-sm font-semibold text-gray-900">
+                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(product.price).replace('XOF', 'CFA')}
+              </span>
+              <span className="text-xs text-gray-500">
+                {product.colorVariations?.length || 0} couleurs
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredProducts.length === 0 && (
+        <div className="text-center py-8">
+          <Package className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+          <p className="text-gray-500">Aucun produit trouvé</p>
+        </div>
+      )}
+    </div>
+  );
+
+  // Rendu sélection design
+  const renderDesignSelection = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Sélectionner le design
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Choisissez un design existant de {formData.selectedVendor?.firstName} {formData.selectedVendor?.lastName} ou créez-en un nouveau
+        </p>
+      </div>
+
+      {/* Choix du mode design */}
+      <div className="flex justify-center space-x-4 mb-6">
+        <button
+          onClick={() => updateFormData({ designMode: 'existing' })}
+          className={`px-4 py-2 rounded-lg border transition-colors ${
+            formData.designMode === 'existing'
+              ? 'bg-black text-white border-black'
+              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          Design existant
+        </button>
+        <button
+          onClick={() => updateFormData({ designMode: 'new' })}
+          className={`px-4 py-2 rounded-lg border transition-colors ${
+            formData.designMode === 'new'
+              ? 'bg-black text-white border-black'
+              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          Nouveau design
+        </button>
+      </div>
+
+      {/* Mode design existant */}
+      {formData.designMode === 'existing' && (
+        <>
+          {/* Recherche design */}
+          <div className="relative max-w-md mx-auto">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchDesign}
+              onChange={(e) => setSearchDesign(e.target.value)}
+              placeholder="Rechercher un design..."
+              className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-4 text-sm placeholder:text-gray-500 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+
+          {/* Liste des designs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
+            {filteredDesigns.map(design => (
+              <div
+                key={design.id}
+                onClick={() => selectDesign(design)}
+                className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-colors"
+              >
+                <div className="aspect-square rounded-lg overflow-hidden mb-3">
+                  <img
+                    src={design.imageUrl}
+                    alt={design.name}
+                    className="w-full h-full object-contain bg-gray-100"
+                  />
+                </div>
+                <h4 className="font-medium text-gray-900 truncate">{design.name}</h4>
+                <p className="text-xs text-gray-500 truncate">{design.category}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs text-gray-500">{design.format}</span>
+                  {design.isValidated && (
+                    <span className="text-xs text-green-600">✓ Validé</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {filteredDesigns.length === 0 && (
+            <div className="text-center py-8">
+              <Palette className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-500">Aucun design trouvé pour ce vendeur</p>
+              <button
+                onClick={() => updateFormData({ designMode: 'new' })}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+              >
+                Créer un nouveau design
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Mode nouveau design */}
+      {formData.designMode === 'new' && (
+        <div className="max-w-md mx-auto space-y-4">
+          {/* Upload d'image */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Image du design
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleNewDesignUpload}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+
+          {/* Aperçu de l'image */}
+          {formData.newDesign?.imageBase64 && (
+            <div className="aspect-square rounded-lg overflow-hidden border border-gray-200">
+              <img
+                src={formData.newDesign.imageBase64}
+                alt="Aperçu design"
+                className="w-full h-full object-contain bg-gray-100"
+              />
+            </div>
+          )}
+
+          {/* Informations du design */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nom du design
+            </label>
+            <input
+              type="text"
+              value={formData.newDesign?.name || ''}
+              onChange={(e) => updateFormData({
+                newDesign: { ...formData.newDesign, name: e.target.value }
+              })}
+              placeholder="Ex: Logo Dragon"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Catégorie
+            </label>
+            <select
+              value={formData.newDesign?.category || ''}
+              onChange={(e) => updateFormData({
+                newDesign: { ...formData.newDesign, category: e.target.value }
+              })}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            >
+              <option value="">Sélectionner une catégorie</option>
+              <option value="LOGO">Logo</option>
+              <option value="PATTERN">Motif</option>
+              <option value="TEXT">Texte</option>
+              <option value="ART">Art</option>
+              <option value="CUSTOM">Personnalisé</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description (optionnel)
+            </label>
+            <textarea
+              value={formData.newDesign?.description || ''}
+              onChange={(e) => updateFormData({
+                newDesign: { ...formData.newDesign, description: e.target.value }
+              })}
+              rows={3}
+              placeholder="Description du design..."
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Prix (CFA)
+            </label>
+            <input
+              type="number"
+              value={formData.newDesign?.price || ''}
+              onChange={(e) => updateFormData({
+                newDesign: { ...formData.newDesign, price: parseInt(e.target.value) || 0 }
+              })}
+              placeholder="Ex: 10000"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tags (séparés par des virgules)
+            </label>
+            <input
+              type="text"
+              value={formData.newDesign?.tags?.join(', ') || ''}
+              onChange={(e) => updateFormData({
+                newDesign: {
+                  ...formData.newDesign,
+                  tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)
+                }
+              })}
+              placeholder="Ex: dragon, fantasy, logo"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+
+          {/* Bouton pour valider le nouveau design */}
+          {formData.newDesign?.name && formData.newDesign?.category && formData.newDesign?.imageBase64 && formData.newDesign?.price && (
+            <button
+              onClick={nextStep}
+              className="w-full bg-black text-white rounded-lg px-4 py-2 font-medium hover:bg-gray-800 transition-colors"
+            >
+              Continuer avec ce design
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Rendu configuration
+  const renderConfiguration = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Configuration du produit
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Positionnez le design et personnalisez les options
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Panneau de configuration à gauche */}
+        <div className="space-y-6">
+          {/* Informations de base */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="font-medium text-gray-900 mb-4">Informations de base</h4>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom du produit
+                </label>
+                <input
+                  type="text"
+                  value={formData.vendorName || ''}
+                  onChange={(e) => updateFormData({ vendorName: e.target.value })}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={formData.vendorDescription || ''}
+                  onChange={(e) => updateFormData({ vendorDescription: e.target.value })}
+                  rows={3}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Prix (CFA)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.vendorPrice || ''}
+                    onChange={(e) => updateFormData({ vendorPrice: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Stock
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.vendorStock || ''}
+                    onChange={(e) => updateFormData({ vendorStock: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sélection des couleurs */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="font-medium text-gray-900 mb-4">Couleurs disponibles</h4>
+            <div className="space-y-3">
+              {formData.selectedBaseProduct?.colorVariations?.map((color) => (
+                <div key={color.id} className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id={`color-${color.id}`}
+                    checked={formData.selectedColors?.some(c => c.id === color.id) || false}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        const newColors = [...(formData.selectedColors || []), {
+                          id: color.id,
+                          name: color.name,
+                          colorCode: color.colorCode
+                        }];
+                        updateFormData({ selectedColors: newColors });
+                      } else {
+                        const newColors = formData.selectedColors?.filter(c => c.id !== color.id) || [];
+                        updateFormData({ selectedColors: newColors });
+                      }
+                    }}
+                    className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                  />
+                  <div
+                    className="w-6 h-6 rounded-full border border-gray-300"
+                    style={{ backgroundColor: color.colorCode }}
+                  />
+                  <label htmlFor={`color-${color.id}`} className="text-sm text-gray-700">
+                    {color.name}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sélection des tailles */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="font-medium text-gray-900 mb-4">Tailles disponibles</h4>
+            <div className="grid grid-cols-3 gap-2">
+              {formData.selectedBaseProduct?.sizes?.map((size) => (
+                <button
+                  key={size.id}
+                  onClick={() => {
+                    const isSelected = formData.selectedSizes?.some(s => s.id === size.id);
+                    if (isSelected) {
+                      const newSizes = formData.selectedSizes?.filter(s => s.id !== size.id) || [];
+                      updateFormData({ selectedSizes: newSizes });
+                    } else {
+                      const newSizes = [...(formData.selectedSizes || []), {
+                        id: size.id,
+                        sizeName: size.sizeName
+                      }];
+                      updateFormData({ selectedSizes: newSizes });
+                    }
+                  }}
+                  className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    formData.selectedSizes?.some(s => s.id === size.id)
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {size.sizeName}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Contrôles de positionnement */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="font-medium text-gray-900 mb-4">Position du design</h4>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Position X: {((formData.designPosition?.x || 0) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={formData.designPosition?.x || 0}
+                  onChange={(e) => updateFormData({
+                    designPosition: {
+                      ...formData.designPosition,
+                      x: parseFloat(e.target.value),
+                      y: formData.designPosition?.y || 0,
+                      scale: formData.designPosition?.scale || 1,
+                      rotation: formData.designPosition?.rotation || 0
+                    }
+                  })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Position Y: {((formData.designPosition?.y || 0) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={formData.designPosition?.y || 0}
+                  onChange={(e) => updateFormData({
+                    designPosition: {
+                      ...formData.designPosition,
+                      x: formData.designPosition?.x || 0,
+                      y: parseFloat(e.target.value),
+                      scale: formData.designPosition?.scale || 1,
+                      rotation: formData.designPosition?.rotation || 0
+                    }
+                  })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Échelle: {((formData.designPosition?.scale || 1) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="2"
+                  step="0.1"
+                  value={formData.designPosition?.scale || 1}
+                  onChange={(e) => updateFormData({
+                    designPosition: {
+                      ...formData.designPosition,
+                      x: formData.designPosition?.x || 0,
+                      y: formData.designPosition?.y || 0,
+                      scale: parseFloat(e.target.value),
+                      rotation: formData.designPosition?.rotation || 0
+                    }
+                  })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Rotation: {formData.designPosition?.rotation || 0}°
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="360"
+                  step="1"
+                  value={formData.designPosition?.rotation || 0}
+                  onChange={(e) => updateFormData({
+                    designPosition: {
+                      ...formData.designPosition,
+                      x: formData.designPosition?.x || 0,
+                      y: formData.designPosition?.y || 0,
+                      scale: formData.designPosition?.scale || 1,
+                      rotation: parseInt(e.target.value)
+                    }
+                  })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => updateFormData({
+                    designPosition: { x: 50, y: 30, scale: 1, rotation: 0 }
+                  })}
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                >
+                  Centrer
+                </button>
+                <button
+                  onClick={() => updateFormData({
+                    designPosition: { x: 50, y: 50, scale: 0.75, rotation: 0 }
+                  })}
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                >
+                  Milieu
+                </button>
+                <button
+                  onClick={() => updateFormData({
+                    designPosition: { x: 50, y: 20, scale: 1.2, rotation: 0 }
+                  })}
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                >
+                  Haut
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Options avancées */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="font-medium text-gray-900 mb-4">Options avancées</h4>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Statut forcé
+                </label>
+                <select
+                  value={formData.forcedStatus || ''}
+                  onChange={(e) => updateFormData({ forcedStatus: e.target.value || undefined })}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                >
+                  <option value="">Automatique</option>
+                  <option value="DRAFT">Brouillon</option>
+                  <option value="PENDING">En attente</option>
+                  <option value="PUBLISHED">Publié</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="bypassValidation"
+                  checked={formData.bypassAdminValidation || false}
+                  onChange={(e) => updateFormData({ bypassAdminValidation: e.target.checked })}
+                  className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                />
+                <label htmlFor="bypassValidation" className="text-sm text-gray-700">
+                  Contourner la validation admin
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Prévisualisation interactive à droite */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="font-medium text-gray-900 mb-4">Prévisualisation</h4>
+            
+            {/* Sélection de la couleur pour prévisualisation */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Couleur pour prévisualisation
+              </label>
+              <div className="flex space-x-2">
+                {formData.selectedColors?.map((color) => (
+                  <button
+                    key={color.id}
+                    onClick={() => updateFormData({ previewColorId: color.id })}
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      formData.previewColorId === color.id ? 'border-gray-900' : 'border-gray-300'
+                    }`}
+                    style={{ backgroundColor: color.colorCode }}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Container de prévisualisation */}
+            <AdminDesignPositioner
+              product={formData.selectedBaseProduct!}
+              design={
+                formData.designMode === 'existing' 
+                  ? formData.selectedDesign 
+                  : formData.newDesign 
+                    ? { imageBase64: formData.newDesign.imageBase64!, name: formData.newDesign.name }
+                    : null
+              }
+              selectedColorId={formData.previewColorId}
+              position={formData.designPosition || { x: 50, y: 30, scale: 1, rotation: 0 }}
+              onPositionChange={handlePositionChange}
+            />
+
+            {/* Informations sur les sélections */}
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Couleurs sélectionnées:</span>
+                <span className="font-medium">{formData.selectedColors?.length || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Tailles sélectionnées:</span>
+                <span className="font-medium">{formData.selectedSizes?.length || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Position:</span>
+                <span className="font-medium text-xs">
+                  X: {((formData.designPosition?.x || 0) * 100).toFixed(0)}%, 
+                  Y: {((formData.designPosition?.y || 0) * 100).toFixed(0)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Mockups disponibles */}
+            <div className="mt-4">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Mockups disponibles</h5>
+              <div className="grid grid-cols-2 gap-2">
+                {formData.selectedBaseProduct?.colorVariations?.find(c => c.id === formData.previewColorId)?.images?.map((image, index) => (
+                  <div
+                    key={image.id || index}
+                    className={`relative aspect-square bg-gray-50 rounded border cursor-pointer hover:border-gray-400 ${
+                      formData.selectedMockupIds?.includes(image.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                    }`}
+                    onClick={() => {
+                      const selectedMockups = formData.selectedMockupIds || [];
+                      const isSelected = selectedMockups.includes(image.id);
+                      
+                      if (isSelected) {
+                        updateFormData({
+                          selectedMockupIds: selectedMockups.filter(id => id !== image.id)
+                        });
+                      } else {
+                        updateFormData({
+                          selectedMockupIds: [...selectedMockups, image.id]
+                        });
+                      }
+                    }}
+                  >
+                    <img
+                      src={image.url}
+                      alt={`Vue ${image.view || index + 1}`}
+                      className="w-full h-full object-contain rounded"
+                    />
+                    {formData.selectedMockupIds?.includes(image.id) && (
+                      <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-1">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    )}
+                    <div className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
+                      {image.view || `Vue ${index + 1}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Rendu aperçu
+  const renderPreview = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Aperçu et finalisation
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Vérifiez les détails avant de créer le produit
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-3">Vendeur</h4>
+            <div className="flex items-center space-x-3">
+              <img
+                src={formData.selectedVendor?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent((formData.selectedVendor?.firstName || '') + ' ' + (formData.selectedVendor?.lastName || ''))}&background=000000&color=ffffff&size=40`}
+                alt={formData.selectedVendor?.firstName}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {formData.selectedVendor?.firstName} {formData.selectedVendor?.lastName}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {formData.selectedVendor?.shop_name || formData.selectedVendor?.email}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-3">Produit</h4>
+            <div className="flex items-center space-x-3">
+              <img
+                src={
+                  formData.selectedBaseProduct?.images?.[0] || 
+                  formData.selectedBaseProduct?.colorVariations?.[0]?.images?.[0]?.url || 
+                  '/placeholder.png'
+                }
+                alt={formData.selectedBaseProduct?.name}
+                className="w-12 h-12 rounded-lg object-cover"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {formData.selectedBaseProduct?.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {formData.selectedBaseProduct?.categories?.[0]?.name}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-3">Design</h4>
+            <div className="flex items-center space-x-3">
+              <img
+                src={
+                  formData.designMode === 'existing' 
+                    ? formData.selectedDesign?.imageUrl
+                    : formData.newDesign?.imageBase64
+                }
+                alt={
+                  formData.designMode === 'existing' 
+                    ? formData.selectedDesign?.name 
+                    : formData.newDesign?.name
+                }
+                className="w-12 h-12 rounded-lg object-contain bg-white"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {formData.designMode === 'existing' 
+                    ? formData.selectedDesign?.name 
+                    : formData.newDesign?.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {formData.designMode === 'existing' 
+                    ? formData.selectedDesign?.category 
+                    : formData.newDesign?.category}
+                </p>
+                <div className="flex items-center space-x-2 mt-1">
+                  {formData.designMode === 'existing' ? (
+                    <>
+                      <span className="text-xs text-blue-600">Design existant</span>
+                      {formData.selectedDesign?.isValidated && (
+                        <span className="text-xs text-green-600">✓ Validé</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-xs text-orange-600">Nouveau design</span>
+                  )}
+                </div>
+                {formData.designMode === 'new' && formData.newDesign?.price && (
+                  <div className="mt-1">
+                    <span className="text-xs text-gray-500">
+                      Prix design: {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(formData.newDesign.price).replace('XOF', 'CFA')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-3">Configuration</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Nom:</span>
+                <span className="font-medium">{formData.vendorName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Prix:</span>
+                <span className="font-medium">
+                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(formData.vendorPrice || 0).replace('XOF', 'CFA')}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Stock:</span>
+                <span className="font-medium">{formData.vendorStock}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Couleurs:</span>
+                <span className="font-medium">{formData.selectedColors?.length || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Tailles:</span>
+                <span className="font-medium">{formData.selectedSizes?.length || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Position:</span>
+                <span className="font-medium text-xs">
+                  X: {((formData.designPosition?.x || 0) * 100).toFixed(0)}%, 
+                  Y: {((formData.designPosition?.y || 0) * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Mockups sélectionnés:</span>
+                <span className="font-medium">{formData.selectedMockupIds?.length || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={createProduct}
+            disabled={loading}
+            className="w-full bg-black text-white rounded-lg px-4 py-3 font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Création en cours...</span>
+              </div>
+            ) : (
+              'Créer le produit'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Composant Modal de sélection des vendeurs
+  const VendorSelectionModal = () => (
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+      {/* Fond flouté */}
+      <div className="absolute inset-0 bg-white/70 backdrop-blur-sm"></div>
+      
+      {/* Contenu de la modal */}
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden border border-gray-200">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Sélectionner un vendeur</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {filteredAndSortedVendors.length} vendeur{filteredAndSortedVendors.length > 1 ? 's' : ''} trouvé{filteredAndSortedVendors.length > 1 ? 's' : ''}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowVendorModal(false)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Filtres */}
+        <div className="p-6 border-b border-gray-200 bg-gray-50">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Recherche */}
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Rechercher
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchVendor}
+                  onChange={(e) => setSearchVendor(e.target.value)}
+                  placeholder="Nom, email, boutique..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Type de vendeur */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type
+              </label>
+              <select
+                value={vendorTypeFilter}
+                onChange={(e) => setVendorTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Tous les types</option>
+                {uniqueVendorTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Statut */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Statut
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Tous</option>
+                <option value="active">Actif</option>
+                <option value="inactive">Inactif</option>
+              </select>
+            </div>
+
+            {/* Pays */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pays
+              </label>
+              <select
+                value={countryFilter}
+                onChange={(e) => setCountryFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Tous les pays</option>
+                {uniqueCountries.map(country => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Tri */}
+          <div className="flex items-center space-x-4 mt-4">
+            <span className="text-sm text-gray-700">Trier par:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="name">Nom</option>
+              <option value="created_at">Date création</option>
+              <option value="productCount">Nb produits</option>
+              <option value="designCount">Nb designs</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="p-1 hover:bg-gray-200 rounded transition-colors"
+            >
+              {sortOrder === 'asc' ? '↑' : '↓'}
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-auto max-h-[50vh]">
+          <table className="w-full">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Vendeur
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Contact
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Statistiques
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Statut
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredAndSortedVendors.map(vendor => (
+                <tr key={vendor.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <img
+                        src={vendor.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(vendor.firstName + ' ' + vendor.lastName)}&background=6366f1&color=ffffff&size=40`}
+                        alt={vendor.firstName}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {vendor.firstName} {vendor.lastName}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {vendor.shop_name || 'Pas de nom de boutique'}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{vendor.email}</div>
+                    <div className="text-sm text-gray-500">
+                      {vendor.phone || 'Pas de téléphone'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{vendor.vendeur_type}</div>
+                    <div className="text-sm text-gray-500">
+                      {vendor.country || 'Pas de pays'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center">
+                        <Package className="h-4 w-4 text-blue-500 mr-1" />
+                        <span>{vendor.productCount}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Palette className="h-4 w-4 text-green-500 mr-1" />
+                        <span>{vendor.designCount}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      vendor.status 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {vendor.status ? 'Actif' : 'Inactif'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => selectVendor(vendor)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Sélectionner</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {filteredAndSortedVendors.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Aucun vendeur trouvé</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Essayez de modifier vos filtres de recherche
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500">
+              {filteredAndSortedVendors.length} vendeur{filteredAndSortedVendors.length > 1 ? 's' : ''} affiché{filteredAndSortedVendors.length > 1 ? 's' : ''}
+            </p>
+            <button
+              onClick={() => setShowVendorModal(false)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/admin/vendor-products')}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+              >
+                <ChevronLeft className="h-5 w-5" />
+                <span>Retour</span>
+              </button>
+              <div className="h-6 w-px bg-gray-200" />
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight text-gray-900">
+                  Créer un produit pour vendeur
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Étape {formData.currentStep} sur {STEPS.length}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={clearData}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="text-xs text-gray-500">
+                {formData.lastSaved && (
+                  <span>Sauvegardé {new Date(formData.lastSaved).toLocaleTimeString()}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Indicateur de progression */}
+      <div className="bg-white border-b">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            {STEPS.map((step, index) => (
+              <div
+                key={step.id}
+                className={`flex items-center space-x-3 ${index < STEPS.length - 1 ? 'flex-1' : ''}`}
+              >
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                    step.id === formData.currentStep
+                      ? 'bg-black text-white'
+                      : step.id < formData.currentStep
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-200 text-gray-500'
+                  }`}
+                >
+                  {step.id < formData.currentStep ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <step.icon className="h-4 w-4" />
+                  )}
+                </div>
+                <div className="hidden sm:block">
+                  <p className={`text-sm font-medium ${
+                    step.id === formData.currentStep ? 'text-black' : 'text-gray-500'
+                  }`}>
+                    {step.title}
+                  </p>
+                  <p className="text-xs text-gray-500">{step.description}</p>
+                </div>
+                {index < STEPS.length - 1 && (
+                  <div className="hidden sm:block flex-1 mx-4">
+                    <div className={`h-0.5 ${
+                      step.id < formData.currentStep ? 'bg-green-500' : 'bg-gray-200'
+                    }`} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Contenu principal */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          {renderStep()}
+        </div>
+        
+        {/* Navigation */}
+        <div className="flex items-center justify-between mt-6">
+          <button
+            onClick={prevStep}
+            disabled={formData.currentStep === 1}
+            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Précédent</span>
+          </button>
+          
+          {formData.currentStep < 5 && (
+            <button
+              onClick={nextStep}
+              disabled={
+                (formData.currentStep === 1 && !formData.vendorId) ||
+                (formData.currentStep === 2 && !formData.baseProductId) ||
+                (formData.currentStep === 3 && (
+                  (formData.designMode === 'existing' && !formData.designId) ||
+                  (formData.designMode === 'new' && (!formData.newDesign?.name || !formData.newDesign?.category || !formData.newDesign?.imageBase64 || !formData.newDesign?.price))
+                ))
+              }
+              className="flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>Suivant</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}; 

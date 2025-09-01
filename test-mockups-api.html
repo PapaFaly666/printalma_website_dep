@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Mockups</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success { border-color: #4caf50; background-color: #f1f8e9; }
+        .error { border-color: #f44336; background-color: #ffebee; }
+        .info { border-color: #2196f3; background-color: #e3f2fd; }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .loading {
+            color: #2196f3;
+        }
+        .error-text {
+            color: #f44336;
+        }
+        .success-text {
+            color: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test API Mockups</h1>
+        <p>Cette page teste l'API des mockups pour diagnostiquer le problème de chargement.</p>
+        
+        <div class="test-section info">
+            <h3>Instructions</h3>
+            <p>1. Ouvrez la console du navigateur (F12)</p>
+            <p>2. Cliquez sur "Tester l'API"</p>
+            <p>3. Vérifiez les logs dans la console</p>
+        </div>
+        
+        <button onclick="runTests()">🧪 Tester l'API</button>
+        <button onclick="clearResults()">🗑️ Effacer les résultats</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        function addResult(title, content, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${JSON.stringify(content, null, 2)}</pre>
+            `;
+            resultsDiv.appendChild(div);
+        }
+        
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+        
+        async function runTests() {
+            clearResults();
+            addResult('🚀 Début des tests', new Date().toISOString(), 'info');
+            
+            try {
+                // Test 1: Produits avec isReadyProduct=false
+                console.log('📡 Test 1: /api/products?isReadyProduct=false');
+                const response1 = await fetch('/api/products?isReadyProduct=false');
+                const result1 = {
+                    url: '/api/products?isReadyProduct=false',
+                    status: response1.status,
+                    statusText: response1.statusText,
+                    ok: response1.ok
+                };
+                
+                if (response1.ok) {
+                    const data1 = await response1.json();
+                    result1.data = data1;
+                    result1.dataType = typeof data1;
+                    result1.isArray = Array.isArray(data1);
+                    result1.length = Array.isArray(data1) ? data1.length : 'N/A';
+                    
+                    if (data1 && typeof data1 === 'object' && !Array.isArray(data1)) {
+                        result1.keys = Object.keys(data1);
+                    }
+                }
+                
+                addResult('Test 1: isReadyProduct=false', result1, response1.ok ? 'success' : 'error');
+                
+                // Test 2: Tous les produits
+                console.log('📡 Test 2: /api/products');
+                const response2 = await fetch('/api/products');
+                const result2 = {
+                    url: '/api/products',
+                    status: response2.status,
+                    statusText: response2.statusText,
+                    ok: response2.ok
+                };
+                
+                if (response2.ok) {
+                    const data2 = await response2.json();
+                    result2.data = data2;
+                    result2.dataType = typeof data2;
+                    result2.isArray = Array.isArray(data2);
+                    result2.length = Array.isArray(data2) ? data2.length : 'N/A';
+                    
+                    if (Array.isArray(data2)) {
+                        const mockups = data2.filter(p => p.isReadyProduct === false);
+                        result2.mockupsFound = mockups.length;
+                        result2.mockups = mockups.map(p => ({ 
+                            id: p.id, 
+                            name: p.name, 
+                            isReadyProduct: p.isReadyProduct 
+                        }));
+                    }
+                }
+                
+                addResult('Test 2: Tous les produits', result2, response2.ok ? 'success' : 'error');
+                
+                // Test 3: Produits avec isReadyProduct=true
+                console.log('📡 Test 3: /api/products?isReadyProduct=true');
+                const response3 = await fetch('/api/products?isReadyProduct=true');
+                const result3 = {
+                    url: '/api/products?isReadyProduct=true',
+                    status: response3.status,
+                    statusText: response3.statusText,
+                    ok: response3.ok
+                };
+                
+                if (response3.ok) {
+                    const data3 = await response3.json();
+                    result3.data = data3;
+                    result3.dataType = typeof data3;
+                    result3.isArray = Array.isArray(data3);
+                    result3.length = Array.isArray(data3) ? data3.length : 'N/A';
+                }
+                
+                addResult('Test 3: isReadyProduct=true', result3, response3.ok ? 'success' : 'error');
+                
+                // Résumé
+                const summary = {
+                    timestamp: new Date().toISOString(),
+                    tests: [
+                        { name: 'isReadyProduct=false', success: response1.ok },
+                        { name: 'Tous les produits', success: response2.ok },
+                        { name: 'isReadyProduct=true', success: response3.ok }
+                    ]
+                };
+                
+                addResult('📊 Résumé des tests', summary, 'info');
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du test:', error);
+                addResult('❌ Erreur', {
+                    message: error.message,
+                    stack: error.stack
+                }, 'error');
+            }
+        }
+        
+        // Exécuter automatiquement au chargement
+        window.addEventListener('load', () => {
+            console.log('🔍 Page de test chargée. Cliquez sur "Tester l\'API" pour commencer.');
+        });
+    </script>
+</body>
+</html> 
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Mockups</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success { border-color: #4caf50; background-color: #f1f8e9; }
+        .error { border-color: #f44336; background-color: #ffebee; }
+        .info { border-color: #2196f3; background-color: #e3f2fd; }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .loading {
+            color: #2196f3;
+        }
+        .error-text {
+            color: #f44336;
+        }
+        .success-text {
+            color: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test API Mockups</h1>
+        <p>Cette page teste l'API des mockups pour diagnostiquer le problème de chargement.</p>
+        
+        <div class="test-section info">
+            <h3>Instructions</h3>
+            <p>1. Ouvrez la console du navigateur (F12)</p>
+            <p>2. Cliquez sur "Tester l'API"</p>
+            <p>3. Vérifiez les logs dans la console</p>
+        </div>
+        
+        <button onclick="runTests()">🧪 Tester l'API</button>
+        <button onclick="clearResults()">🗑️ Effacer les résultats</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        function addResult(title, content, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${JSON.stringify(content, null, 2)}</pre>
+            `;
+            resultsDiv.appendChild(div);
+        }
+        
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+        
+        async function runTests() {
+            clearResults();
+            addResult('🚀 Début des tests', new Date().toISOString(), 'info');
+            
+            try {
+                // Test 1: Produits avec isReadyProduct=false
+                console.log('📡 Test 1: /api/products?isReadyProduct=false');
+                const response1 = await fetch('/api/products?isReadyProduct=false');
+                const result1 = {
+                    url: '/api/products?isReadyProduct=false',
+                    status: response1.status,
+                    statusText: response1.statusText,
+                    ok: response1.ok
+                };
+                
+                if (response1.ok) {
+                    const data1 = await response1.json();
+                    result1.data = data1;
+                    result1.dataType = typeof data1;
+                    result1.isArray = Array.isArray(data1);
+                    result1.length = Array.isArray(data1) ? data1.length : 'N/A';
+                    
+                    if (data1 && typeof data1 === 'object' && !Array.isArray(data1)) {
+                        result1.keys = Object.keys(data1);
+                    }
+                }
+                
+                addResult('Test 1: isReadyProduct=false', result1, response1.ok ? 'success' : 'error');
+                
+                // Test 2: Tous les produits
+                console.log('📡 Test 2: /api/products');
+                const response2 = await fetch('/api/products');
+                const result2 = {
+                    url: '/api/products',
+                    status: response2.status,
+                    statusText: response2.statusText,
+                    ok: response2.ok
+                };
+                
+                if (response2.ok) {
+                    const data2 = await response2.json();
+                    result2.data = data2;
+                    result2.dataType = typeof data2;
+                    result2.isArray = Array.isArray(data2);
+                    result2.length = Array.isArray(data2) ? data2.length : 'N/A';
+                    
+                    if (Array.isArray(data2)) {
+                        const mockups = data2.filter(p => p.isReadyProduct === false);
+                        result2.mockupsFound = mockups.length;
+                        result2.mockups = mockups.map(p => ({ 
+                            id: p.id, 
+                            name: p.name, 
+                            isReadyProduct: p.isReadyProduct 
+                        }));
+                    }
+                }
+                
+                addResult('Test 2: Tous les produits', result2, response2.ok ? 'success' : 'error');
+                
+                // Test 3: Produits avec isReadyProduct=true
+                console.log('📡 Test 3: /api/products?isReadyProduct=true');
+                const response3 = await fetch('/api/products?isReadyProduct=true');
+                const result3 = {
+                    url: '/api/products?isReadyProduct=true',
+                    status: response3.status,
+                    statusText: response3.statusText,
+                    ok: response3.ok
+                };
+                
+                if (response3.ok) {
+                    const data3 = await response3.json();
+                    result3.data = data3;
+                    result3.dataType = typeof data3;
+                    result3.isArray = Array.isArray(data3);
+                    result3.length = Array.isArray(data3) ? data3.length : 'N/A';
+                }
+                
+                addResult('Test 3: isReadyProduct=true', result3, response3.ok ? 'success' : 'error');
+                
+                // Résumé
+                const summary = {
+                    timestamp: new Date().toISOString(),
+                    tests: [
+                        { name: 'isReadyProduct=false', success: response1.ok },
+                        { name: 'Tous les produits', success: response2.ok },
+                        { name: 'isReadyProduct=true', success: response3.ok }
+                    ]
+                };
+                
+                addResult('📊 Résumé des tests', summary, 'info');
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du test:', error);
+                addResult('❌ Erreur', {
+                    message: error.message,
+                    stack: error.stack
+                }, 'error');
+            }
+        }
+        
+        // Exécuter automatiquement au chargement
+        window.addEventListener('load', () => {
+            console.log('🔍 Page de test chargée. Cliquez sur "Tester l\'API" pour commencer.');
+        });
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 

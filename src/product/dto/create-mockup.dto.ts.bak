@@ -1,0 +1,128 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsString, IsNumber, IsBoolean, IsArray } from 'class-validator';
+
+// Enum pour le genre des mockups
+export enum MockupGenre {
+  HOMME = 'HOMME',
+  FEMME = 'FEMME',
+  BEBE = 'BEBE',
+  UNISEXE = 'UNISEXE'
+}
+
+export class CreateMockupDto {
+  @ApiProperty({ 
+    description: 'Nom du mockup',
+    example: 'T-shirt Homme Classic'
+  })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ 
+    description: 'Description du mockup',
+    example: 'T-shirt basique pour homme en coton'
+  })
+  @IsString()
+  description: string;
+
+  @ApiProperty({ 
+    description: 'Prix du mockup',
+    example: 5000
+  })
+  @IsNumber()
+  price: number;
+
+  @ApiProperty({ 
+    description: 'Statut du mockup',
+    example: 'draft',
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  status?: string = 'draft';
+
+  @ApiProperty({ 
+    description: 'Indique si c\'est un produit prêt (doit être false pour les mockups)',
+    example: false
+  })
+  @IsBoolean()
+  isReadyProduct: false;
+
+  @ApiProperty({ 
+    description: 'Genre du mockup (public cible)',
+    enum: MockupGenre,
+    example: MockupGenre.HOMME,
+    required: false
+  })
+  @IsEnum(MockupGenre, { 
+    message: 'Le genre doit être "HOMME", "FEMME", "BEBE" ou "UNISEXE"' 
+  })
+  @IsOptional()
+  genre?: MockupGenre = MockupGenre.UNISEXE;
+
+  @ApiProperty({ 
+    description: 'Catégories du mockup',
+    example: ['T-shirts', 'Homme'],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  categories?: string[];
+
+  @ApiProperty({ 
+    description: 'Tailles disponibles',
+    example: ['S', 'M', 'L', 'XL'],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  sizes?: string[];
+
+  @ApiProperty({ 
+    description: 'Variations de couleur',
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  colorVariations?: any[];
+}
+
+export class MockupResponseDto {
+  @ApiProperty({ description: 'ID du mockup' })
+  id: number;
+
+  @ApiProperty({ description: 'Nom du mockup' })
+  name: string;
+
+  @ApiProperty({ description: 'Description du mockup' })
+  description: string;
+
+  @ApiProperty({ description: 'Prix du mockup' })
+  price: number;
+
+  @ApiProperty({ description: 'Statut du mockup' })
+  status: string;
+
+  @ApiProperty({ description: 'Indique si c\'est un produit prêt' })
+  isReadyProduct: false;
+
+  @ApiProperty({ 
+    description: 'Genre du mockup',
+    enum: MockupGenre
+  })
+  genre: MockupGenre;
+
+  @ApiProperty({ description: 'Catégories du mockup' })
+  categories: any[];
+
+  @ApiProperty({ description: 'Variations de couleur' })
+  colorVariations: any[];
+
+  @ApiProperty({ description: 'Tailles disponibles' })
+  sizes: any[];
+
+  @ApiProperty({ description: 'Date de création' })
+  createdAt: Date;
+
+  @ApiProperty({ description: 'Date de mise à jour' })
+  updatedAt: Date;
+} 

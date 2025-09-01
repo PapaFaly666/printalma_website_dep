@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Délimitations - Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin: 20px 0; }
+        .product-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .status { padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #b8daff; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #0056b3; }
+        .btn.danger { background: #dc3545; }
+        .btn.danger:hover { background: #c82333; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        .delimitation-visual { 
+            position: relative; 
+            border: 2px solid #007bff; 
+            border-radius: 8px; 
+            margin: 10px 0; 
+            background: #f0f8ff; 
+            min-height: 200px;
+            overflow: hidden;
+        }
+        .delimitation-box {
+            position: absolute;
+            border: 2px dashed #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+            pointer-events: none;
+        }
+        .delimitation-label {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            background: #dc3545;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .image-preview {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 5px;
+        }
+        .debug-section { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test Debug - Délimitations NouveauteSection</h1>
+        <p>Test de la conversion et normalisation des délimitations pour un affichage identique à /vendor/products</p>
+        
+        <button class="btn" onclick="testDelimitations()">🚀 Tester les Délimitations</button>
+        <button class="btn danger" onclick="clearResults()">🗑️ Effacer</button>
+        
+        <div id="status"></div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Fonction utilitaire pour normaliser les délimitations (copie de NouveauteSection.tsx)
+        function normalizeDelimitations(delimitations, imageWidth, imageHeight) {
+            if (!delimitations || delimitations.length === 0) return [];
+            
+            return delimitations.map(delim => {
+                let { x, y, width, height } = delim;
+                
+                // 🚨 CORRECTION CRITIQUE : L'API dit "PERCENTAGE" mais les valeurs sont en pixels !
+                const seemsToBePixels = x > 100 || y > 100 || width > 100 || height > 100;
+                
+                if (seemsToBePixels) {
+                    console.log(`🔄 CORRECTION CRITIQUE - Valeurs étiquetées "PERCENTAGE" mais en pixels:`, {
+                        original: { x, y, width, height },
+                        coordinateType: delim.coordinateType,
+                        imageSize: { width: imageWidth, height: imageHeight }
+                    });
+                    
+                    x = (x / imageWidth) * 100;
+                    y = (y / imageHeight) * 100;
+                    width = (width / imageWidth) * 100;
+                    height = (height / imageHeight) * 100;
+                    
+                    console.log(`✅ Après correction:`, { x, y, width, height });
+                }
+                
+                // ✅ S'assurer que les valeurs sont dans des plages réalistes
+                const finalX = Math.max(0, Math.min(95, x));
+                const finalY = Math.max(0, Math.min(95, y));
+                const finalWidth = Math.max(5, Math.min(100 - finalX, width));
+                const finalHeight = Math.max(5, Math.min(100 - finalY, height));
+                
+                return {
+                    id: delim.id,
+                    name: delim.name,
+                    x: finalX,
+                    y: finalY,
+                    width: finalWidth,
+                    height: finalHeight,
+                    coordinateType: 'PERCENTAGE',
+                    wasConverted: seemsToBePixels
+                };
+            });
+        }
+        
+        async function testDelimitations() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            statusDiv.innerHTML = '<div class="status info">🔄 Test des délimitations...</div>';
+            resultsDiv.innerHTML = '';
+            
+            try {
+                console.log('🔄 Chargement des données de test...');
+                const response = await fetch('http://localhost:3004/public/new-arrivals');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('📊 Données reçues:', result);
+                
+                if (result.success && result.data) {
+                    const products = result.data;
+                    statusDiv.innerHTML = `<div class="status success">✅ ${products.length} produits trouvés - Test des délimitations</div>`;
+                    
+                    // Analyser chaque produit
+                    const productGrid = document.createElement('div');
+                    productGrid.className = 'product-grid';
+                    
+                    products.forEach((item, index) => {
+                        const productCard = createDelimitationDebugCard(item, index + 1);
+                        productGrid.appendChild(productCard);
+                    });
+                    
+                    resultsDiv.appendChild(productGrid);
+                    
+                } else {
+                    statusDiv.innerHTML = '<div class="status warning">⚠️ Format de réponse inattendu</div>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur:', error);
+                statusDiv.innerHTML = `<div class="status error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+        
+        function createDelimitationDebugCard(item, index) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            // Extraire les données importantes
+            const firstImage = item.baseProduct?.colorVariations?.[0]?.images?.[0];
+            const designPos = item.designPositions?.[0];
+            
+            if (!firstImage) {
+                card.innerHTML = `<h3>Produit ${index} - ${item.name}</h3><div class="status error">❌ Pas d'image trouvée</div>`;
+                return card;
+            }
+            
+            if (!designPos) {
+                card.innerHTML = `<h3>Produit ${index} - ${item.name}</h3><div class="status error">❌ Pas de position de design</div>`;
+                return card;
+            }
+            
+            // Normaliser les délimitations
+            const rawDelimitations = firstImage.delimitations || [];
+            const normalizedDelimitations = normalizeDelimitations(rawDelimitations, firstImage.naturalWidth, firstImage.naturalHeight);
+            
+            // Créer la visualisation des délimitations
+            let delimitationVisualization = '';
+            normalizedDelimitations.forEach((delim, i) => {
+                delimitationVisualization += `
+                    <div class="delimitation-box" style="
+                        left: ${delim.x}%; 
+                        top: ${delim.y}%; 
+                        width: ${delim.width}%; 
+                        height: ${delim.height}%;
+                    ">
+                        <div class="delimitation-label">Zone ${i + 1}</div>
+                    </div>
+                `;
+            });
+            
+            card.innerHTML = `
+                <h3>Produit ${index} - ${item.name}</h3>
+                
+                <div class="debug-section">
+                    <h4>🖼️ Image Produit</h4>
+                    <img class="image-preview" src="${firstImage.url}" alt="${item.name}" 
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIGluZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4='">
+                    <p><strong>Dimensions:</strong> ${firstImage.naturalWidth} x ${firstImage.naturalHeight}px</p>
+                </div>
+                
+                <div class="debug-section">
+                    <h4>🎯 Position Design</h4>
+                    <p><strong>X:</strong> ${designPos.position.x}</p>
+                    <p><strong>Y:</strong> ${designPos.position.y}</p>
+                    <p><strong>Scale:</strong> ${designPos.position.scale}</p>
+                </div>
+                
+                <div class="debug-section">
+                    <h4>📐 Délimitations</h4>
+                    ${normalizedDelimitations.length === 0 
+                        ? '<div class="status error">❌ Aucune délimitation trouvée</div>'
+                        : `<div class="status success">✅ ${normalizedDelimitations.length} délimitation(s) trouvée(s)</div>`
+                    }
+                    
+                    ${normalizedDelimitations.map((delim, i) => `
+                        <div style="margin: 10px 0; padding: 10px; background: ${delim.wasConverted ? '#fff3cd' : '#d4edda'}; border-radius: 5px;">
+                            <strong>Délimitation ${i + 1} ${delim.wasConverted ? '(convertie de pixels)' : '(déjà en %)'}</strong><br>
+                            <strong>X:</strong> ${delim.x.toFixed(2)}% | <strong>Y:</strong> ${delim.y.toFixed(2)}%<br>
+                            <strong>Width:</strong> ${delim.width.toFixed(2)}% | <strong>Height:</strong> ${delim.height.toFixed(2)}%<br>
+                            <strong>Type:</strong> ${delim.coordinateType}
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="debug-section">
+                    <h4>👁️ Visualisation des Délimitations</h4>
+                    <div class="delimitation-visual">
+                        ${delimitationVisualization}
+                        <p style="position: absolute; bottom: 5px; left: 5px; font-size: 12px; color: #666; margin: 0;">
+                            Zones rouges = délimitations où le design sera positionné
+                        </p>
+                    </div>
+                </div>
+                
+                <details style="margin-top: 15px;">
+                    <summary>🔍 Données JSON complètes</summary>
+                    <pre style="max-height: 200px; overflow-y: auto;">${JSON.stringify({
+                        designPositions: item.designPositions,
+                        rawDelimitations: rawDelimitations,
+                        normalizedDelimitations: normalizedDelimitations,
+                        imageInfo: {
+                            url: firstImage.url,
+                            naturalWidth: firstImage.naturalWidth,
+                            naturalHeight: firstImage.naturalHeight
+                        }
+                    }, null, 2)}</pre>
+                </details>
+            `;
+            
+            return card;
+        }
+        
+        function clearResults() {
+            document.getElementById('status').innerHTML = '';
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testDelimitations();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

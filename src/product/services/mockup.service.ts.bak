@@ -1,0 +1,213 @@
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateMockupDto, MockupResponseDto, MockupGenre } from '../dto/create-mockup.dto';
+
+@Injectable()
+export class MockupService {
+  private readonly logger = new Logger(MockupService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Créer un mockup avec genre
+   */
+  async createMockup(createMockupDto: CreateMockupDto): Promise<MockupResponseDto> {
+    // Validation spécifique pour les mockups
+    if (createMockupDto.isReadyProduct !== false) {
+      throw new BadRequestException('Les mockups doivent avoir isReadyProduct: false');
+    }
+
+    this.logger.log(`🎨 Création mockup: ${createMockupDto.name} - Genre: ${createMockupDto.genre || 'UNISEXE'}`);
+
+    const mockup = await this.prisma.product.create({
+      data: {
+        name: createMockupDto.name,
+        description: createMockupDto.description,
+        price: createMockupDto.price,
+        status: createMockupDto.status || 'draft',
+        isReadyProduct: false, // Forcer à false pour les mockups
+        genre: createMockupDto.genre || MockupGenre.UNISEXE, // Valeur par défaut
+        // Ajouter les relations si nécessaire
+        categories: createMockupDto.categories ? {
+          create: createMockupDto.categories.map(category => ({
+            name: category
+          }))
+        } : undefined,
+        sizes: createMockupDto.sizes ? {
+          create: createMockupDto.sizes.map(size => ({
+            sizeName: size
+          }))
+        } : undefined,
+        colorVariations: createMockupDto.colorVariations ? {
+          create: createMockupDto.colorVariations.map(color => ({
+            name: color.name,
+            colorCode: color.colorCode,
+            images: color.images ? {
+              create: color.images.map(image => ({
+                url: image.url,
+                view: image.view || 'Front'
+              }))
+            } : undefined
+          }))
+        } : undefined
+      },
+      include: {
+        categories: true,
+        colorVariations: {
+          include: {
+            images: true
+          }
+        },
+        sizes: true
+      }
+    });
+    
+    this.logger.log(`✅ Mockup créé avec succès: ID ${mockup.id}, Genre: ${mockup.genre}`);
+    
+    return this.mapToResponseDto(mockup);
+  }
+
+  /**
+   * Mettre à jour un mockup avec genre
+   */
+  async updateMockup(id: number, updateMockupDto: Partial<CreateMockupDto>): Promise<MockupResponseDto> {
+    this.logger.log(`🔄 Mise à jour mockup ID ${id} - Genre: ${updateMockupDto.genre}`);
+
+    const mockup = await this.prisma.product.update({
+      where: { id },
+      data: {
+        ...updateMockupDto,
+        // Le genre peut être mis à jour
+      },
+      include: {
+        categories: true,
+        colorVariations: {
+          include: {
+            images: true
+          }
+        },
+        sizes: true
+      }
+    });
+    
+    this.logger.log(`✅ Mockup mis à jour avec succès: ID ${mockup.id}`);
+    
+    return this.mapToResponseDto(mockup);
+  }
+
+  /**
+   * Récupérer les mockups par genre
+   */
+  async getMockupsByGenre(genre: MockupGenre): Promise<MockupResponseDto[]> {
+    this.logger.log(`🔍 Récupération mockups par genre: ${genre}`);
+
+    const mockups = await this.prisma.product.findMany({
+      where: {
+        genre,
+        isReadyProduct: false,
+        isDelete: false
+      },
+      include: {
+        categories: true,
+        colorVariations: {
+          include: {
+            images: true
+          }
+        },
+        sizes: true
+      }
+    });
+    
+    this.logger.log(`📊 ${mockups.length} mockups trouvés pour le genre: ${genre}`);
+    
+    return mockups.map(mockup => this.mapToResponseDto(mockup));
+  }
+
+  /**
+   * Récupérer tous les genres disponibles
+   */
+  async getAvailableMockupGenres(): Promise<string[]> {
+    this.logger.log(`🔍 Récupération des genres disponibles`);
+
+    const genres = await this.prisma.product.findMany({
+      where: { 
+        isReadyProduct: false,
+        isDelete: false
+      },
+      select: { genre: true },
+      distinct: ['genre']
+    });
+    
+    const availableGenres = genres.map(g => g.genre).filter(Boolean);
+    this.logger.log(`📊 Genres disponibles: ${availableGenres.join(', ')}`);
+    
+    return availableGenres;
+  }
+
+  /**
+   * Récupérer tous les mockups avec filtre par genre
+   */
+  async getAllMockups(genre?: MockupGenre): Promise<MockupResponseDto[]> {
+    this.logger.log(`🔍 Récupération tous les mockups${genre ? ` - Genre: ${genre}` : ''}`);
+
+    let whereClause: any = { 
+      isReadyProduct: false,
+      isDelete: false
+    };
+    
+    if (genre) {
+      whereClause.genre = genre;
+    }
+    
+    const mockups = await this.prisma.product.findMany({
+      where: whereClause,
+      include: {
+        categories: true,
+        colorVariations: {
+          include: {
+            images: true
+          }
+        },
+        sizes: true
+      }
+    });
+    
+    this.logger.log(`📊 ${mockups.length} mockups trouvés`);
+    
+    return mockups.map(mockup => this.mapToResponseDto(mockup));
+  }
+
+  /**
+   * Supprimer un mockup (soft delete)
+   */
+  async deleteMockup(id: number): Promise<void> {
+    this.logger.log(`🗑️ Suppression mockup ID ${id}`);
+
+    await this.prisma.product.update({
+      where: { id },
+      data: { isDelete: true }
+    });
+    
+    this.logger.log(`✅ Mockup supprimé avec succès: ID ${id}`);
+  }
+
+  /**
+   * Méthode utilitaire pour mapper vers la réponse
+   */
+  private mapToResponseDto(mockup: any): MockupResponseDto {
+    return {
+      id: mockup.id,
+      name: mockup.name,
+      description: mockup.description,
+      price: mockup.price,
+      status: mockup.status,
+      isReadyProduct: false,
+      genre: mockup.genre,
+      categories: mockup.categories || [],
+      colorVariations: mockup.colorVariations || [],
+      sizes: mockup.sizes || [],
+      createdAt: mockup.createdAt,
+      updatedAt: mockup.updatedAt
+    };
+  }
+} 

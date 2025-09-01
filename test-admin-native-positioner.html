@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin Native Design Positioner - Système SellDesignPage</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .preview-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            background: #f9fafb;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #ddd;
+            margin: 0 auto;
+        }
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: white;
+        }
+        .delimitation {
+            position: absolute;
+            border: 2px dashed #007bff;
+            background: rgba(0, 123, 255, 0.1);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .delimitation-label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #007bff;
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        .design-element {
+            position: absolute;
+            cursor: move;
+            z-index: 10;
+            user-select: none;
+            transition: box-shadow 0.2s ease;
+        }
+        .design-element:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .design-element.dragging {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+        .design-image {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+        .info-panel {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #2196f3;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .status.valid {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.invalid {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .preset-btn {
+            padding: 8px 12px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .preset-btn:hover {
+            background: #545b62;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #007bff;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: se-resize;
+            z-index: 20;
+        }
+        .resize-handle.top-left {
+            top: -4px;
+            left: -4px;
+            cursor: nw-resize;
+        }
+        .resize-handle.top-right {
+            top: -4px;
+            right: -4px;
+            cursor: ne-resize;
+        }
+        .resize-handle.bottom-left {
+            bottom: -4px;
+            left: -4px;
+            cursor: sw-resize;
+        }
+        .resize-handle.bottom-right {
+            bottom: -4px;
+            right: -4px;
+            cursor: se-resize;
+        }
+        .design-border {
+            position: absolute;
+            inset: 0;
+            border: 2px dashed #6366f1;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .design-element:hover .design-border {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🎯 Test Admin Native Design Positioner - Système SellDesignPage</h1>
+        
+        <div class="test-grid">
+            <!-- Panneau de contrôles -->
+            <div class="controls">
+                <h3>🎛️ Contrôles Natifs (comme SellDesignPage)</h3>
+                
+                <div class="control-group">
+                    <label>Position X: <span id="posX">50</span>%</label>
+                    <input type="range" id="positionX" class="slider" min="0" max="100" value="50">
+                    <div class="help-text">Position horizontale du design</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Position Y: <span id="posY">30</span>%</label>
+                    <input type="range" id="positionY" class="slider" min="0" max="100" value="30">
+                    <div class="help-text">Position verticale du design</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Échelle: <span id="scaleVal">100</span>%</label>
+                    <input type="range" id="scale" class="slider" min="20" max="300" value="100">
+                    <div class="help-text">Taille du design</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Rotation: <span id="rotVal">0</span>°</label>
+                    <input type="range" id="rotation" class="slider" min="0" max="360" value="0">
+                    <div class="help-text">Rotation du design</div>
+                </div>
+
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="setPreset('center')">Centrer</button>
+                    <button class="preset-btn" onclick="setPreset('top')">Haut</button>
+                    <button class="preset-btn" onclick="setPreset('corner')">Coin</button>
+                    <button class="preset-btn" onclick="resetPosition()">Reset</button>
+                </div>
+
+                <div class="info-panel">
+                    <h4>📍 Informations Position</h4>
+                    <div>Coordonnées: (<span id="coordX">50</span>%, <span id="coordY">30</span>%)</div>
+                    <div>Échelle: <span id="coordScale">100</span>%</div>
+                    <div>Rotation: <span id="coordRot">0</span>°</div>
+                    <div id="validationStatus" class="status valid">✅ Position valide dans les délimitations</div>
+                </div>
+            </div>
+
+            <!-- Zone de prévisualisation -->
+            <div>
+                <h3>👁️ Prévisualisation Interactive (Drag & Drop natif)</h3>
+                <div class="preview-container" id="previewContainer">
+                    <!-- Image du produit de base -->
+                    <img id="productImage" 
+                         src="https://via.placeholder.com/400x400/e0e0e0/666?text=T-SHIRT+MOCKUP" 
+                         alt="Produit" class="product-image">
+                    
+                    <!-- Délimitations (zones autorisées) -->
+                    <div class="delimitation" style="left: 25%; top: 20%; width: 50%; height: 40%;">
+                        <div class="delimitation-label">Zone 1 - Poitrine</div>
+                    </div>
+                    <div class="delimitation" style="left: 30%; top: 65%; width: 40%; height: 25%;">
+                        <div class="delimitation-label">Zone 2 - Bas</div>
+                    </div>
+                    
+                    <!-- Design draggable -->
+                    <div class="design-element" id="designElement">
+                        <div class="design-border"></div>
+                        <img src="https://via.placeholder.com/80x80/ff6b6b/ffffff?text=LOGO" 
+                             alt="Design" class="design-image">
+                        
+                        <!-- Poignées de redimensionnement -->
+                        <div class="resize-handle top-left" data-corner="tl"></div>
+                        <div class="resize-handle top-right" data-corner="tr"></div>
+                        <div class="resize-handle bottom-left" data-corner="bl"></div>
+                        <div class="resize-handle bottom-right" data-corner="br"></div>
+                    </div>
+                </div>
+                
+                <div class="help-text" style="text-align: center; margin-top: 10px;">
+                    🖱️ Glissez le design • 🔲 Poignées pour redimensionner<br>
+                    📦 Contraintes de délimitations comme dans SellDesignPage
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h4>🔧 Fonctionnalités SellDesignPage Reproduites</h4>
+            <ul>
+                <li>✅ <strong>Drag & Drop natif</strong> : Événements mousedown/mousemove/mouseup</li>
+                <li>✅ <strong>Transformations CSS</strong> : Translate, scale, rotate en temps réel</li>
+                <li>✅ <strong>Calcul des délimitations</strong> : computePxPosition exacte</li>
+                <li>✅ <strong>Poignées de resize</strong> : 4 coins avec curseurs adaptés</li>
+                <li>✅ <strong>Contraintes strictes</strong> : Vérification isWithinDelimitations</li>
+                <li>✅ <strong>Synchronisation sliders</strong> : Bidirectionnelle sliders ↔ drag</li>
+                <li>✅ <strong>Observer de taille</strong> : ResizeObserver pour container</li>
+                <li>✅ <strong>Feedback visuel</strong> : Bordures au hover, shadow, transitions</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        class AdminNativeDesignPositioner {
+            constructor() {
+                this.position = { x: 50, y: 30, scale: 100, rotation: 0 };
+                this.delimitations = [
+                    { x: 25, y: 20, width: 50, height: 40, name: "Poitrine" },
+                    { x: 30, y: 65, width: 40, height: 25, name: "Bas" }
+                ];
+                
+                this.containerRef = document.getElementById('previewContainer');
+                this.designElement = document.getElementById('designElement');
+                this.productImage = document.getElementById('productImage');
+                
+                this.naturalSize = { width: 400, height: 400 };
+                this.containerSize = { width: 400, height: 400 };
+                
+                this.dragState = null;
+                this.hoveredIdx = null;
+                
+                this.init();
+            }
+            
+            init() {
+                this.bindEvents();
+                this.bindSliders();
+                this.updatePosition();
+                this.observeContainerSize();
+                
+                console.log('🎯 Admin Native Design Positioner initialisé !');
+            }
+            
+            bindEvents() {
+                // Drag & Drop du design
+                this.designElement.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                
+                // Resize handles
+                const resizeHandles = this.designElement.querySelectorAll('.resize-handle');
+                resizeHandles.forEach(handle => {
+                    handle.addEventListener('mousedown', this.handleResizeMouseDown.bind(this));
+                });
+                
+                // Global mouse events
+                document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                
+                // Prévenir la sélection
+                this.designElement.addEventListener('selectstart', e => e.preventDefault());
+                this.designElement.addEventListener('dragstart', e => e.preventDefault());
+                
+                // Image load
+                this.productImage.addEventListener('load', () => {
+                    this.naturalSize = {
+                        width: this.productImage.naturalWidth,
+                        height: this.productImage.naturalHeight
+                    };
+                });
+            }
+            
+            observeContainerSize() {
+                const updateSize = () => {
+                    const rect = this.containerRef.getBoundingClientRect();
+                    this.containerSize = { width: rect.width, height: rect.height };
+                };
+                
+                updateSize();
+                
+                const resizeObserver = new ResizeObserver(updateSize);
+                resizeObserver.observe(this.containerRef);
+                
+                window.addEventListener('resize', updateSize);
+            }
+            
+            handleMouseDown(e) {
+                if (e.target.classList.contains('resize-handle')) return; // Éviter conflit resize
+                
+                e.preventDefault();
+                this.dragState = {
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    origX: this.position.x,
+                    origY: this.position.y,
+                    mode: 'move',
+                    origScale: this.position.scale
+                };
+                
+                this.designElement.classList.add('dragging');
+            }
+            
+            handleResizeMouseDown(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                this.dragState = {
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    origX: this.position.x,
+                    origY: this.position.y,
+                    mode: 'resize',
+                    origScale: this.position.scale
+                };
+            }
+            
+            handleMouseMove(e) {
+                if (!this.dragState) return;
+                
+                const { startX, startY, origX, origY, mode, origScale } = this.dragState;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                if (mode === 'move') {
+                    // Convertir le déplacement en pixels vers pourcentages
+                    const newX = origX + (dx / this.containerSize.width) * 100;
+                    const newY = origY + (dy / this.containerSize.height) * 100;
+                    
+                    // Vérifier les contraintes
+                    if (this.isWithinDelimitations(newX, newY, this.position.scale)) {
+                        this.position.x = newX;
+                        this.position.y = newY;
+                        this.updatePosition();
+                        this.updateSliders();
+                        this.updateValidationStatus(true);
+                    } else {
+                        this.updateValidationStatus(false);
+                    }
+                } else if (mode === 'resize') {
+                    // Utiliser le déplacement diagonal pour l'échelle
+                    const delta = Math.max(dx, dy);
+                    let newScale = origScale + (delta / 120) * 100; // 120px = 100% d'échelle
+                    newScale = Math.max(20, Math.min(300, newScale));
+                    
+                    if (this.isWithinDelimitations(this.position.x, this.position.y, newScale)) {
+                        this.position.scale = newScale;
+                        this.updatePosition();
+                        this.updateSliders();
+                        this.updateValidationStatus(true);
+                    } else {
+                        this.updateValidationStatus(false);
+                    }
+                }
+            }
+            
+            handleMouseUp() {
+                if (this.dragState) {
+                    this.dragState = null;
+                    this.designElement.classList.remove('dragging');
+                }
+            }
+            
+            computePxPosition(delim) {
+                const imgW = this.naturalSize.width || 1;
+                const imgH = this.naturalSize.height || 1;
+                
+                const { width: contW, height: contH } = this.containerSize;
+                if (contW === 0 || contH === 0) return { left: 0, top: 0, width: 0, height: 0 };
+                
+                const imgRatio = imgW / imgH;
+                const contRatio = contW / contH;
+                
+                let dispW, dispH, offsetX, offsetY;
+                if (imgRatio > contRatio) {
+                    dispW = contW;
+                    dispH = contW / imgRatio;
+                    offsetX = 0;
+                    offsetY = (contH - dispH) / 2;
+                } else {
+                    dispH = contH;
+                    dispW = contH * imgRatio;
+                    offsetX = (contW - dispW) / 2;
+                    offsetY = 0;
+                }
+                
+                return {
+                    left: offsetX + (delim.x / 100) * dispW,
+                    top: offsetY + (delim.y / 100) * dispH,
+                    width: (delim.width / 100) * dispW,
+                    height: (delim.height / 100) * dispH,
+                };
+            }
+            
+            isWithinDelimitations(x, y, scale) {
+                // Calculer la taille du design en pourcentage
+                const designSizePercent = (20 * scale / 100) / 100; // 20% de base normalisé
+                const halfSize = designSizePercent / 2;
+                
+                return this.delimitations.some(delim => {
+                    const pos = this.computePxPosition(delim);
+                    if (pos.width <= 0 || pos.height <= 0) return false;
+                    
+                    // Convertir délimitations en pourcentages
+                    const delimLeftPercent = (pos.left / this.containerSize.width) * 100;
+                    const delimTopPercent = (pos.top / this.containerSize.height) * 100;
+                    const delimRightPercent = ((pos.left + pos.width) / this.containerSize.width) * 100;
+                    const delimBottomPercent = ((pos.top + pos.height) / this.containerSize.height) * 100;
+                    
+                    // Vérifier si le design entier est dans cette délimitation
+                    const designLeft = x - halfSize;
+                    const designRight = x + halfSize;
+                    const designTop = y - halfSize;
+                    const designBottom = y + halfSize;
+                    
+                    return (
+                        designLeft >= delimLeftPercent &&
+                        designRight <= delimRightPercent &&
+                        designTop >= delimTopPercent &&
+                        designBottom <= delimBottomPercent
+                    );
+                });
+            }
+            
+            updatePosition() {
+                const { x, y, scale, rotation } = this.position;
+                
+                this.designElement.style.left = `${x}%`;
+                this.designElement.style.top = `${y}%`;
+                this.designElement.style.transform = `translate(-50%, -50%) scale(${scale / 100}) rotate(${rotation}deg)`;
+                
+                this.updateUI();
+            }
+            
+            bindSliders() {
+                const sliders = {
+                    positionX: (val) => this.updatePositionValue('x', parseInt(val)),
+                    positionY: (val) => this.updatePositionValue('y', parseInt(val)),
+                    scale: (val) => this.updatePositionValue('scale', parseInt(val)),
+                    rotation: (val) => this.updatePositionValue('rotation', parseInt(val))
+                };
+                
+                Object.keys(sliders).forEach(id => {
+                    document.getElementById(id).addEventListener('input', (e) => {
+                        sliders[id](e.target.value);
+                    });
+                });
+            }
+            
+            updatePositionValue(prop, value) {
+                const testPosition = { ...this.position, [prop]: value };
+                
+                if (['x', 'y', 'scale'].includes(prop)) {
+                    if (!this.isWithinDelimitations(testPosition.x, testPosition.y, testPosition.scale)) {
+                        this.updateValidationStatus(false);
+                        return;
+                    }
+                }
+                
+                this.position[prop] = value;
+                this.updatePosition();
+                this.updateValidationStatus(true);
+            }
+            
+            updateSliders() {
+                document.getElementById('positionX').value = this.position.x;
+                document.getElementById('positionY').value = this.position.y;
+                document.getElementById('scale').value = this.position.scale;
+                document.getElementById('rotation').value = this.position.rotation;
+            }
+            
+            updateUI() {
+                const { x, y, scale, rotation } = this.position;
+                
+                document.getElementById('posX').textContent = Math.round(x);
+                document.getElementById('posY').textContent = Math.round(y);
+                document.getElementById('scaleVal').textContent = Math.round(scale);
+                document.getElementById('rotVal').textContent = Math.round(rotation);
+                
+                document.getElementById('coordX').textContent = Math.round(x);
+                document.getElementById('coordY').textContent = Math.round(y);
+                document.getElementById('coordScale').textContent = Math.round(scale);
+                document.getElementById('coordRot').textContent = Math.round(rotation);
+            }
+            
+            updateValidationStatus(isValid) {
+                const statusEl = document.getElementById('validationStatus');
+                
+                if (isValid) {
+                    statusEl.className = 'status valid';
+                    statusEl.textContent = '✅ Position valide dans les délimitations';
+                } else {
+                    statusEl.className = 'status invalid';
+                    statusEl.textContent = '❌ Position invalide - En dehors des délimitations';
+                }
+            }
+        }
+        
+        // Fonctions globales
+        function setPreset(preset) {
+            const positioner = window.nativePositioner;
+            
+            switch (preset) {
+                case 'center':
+                    positioner.updatePositionValue('x', 50);
+                    positioner.updatePositionValue('y', 40);
+                    positioner.updatePositionValue('scale', 100);
+                    positioner.updatePositionValue('rotation', 0);
+                    break;
+                case 'top':
+                    positioner.updatePositionValue('x', 50);
+                    positioner.updatePositionValue('y', 30);
+                    positioner.updatePositionValue('scale', 120);
+                    positioner.updatePositionValue('rotation', 0);
+                    break;
+                case 'corner':
+                    positioner.updatePositionValue('x', 40);
+                    positioner.updatePositionValue('y', 75);
+                    positioner.updatePositionValue('scale', 80);
+                    positioner.updatePositionValue('rotation', 15);
+                    break;
+            }
+            positioner.updateSliders();
+        }
+        
+        function resetPosition() {
+            const positioner = window.nativePositioner;
+            positioner.updatePositionValue('x', 50);
+            positioner.updatePositionValue('y', 30);
+            positioner.updatePositionValue('scale', 100);
+            positioner.updatePositionValue('rotation', 0);
+            positioner.updateSliders();
+        }
+        
+        // Initialisation
+        window.addEventListener('load', () => {
+            window.nativePositioner = new AdminNativeDesignPositioner();
+        });
+        
+        console.log('🎯 Test Admin Native Design Positioner prêt !');
+        console.log('✅ Système SellDesignPage reproduit avec succès :');
+        console.log('  - Drag & Drop natif avec événements souris');
+        console.log('  - Transformations CSS en temps réel');
+        console.log('  - Calculs de délimitations exactes');
+        console.log('  - Poignées de redimensionnement');
+        console.log('  - Contraintes de positionnement strictes');
+    </script>
+</body>
+</html> 

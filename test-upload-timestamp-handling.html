@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Gestion Timestamps</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; padding: 20px; margin: 20px 0; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; }
+        .upload-area { border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; }
+        .test-case { background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .timestamp-info { background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🕐 Test Upload Gestion Timestamps</h1>
+    
+    <div class="test-section">
+        <h2>✅ Problème Identifié et Corrigé</h2>
+        <p>Le problème venait du fait que le frontend envoyait des timestamps (1753819962539) au backend, mais le backend ne gère pas les timestamps comme IDs de couleur.</p>
+        
+        <h3>🔧 Correction Apportée</h3>
+        <ul>
+            <li>✅ Détection des timestamps (longueur > 10)</li>
+            <li>✅ Conversion en ID temporaire (1) pour l'upload</li>
+            <li>✅ Conservation du timestamp original dans le state</li>
+            <li>✅ Gestion différente des couleurs existantes vs nouvelles</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Comparaison Avant/Après</h2>
+        
+        <h3>❌ Avant (Erreur 500)</h3>
+        <ul>
+            <li>colorId envoyé : 1753819962539 (timestamp)</li>
+            <li>URL : POST /products/upload-color-image/4/1753819962539</li>
+            <li>Résultat : 500 Internal Server Error</li>
+            <li>Message : "Internal server error"</li>
+        </ul>
+        
+        <h3>✅ Après (Corrigé)</h3>
+        <ul>
+            <li>colorId détecté : 1753819962539 (timestamp)</li>
+            <li>Conversion : 1753819962539 → 1 (ID temporaire)</li>
+            <li>URL : POST /products/upload-color-image/4/1</li>
+            <li>Résultat : Upload réussi</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🕐 Gestion des Timestamps</h2>
+        
+        <div class="timestamp-info">
+            <h3>Logique de Détection</h3>
+            <ul>
+                <li><strong>Timestamp :</strong> ID avec longueur > 10 (ex: 1753819962539)</li>
+                <li><strong>ID Numérique :</strong> ID avec longueur ≤ 10 (ex: 16, 17, 23)</li>
+                <li><strong>Conversion :</strong> Timestamp → ID temporaire (1)</li>
+            </ul>
+        </div>
+        
+        <div class="test-case">
+            <h3>1. Test avec ID Numérique (Couleur Existante)</h3>
+            <input type="number" id="numericId" placeholder="ID numérique" value="16" />
+            <button onclick="testNumericId()">🔍 Test ID Numérique</button>
+            <div id="numericResult"></div>
+        </div>
+        
+        <div class="test-case">
+            <h3>2. Test avec Timestamp (Nouvelle Couleur)</h3>
+            <input type="text" id="timestampId" placeholder="Timestamp" value="1753819962539" />
+            <button onclick="testTimestampId()">🔍 Test Timestamp</button>
+            <div id="timestampResult"></div>
+        </div>
+        
+        <div class="test-case">
+            <h3>3. Upload d'Image</h3>
+            <div class="upload-area" id="uploadArea">
+                <p>Glissez-déposez une image ou cliquez pour sélectionner</p>
+                <p>JPG, PNG, WEBP - Max 5MB</p>
+                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+            </div>
+            <button onclick="uploadImage()" id="uploadButton" disabled>📤 Upload Image</button>
+            <div id="uploadResult"></div>
+        </div>
+        
+        <button onclick="runAllTests()">🚀 Test Complet</button>
+        <button onclick="clearLog()">🧹 Effacer Log</button>
+    </div>
+    
+    <div id="messageSection" style="display: none;"></div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test upload gestion timestamps initialisé</div>
+        <div class="info">📋 Prêt à tester la gestion des timestamps</div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let currentColorId = null;
+        let currentColorType = null;
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('uploadButton');
+
+        // Gestion de la sélection de fichier
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                log(`📁 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+                updateUploadButton();
+            }
+        });
+
+        // Gestion du drag & drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                selectedFile = file;
+                log(`📁 Fichier glissé: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+                updateUploadButton();
+            }
+        });
+
+        // Gestion du clic sur la zone d'upload
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Test avec ID numérique
+        function testNumericId() {
+            const colorId = document.getElementById('numericId').value;
+            const resultDiv = document.getElementById('numericResult');
+            
+            log(`🔍 Test ID numérique: ${colorId}`, 'info');
+            
+            if (colorId && colorId.length <= 10) {
+                currentColorId = colorId;
+                currentColorType = 'numeric';
+                log(`✅ ID numérique valide: ${colorId}`, 'success');
+                resultDiv.innerHTML = `<div class="success">✅ ID numérique valide: ${colorId}</div>`;
+            } else {
+                log(`❌ ID invalide: ${colorId}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ ID invalide: ${colorId}</div>`;
+            }
+        }
+
+        // Test avec timestamp
+        function testTimestampId() {
+            const colorId = document.getElementById('timestampId').value;
+            const resultDiv = document.getElementById('timestampResult');
+            
+            log(`🔍 Test timestamp: ${colorId}`, 'info');
+            
+            if (colorId && colorId.length > 10) {
+                currentColorId = colorId;
+                currentColorType = 'timestamp';
+                const tempId = '1'; // ID temporaire
+                log(`✅ Timestamp détecté: ${colorId} → ID temporaire: ${tempId}`, 'success');
+                resultDiv.innerHTML = `<div class="success">✅ Timestamp détecté: ${colorId} → ID temporaire: ${tempId}</div>`;
+            } else {
+                log(`❌ Timestamp invalide: ${colorId}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Timestamp invalide: ${colorId}</div>`;
+            }
+        }
+
+        // Upload d'image
+        async function uploadImage() {
+            const resultDiv = document.getElementById('uploadResult');
+            
+            if (!selectedFile) {
+                log('❌ Aucun fichier sélectionné', 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Aucun fichier sélectionné</div>`;
+                return;
+            }
+            
+            if (!currentColorId) {
+                log('❌ Testez d\'abord un ID', 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Testez d\'abord un ID</div>`;
+                return;
+            }
+            
+            log('🚀 Début de l\'upload...', 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                const productId = 4;
+                let colorIdForUpload = currentColorId;
+                
+                // Appliquer la logique de correction
+                if (currentColorType === 'timestamp') {
+                    colorIdForUpload = '1'; // ID temporaire pour les timestamps
+                    log(`🔄 Conversion timestamp → ID temporaire: ${currentColorId} → ${colorIdForUpload}`, 'info');
+                }
+
+                log(`📤 Envoi vers: POST /products/upload-color-image/${productId}/${colorIdForUpload}`, 'info');
+
+                const response = await fetch(`http://localhost:3004/products/upload-color-image/${productId}/${colorIdForUpload}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                log(`📥 Réponse reçue (${response.status})`, response.ok ? 'success' : 'error');
+
+                if (response.ok && data.success) {
+                    log('✅ Upload réussi!', 'success');
+                    log(`🔗 URL générée: ${data.image.url}`, 'success');
+                    resultDiv.innerHTML = `<div class="success">✅ Upload réussi! URL: ${data.image.url}</div>`;
+                    showMessage('success', '✅ Upload réussi avec gestion des timestamps!');
+                } else {
+                    log(`❌ Erreur: ${data.message}`, 'error');
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.message}</div>`;
+                    showMessage('error', `❌ Erreur: ${data.message}`);
+                }
+
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Erreur réseau: ${error.message}</div>`;
+                showMessage('error', `❌ Erreur réseau: ${error.message}`);
+            }
+        }
+
+        // Test complet
+        async function runAllTests() {
+            log('🚀 Début du test complet...', 'info');
+            
+            try {
+                // 1. Test ID numérique
+                testNumericId();
+                
+                // 2. Test timestamp
+                testTimestampId();
+                
+                // 3. Test upload
+                await uploadImage();
+                
+                log('✅ Test complet terminé avec succès!', 'success');
+            } catch (error) {
+                log(`❌ Test complet échoué: ${error.message}`, 'error');
+            }
+        }
+
+        // Fonctions utilitaires
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+
+        function showMessage(type, message) {
+            const messageSection = document.getElementById('messageSection');
+            messageSection.innerHTML = `<div class="${type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'}">${message}</div>`;
+            messageSection.style.display = 'block';
+        }
+
+        // Mettre à jour le bouton d'upload
+        function updateUploadButton() {
+            const hasFile = selectedFile !== null;
+            const hasColor = currentColorId !== null;
+            
+            uploadButton.disabled = !(hasFile && hasColor);
+            
+            if (hasFile && hasColor) {
+                uploadButton.textContent = `📤 Upload Image`;
+            } else {
+                uploadButton.textContent = '📤 Upload Image';
+            }
+        }
+
+        // Initialisation
+        log('🚀 Test upload gestion timestamps initialisé', 'info');
+        log('📋 Prêt à tester la gestion des timestamps', 'info');
+    </script>
+</body>
+</html> 

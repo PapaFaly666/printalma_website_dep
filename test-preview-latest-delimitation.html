@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Prévisualisation Dernière Délimitation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+        .latest-test {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success-test {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .preview-section {
+            border: 2px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            background: white;
+        }
+        .color-section {
+            border: 1px solid #eee;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .image-preview {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            border: 2px solid #ccc;
+            margin: 10px;
+            display: inline-block;
+            background: #f0f0f0;
+        }
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .delimitation-overlay {
+            position: absolute;
+            border: 2px solid red;
+            background: rgba(255, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        .zone-badge {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: red;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .zone-count {
+            background: #e3f2fd;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            color: #1976d2;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .log-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Test - Prévisualisation Dernière Délimitation</h1>
+    
+    <div class="test-section">
+        <h2>🎯 Test de Prévisualisation Dernière Modification</h2>
+        <p>Test de l'affichage de seulement la dernière modification de délimitation dans la prévisualisation.</p>
+        
+        <button onclick="testLatestDelimitation()">Tester Dernière Délimitation</button>
+        <button onclick="testMultipleDelimitations()">Tester Multiples Délimitations</button>
+        <button onclick="testPreviewLatestOnly()">Tester Prévisualisation Dernière Seule</button>
+        <button onclick="clearResults()">Effacer les Résultats</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>👁️ Prévisualisation Simulée (Dernière Modification)</h2>
+        <div id="preview-simulation">
+            <!-- La prévisualisation sera affichée ici -->
+        </div>
+    </div>
+
+    <script>
+        // Simulation d'un produit avec plusieurs délimitations
+        let mockProduct = {
+            colorVariations: [
+                {
+                    id: '1',
+                    name: 'Rouge',
+                    colorCode: '#ff0000',
+                    images: [
+                        {
+                            id: 'img1',
+                            url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZmYwMDAwIi8+PC9zdmc+',
+                            view: 'Front',
+                            delimitations: [
+                                { id: 'delim1_old', name: 'Zone Logo', x: 50, y: 30, width: 100, height: 50 },
+                                { id: 'delim2_new', name: 'Zone Texte', x: 75, y: 40, width: 125, height: 60 }
+                            ]
+                        },
+                        {
+                            id: 'img2',
+                            url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZmYwMDAwIi8+PC9zdmc+',
+                            view: 'Back',
+                            delimitations: [
+                                { id: 'delim3_old', name: 'Zone Logo', x: 50, y: 30, width: 100, height: 50 },
+                                { id: 'delim4_latest', name: 'Zone Nouvelle', x: 100, y: 50, width: 150, height: 75 }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: '2',
+                    name: 'Bleu',
+                    colorCode: '#0000ff',
+                    images: [
+                        {
+                            id: 'img3',
+                            url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMDAwMGZmIi8+PC9zdmc+',
+                            view: 'Front',
+                            delimitations: []
+                        },
+                        {
+                            id: 'img4',
+                            url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMDAwMGZmIi8+PC9zdmc+',
+                            view: 'Back',
+                            delimitations: []
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Service de prévisualisation dernière délimitation
+        class PreviewLatestDelimitationService {
+            constructor() {
+                this.logs = [];
+            }
+
+            log(message) {
+                this.logs.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+                console.log(message);
+            }
+
+            // Obtenir seulement la délimitation la plus récente
+            getLatestDelimitation(product) {
+                this.log('🔍 Récupération de la délimitation la plus récente');
+                
+                const uniqueDelimitations = new Map();
+                
+                product.colorVariations.forEach(colorVar => {
+                    colorVar.images.forEach(img => {
+                        if (img.delimitations) {
+                            img.delimitations.forEach(delim => {
+                                const key = delim.name || `zone_${delim.id}`;
+                                if (!uniqueDelimitations.has(key)) {
+                                    uniqueDelimitations.set(key, delim);
+                                } else {
+                                    // Si la délimitation existe déjà, garder la plus récente
+                                    const existing = uniqueDelimitations.get(key);
+                                    if (delim.id && existing.id) {
+                                        const delimId = parseInt(delim.id.toString().replace(/\D/g, ''));
+                                        const existingId = parseInt(existing.id.toString().replace(/\D/g, ''));
+                                        if (delimId > existingId) {
+                                            uniqueDelimitations.set(key, delim);
+                                            this.log(`🔄 Délimitation mise à jour: ${key} (ID: ${delim.id})`);
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                const allDelimitations = Array.from(uniqueDelimitations.values());
+                
+                // Si on a plus d'une délimitation, ne garder que la plus récente
+                if (allDelimitations.length > 1) {
+                    const sortedDelimitations = allDelimitations.sort((a, b) => {
+                        const aId = parseInt(a.id.toString().replace(/\D/g, ''));
+                        const bId = parseInt(b.id.toString().replace(/\D/g, ''));
+                        return bId - aId; // Ordre décroissant (plus récent en premier)
+                    });
+                    
+                    const latest = sortedDelimitations[0];
+                    this.log(`📊 Dernière délimitation sélectionnée: ${latest.name} (ID: ${latest.id})`);
+                    return [latest];
+                }
+                
+                this.log(`📊 Délimitation unique: ${allDelimitations[0]?.name || 'Aucune'}`);
+                return allDelimitations;
+            }
+
+            // Rendre les délimitations pour la prévisualisation
+            renderDelimitationOverlay(image, latestDelimitations) {
+                if (!latestDelimitations || latestDelimitations.length === 0) {
+                    return null;
+                }
+
+                return latestDelimitations.map((delim, index) => {
+                    const percentageCoords = {
+                        left: (delim.x / 200) * 100,
+                        top: (delim.y / 200) * 100,
+                        width: (delim.width / 200) * 100,
+                        height: (delim.height / 200) * 100
+                    };
+
+                    return {
+                        id: delim.id,
+                        name: delim.name,
+                        style: {
+                            left: `${percentageCoords.left}%`,
+                            top: `${percentageCoords.top}%`,
+                            width: `${percentageCoords.width}%`,
+                            height: `${percentageCoords.height}%`
+                        }
+                    };
+                });
+            }
+
+            // Vérifier que seule la dernière délimitation est affichée
+            checkLatestOnlyPreview(product) {
+                this.log('🔍 Vérification que seule la dernière délimitation est affichée');
+                
+                const latestDelimitations = this.getLatestDelimitation(product);
+                const allImages = [];
+                
+                product.colorVariations.forEach(colorVar => {
+                    colorVar.images.forEach(img => allImages.push(img));
+                });
+                
+                let isLatestOnly = true;
+                const issues = [];
+                
+                allImages.forEach((img, index) => {
+                    const overlayDelimitations = this.renderDelimitationOverlay(img, latestDelimitations);
+                    const overlayCount = overlayDelimitations ? overlayDelimitations.length : 0;
+                    
+                    if (overlayCount > 1) {
+                        isLatestOnly = false;
+                        issues.push(`Image ${index + 1}: ${overlayCount} zones affichées au lieu d'une seule`);
+                    }
+                });
+                
+                return {
+                    isLatestOnly,
+                    totalImages: allImages.length,
+                    latestDelimitationCount: latestDelimitations.length,
+                    issues
+                };
+            }
+
+            getLogs() {
+                return this.logs.join('\n');
+            }
+
+            clearLogs() {
+                this.logs = [];
+            }
+        }
+
+        const latestService = new PreviewLatestDelimitationService();
+
+        // Tests globaux
+        window.testLatestDelimitation = () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test de Dernière Délimitation</h3>';
+
+            try {
+                latestService.log('📋 Début du test de dernière délimitation');
+                
+                const latestDelimitations = latestService.getLatestDelimitation(mockProduct);
+                
+                resultsDiv.innerHTML += `
+                    <div class="test-result success-test">
+                        <strong>✅ Dernière délimitation:</strong><br>
+                        <div class="log-section">${latestService.getLogs()}</div>
+                        <p>Délimitations affichées: ${latestDelimitations.length}</p>
+                        <p>Dernière délimitation: ${latestDelimitations[0]?.name || 'Aucune'}</p>
+                    </div>
+                `;
+                
+                renderPreviewSimulation();
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.testMultipleDelimitations = () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test de Multiples Délimitations</h3>';
+
+            try {
+                latestService.log('📋 Test avec multiples délimitations');
+                
+                // Simuler l'ajout de nouvelles délimitations
+                mockProduct.colorVariations[0].images[0].delimitations.push(
+                    { id: 'delim5_newest', name: 'Zone Plus Récente', x: 120, y: 60, width: 180, height: 90 }
+                );
+                
+                const latestDelimitations = latestService.getLatestDelimitation(mockProduct);
+                
+                resultsDiv.innerHTML += `
+                    <div class="test-result latest-test">
+                        <strong>🔄 Multiples délimitations:</strong><br>
+                        <div class="log-section">${latestService.getLogs()}</div>
+                        <p>Délimitations totales dans le produit: ${mockProduct.colorVariations.reduce((total, cv) => 
+                            total + cv.images.reduce((imgTotal, img) => imgTotal + (img.delimitations?.length || 0), 0), 0
+                        )}</p>
+                        <p>Délimitation affichée: ${latestDelimitations[0]?.name || 'Aucune'}</p>
+                    </div>
+                `;
+                
+                renderPreviewSimulation();
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.testPreviewLatestOnly = () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test de Prévisualisation Dernière Seule</h3>';
+
+            try {
+                const check = latestService.checkLatestOnlyPreview(mockProduct);
+                
+                if (check.isLatestOnly) {
+                    resultsDiv.innerHTML += `
+                        <div class="test-result success-test">
+                            <strong>✅ Prévisualisation correcte:</strong><br>
+                            <p>Images: ${check.totalImages}</p>
+                            <p>Délimitation affichée: ${check.latestDelimitationCount}</p>
+                            <p>Seule la dernière délimitation est affichée sur toutes les images</p>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML += `
+                        <div class="test-result test-error">
+                            <strong>❌ Prévisualisation incorrecte:</strong><br>
+                            <p>Images: ${check.totalImages}</p>
+                            <p>Délimitation affichée: ${check.latestDelimitationCount}</p>
+                            <p>Problèmes détectés:</p>
+                            <ul>
+                                ${check.issues.map(issue => `<li>${issue}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.clearResults = () => {
+            document.getElementById('test-results').innerHTML = '';
+            latestService.clearLogs();
+            console.log('🗑️ Résultats effacés');
+        };
+
+        // Fonction pour afficher la simulation de prévisualisation
+        function renderPreviewSimulation() {
+            const container = document.getElementById('preview-simulation');
+            const latestDelimitations = latestService.getLatestDelimitation(mockProduct);
+            
+            container.innerHTML = mockProduct.colorVariations.map(colorVar => `
+                <div class="preview-section">
+                    <h3>🎨 ${colorVar.name}</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                        ${colorVar.images.map(img => {
+                            const overlayDelimitations = latestService.renderDelimitationOverlay(img, latestDelimitations);
+                            
+                            return `
+                                <div class="color-section">
+                                    <h4>📷 ${img.view}</h4>
+                                    <div class="image-preview">
+                                        <img src="${img.url}" alt="${colorVar.name} - ${img.view}" />
+                                        ${overlayDelimitations ? overlayDelimitations.map(delim => `
+                                            <div class="delimitation-overlay" style="${Object.entries(delim.style).map(([key, value]) => `${key}: ${value}`).join('; ')}">
+                                                <div class="zone-badge">${delim.name} (Dernière)</div>
+                                            </div>
+                                        `).join('') : ''}
+                                    </div>
+                                    <div class="zone-count">
+                                        ${latestDelimitations.length} zone${latestDelimitations.length > 1 ? 's' : ''} (dernière modification)
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initialiser l'affichage
+        window.addEventListener('load', () => {
+            console.log('🎯 Service de prévisualisation dernière délimitation initialisé');
+            renderPreviewSimulation();
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Correction Authentification Design Transforms</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success { border-color: #4CAF50; background-color: #f9fff9; }
+        .error { border-color: #f44336; background-color: #fff9f9; }
+        .warning { border-color: #ff9800; background-color: #fff9f0; }
+        .info { border-color: #2196F3; background-color: #f0f9ff; }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #45a049; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .log {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .token-info {
+            background-color: #e8f5e8;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test - Correction Authentification Design Transforms</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Résumé des corrections apportées</h3>
+            <ul>
+                <li>✅ Ajout de la gestion des tokens d'authentification dans <code>designTransforms.ts</code></li>
+                <li>✅ Intercepteurs Axios pour les headers d'authentification automatiques</li>
+                <li>✅ Gestion spécifique des erreurs 403/401 avec messages explicites</li>
+                <li>✅ Amélioration de la gestion d'erreurs dans <code>useDesignTransforms.ts</code></li>
+                <li>✅ Fallback pour les tokens dans localStorage, sessionStorage et cookies</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🔑 Informations d'authentification</h3>
+            <div id="tokenInfo" class="token-info">
+                <p>Vérification des tokens disponibles...</p>
+            </div>
+            <button onclick="checkAuthTokens()">🔍 Vérifier les tokens</button>
+            <button onclick="simulateLogin()">🔐 Simuler connexion vendeur</button>
+            <button onclick="clearTokens()">🗑️ Effacer les tokens</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Tests des requêtes</h3>
+            <button onclick="testSaveDesignTransforms()">💾 Tester sauvegarde</button>
+            <button onclick="testLoadDesignTransforms()">📥 Tester chargement</button>
+            <button onclick="testWithoutAuth()">❌ Tester sans authentification</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Logs de test</h3>
+            <div id="testLogs" class="log"></div>
+            <button onclick="clearLogs()">🗑️ Effacer les logs</button>
+        </div>
+    </div>
+
+    <script>
+        // Fonction pour logger les messages
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('testLogs');
+            const logEntry = document.createElement('div');
+            logEntry.style.marginBottom = '5px';
+            logEntry.style.color = type === 'error' ? '#f44336' : type === 'success' ? '#4CAF50' : '#333';
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Fonction pour vérifier les tokens d'authentification
+        function checkAuthTokens() {
+            log('🔍 Vérification des tokens d\'authentification...');
+            
+            const tokens = {
+                localStorage_authToken: localStorage.getItem('authToken'),
+                localStorage_token: localStorage.getItem('token'),
+                sessionStorage_authToken: sessionStorage.getItem('authToken'),
+                sessionStorage_token: sessionStorage.getItem('token')
+            };
+
+            // Vérifier les cookies
+            const cookies = document.cookie.split(';');
+            const cookieTokens = {};
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (['authToken', 'token', 'jwt'].includes(name)) {
+                    cookieTokens[`cookie_${name}`] = value;
+                }
+            }
+
+            const allTokens = { ...tokens, ...cookieTokens };
+            
+            let hasValidToken = false;
+            let tokenInfo = '<h4>Tokens trouvés :</h4>';
+            
+            for (const [key, value] of Object.entries(allTokens)) {
+                if (value) {
+                    hasValidToken = true;
+                    tokenInfo += `<p><strong>${key}:</strong> ${value.substring(0, 20)}...</p>`;
+                    log(`✅ Token trouvé: ${key}`, 'success');
+                } else {
+                    tokenInfo += `<p><strong>${key}:</strong> <em>Non trouvé</em></p>`;
+                }
+            }
+
+            if (!hasValidToken) {
+                tokenInfo += '<p style="color: #f44336;"><strong>⚠️ Aucun token d\'authentification trouvé</strong></p>';
+                log('❌ Aucun token d\'authentification trouvé', 'error');
+            }
+
+            document.getElementById('tokenInfo').innerHTML = tokenInfo;
+        }
+
+        // Fonction pour simuler une connexion vendeur
+        function simulateLogin() {
+            log('🔐 Simulation de connexion vendeur...');
+            
+            // Simuler un token JWT simple
+            const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlZlbmRldXIgVGVzdCIsInJvbGUiOiJ2ZW5kb3IiLCJpYXQiOjE1MTYyMzkwMjJ9.mock_signature';
+            
+            // Sauvegarder dans localStorage
+            localStorage.setItem('authToken', mockToken);
+            localStorage.setItem('token', mockToken);
+            
+            // Sauvegarder dans sessionStorage
+            sessionStorage.setItem('authToken', mockToken);
+            
+            // Simuler un cookie (ne peut pas être défini via JS pour les cookies httpOnly)
+            document.cookie = `authToken=${mockToken}; path=/; max-age=3600`;
+            
+            log('✅ Tokens de test créés', 'success');
+            checkAuthTokens();
+        }
+
+        // Fonction pour effacer les tokens
+        function clearTokens() {
+            log('🗑️ Effacement des tokens...');
+            
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('authToken');
+            sessionStorage.removeItem('token');
+            
+            // Effacer les cookies
+            document.cookie = 'authToken=; path=/; max-age=0';
+            document.cookie = 'token=; path=/; max-age=0';
+            document.cookie = 'jwt=; path=/; max-age=0';
+            
+            log('✅ Tokens effacés', 'success');
+            checkAuthTokens();
+        }
+
+        // Fonction pour tester la sauvegarde
+        async function testSaveDesignTransforms() {
+            log('💾 Test de sauvegarde des transformations...');
+            
+            try {
+                // Simuler une requête de sauvegarde
+                const response = await fetch('/api/vendor/design-transforms', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken') || localStorage.getItem('token') || ''}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        productId: 2,
+                        designUrl: 'https://example.com/design.png',
+                        transforms: {
+                            positioning: { x: 0, y: 0, scale: 1, rotation: 0 }
+                        },
+                        lastModified: Date.now()
+                    })
+                });
+
+                if (response.ok) {
+                    log('✅ Sauvegarde réussie', 'success');
+                } else if (response.status === 403) {
+                    log('❌ Erreur 403: Accès refusé - Vérifiez vos permissions vendeur', 'error');
+                } else if (response.status === 401) {
+                    log('❌ Erreur 401: Non authentifié - Token invalide ou expiré', 'error');
+                } else {
+                    log(`❌ Erreur ${response.status}: ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        // Fonction pour tester le chargement
+        async function testLoadDesignTransforms() {
+            log('📥 Test de chargement des transformations...');
+            
+            try {
+                const response = await fetch('/api/vendor/design-transforms/2', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken') || localStorage.getItem('token') || ''}`
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Chargement réussi', 'success');
+                    log(`📊 Données: ${JSON.stringify(data, null, 2)}`);
+                } else if (response.status === 403) {
+                    log('❌ Erreur 403: Accès refusé - Vérifiez vos permissions vendeur', 'error');
+                } else if (response.status === 401) {
+                    log('❌ Erreur 401: Non authentifié - Token invalide ou expiré', 'error');
+                } else if (response.status === 404) {
+                    log('ℹ️ Aucune transformation sauvegardée trouvée', 'info');
+                } else {
+                    log(`❌ Erreur ${response.status}: ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        // Fonction pour tester sans authentification
+        async function testWithoutAuth() {
+            log('❌ Test sans authentification (doit échouer)...');
+            
+            try {
+                const response = await fetch('/api/vendor/design-transforms', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                        // Pas de header Authorization
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        productId: 2,
+                        designUrl: 'https://example.com/design.png',
+                        transforms: {
+                            positioning: { x: 0, y: 0, scale: 1, rotation: 0 }
+                        },
+                        lastModified: Date.now()
+                    })
+                });
+
+                if (response.status === 403) {
+                    log('✅ Comportement attendu: Erreur 403 sans authentification', 'success');
+                } else if (response.status === 401) {
+                    log('✅ Comportement attendu: Erreur 401 sans authentification', 'success');
+                } else {
+                    log(`⚠️ Comportement inattendu: ${response.status} ${response.statusText}`, 'warning');
+                }
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        // Fonction pour effacer les logs
+        function clearLogs() {
+            document.getElementById('testLogs').innerHTML = '';
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Tests d\'authentification Design Transforms initialisés');
+            checkAuthTokens();
+        });
+    </script>
+</body>
+</html> 

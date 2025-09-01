@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Direct ProductFormMain</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; padding: 20px; margin: 20px 0; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Upload Direct ProductFormMain</h1>
+    
+    <div class="test-section">
+        <h2>✅ Problème Résolu</h2>
+        <p>Le message "Image ajoutée localement. Elle sera enregistrée lors de la validation." a été remplacé par l'upload direct.</p>
+        
+        <h3>🔧 Modifications Apportées</h3>
+        <ul>
+            <li>✅ Suppression de la logique conditionnelle qui sauvegardait localement</li>
+            <li>✅ Implémentation de l'upload direct pour toutes les images</li>
+            <li>✅ Utilisation du bon endpoint : POST /products/upload-color-image/:productId/:colorId</li>
+            <li>✅ Message de succès : "Image couleur uploadée avec succès"</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Comparaison Avant/Après</h2>
+        
+        <h3>❌ Avant (Problématique)</h3>
+        <ul>
+            <li>Message : "Image ajoutée localement. Elle sera enregistrée lors de la validation."</li>
+            <li>Logique conditionnelle : sauvegarde locale pour les nouvelles couleurs</li>
+            <li>Upload : Local seulement</li>
+            <li>URL : Temporaire (blob:)</li>
+        </ul>
+        
+        <h3>✅ Après (Upload Direct)</h3>
+        <ul>
+            <li>Message : "Image couleur uploadée avec succès"</li>
+            <li>Upload direct : Toutes les images sont uploadées directement</li>
+            <li>Endpoint : POST /products/upload-color-image/:productId/:colorId</li>
+            <li>URL : Permanente (Cloudinary)</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🧪 Test de l'Upload Direct</h2>
+        <p>Pour tester, ajoutez une image de couleur dans le formulaire de produit et vérifiez que :</p>
+        <ul>
+            <li>✅ Le message "Image couleur uploadée avec succès" s'affiche</li>
+            <li>✅ L'image est uploadée directement sur le serveur</li>
+            <li>✅ L'URL générée est permanente (Cloudinary)</li>
+            <li>✅ Plus de message "Image ajoutée localement"</li>
+        </ul>
+        
+        <button onclick="testEndpoint()">🔍 Test Endpoint</button>
+        <button onclick="clearLog()">🧹 Effacer Log</button>
+    </div>
+    
+    <div id="messageSection" style="display: none;"></div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test upload direct ProductFormMain initialisé</div>
+        <div class="info">📋 Prêt à tester l'upload direct des images de couleurs</div>
+    </div>
+
+    <script>
+        // Test de disponibilité de l'endpoint
+        async function testEndpoint() {
+            log('🔍 Test de disponibilité de l\'endpoint...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3004/products/upload-color-image/1/1', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.status === 400) {
+                    log('✅ Endpoint disponible (erreur 400 attendue - pas de fichier)', 'success');
+                    showMessage('success', '✅ Endpoint disponible');
+                } else if (response.status === 401) {
+                    log('⚠️ Endpoint disponible mais authentification requise', 'warning');
+                    showMessage('warning', '⚠️ Endpoint disponible mais authentification requise');
+                } else if (response.status === 404) {
+                    log('❌ Endpoint non disponible (404)', 'error');
+                    showMessage('error', '❌ Endpoint non disponible (404)');
+                } else {
+                    log(`⚠️ Endpoint répond avec ${response.status}`, 'warning');
+                    showMessage('warning', `⚠️ Endpoint répond avec ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur de connexion: ${error.message}`, 'error');
+                showMessage('error', `❌ Erreur de connexion: ${error.message}`);
+            }
+        }
+
+        // Fonctions utilitaires
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+
+        function showMessage(type, message) {
+            const messageSection = document.getElementById('messageSection');
+            messageSection.innerHTML = `<div class="${type === 'success' ? 'success' : type === 'error' ? 'error' : 'info'}">${message}</div>`;
+            messageSection.style.display = 'block';
+        }
+
+        // Initialisation
+        log('🚀 Test upload direct ProductFormMain initialisé', 'info');
+        log('📋 Prêt à tester l\'upload direct des images de couleurs', 'info');
+    </script>
+</body>
+</html> 

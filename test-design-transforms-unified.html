@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Test Design Transforms Unifié</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .step.success { border-color: #28a745; background: #f8fff9; }
+        .step.error { border-color: #dc3545; background: #fff8f8; }
+        .step.warning { border-color: #ffc107; background: #fffbf0; }
+        
+        .test-data {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background: #0056b3; }
+        button.success { background: #28a745; }
+        button.warning { background: #ffc107; color: #000; }
+        button.error { background: #dc3545; }
+        
+        .log {
+            background: #1e1e1e;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .checklist {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .check-box {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .check-box.checked {
+            background: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test Design Transforms Unifié</h1>
+        <p><strong>Objectif :</strong> Valider le cycle complet en 4 appels selon le guide rapide</p>
+        
+        <!-- Configuration de test -->
+        <div class="step">
+            <h3>🔧 Configuration Test</h3>
+            <div class="test-data">
+                <div><strong>productId:</strong> <span id="productId">70</span> (vendorProductId)</div>
+                <div><strong>designUrl:</strong> <span id="designUrl">https://res.cloudinary.com/example/design.png</span></div>
+                <div><strong>Backend:</strong> http://localhost:3004</div>
+                <div><strong>Auth:</strong> Cookie auth_token requis</div>
+            </div>
+            <button onclick="updateTestData()">📝 Modifier données test</button>
+        </div>
+        
+        <!-- Étapes du cycle -->
+        <div class="step" id="step1">
+            <h3>1️⃣ Créer / mettre à jour les transforms</h3>
+            <button onclick="runStep1()">POST /vendor/design-transforms</button>
+            <div id="step1-result"></div>
+        </div>
+        
+        <div class="step" id="step2">
+            <h3>2️⃣ Relire pour vérifier</h3>
+            <button onclick="runStep2()">GET /vendor/design-transforms/:id</button>
+            <div id="step2-result"></div>
+        </div>
+        
+        <div class="step" id="step3">
+            <h3>3️⃣ Isoler uniquement la position</h3>
+            <button onclick="runStep3()">PUT /api/vendor-products/:id/designs/:designId/position/direct</button>
+            <div id="step3-result"></div>
+        </div>
+        
+        <div class="step" id="step4">
+            <h3>4️⃣ Lire la position isolée</h3>
+            <button onclick="runStep4()">GET /api/vendor-products/:id/designs/:designId/position/direct</button>
+            <div id="step4-result"></div>
+        </div>
+        
+        <!-- Checklist de validation -->
+        <div class="step">
+            <h3>✅ Checklist « ça fonctionne »</h3>
+            <div class="checklist">
+                <div class="check-item">
+                    <div class="check-box" id="check1"></div>
+                    <span>Le POST /vendor/design-transforms répond 200</span>
+                </div>
+                <div class="check-item">
+                    <div class="check-box" id="check2"></div>
+                    <span>Base de données contient ≥ 1 ligne pour le produit</span>
+                </div>
+                <div class="check-item">
+                    <div class="check-box" id="check3"></div>
+                    <span>GET /vendor/design-transforms renvoie les transforms</span>
+                </div>
+                <div class="check-item">
+                    <div class="check-box" id="check4"></div>
+                    <span>Le design apparaît à la position attendue</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tests automatiques -->
+        <div class="step">
+            <h3>🤖 Tests automatiques</h3>
+            <button onclick="runFullCycle()">🎯 Cycle complet</button>
+            <button onclick="testErrorCases()">⚠️ Cas d'erreur</button>
+            <button onclick="testIdResolution()">🔍 Résolution IDs</button>
+            <button onclick="clearResults()">🧹 Nettoyer</button>
+        </div>
+        
+        <!-- Debug express -->
+        <div class="step">
+            <h3>🐛 Debug express</h3>
+            <div style="margin: 10px 0;">
+                <strong>Symptômes courants :</strong>
+                <ul>
+                    <li><code>data:null</code> → Aucun POST encore fait OU mauvais IDs</li>
+                    <li><code>403</code> → Le produit ne vous appartient pas</li>
+                    <li><code>404</code> → Mauvaise route ou ID inexistant</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Log en temps réel -->
+        <div class="step">
+            <h3>📋 Log en temps réel</h3>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Variables de test
+        let testData = {
+            productId: 70,
+            designUrl: 'https://res.cloudinary.com/dsxab4qnu/image/upload/v1751043356/designs/9/1751043355475-solo-leveling-logo-01.png',
+            designId: 22
+        };
+        
+        // Utilitaires de log
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : type === 'warning' ? '#ffd43b' : '#74c0fc';
+            
+            logEl.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('log').innerHTML = '';
+            document.querySelectorAll('[id$="-result"]').forEach(el => el.innerHTML = '');
+            document.querySelectorAll('.check-box').forEach(el => {
+                el.classList.remove('checked');
+                el.innerHTML = '';
+            });
+        }
+        
+        function updateTestData() {
+            const newProductId = prompt('productId (vendorProductId):', testData.productId);
+            const newDesignUrl = prompt('designUrl (URL exacte Cloudinary):', testData.designUrl);
+            const newDesignId = prompt('designId (pour position direct):', testData.designId);
+            
+            if (newProductId) testData.productId = parseInt(newProductId);
+            if (newDesignUrl) testData.designUrl = newDesignUrl;
+            if (newDesignId) testData.designId = parseInt(newDesignId);
+            
+            document.getElementById('productId').textContent = testData.productId;
+            document.getElementById('designUrl').textContent = testData.designUrl;
+            
+            log(`📝 Données mises à jour: productId=${testData.productId}, designId=${testData.designId}`, 'info');
+        }
+        
+        // API Helper
+        async function apiCall(method, url, data = null) {
+            try {
+                log(`🚀 ${method} ${url}`, 'info');
+                
+                const options = {
+                    method,
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                    log(`📦 Payload: ${JSON.stringify(data, null, 2)}`, 'info');
+                }
+                
+                const response = await fetch(url, options);
+                const responseData = await response.text();
+                
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(responseData);
+                } catch {
+                    parsedData = responseData;
+                }
+                
+                if (response.ok) {
+                    log(`✅ ${response.status} - ${JSON.stringify(parsedData)}`, 'success');
+                    return { success: true, status: response.status, data: parsedData };
+                } else {
+                    log(`❌ ${response.status} - ${JSON.stringify(parsedData)}`, 'error');
+                    return { success: false, status: response.status, data: parsedData };
+                }
+            } catch (error) {
+                log(`💥 Network Error: ${error.message}`, 'error');
+                return { success: false, error: error.message };
+            }
+        }
+        
+        function setStepResult(stepId, content, success = null) {
+            const stepEl = document.getElementById(stepId);
+            const resultEl = document.getElementById(`${stepId}-result`);
+            
+            resultEl.innerHTML = content;
+            
+            if (success === true) {
+                stepEl.classList.add('success');
+                stepEl.classList.remove('error', 'warning');
+            } else if (success === false) {
+                stepEl.classList.add('error');
+                stepEl.classList.remove('success', 'warning');
+            } else {
+                stepEl.classList.add('warning');
+                stepEl.classList.remove('success', 'error');
+            }
+        }
+        
+        function checkItem(id, checked = true) {
+            const checkEl = document.getElementById(id);
+            if (checked) {
+                checkEl.classList.add('checked');
+                checkEl.innerHTML = '✓';
+            } else {
+                checkEl.classList.remove('checked');
+                checkEl.innerHTML = '';
+            }
+        }
+        
+        // Étapes du cycle
+        async function runStep1() {
+            const url = `http://localhost:3004/vendor/design-transforms`;
+            const payload = {
+                productId: testData.productId,
+                designUrl: testData.designUrl,
+                transforms: {
+                    positioning: { x: 40, y: 30, scale: 0.8, rotation: 0 }
+                },
+                lastModified: new Date().toISOString()
+            };
+            
+            const result = await apiCall('POST', url, payload);
+            
+            if (result.success && result.status === 200) {
+                setStepResult('step1', `✅ POST réussi: ${JSON.stringify(result.data)}`, true);
+                checkItem('check1', true);
+            } else {
+                setStepResult('step1', `❌ Erreur: ${result.status} - ${JSON.stringify(result.data)}`, false);
+                checkItem('check1', false);
+            }
+        }
+        
+        async function runStep2() {
+            const encodedUrl = encodeURIComponent(testData.designUrl);
+            const url = `http://localhost:3004/vendor/design-transforms/${testData.productId}?designUrl=${encodedUrl}`;
+            
+            const result = await apiCall('GET', url);
+            
+            if (result.success && result.data) {
+                setStepResult('step2', `✅ GET réussi: ${JSON.stringify(result.data)}`, true);
+                checkItem('check3', true);
+                
+                // Vérifier que les données correspondent
+                if (result.data.data?.transforms?.positioning) {
+                    checkItem('check4', true);
+                }
+            } else if (result.success && result.data === null) {
+                setStepResult('step2', `⚠️ data:null - Normal si aucun POST encore fait`, null);
+                checkItem('check3', false);
+            } else {
+                setStepResult('step2', `❌ Erreur: ${result.status} - ${JSON.stringify(result.data)}`, false);
+                checkItem('check3', false);
+            }
+        }
+        
+        async function runStep3() {
+            const url = `http://localhost:3004/api/vendor-products/${testData.productId}/designs/${testData.designId}/position/direct`;
+            const payload = { x: 40, y: 30, scale: 0.8, rotation: 0 };
+            
+            const result = await apiCall('PUT', url, payload);
+            
+            if (result.success) {
+                setStepResult('step3', `✅ PUT position réussi: ${JSON.stringify(result.data)}`, true);
+            } else {
+                setStepResult('step3', `❌ Erreur: ${result.status} - ${JSON.stringify(result.data)}`, false);
+            }
+        }
+        
+        async function runStep4() {
+            const url = `http://localhost:3004/api/vendor-products/${testData.productId}/designs/${testData.designId}/position/direct`;
+            
+            const result = await apiCall('GET', url);
+            
+            if (result.success && result.data) {
+                setStepResult('step4', `✅ GET position réussi: ${JSON.stringify(result.data)}`, true);
+            } else if (result.success && result.data === null) {
+                setStepResult('step4', `⚠️ data:null - Position non encore définie`, null);
+            } else {
+                setStepResult('step4', `❌ Erreur: ${result.status} - ${JSON.stringify(result.data)}`, false);
+            }
+        }
+        
+        // Tests automatiques
+        async function runFullCycle() {
+            log('🎯 Démarrage du cycle complet...', 'info');
+            clearResults();
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await runStep1();
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await runStep2();
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await runStep3();
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await runStep4();
+            
+            log('🏁 Cycle complet terminé!', 'success');
+        }
+        
+        async function testErrorCases() {
+            log('⚠️ Test des cas d\'erreur...', 'warning');
+            
+            // Test avec productId inexistant
+            const badUrl = `http://localhost:3004/vendor/design-transforms/99999?designUrl=${encodeURIComponent(testData.designUrl)}`;
+            await apiCall('GET', badUrl);
+            
+            // Test avec designUrl malformée
+            const badDesignUrl = `http://localhost:3004/vendor/design-transforms/${testData.productId}?designUrl=invalid-url`;
+            await apiCall('GET', badDesignUrl);
+        }
+        
+        function testIdResolution() {
+            log('🔍 Test de résolution des IDs...', 'info');
+            
+            // Mock data pour tester la résolution d'IDs
+            const mockProduct = { id: 15, baseProductId: 2 };
+            const mockVendorProducts = [
+                { id: 70, baseProductId: 2 },
+                { id: 71, baseProductId: 3 }
+            ];
+            
+            log(`📊 Mock Product: ${JSON.stringify(mockProduct)}`, 'info');
+            log(`📊 Mock Vendor Products: ${JSON.stringify(mockVendorProducts)}`, 'info');
+            
+            // Test de résolution (simulé)
+            const resolved = mockVendorProducts.find(vp => vp.baseProductId === mockProduct.baseProductId);
+            if (resolved) {
+                log(`✅ Résolution réussie: baseProductId ${mockProduct.baseProductId} → vendorProductId ${resolved.id}`, 'success');
+            } else {
+                log(`❌ Résolution échouée pour baseProductId ${mockProduct.baseProductId}`, 'error');
+            }
+        }
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Test Design Transforms Unifié - Prêt!', 'success');
+            log('💡 Suivez le guide: 3 vérités → 4 appels → Checklist → Debug', 'info');
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,2010 @@
+import { useState, useRef } from "react";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
+import { Badge } from "../components/ui/badge";
+import { Separator } from "../components/ui/separator";
+import { ChevronRight, X, Upload, Eye, Check, Plus, ShoppingCart } from "lucide-react";
+import ProductCharacteristics from "../components/ProductCharacteristics";
+import { toast } from "sonner";
+
+
+// Types basés sur votre schéma Prisma
+type ViewType = "FRONT" | "BACK" | "LEFT" | "RIGHT" | "TOP" | "BOTTOM" | "DETAIL" | "OTHER" | "DESIGN";
+type PublicationStatus = "PUBLISHED" | "DRAFT";
+
+interface Size {
+    id: number;
+    name: string;
+}
+
+interface Color {
+    id: number;
+    name: string;
+    hexCode?: string;
+    imageUrl: string;
+}
+
+interface Category {
+    id: number;
+    name: string;
+}
+
+interface Design {
+    id: number;
+    name: string;
+    imageUrl: string;
+    description?: string;
+}
+
+interface ProductView {
+    viewType: ViewType;
+    imageUrl: string;
+    description?: string;
+}
+
+interface CustomColor {
+    name: string;
+    hexCode: string;
+}
+
+interface ColorImage {
+    url: string;
+    file: File;
+}
+
+// Pour les dictionnaires avec des index numériques
+interface ColorImagesDict {
+    [key: number]: ColorImage[];
+}
+
+// Pour la démo, nous utilisons des données fictives
+const availableSizes: Size[] = [
+    { id: 1, name: "M" },
+    { id: 2, name: "L" },
+];
+
+const availableColors: Color[] = [
+    { id: 1, name: "Noir", hexCode: "#000000", imageUrl: "/api/placeholder/50/50" },
+];
+
+const availableCategories: Category[] = [
+    { id: 1, name: "T-Shirt" },
+];
+
+const availableDesigns: Design[] = [
+    { id: 1, name: "Logo classique", imageUrl: "/api/placeholder/100/100", description: "Notre logo emblématique" },
+    { id: 2, name: "Édition limitée", imageUrl: "/api/placeholder/100/100", description: "Design édition limitée 2025" },
+];
+
+const availableViews: ViewType[] = ["FRONT", "BACK", "LEFT", "RIGHT", "TOP", "BOTTOM", "DETAIL", "OTHER"];
+
+const viewTypeLabels: Record<ViewType | 'DESIGN', string> = {
+    FRONT: "Face avant",
+    BACK: "Face arrière",
+    LEFT: "Côté gauche",
+    RIGHT: "Côté droit",
+    TOP: "Dessus",
+    BOTTOM: "Dessous",
+    DETAIL: "Détail",
+    OTHER: "Autre",
+    DESIGN: "Design"
+};
+
+export default function ProductList() {
+    const [activeStep, setActiveStep] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+    // États pour gérer les couleurs personnalisées
+    const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
+    const [customColor, setCustomColor] = useState<CustomColor>({ name: "", hexCode: "#ffffff" });
+    const [customColors, setCustomColors] = useState<CustomColor[]>([]);
+    const fileInputRefs = useRef({});
+    const customFileInputRefs = useRef({});
+
+    // État du produit
+    const [product, setProduct] = useState({
+        name: "",
+        description: "",
+        price: 0,
+        stock: 0,
+        status: "DRAFT" as PublicationStatus,
+        categoryId: 0,
+        designId: null as number | null,
+        design: null as { name: string; imageUrl: string } | null,
+        sizes: [] as number[],
+        colors: [] as number[],
+        customColors: [] as number[],
+        colorImages: {} as ColorImagesDict,
+        customColorImages: {} as ColorImagesDict,
+        views: [] as ProductView[],
+    });
+
+    // Prévisualisation du produit
+    const [activeColor, setActiveColor] = useState<number | null>(null);
+    const [isCustomColorActive, setIsCustomColorActive] = useState(false);
+    const [activeView, setActiveView] = useState<ViewType>("FRONT");
+
+    // Références pour les uploads de fichiers
+    const viewFileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+    // Gérer les changements dans le formulaire
+    const handleChange = (field: string, value: any) => {
+        setProduct({ ...product, [field]: value });
+    };
+
+    // Gérer les tailles
+    const toggleSize = (sizeId: number) => {
+        if (product.sizes.includes(sizeId)) {
+            setProduct({ ...product, sizes: product.sizes.filter(id => id !== sizeId) });
+        } else {
+            setProduct({ ...product, sizes: [...product.sizes, sizeId] });
+        }
+    };
+
+    // Gérer les couleurs
+    const toggleColor = (colorId: number) => {
+        if (product.colors.includes(colorId)) {
+            setProduct({ ...product, colors: product.colors.filter(id => id !== colorId) });
+        } else {
+            setProduct({ ...product, colors: [...product.colors, colorId] });
+        }
+    };
+
+    // Ajouter une vue
+    const addView = (viewType: ViewType) => {
+        // Vérifier si cette vue existe déjà
+        const existingViewIndex = product.views.findIndex(v => v.viewType === viewType);
+
+        if (existingViewIndex !== -1) {
+            // Mettre à jour la vue existante
+            setActiveView(viewType);
+        } else {
+            // Ajouter une nouvelle vue sans image par défaut
+            setProduct({
+                ...product,
+                views: [
+                    ...product.views,
+                    {
+                        viewType,
+                        imageUrl: "",
+                        description: `Vue ${viewTypeLabels[viewType].toLowerCase()}`
+                    }
+                ]
+            });
+        setActiveView(viewType);
+        }
+    };
+
+    // Supprimer une vue
+    const removeView = (viewType: ViewType) => {
+        setProduct({
+            ...product,
+            views: product.views.filter(v => v.viewType !== viewType),
+        });
+
+        // Si c'était la vue active, changer pour la première vue disponible ou FRONT
+        if (activeView === viewType) {
+            const remainingViews = product.views.filter(v => v.viewType !== viewType);
+            setActiveView(remainingViews.length > 0 ? remainingViews[0].viewType : "FRONT");
+        }
+    };
+
+    // Gérer l'upload d'image pour les couleurs
+    const handleColorImageUpload = (colorId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const updatedColors = availableColors.map(color =>
+                    color.id === colorId ? { ...color, imageUrl: e.target?.result as string } : color
+                );
+                // Mettre à jour les couleurs disponibles avec la nouvelle image
+                // Note: In a real app, you would update the state or context that holds availableColors
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Gérer l'upload d'image pour les vues
+    const handleViewImageUpload = (viewType: ViewType, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const updatedViews = product.views.map(view =>
+                    view.viewType === viewType ? { ...view, imageUrl: e.target?.result as string } : view
+                );
+                setProduct({ ...product, views: updatedViews });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Fonction pour ajouter la section de couleur personnalisée
+    const addCustomColor = () => {
+        setCustomColor({ name: "", hexCode: "#ffffff" });
+        setShowCustomColorPicker(true);
+    };
+
+    // Fonction pour sauvegarder une couleur personnalisée
+    const saveCustomColor = () => {
+        if (!customColor.name || !customColor.hexCode) return;
+
+        setCustomColors([...customColors, { ...customColor }]);
+        setShowCustomColorPicker(false);
+        setCustomColor({ name: "", hexCode: "#ffffff" });
+    };
+
+    // Fonction pour supprimer une couleur personnalisée
+    const removeCustomColor = (index: number) => {
+        const newCustomColors = [...customColors];
+        newCustomColors.splice(index, 1);
+        setCustomColors(newCustomColors);
+
+        // Supprimer la couleur des couleurs sélectionnées si elle était cochée
+        const updatedCustomColors = product.customColors.filter(i => i !== index);
+        handleChange("customColors", updatedCustomColors);
+
+        // Adapter les indices plus grands
+        const newProductCustomColors = product.customColors.map(i =>
+            i > index ? i - 1 : i
+        ).filter(i => i >= 0);
+
+        handleChange("customColors", newProductCustomColors);
+
+        // Supprimer les images associées
+        const newCustomColorImages = { ...product.customColorImages };
+        delete newCustomColorImages[index];
+
+        // Réindexer les images des couleurs avec index plus élevé
+        Object.keys(newCustomColorImages).forEach(key => {
+            const keyNum = parseInt(key);
+            if (keyNum > index) {
+                newCustomColorImages[keyNum - 1] = newCustomColorImages[key];
+                delete newCustomColorImages[key];
+            }
+        });
+
+        handleChange("customColorImages", newCustomColorImages);
+    };
+
+    // Fonction pour basculer la sélection d'une couleur personnalisée
+    const toggleCustomColor = (index: number) => {
+        let updatedCustomColors = [...product.customColors];
+
+        if (updatedCustomColors.includes(index)) {
+            updatedCustomColors = updatedCustomColors.filter(i => i !== index);
+        } else {
+            updatedCustomColors.push(index);
+        }
+
+        handleChange("customColors", updatedCustomColors);
+    };
+
+    // Fonction pour traiter l'upload d'image pour une couleur standard
+    const handleStandardColorImageUpload = (colorId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!event.target.files || event.target.files.length === 0) return;
+        const files = Array.from(event.target.files);
+        const newImages = files.map(file => ({
+            url: URL.createObjectURL(file),
+            file: file
+        }));
+
+        const currentImages = product.colorImages[colorId] || [];
+        const updatedColorImages = {
+            ...product.colorImages,
+            [colorId]: [...currentImages, ...newImages]
+        };
+
+        handleChange("colorImages", updatedColorImages);
+    };
+
+    // Fonction pour traiter l'upload d'image pour une couleur personnalisée
+    const handleCustomColorImageUpload = (colorIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!event.target.files || event.target.files.length === 0) return;
+        const files = Array.from(event.target.files);
+        const newImages = files.map(file => ({
+            url: URL.createObjectURL(file),
+            file: file
+        }));
+
+        const currentImages = product.customColorImages[colorIndex] || [];
+        const updatedCustomColorImages = {
+            ...product.customColorImages,
+            [colorIndex]: [...currentImages, ...newImages]
+        };
+
+        handleChange("customColorImages", updatedCustomColorImages);
+    };
+
+    // Fonction pour supprimer une image pour une couleur standard
+    const removeColorImage = (colorId: number, imageIndex: number) => {
+        const updatedImages = [...(product.colorImages[colorId] || [])];
+        updatedImages.splice(imageIndex, 1);
+
+        const updatedColorImages = {
+            ...product.colorImages,
+            [colorId]: updatedImages
+        };
+
+        handleChange("colorImages", updatedColorImages);
+    };
+
+    // Fonction pour supprimer une image pour une couleur personnalisée
+    const removeCustomColorImage = (colorIndex: number, imageIndex: number) => {
+        const updatedImages = [...(product.customColorImages[colorIndex] || [])];
+        updatedImages.splice(imageIndex, 1);
+
+        const updatedCustomColorImages = {
+            ...product.customColorImages,
+            [colorIndex]: updatedImages
+        };
+
+        handleChange("customColorImages", updatedCustomColorImages);
+    };
+
+    // Fonction d'aide pour déterminer si le texte doit être noir ou blanc selon la couleur de fond
+    const getContrastYIQ = (hexcolor: string) => {
+        // Si le code hexadécimal commence par #, on le retire
+        hexcolor = hexcolor.replace("#", "");
+
+        // Si le code est en format court (3 caractères), on le convertit en format long
+        if (hexcolor.length === 3) {
+            hexcolor = hexcolor.split('').map(char => char + char).join('');
+        }
+
+        const r = parseInt(hexcolor.substr(0, 2), 16);
+        const g = parseInt(hexcolor.substr(2, 2), 16);
+        const b = parseInt(hexcolor.substr(4, 2), 16);
+
+        // Formule YIQ pour déterminer la luminosité
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+
+        // Retourne 'black' ou 'white' selon la luminosité
+        return (yiq >= 128) ? 'black' : 'white';
+    };
+
+    // Fonction pour formater les prix en Francs CFA (XOF)
+    const formatPrice = (price: number) => {
+        return new Intl.NumberFormat('fr-SN', {
+            style: 'currency',
+            currency: 'XOF',
+            maximumFractionDigits: 0,
+            currencyDisplay: 'symbol'
+        }).format(price);
+    };
+
+    // Soumettre le formulaire
+    const handleSubmit = async () => {
+        setIsLoading(true);
+
+        try {
+            // Vérifie que les données requises sont présentes
+            if (!product.name || !product.description || product.price <= 0 || product.stock < 0 || product.categoryId <= 0) {
+                throw new Error("Veuillez remplir tous les champs obligatoires");
+            }
+
+            if (product.sizes.length === 0) {
+                throw new Error("Veuillez sélectionner au moins une taille");
+            }
+
+            if (product.colors.length === 0 && product.customColors.length === 0) {
+                throw new Error("Veuillez sélectionner au moins une couleur");
+            }
+
+            // Vérifier que les tailles sélectionnées existent dans la liste des tailles disponibles
+            const invalidSizes = product.sizes.filter(sizeId => 
+                !availableSizes.some(size => size.id === sizeId)
+            );
+            
+            if (invalidSizes.length > 0) {
+                throw new Error(`Certaines tailles sélectionnées ne sont pas valides: ${invalidSizes.join(', ')}`);
+            }
+            
+            // Vérifier que les couleurs sélectionnées existent dans la liste des couleurs disponibles
+            const invalidColors = product.colors.filter(colorId => 
+                !availableColors.some(color => color.id === colorId)
+            );
+            
+            if (invalidColors.length > 0) {
+                throw new Error(`Certaines couleurs sélectionnées ne sont pas valides: ${invalidColors.join(', ')}`);
+            }
+
+            // Essayer de récupérer le design 1 s'il est mentionné
+            let designId = product.designId;
+            
+            // Si un design est spécifié mais que l'ID n'est pas défini, essayer d'utiliser le design par défaut
+            if (product.design && !designId) {
+                console.log("Design spécifié mais sans ID, utilisation de l'ID par défaut 1");
+                designId = 1; // Pour l'instant, on utilise l'ID 1 par défaut
+            }
+
+            // Préparer les couleurs (standard + personnalisées)
+            let allColorIds = [...product.colors.map(id => id.toString())];
+            // Si nous avons des couleurs personnalisées, les ajouter aussi (avec des IDs fictifs pour le moment car le back-end les créera)
+            const customColorsData = product.customColors.map((index, idx) => ({
+                name: customColors[index].name,
+                hexCode: customColors[index].hexCode
+            }));
+
+            // Formater les données selon le format attendu par l'API
+            const formData = {
+                name: product.name,
+                description: product.description,
+                price: product.price,
+                stock: product.stock,
+                status: product.status,
+                categoryId: product.categoryId,
+                designId: designId || null,  // Utiliser l'ID 1 si disponible, sinon null
+                sizeIds: product.sizes.map(id => id.toString()),
+                colorIds: allColorIds,
+                customColors: customColorsData
+            };
+
+            console.log("Données envoyées à l'API:", formData);
+
+            // Envoyer les données à l'API
+            const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            // Récupérer la réponse en JSON, même en cas d'erreur pour voir les détails
+            const responseData = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(`Erreur API: ${responseData.message || response.statusText}`);
+            }
+
+            console.log('Réponse API:', responseData);
+            
+            // Si le produit a des vues, les envoyer une par une
+            if (product.views.length > 0 && responseData.id) {
+                console.log("Envoi des vues du produit...");
+                
+                for (const view of product.views) {
+                    if (!view.imageUrl) continue; // Ne pas envoyer les vues sans image
+                    
+                    try {
+                        console.log(`Préparation de la vue ${view.viewType} pour envoi...`);
+                        
+                        // Utiliser FormData pour l'upload d'image
+                        const formData = new FormData();
+                        formData.append('productId', responseData.id.toString());
+                        formData.append('viewType', view.viewType);
+                        
+                        if (view.description) {
+                            formData.append('description', view.description);
+                        } else {
+                            formData.append('description', `Vue ${viewTypeLabels[view.viewType].toLowerCase()}`);
+                        }
+                        
+                        // Si l'URL commence par data:, c'est une image en base64 qu'on peut convertir en Blob
+                        if (view.imageUrl.startsWith('data:')) {
+                            try {
+                                // Convertir l'URL data en Blob
+                                const fetchResponse = await fetch(view.imageUrl);
+                                const blob = await fetchResponse.blob();
+                                
+                                // Ajouter le Blob au formulaire avec un nom de fichier
+                                formData.append('image', blob, `view-${view.viewType.toLowerCase()}.jpg`);
+                                console.log(`Image data:URL convertie en Blob pour la vue ${view.viewType}`);
+                            } catch (blobError) {
+                                console.error("Erreur lors de la conversion de data:URL en Blob:", blobError);
+                                // Utiliser une image de test en cas d'erreur
+                                const testImageResponse = await fetch("https://picsum.photos/400/400");
+                                const testImageBlob = await testImageResponse.blob();
+                                formData.append('image', testImageBlob, `view-${view.viewType.toLowerCase()}.jpg`);
+                                console.log(`Image de test utilisée pour la vue ${view.viewType}`);
+                            }
+                        } else {
+                            // Pour les URLs externes, télécharger l'image puis l'uploader
+                            try {
+                                console.log(`Téléchargement de l'image pour la vue ${view.viewType}...`);
+                                // Utiliser un proxy CORS si nécessaire ou une image publique pour les tests
+                                const imageURL = "https://picsum.photos/400/400"; // Image de test pour simplifier
+                                const fetchResponse = await fetch(imageURL);
+                                const blob = await fetchResponse.blob();
+                                formData.append('image', blob, `view-${view.viewType.toLowerCase()}.jpg`);
+                            } catch (fetchError) {
+                                console.error(`Erreur lors du téléchargement de l'image pour la vue ${view.viewType}:`, fetchError);
+                                continue; // Passer à la vue suivante en cas d'erreur
+                            }
+                        }
+                        
+                        // Envoyer le FormData à l'API - notez que nous envoyons directement à /product-views
+                        const viewResponse = await fetch('/api/product-views', {
+                            method: 'POST',
+                            body: formData, // Ne pas définir Content-Type, il sera automatiquement défini comme multipart/form-data
+                        });
+                        
+                        if (!viewResponse.ok) {
+                            const errorText = await viewResponse.text();
+                            console.error(`Erreur lors de l'ajout de la vue ${view.viewType}:`, errorText);
+                            console.log("Status code:", viewResponse.status);
+                            console.log("Contenu de la réponse:", errorText);
+                        } else {
+                            const viewResult = await viewResponse.json();
+                            console.log(`Vue ${view.viewType} ajoutée avec succès:`, viewResult);
+                        }
+                    } catch (viewError) {
+                        console.error(`Erreur lors de l'ajout de la vue ${view.viewType}:`, viewError);
+                    }
+                }
+            }
+            
+            setIsLoading(false);
+            
+            // Afficher un toast de succès avec le style noir et blanc moderne
+            toast.success(`${product.name} a été ajouté à votre catalogue.`, {
+                // Les options sont automatiquement gérées par le composant sonner
+                // avec notre style noir et blanc
+            });
+            
+        } catch (error: any) {
+            console.error('Erreur lors de la soumission du produit:', error);
+            setIsLoading(false);
+            
+            // Afficher l'erreur avec un toast noir et blanc
+            toast.error("Impossible d'ajouter le produit", {
+                description: error.message || "Vérifiez les informations saisies et réessayez.",
+            });
+        }
+    };
+
+    // Étapes du formulaire
+    const steps = [
+        { label: "Informations de base", isCompleted: product.name && product.description && product.price > 0 },
+        { label: "Caractéristiques", isCompleted: product.categoryId > 0 && product.sizes.length > 0 && product.colors.length > 0 },
+        { label: "Images & Vues", isCompleted: true },
+        { label: "Prévisualisation", isCompleted: true },
+    ];
+
+    // Récupérer les informations de la couleur active
+    const getActiveColorInfo = () => {
+        if (activeColor === null) return null;
+        
+        if (isCustomColorActive && customColors[activeColor]) {
+            return {
+                id: activeColor,
+                name: customColors[activeColor].name,
+                hexCode: customColors[activeColor].hexCode,
+                imageUrl: ""
+            };
+        }
+
+        return availableColors.find(color => color.id === activeColor);
+    };
+
+    // Récupérer l'URL de l'image pour la vue active
+    const getActiveViewImage = (currentActiveView: ViewType | 'DESIGN', currentProduct: typeof product) => {
+        if (currentActiveView === 'DESIGN') {
+            return currentProduct.design?.imageUrl || "/api/placeholder/400/400?text=No+Design";
+        }
+
+        // Si une couleur est sélectionnée et a des images, afficher la première image de cette couleur
+        if (activeColor !== null) {
+            if (isCustomColorActive && currentProduct.customColorImages && currentProduct.customColorImages[activeColor]?.length > 0) {
+                return currentProduct.customColorImages[activeColor][0].url;
+            } else if (!isCustomColorActive && currentProduct.colorImages && currentProduct.colorImages[activeColor]?.length > 0) {
+                return currentProduct.colorImages[activeColor][0].url;
+            }
+        }
+
+        const view = currentProduct.views.find(v => v.viewType === currentActiveView);
+        return view?.imageUrl || "/api/placeholder/400/400?text=No+Image";
+    };
+
+    // Vérifier si une vue est disponible
+    const isViewAvailable = (viewType: ViewType) => {
+        return product.views.some(v => v.viewType === viewType);
+    };
+
+import { useState, useRef } from "react";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
+import { Badge } from "../components/ui/badge";
+import { Separator } from "../components/ui/separator";
+import { ChevronRight, X, Upload, Eye, Check, Plus, ShoppingCart } from "lucide-react";
+import ProductCharacteristics from "../components/ProductCharacteristics";
+import { toast } from "sonner";
+
+
+// Types basés sur votre schéma Prisma
+type ViewType = "FRONT" | "BACK" | "LEFT" | "RIGHT" | "TOP" | "BOTTOM" | "DETAIL" | "OTHER" | "DESIGN";
+type PublicationStatus = "PUBLISHED" | "DRAFT";
+
+interface Size {
+    id: number;
+    name: string;
+}
+
+interface Color {
+    id: number;
+    name: string;
+    hexCode?: string;
+    imageUrl: string;
+}
+
+interface Category {
+    id: number;
+    name: string;
+}
+
+interface Design {
+    id: number;
+    name: string;
+    imageUrl: string;
+    description?: string;
+}
+
+interface ProductView {
+    viewType: ViewType;
+    imageUrl: string;
+    description?: string;
+}
+
+interface CustomColor {
+    name: string;
+    hexCode: string;
+}
+
+interface ColorImage {
+    url: string;
+    file: File;
+}
+
+// Pour les dictionnaires avec des index numériques
+interface ColorImagesDict {
+    [key: number]: ColorImage[];
+}
+
+// Pour la démo, nous utilisons des données fictives
+const availableSizes: Size[] = [
+    { id: 1, name: "M" },
+    { id: 2, name: "L" },
+];
+
+const availableColors: Color[] = [
+    { id: 1, name: "Noir", hexCode: "#000000", imageUrl: "/api/placeholder/50/50" },
+];
+
+const availableCategories: Category[] = [
+    { id: 1, name: "T-Shirt" },
+];
+
+const availableDesigns: Design[] = [
+    { id: 1, name: "Logo classique", imageUrl: "/api/placeholder/100/100", description: "Notre logo emblématique" },
+    { id: 2, name: "Édition limitée", imageUrl: "/api/placeholder/100/100", description: "Design édition limitée 2025" },
+];
+
+const availableViews: ViewType[] = ["FRONT", "BACK", "LEFT", "RIGHT", "TOP", "BOTTOM", "DETAIL", "OTHER"];
+
+const viewTypeLabels: Record<ViewType | 'DESIGN', string> = {
+    FRONT: "Face avant",
+    BACK: "Face arrière",
+    LEFT: "Côté gauche",
+    RIGHT: "Côté droit",
+    TOP: "Dessus",
+    BOTTOM: "Dessous",
+    DETAIL: "Détail",
+    OTHER: "Autre",
+    DESIGN: "Design"
+};
+
+export default function ProductList() {
+    const [activeStep, setActiveStep] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+    // États pour gérer les couleurs personnalisées
+    const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
+    const [customColor, setCustomColor] = useState<CustomColor>({ name: "", hexCode: "#ffffff" });
+    const [customColors, setCustomColors] = useState<CustomColor[]>([]);
+    const fileInputRefs = useRef({});
+    const customFileInputRefs = useRef({});
+
+    // État du produit
+    const [product, setProduct] = useState({
+        name: "",
+        description: "",
+        price: 0,
+        stock: 0,
+        status: "DRAFT" as PublicationStatus,
+        categoryId: 0,
+        designId: null as number | null,
+        design: null as { name: string; imageUrl: string } | null,
+        sizes: [] as number[],
+        colors: [] as number[],
+        customColors: [] as number[],
+        colorImages: {} as ColorImagesDict,
+        customColorImages: {} as ColorImagesDict,
+        views: [] as ProductView[],
+    });
+
+    // Prévisualisation du produit
+    const [activeColor, setActiveColor] = useState<number | null>(null);
+    const [isCustomColorActive, setIsCustomColorActive] = useState(false);
+    const [activeView, setActiveView] = useState<ViewType>("FRONT");
+
+    // Références pour les uploads de fichiers
+    const viewFileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+    // Gérer les changements dans le formulaire
+    const handleChange = (field: string, value: any) => {
+        setProduct({ ...product, [field]: value });
+    };
+
+    // Gérer les tailles
+    const toggleSize = (sizeId: number) => {
+        if (product.sizes.includes(sizeId)) {
+            setProduct({ ...product, sizes: product.sizes.filter(id => id !== sizeId) });
+        } else {
+            setProduct({ ...product, sizes: [...product.sizes, sizeId] });
+        }
+    };
+
+    // Gérer les couleurs
+    const toggleColor = (colorId: number) => {
+        if (product.colors.includes(colorId)) {
+            setProduct({ ...product, colors: product.colors.filter(id => id !== colorId) });
+        } else {
+            setProduct({ ...product, colors: [...product.colors, colorId] });
+        }
+    };
+
+    // Ajouter une vue
+    const addView = (viewType: ViewType) => {
+        // Vérifier si cette vue existe déjà
+        const existingViewIndex = product.views.findIndex(v => v.viewType === viewType);
+
+        if (existingViewIndex !== -1) {
+            // Mettre à jour la vue existante
+            setActiveView(viewType);
+        } else {
+            // Ajouter une nouvelle vue sans image par défaut
+            setProduct({
+                ...product,
+                views: [
+                    ...product.views,
+                    {
+                        viewType,
+                        imageUrl: "",
+                        description: `Vue ${viewTypeLabels[viewType].toLowerCase()}`
+                    }
+                ]
+            });
+        setActiveView(viewType);
+        }
+    };
+
+    // Supprimer une vue
+    const removeView = (viewType: ViewType) => {
+        setProduct({
+            ...product,
+            views: product.views.filter(v => v.viewType !== viewType),
+        });
+
+        // Si c'était la vue active, changer pour la première vue disponible ou FRONT
+        if (activeView === viewType) {
+            const remainingViews = product.views.filter(v => v.viewType !== viewType);
+            setActiveView(remainingViews.length > 0 ? remainingViews[0].viewType : "FRONT");
+        }
+    };
+
+    // Gérer l'upload d'image pour les couleurs
+    const handleColorImageUpload = (colorId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const updatedColors = availableColors.map(color =>
+                    color.id === colorId ? { ...color, imageUrl: e.target?.result as string } : color
+                );
+                // Mettre à jour les couleurs disponibles avec la nouvelle image
+                // Note: In a real app, you would update the state or context that holds availableColors
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Gérer l'upload d'image pour les vues
+    const handleViewImageUpload = (viewType: ViewType, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const updatedViews = product.views.map(view =>
+                    view.viewType === viewType ? { ...view, imageUrl: e.target?.result as string } : view
+                );
+                setProduct({ ...product, views: updatedViews });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Fonction pour ajouter la section de couleur personnalisée
+    const addCustomColor = () => {
+        setCustomColor({ name: "", hexCode: "#ffffff" });
+        setShowCustomColorPicker(true);
+    };
+
+    // Fonction pour sauvegarder une couleur personnalisée
+    const saveCustomColor = () => {
+        if (!customColor.name || !customColor.hexCode) return;
+
+        setCustomColors([...customColors, { ...customColor }]);
+        setShowCustomColorPicker(false);
+        setCustomColor({ name: "", hexCode: "#ffffff" });
+    };
+
+    // Fonction pour supprimer une couleur personnalisée
+    const removeCustomColor = (index: number) => {
+        const newCustomColors = [...customColors];
+        newCustomColors.splice(index, 1);
+        setCustomColors(newCustomColors);
+
+        // Supprimer la couleur des couleurs sélectionnées si elle était cochée
+        const updatedCustomColors = product.customColors.filter(i => i !== index);
+        handleChange("customColors", updatedCustomColors);
+
+        // Adapter les indices plus grands
+        const newProductCustomColors = product.customColors.map(i =>
+            i > index ? i - 1 : i
+        ).filter(i => i >= 0);
+
+        handleChange("customColors", newProductCustomColors);
+
+        // Supprimer les images associées
+        const newCustomColorImages = { ...product.customColorImages };
+        delete newCustomColorImages[index];
+
+        // Réindexer les images des couleurs avec index plus élevé
+        Object.keys(newCustomColorImages).forEach(key => {
+            const keyNum = parseInt(key);
+            if (keyNum > index) {
+                newCustomColorImages[keyNum - 1] = newCustomColorImages[key];
+                delete newCustomColorImages[key];
+            }
+        });
+
+        handleChange("customColorImages", newCustomColorImages);
+    };
+
+    // Fonction pour basculer la sélection d'une couleur personnalisée
+    const toggleCustomColor = (index: number) => {
+        let updatedCustomColors = [...product.customColors];
+
+        if (updatedCustomColors.includes(index)) {
+            updatedCustomColors = updatedCustomColors.filter(i => i !== index);
+        } else {
+            updatedCustomColors.push(index);
+        }
+
+        handleChange("customColors", updatedCustomColors);
+    };
+
+    // Fonction pour traiter l'upload d'image pour une couleur standard
+    const handleStandardColorImageUpload = (colorId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!event.target.files || event.target.files.length === 0) return;
+        const files = Array.from(event.target.files);
+        const newImages = files.map(file => ({
+            url: URL.createObjectURL(file),
+            file: file
+        }));
+
+        const currentImages = product.colorImages[colorId] || [];
+        const updatedColorImages = {
+            ...product.colorImages,
+            [colorId]: [...currentImages, ...newImages]
+        };
+
+        handleChange("colorImages", updatedColorImages);
+    };
+
+    // Fonction pour traiter l'upload d'image pour une couleur personnalisée
+    const handleCustomColorImageUpload = (colorIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!event.target.files || event.target.files.length === 0) return;
+        const files = Array.from(event.target.files);
+        const newImages = files.map(file => ({
+            url: URL.createObjectURL(file),
+            file: file
+        }));
+
+        const currentImages = product.customColorImages[colorIndex] || [];
+        const updatedCustomColorImages = {
+            ...product.customColorImages,
+            [colorIndex]: [...currentImages, ...newImages]
+        };
+
+        handleChange("customColorImages", updatedCustomColorImages);
+    };
+
+    // Fonction pour supprimer une image pour une couleur standard
+    const removeColorImage = (colorId: number, imageIndex: number) => {
+        const updatedImages = [...(product.colorImages[colorId] || [])];
+        updatedImages.splice(imageIndex, 1);
+
+        const updatedColorImages = {
+            ...product.colorImages,
+            [colorId]: updatedImages
+        };
+
+        handleChange("colorImages", updatedColorImages);
+    };
+
+    // Fonction pour supprimer une image pour une couleur personnalisée
+    const removeCustomColorImage = (colorIndex: number, imageIndex: number) => {
+        const updatedImages = [...(product.customColorImages[colorIndex] || [])];
+        updatedImages.splice(imageIndex, 1);
+
+        const updatedCustomColorImages = {
+            ...product.customColorImages,
+            [colorIndex]: updatedImages
+        };
+
+        handleChange("customColorImages", updatedCustomColorImages);
+    };
+
+    // Fonction d'aide pour déterminer si le texte doit être noir ou blanc selon la couleur de fond
+    const getContrastYIQ = (hexcolor: string) => {
+        // Si le code hexadécimal commence par #, on le retire
+        hexcolor = hexcolor.replace("#", "");
+
+        // Si le code est en format court (3 caractères), on le convertit en format long
+        if (hexcolor.length === 3) {
+            hexcolor = hexcolor.split('').map(char => char + char).join('');
+        }
+
+        const r = parseInt(hexcolor.substr(0, 2), 16);
+        const g = parseInt(hexcolor.substr(2, 2), 16);
+        const b = parseInt(hexcolor.substr(4, 2), 16);
+
+        // Formule YIQ pour déterminer la luminosité
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+
+        // Retourne 'black' ou 'white' selon la luminosité
+        return (yiq >= 128) ? 'black' : 'white';
+    };
+
+    // Fonction pour formater les prix en Francs CFA (XOF)
+    const formatPrice = (price: number) => {
+        return new Intl.NumberFormat('fr-SN', {
+            style: 'currency',
+            currency: 'XOF',
+            maximumFractionDigits: 0,
+            currencyDisplay: 'symbol'
+        }).format(price);
+    };
+
+    // Soumettre le formulaire
+    const handleSubmit = async () => {
+        setIsLoading(true);
+
+        try {
+            // Vérifie que les données requises sont présentes
+            if (!product.name || !product.description || product.price <= 0 || product.stock < 0 || product.categoryId <= 0) {
+                throw new Error("Veuillez remplir tous les champs obligatoires");
+            }
+
+            if (product.sizes.length === 0) {
+                throw new Error("Veuillez sélectionner au moins une taille");
+            }
+
+            if (product.colors.length === 0 && product.customColors.length === 0) {
+                throw new Error("Veuillez sélectionner au moins une couleur");
+            }
+
+            // Vérifier que les tailles sélectionnées existent dans la liste des tailles disponibles
+            const invalidSizes = product.sizes.filter(sizeId => 
+                !availableSizes.some(size => size.id === sizeId)
+            );
+            
+            if (invalidSizes.length > 0) {
+                throw new Error(`Certaines tailles sélectionnées ne sont pas valides: ${invalidSizes.join(', ')}`);
+            }
+            
+            // Vérifier que les couleurs sélectionnées existent dans la liste des couleurs disponibles
+            const invalidColors = product.colors.filter(colorId => 
+                !availableColors.some(color => color.id === colorId)
+            );
+            
+            if (invalidColors.length > 0) {
+                throw new Error(`Certaines couleurs sélectionnées ne sont pas valides: ${invalidColors.join(', ')}`);
+            }
+
+            // Essayer de récupérer le design 1 s'il est mentionné
+            let designId = product.designId;
+            
+            // Si un design est spécifié mais que l'ID n'est pas défini, essayer d'utiliser le design par défaut
+            if (product.design && !designId) {
+                console.log("Design spécifié mais sans ID, utilisation de l'ID par défaut 1");
+                designId = 1; // Pour l'instant, on utilise l'ID 1 par défaut
+            }
+
+            // Préparer les couleurs (standard + personnalisées)
+            let allColorIds = [...product.colors.map(id => id.toString())];
+            // Si nous avons des couleurs personnalisées, les ajouter aussi (avec des IDs fictifs pour le moment car le back-end les créera)
+            const customColorsData = product.customColors.map((index, idx) => ({
+                name: customColors[index].name,
+                hexCode: customColors[index].hexCode
+            }));
+
+            // Formater les données selon le format attendu par l'API
+            const formData = {
+                name: product.name,
+                description: product.description,
+                price: product.price,
+                stock: product.stock,
+                status: product.status,
+                categoryId: product.categoryId,
+                designId: designId || null,  // Utiliser l'ID 1 si disponible, sinon null
+                sizeIds: product.sizes.map(id => id.toString()),
+                colorIds: allColorIds,
+                customColors: customColorsData
+            };
+
+            console.log("Données envoyées à l'API:", formData);
+
+            // Envoyer les données à l'API
+            const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            // Récupérer la réponse en JSON, même en cas d'erreur pour voir les détails
+            const responseData = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(`Erreur API: ${responseData.message || response.statusText}`);
+            }
+
+            console.log('Réponse API:', responseData);
+            
+            // Si le produit a des vues, les envoyer une par une
+            if (product.views.length > 0 && responseData.id) {
+                console.log("Envoi des vues du produit...");
+                
+                for (const view of product.views) {
+                    if (!view.imageUrl) continue; // Ne pas envoyer les vues sans image
+                    
+                    try {
+                        console.log(`Préparation de la vue ${view.viewType} pour envoi...`);
+                        
+                        // Utiliser FormData pour l'upload d'image
+                        const formData = new FormData();
+                        formData.append('productId', responseData.id.toString());
+                        formData.append('viewType', view.viewType);
+                        
+                        if (view.description) {
+                            formData.append('description', view.description);
+                        } else {
+                            formData.append('description', `Vue ${viewTypeLabels[view.viewType].toLowerCase()}`);
+                        }
+                        
+                        // Si l'URL commence par data:, c'est une image en base64 qu'on peut convertir en Blob
+                        if (view.imageUrl.startsWith('data:')) {
+                            try {
+                                // Convertir l'URL data en Blob
+                                const fetchResponse = await fetch(view.imageUrl);
+                                const blob = await fetchResponse.blob();
+                                
+                                // Ajouter le Blob au formulaire avec un nom de fichier
+                                formData.append('image', blob, `view-${view.viewType.toLowerCase()}.jpg`);
+                                console.log(`Image data:URL convertie en Blob pour la vue ${view.viewType}`);
+                            } catch (blobError) {
+                                console.error("Erreur lors de la conversion de data:URL en Blob:", blobError);
+                                // Utiliser une image de test en cas d'erreur
+                                const testImageResponse = await fetch("https://picsum.photos/400/400");
+                                const testImageBlob = await testImageResponse.blob();
+                                formData.append('image', testImageBlob, `view-${view.viewType.toLowerCase()}.jpg`);
+                                console.log(`Image de test utilisée pour la vue ${view.viewType}`);
+                            }
+                        } else {
+                            // Pour les URLs externes, télécharger l'image puis l'uploader
+                            try {
+                                console.log(`Téléchargement de l'image pour la vue ${view.viewType}...`);
+                                // Utiliser un proxy CORS si nécessaire ou une image publique pour les tests
+                                const imageURL = "https://picsum.photos/400/400"; // Image de test pour simplifier
+                                const fetchResponse = await fetch(imageURL);
+                                const blob = await fetchResponse.blob();
+                                formData.append('image', blob, `view-${view.viewType.toLowerCase()}.jpg`);
+                            } catch (fetchError) {
+                                console.error(`Erreur lors du téléchargement de l'image pour la vue ${view.viewType}:`, fetchError);
+                                continue; // Passer à la vue suivante en cas d'erreur
+                            }
+                        }
+                        
+                        // Envoyer le FormData à l'API - notez que nous envoyons directement à /product-views
+                        const viewResponse = await fetch('/api/product-views', {
+                            method: 'POST',
+                            body: formData, // Ne pas définir Content-Type, il sera automatiquement défini comme multipart/form-data
+                        });
+                        
+                        if (!viewResponse.ok) {
+                            const errorText = await viewResponse.text();
+                            console.error(`Erreur lors de l'ajout de la vue ${view.viewType}:`, errorText);
+                            console.log("Status code:", viewResponse.status);
+                            console.log("Contenu de la réponse:", errorText);
+                        } else {
+                            const viewResult = await viewResponse.json();
+                            console.log(`Vue ${view.viewType} ajoutée avec succès:`, viewResult);
+                        }
+                    } catch (viewError) {
+                        console.error(`Erreur lors de l'ajout de la vue ${view.viewType}:`, viewError);
+                    }
+                }
+            }
+            
+            setIsLoading(false);
+            
+            // Afficher un toast de succès avec le style noir et blanc moderne
+            toast.success(`${product.name} a été ajouté à votre catalogue.`, {
+                // Les options sont automatiquement gérées par le composant sonner
+                // avec notre style noir et blanc
+            });
+            
+        } catch (error: any) {
+            console.error('Erreur lors de la soumission du produit:', error);
+            setIsLoading(false);
+            
+            // Afficher l'erreur avec un toast noir et blanc
+            toast.error("Impossible d'ajouter le produit", {
+                description: error.message || "Vérifiez les informations saisies et réessayez.",
+            });
+        }
+    };
+
+    // Étapes du formulaire
+    const steps = [
+        { label: "Informations de base", isCompleted: product.name && product.description && product.price > 0 },
+        { label: "Caractéristiques", isCompleted: product.categoryId > 0 && product.sizes.length > 0 && product.colors.length > 0 },
+        { label: "Images & Vues", isCompleted: true },
+        { label: "Prévisualisation", isCompleted: true },
+    ];
+
+    // Récupérer les informations de la couleur active
+    const getActiveColorInfo = () => {
+        if (activeColor === null) return null;
+        
+        if (isCustomColorActive && customColors[activeColor]) {
+            return {
+                id: activeColor,
+                name: customColors[activeColor].name,
+                hexCode: customColors[activeColor].hexCode,
+                imageUrl: ""
+            };
+        }
+
+        return availableColors.find(color => color.id === activeColor);
+    };
+
+    // Récupérer l'URL de l'image pour la vue active
+    const getActiveViewImage = (currentActiveView: ViewType | 'DESIGN', currentProduct: typeof product) => {
+        if (currentActiveView === 'DESIGN') {
+            return currentProduct.design?.imageUrl || "/api/placeholder/400/400?text=No+Design";
+        }
+
+        // Si une couleur est sélectionnée et a des images, afficher la première image de cette couleur
+        if (activeColor !== null) {
+            if (isCustomColorActive && currentProduct.customColorImages && currentProduct.customColorImages[activeColor]?.length > 0) {
+                return currentProduct.customColorImages[activeColor][0].url;
+            } else if (!isCustomColorActive && currentProduct.colorImages && currentProduct.colorImages[activeColor]?.length > 0) {
+                return currentProduct.colorImages[activeColor][0].url;
+            }
+        }
+
+        const view = currentProduct.views.find(v => v.viewType === currentActiveView);
+        return view?.imageUrl || "/api/placeholder/400/400?text=No+Image";
+    };
+
+    // Vérifier si une vue est disponible
+    const isViewAvailable = (viewType: ViewType) => {
+        return product.views.some(v => v.viewType === viewType);
+    };
+
+    return (
+        <div className="w-full p-6 bg-white dark:bg-gray-950 rounded-lg shadow-sm">
+            <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Ajouter un nouveau produit</h1>
+
+            {/* Stepper */}
+            <div className="mb-12">
+                {/* Indicateur d'étape - visible sur tous les appareils */}
+                <div className="flex items-center justify-center mb-6">
+                    <div className="px-4 py-1 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center text-sm">
+                        <span className="font-medium text-black dark:text-white">Étape {activeStep + 1}</span>
+                        <span className="mx-2 text-gray-400">/</span>
+                        <span className="text-gray-500 dark:text-gray-400">{steps.length}</span>
+                    </div>
+                </div>
+
+                {/* Barre de progression */}
+                <div className="relative h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden mb-8 mx-auto max-w-xl">
+                    <div
+                        className="absolute h-full bg-black dark:bg-white transition-all duration-500 ease-out"
+                        style={{ width: `${((activeStep + 1) / steps.length) * 100}%` }}
+                    ></div>
+                </div>
+
+                {/* Version mobile: étape actuelle uniquement */}
+                <div className="flex justify-center mb-6 lg:hidden">
+                    <div
+                        className="relative flex flex-col items-center w-40 h-40 justify-center rounded-2xl shadow-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                    >
+                            <div
+                            className="w-12 h-12 flex items-center justify-center rounded-full mb-3 border-2 bg-black dark:bg-white text-white dark:text-black border-black dark:border-white"
+                        >
+                            {activeStep + 1}
+                        </div>
+                        <h3 className="text-base font-semibold text-center text-black dark:text-white">
+                            {steps[activeStep].label}
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1 px-3">
+                            {activeStep === 0 && "Les détails essentiels de votre produit"}
+                            {activeStep === 1 && "Catégories et options disponibles"}
+                            {activeStep === 2 && "Vues et visuels du produit"}
+                            {activeStep === 3 && "Vérification avant publication"}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Navigation mobile: points */}
+                <div className="flex justify-center space-x-2 lg:hidden mb-2">
+                    {steps.map((_, index) => (
+                        <button
+                            key={index}
+                                onClick={() => index <= steps.findIndex(s => s.isCompleted) + 1 && setActiveStep(index)}
+                            disabled={index > steps.findIndex(s => s.isCompleted) + 1}
+                            className={`w-2.5 h-2.5 rounded-full transition-all ${index === activeStep
+                                    ? "bg-black dark:bg-white scale-125"
+                                    : index < activeStep
+                                        ? "bg-gray-400 dark:bg-gray-500"
+                                        : "bg-gray-200 dark:bg-gray-700"
+                                }`}
+                            aria-label={`Aller à l'étape ${index + 1}`}
+                        />
+                    ))}
+                </div>
+
+                {/* Navigation (précédent/suivant) - visible sur mobile uniquement */}
+                <div className="flex justify-between px-2 lg:hidden">
+                    <button
+                        className={`text-sm flex items-center ${activeStep === 0
+                                ? "text-gray-400 dark:text-gray-600"
+                                : "text-gray-600 dark:text-gray-300"
+                            }`}
+                        onClick={() => activeStep > 0 && setActiveStep(activeStep - 1)}
+                        disabled={activeStep === 0}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Précédent
+                    </button>
+                    <button
+                        className={`text-sm flex items-center ${!steps[activeStep].isCompleted || activeStep === steps.length - 1
+                                ? "text-gray-400 dark:text-gray-600"
+                                : "text-gray-600 dark:text-gray-300"
+                            }`}
+                        onClick={() => activeStep < steps.length - 1 && steps[activeStep].isCompleted && setActiveStep(activeStep + 1)}
+                        disabled={!steps[activeStep].isCompleted || activeStep === steps.length - 1}
+                    >
+                        Suivant
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                            </div>
+
+                {/* Version desktop: toutes les étapes avec design moderne */}
+                <div className="hidden lg:flex justify-between items-start mt-6 px-10">
+                    {steps.map((step, index) => {
+                        // Déterminer l'état de l'étape
+                        const isCompleted = index < activeStep;
+                        const isCurrent = index === activeStep;
+                        const isClickable = index <= steps.findIndex(s => s.isCompleted) + 1;
+
+                        return (
+                            <div
+                                key={index}
+                                className={`relative flex flex-col items-center w-full ${index === steps.length - 1 ? "" : "after:content-[''] after:absolute after:top-5 after:w-full after:h-[2px] after:left-1/2 after:bg-gray-200 dark:after:bg-gray-700"
+                                    }`}
+                            >
+                                <div
+                                    onClick={() => isClickable && setActiveStep(index)}
+                                    className={`
+                                        z-10 h-10 w-10 flex items-center justify-center rounded-full mb-2
+                                        transition-all duration-200 ease-in-out
+                                        ${isClickable ? "cursor-pointer" : "cursor-not-allowed"}
+                                        ${isCompleted
+                                            ? "bg-black dark:bg-white text-white dark:text-black"
+                                            : isCurrent
+                                                ? "bg-white dark:bg-gray-800 border-2 border-black dark:border-white text-black dark:text-white"
+                                                : "bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-400"
+                                        }
+                                        ${isClickable && !isCurrent && !isCompleted ? "hover:border-gray-400" : ""}
+                                    `}
+                                >
+                                    {isCompleted ? <Check size={16} /> : index + 1}
+                                </div>
+
+                                <div className={`
+                                    flex flex-col items-center
+                                    ${isCurrent ? "transform scale-110 transition-transform" : ""}
+                                `}>
+                                    <span className={`
+                                        text-sm font-medium
+                                        ${isCurrent ? "text-black dark:text-white" : isCompleted ? "text-gray-600 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"}
+                                    `}>
+                                {step.label}
+                            </span>
+
+                                    {isCurrent && (
+                                        <p className="absolute top-full mt-1 text-xs text-gray-500 dark:text-gray-400 text-center w-32">
+                                            {activeStep === 0 && "Détails principaux"}
+                                            {activeStep === 1 && "Options du produit"}
+                                            {activeStep === 2 && "Images et vues"}
+                                            {activeStep === 3 && "Vérification finale"}
+                                        </p>
+                            )}
+                        </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Contenu des étapes */}
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 mb-6">
+                {/* Étape 1: Informations de base */}
+                {activeStep === 0 && (
+                    <div className="space-y-6">
+                        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Informations de base</h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <Label className="text-gray-900 dark:text-white">Nom du produit</Label>
+                                <Input
+                                    placeholder="Nom du produit"
+                                    value={product.name}
+                                    onChange={(e) => handleChange("name", e.target.value)}
+                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                />
+                            </div>
+
+                            <div className="space-y-4">
+                                <Label className="text-gray-900 dark:text-white">Prix</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="Prix"
+                                    value={product.price}
+                                    onChange={(e) => handleChange("price", parseFloat(e.target.value))}
+                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                />
+                            </div>
+
+                            <div className="space-y-4">
+                                <Label className="text-gray-900 dark:text-white">Stock</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="Stock"
+                                    value={product.stock}
+                                    onChange={(e) => handleChange("stock", parseInt(e.target.value))}
+                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                />
+                            </div>
+
+                            <div className="space-y-4">
+                                <Label className="text-gray-900 dark:text-white">Statut</Label>
+                                <Select
+                                    value={product.status}
+                                    onValueChange={(value) => handleChange("status", value as PublicationStatus)}
+                                >
+                                    <SelectTrigger className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <SelectValue placeholder="Sélectionner un statut" />
+                                    </SelectTrigger>
+                                    <SelectContent className="dark:bg-gray-700 dark:text-white">
+                                        <SelectItem value="DRAFT">Brouillon</SelectItem>
+                                        <SelectItem value="PUBLISHED">Publié</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className="text-gray-900 dark:text-white">Description</Label>
+                            <Textarea
+                                placeholder="Description du produit"
+                                value={product.description}
+                                onChange={(e) => handleChange("description", e.target.value)}
+                                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                rows={4}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Étape 2: Caractéristiques */}
+                {activeStep === 1 && (
+    <ProductCharacteristics
+        product={product}
+        availableCategories={availableCategories}
+        availableDesigns={availableDesigns}
+        availableSizes={availableSizes}
+        availableColors={availableColors}
+        handleChange={handleChange}
+        toggleSize={toggleSize}
+        toggleColor={toggleColor}
+        addCustomColor={addCustomColor}
+        customColors={customColors}
+        showCustomColorPicker={showCustomColorPicker}
+        customColor={customColor}
+        setCustomColor={setCustomColor}
+        setShowCustomColorPicker={setShowCustomColorPicker}
+        saveCustomColor={saveCustomColor}
+        removeCustomColor={removeCustomColor}
+        toggleCustomColor={toggleCustomColor}
+        handleStandardColorImageUpload={handleStandardColorImageUpload}
+        removeColorImage={removeColorImage}
+        handleCustomColorImageUpload={handleCustomColorImageUpload}
+        removeCustomColorImage={removeCustomColorImage}
+        getContrastYIQ={getContrastYIQ}
+    />
+)}
+
+                {/* Étape 3: Images & Vues */}
+                {activeStep === 2 && (
+                    <div className="space-y-6">
+                        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Images et vues du produit</h2>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            {/* Section de gauche: sélection des vues */}
+                            <div className="lg:col-span-4 space-y-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <Label className="text-gray-900 dark:text-white text-base font-medium">Angles de vue</Label>
+                                    <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-normal">
+                                        {product.views.length} / {availableViews.length}
+                                    </Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {availableViews.map((viewType) => {
+                                        const view = product.views.find(v => v.viewType === viewType);
+                                        const hasImage = view?.imageUrl && view.imageUrl !== "";
+
+                                        return (
+                                            <div
+                                                key={viewType}
+                                                className={`relative group rounded-lg overflow-hidden border transition-all cursor-pointer hover:shadow-md 
+                                                    ${isViewAvailable(viewType)
+                                                        ? "border-gray-400 dark:border-gray-500 bg-gray-50 dark:bg-gray-800"
+                                                        : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"}`}
+                                                onClick={() => isViewAvailable(viewType) ? setActiveView(viewType) : addView(viewType)}
+                                            >
+                                                <div className="p-3 text-center">
+                                                {isViewAvailable(viewType) ? (
+                                                        <div className="relative">
+                                                            <div className="aspect-square rounded-md overflow-hidden mb-2 bg-white dark:bg-gray-800 flex items-center justify-center">
+                                                                {hasImage ? (
+                                                                    <img
+                                                                        src={view.imageUrl}
+                                                                        alt={viewTypeLabels[viewType]}
+                                                                        className="object-contain h-full w-full"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="flex flex-col items-center justify-center h-full w-full">
+                                                                        <Upload size={18} className="text-gray-400 dark:text-gray-500 mb-1" />
+                                                                        <span className="text-xs text-gray-400 dark:text-gray-500">Ajouter image</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <span className={`text-sm font-medium ${activeView === viewType ? "text-black dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                                                                {viewTypeLabels[viewType]}
+                                                            </span>
+                                                    <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="absolute -top-2 -right-2 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 dark:bg-white/90 text-white dark:text-black hover:bg-black dark:hover:bg-white"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    removeView(viewType);
+                                                                }}
+                                                            >
+                                                                <X size={12} />
+                                                    </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center justify-center h-full">
+                                                            <div className="aspect-square w-full rounded-md bg-white dark:bg-gray-800 flex items-center justify-center mb-2">
+                                                                <Plus size={20} className="text-gray-400 dark:text-gray-500" />
+                                                            </div>
+                                                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                                                {viewTypeLabels[viewType]}
+                                                            </span>
+                                                        </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Section centrale: prévisualisation et upload */}
+                            <div className="lg:col-span-8 space-y-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Label className="text-gray-900 dark:text-white text-base font-medium">
+                                            {isViewAvailable(activeView) ? viewTypeLabels[activeView] : "Sélectionnez une vue"}
+                                        </Label>
+                                    {isViewAvailable(activeView) && (
+                                            <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-200 font-normal">
+                                                Active
+                                            </Badge>
+                                    )}
+                                    </div>
+                                </div>
+
+                                <div className="relative aspect-square bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800 flex items-center justify-center">
+                                    {isViewAvailable(activeView) ? (
+                                        <>
+                                            {product.views.find(v => v.viewType === activeView)?.imageUrl ? (
+                                        <img
+                                            src={getActiveViewImage(activeView, product)}
+                                            alt={`Vue ${viewTypeLabels[activeView].toLowerCase()}`}
+                                                    className="w-full h-full object-contain p-4"
+                                        />
+                                    ) : (
+                                                <div
+                                                    className="flex flex-col items-center justify-center w-full h-full p-8 bg-gray-50 dark:bg-gray-900 cursor-pointer group hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                                    onClick={() => viewFileInputRefs.current[activeView]?.click()}
+                                                >
+                                                    <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors">
+                                                        <Upload size={36} className="text-gray-500 dark:text-gray-400" />
+                                                    </div>
+                                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Télécharger une image</h3>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md mb-4">
+                                                        Glissez-déposez votre fichier ici ou cliquez pour parcourir
+                                                    </p>
+                                                    <Badge variant="outline" className="text-xs text-gray-500 dark:text-gray-400">
+                                                        JPEG, PNG ou WebP • Max 10MB
+                                                    </Badge>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 mx-8">
+                                            <Upload size={40} className="mx-auto text-gray-400 dark:text-gray-500 mb-3" />
+                                            <p className="text-gray-500 dark:text-gray-400 font-medium mb-1">Aucune vue sélectionnée</p>
+                                            <p className="text-gray-400 dark:text-gray-500 text-sm">Cliquez sur un angle de vue dans le menu de gauche</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {isViewAvailable(activeView) && (
+                                    <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="viewDescription" className="text-gray-900 dark:text-white font-medium">Description de la vue</Label>
+                                            <Badge variant="outline" className="text-xs text-gray-500 dark:text-gray-400 font-normal">{activeView}</Badge>
+                                        </div>
+                                        <Textarea
+                                            id="viewDescription"
+                                            placeholder="Décrivez cette vue du produit..."
+                                            value={product.views.find(v => v.viewType === activeView)?.description || ""}
+                                            onChange={(e) => {
+                                                const updatedViews = product.views.map(v =>
+                                                    v.viewType === activeView ? { ...v, description: e.target.value } : v
+                                                );
+                                                setProduct({ ...product, views: updatedViews });
+                                            }}
+                                            rows={2}
+                                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white resize-none"
+                                        />
+                                        <input
+                                            type="file"
+                                            ref={(el) => {
+                                                if (viewFileInputRefs.current) {
+                                                    viewFileInputRefs.current[activeView] = el;
+                                                }
+                                            }}
+                                            onChange={(e) => handleViewImageUpload(activeView, e)}
+                                            className="hidden"
+                                            accept="image/*"
+                                        />
+                                        <div className="flex items-center space-x-3 mt-1">
+                                        <Button
+                                            size="sm"
+                                                variant={product.views.find(v => v.viewType === activeView)?.imageUrl ? "outline" : "default"}
+                                            onClick={() => viewFileInputRefs.current[activeView]?.click()}
+                                                className="flex-1"
+                                        >
+                                                <Upload size={16} className="mr-2" />
+                                                {product.views.find(v => v.viewType === activeView)?.imageUrl ? "Changer l'image" : "Ajouter une image"}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="flex-none border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                                onClick={() => removeView(activeView)}
+                                            >
+                                                <X size={16} className="mr-2" /> Supprimer
+                                        </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Étape 4: Prévisualisation */}
+                {activeStep === 3 && (() => {
+                    // Crée une vue spéciale pour le design uploadé
+                    const designProductView = product.design && product.design.imageUrl
+                        ? {
+                            viewType: 'DESIGN' as 'DESIGN', // Cast pour correspondre au type étendu
+                            imageUrl: product.design.imageUrl,
+                            description: product.design.name || 'Design personnalisé'
+                          }
+                        : null;
+
+                    // Concatène la vue design et les vues classiques
+                    const allDisplayableViews = designProductView
+                        ? [designProductView, ...product.views]
+                        : product.views;
+                    
+                    // Si activeView n'est pas valide ou que la vue n'a pas d'image, on ajuste
+                    let currentActiveViewToDisplay = activeView as ViewType | 'DESIGN';
+                    if (!allDisplayableViews.find(v => v.viewType === currentActiveViewToDisplay && v.imageUrl)) {
+                        currentActiveViewToDisplay = allDisplayableViews.find(v => v.imageUrl)?.viewType || (designProductView ? 'DESIGN' : 'FRONT');
+                        if (activeView !== currentActiveViewToDisplay) {
+                            // Correction: Il faut utiliser setActiveView pour changer l'état, mais cela causerait un re-render infini ici.
+                            // La logique de setActiveView devrait être gérée dans un useEffect ou lors d'une interaction utilisateur.
+                            // Pour l'instant, on utilise cette valeur locale pour l'affichage.
+                        }
+                    }
+                    
+                    const activeImageUrl = getActiveViewImage(currentActiveViewToDisplay, product);
+
+                    return (
+                    <div className="space-y-6">
+                        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Prévisualisation du produit</h2>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            {/* Partie gauche: info produit */}
+                            <div className="lg:col-span-4 space-y-4">
+                                <Card className="dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <div className="bg-gray-50 dark:bg-gray-900 p-4 border-b border-gray-200 dark:border-gray-700">
+                                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{product.name || "Nom du produit"}</h3>
+                                        <div className="flex items-center mt-1">
+                                            <Badge variant={product.status === "PUBLISHED" ? "default" : "secondary"} className="mr-2">
+                                                {product.status === "PUBLISHED" ? "Publié" : "Brouillon"}
+                                            </Badge>
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                                {availableCategories.find(c => c.id === product.categoryId)?.name || "Sans catégorie"}
+                                            </span>
+                                        </div>
+                                        </div>
+                                    <CardContent className="p-4">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <h4 className="font-medium text-base mb-2 text-gray-900 dark:text-white">Informations générales</h4>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                                        <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Prix</span>
+                                                        <span className="font-bold text-gray-900 dark:text-white">{formatPrice(product.price)}</span>
+                                        </div>
+                                                    <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                                        <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Stock</span>
+                                                        <span className="font-medium text-gray-900 dark:text-white">{product.stock} unités</span>
+                                        </div>
+                                                </div>
+                                        </div>
+
+                                            <Separator className="my-4 dark:bg-gray-700" />
+
+                                            <div>
+                                                <h4 className="font-medium text-base mb-2 text-gray-900 dark:text-white">Tailles disponibles</h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {product.sizes.length > 0 ? (
+                                                    product.sizes.map(sizeId => (
+                                                            <Badge key={sizeId} variant="outline" className="py-1 px-2 bg-gray-50 dark:bg-gray-900 dark:text-gray-200">
+                                                            {availableSizes.find(s => s.id === sizeId)?.name}
+                                                        </Badge>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-gray-400 dark:text-gray-300 italic">Aucune taille sélectionnée</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                                <h4 className="font-medium text-base mb-2 text-gray-900 dark:text-white">Description</h4>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                                                    {product.description || "Aucune description fournie pour ce produit."}
+                                                </p>
+                                            </div>
+                                            
+                                            {product.designId && (
+                                                <div>
+                                                    <h4 className="font-medium text-base mb-2 text-gray-900 dark:text-white">Design</h4>
+                                                    <div className="flex items-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                                        <div className="w-12 h-12 rounded overflow-hidden mr-3 bg-white dark:bg-gray-800 flex-shrink-0">
+                                                            <img
+                                                                src={availableDesigns.find(d => d.id === product.designId)?.imageUrl}
+                                                                alt="Design"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-medium text-gray-900 dark:text-white block">
+                                                                {availableDesigns.find(d => d.id === product.designId)?.name}
+                                                            </span>
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                                Design personnalisé
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Partie droite: prévisualisation visuelle */}
+                            <div className="lg:col-span-8 space-y-5">
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                                    {/* Visualisation principale */}
+                                    <div className="md:col-span-8 space-y-4">
+                                        <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                            {/* Image principale */}
+                                            <div className="aspect-square rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                                                {allDisplayableViews.length > 0 ? (
+                                                    <img
+                                                        src={activeImageUrl}
+                                                        alt={viewTypeLabels[currentActiveViewToDisplay]}
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center p-6">
+                                                        <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
+                                                            <Eye size={30} className="text-gray-400 dark:text-gray-500" />
+                                        </div>
+                                                        <p className="text-gray-400 dark:text-gray-500 text-center">
+                                                            {allDisplayableViews.length === 0 
+                                                                ? "Aucune vue disponible pour ce produit" 
+                                                                : "Sélectionnez une vue pour afficher l'image"}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                    </div>
+
+                                            {/* Sélecteur de vues (miniatures) */}
+                                            {allDisplayableViews.length > 0 && (
+                                                <div className="flex overflow-x-auto gap-2 mt-4 pb-2 -mx-1 px-1">
+                                                    {allDisplayableViews.filter(v => v.imageUrl).map((view) => ( // Filtrer pour n'afficher que celles avec images
+                                                        <div
+                                                        key={view.viewType}
+                                                            onClick={() => setActiveView(view.viewType as ViewType)} // Cast pour l'instant
+                                                            className={`cursor-pointer flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-all ${
+                                                                currentActiveViewToDisplay === view.viewType
+                                                                    ? "border-black dark:border-white"
+                                                                    : "border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+                                                            }`}
+                                                        >
+                                                            <img
+                                                                src={view.imageUrl}
+                                                                alt={viewTypeLabels[view.viewType]}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                            <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-xs text-center p-0.5">
+                                                        {viewTypeLabels[view.viewType]}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Détails de la vue active */}
+                                        {allDisplayableViews.length > 0 && allDisplayableViews.find(v => v.viewType === currentActiveViewToDisplay) && (
+                                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="font-medium text-gray-900 dark:text-white">
+                                                        {viewTypeLabels[currentActiveViewToDisplay]}
+                                                    </h4>
+                                                    <Badge variant="outline" className="bg-white dark:bg-gray-900">
+                                                        {currentActiveViewToDisplay}
+                                                    </Badge>
+                                    </div>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">
+                                                    {allDisplayableViews.find(v => v.viewType === currentActiveViewToDisplay)?.description || "Aucune description pour cette vue"}
+                                                </p>
+                                            </div>
+                                        )}
+                                </div>
+
+                                    {/* Sélecteurs de couleurs et options */}
+                                    <div className="md:col-span-4 space-y-4">
+                                        {/* Couleurs */}
+                                        <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                            <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                                                Couleurs disponibles {activeColor !== null && getActiveColorInfo() ? ` - Sélectionné: ${getActiveColorInfo()?.name}` : ''}
+                                            </h4>
+                                            
+                                            {(product.colors.length > 0 || product.customColors.length > 0) ? (
+                                                <div className="grid grid-cols-4 gap-2">
+                                                    {/* Afficher les couleurs standards */}
+                                                    {product.colors.map(colorId => {
+                                                        const color = availableColors.find(c => c.id === colorId);
+                                                        return (
+                                                            <div
+                                                                key={`std-${colorId}`}
+                                                                onClick={() => {
+                                                                    setActiveColor(colorId);
+                                                                    setIsCustomColorActive(false);
+                                                                }}
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <div className={`w-full aspect-square rounded-md mb-1 border ${
+                                                                    activeColor === colorId && !isCustomColorActive
+                                                                        ? "ring-2 ring-black dark:ring-white" 
+                                                                        : "ring-0 border-gray-200 dark:border-gray-700"
+                                                                }`}
+                                                                style={{ backgroundColor: color?.hexCode || "#999" }}
+                                                                />
+                                                                <span className="text-xs block truncate text-center text-gray-700 dark:text-gray-300">
+                                                                    {color?.name}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    
+                                                    {/* Afficher les couleurs personnalisées */}
+                                                    {product.customColors.map(colorIndex => {
+                                                        const customColor = customColors[colorIndex];
+                                                        if (!customColor) return null;
+                                                        return (
+                                                            <div
+                                                                key={`custom-${colorIndex}`}
+                                                                onClick={() => {
+                                                                    setActiveColor(colorIndex);
+                                                                    setIsCustomColorActive(true);
+                                                                }}
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <div className={`w-full aspect-square rounded-md mb-1 border ${
+                                                                    activeColor === colorIndex && isCustomColorActive
+                                                                        ? "ring-2 ring-black dark:ring-white" 
+                                                                        : "ring-0 border-gray-200 dark:border-gray-700"
+                                                                }`}
+                                                                style={{ backgroundColor: customColor?.hexCode || "#999" }}
+                                                                />
+                                                                <span className="text-xs block truncate text-center text-gray-700 dark:text-gray-300">
+                                                                    {customColor?.name}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-4">
+                                                    <p className="text-gray-400 dark:text-gray-500">Aucune couleur</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Images de couleur sélectionnée */}
+                                        {activeColor !== null && (
+                                            (isCustomColorActive && product.customColorImages && product.customColorImages[activeColor] && product.customColorImages[activeColor].length > 0) || 
+                                            (!isCustomColorActive && product.colorImages && product.colorImages[activeColor] && product.colorImages[activeColor].length > 0)
+                                        ) && (
+                                            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                                <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                                                    Images de la couleur
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    {isCustomColorActive 
+                                                        ? product.customColorImages[activeColor].map((image, index) => (
+                                                            <div key={index} className="aspect-video rounded-md overflow-hidden bg-gray-50 dark:bg-gray-800">
+                                                                <img 
+                                                                    src={image.url} 
+                                                                    alt={`Image ${index + 1}`} 
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </div>
+                                                        ))
+                                                        : product.colorImages[activeColor].map((image, index) => (
+                                                            <div key={index} className="aspect-video rounded-md overflow-hidden bg-gray-50 dark:bg-gray-800">
+                                                                <img 
+                                                                    src={image.url} 
+                                                                    alt={`Image ${index + 1}`} 
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </div>
+                                                        ))
+                                                    }
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                        
+                                        {/* Bouton d'ajout au panier (simulation) */}
+                                        <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                            <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                                                Informations de publication
+                                            </h4>
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">Prix unitaire</span>
+                                                    <span className="font-bold text-gray-900 dark:text-white">{formatPrice(product.price)}</span>
+                            </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">Statut</span>
+                                                    <Badge variant={product.status === "PUBLISHED" ? "default" : "secondary"}>
+                                                        {product.status === "PUBLISHED" ? "Publié" : "Brouillon"}
+                                                    </Badge>
+                        </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">Stock disponible</span>
+                                                    <span className={`text-sm font-medium ${product.stock > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                                        {product.stock} unité{product.stock > 1 ? "s" : ""}
+                                                    </span>
+                    </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-between pt-4">
+                <Button
+                    variant="outline"
+                    onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
+                    disabled={activeStep === 0}
+                    className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                    Précédent
+                </Button>
+
+                {activeStep < steps.length - 1 ? (
+                    <Button
+                        onClick={() => setActiveStep(activeStep + 1)}
+                        disabled={!steps[activeStep].isCompleted}
+                        className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black"
+                    >
+                        Suivant <ChevronRight size={16} className="ml-1" />
+                    </Button>
+                ) : (
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={isLoading}
+                        className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black"
+                        >
+                            {isLoading ? "Enregistrement..." : "Enregistrer le produit"}
+                        </Button>
+                )}
+            </div>
+        </div>
+    );
+}

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Transformations Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Debug - Transformations</h1>
+        
+        <div class="debug-section">
+            <h2>📋 LocalStorage Debug</h2>
+            <button class="button" onclick="checkLocalStorage()">Vérifier LocalStorage</button>
+            <button class="button" onclick="clearLocalStorage()">Nettoyer LocalStorage</button>
+            <div id="localStorage-log" class="log"></div>
+        </div>
+
+        <div class="debug-section">
+            <h2>🧪 Test API Transformations</h2>
+            <button class="button" onclick="testSaveTransform()">Test Save Transform</button>
+            <button class="button" onclick="testLoadTransform()">Test Load Transform</button>
+            <div id="api-log" class="log"></div>
+        </div>
+
+        <div class="debug-section">
+            <h2>📊 Test Payload Format</h2>
+            <button class="button" onclick="testPayloadFormat()">Test Payload</button>
+            <div id="payload-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simulation des données de test
+        const testData = {
+            designId: 19,
+            baseProductId: 1,
+            vendorProductId: 285,
+            designUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752683617/vendor-designs/vendor_7_design_1752683616684.png",
+            transform: {
+                x: 33,
+                y: -45,
+                scale: 1,
+                rotation: 29.966263174825826,
+                designWidth: 46.2624363700055,
+                designHeight: 60.776141897850366
+            }
+        };
+
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function checkLocalStorage() {
+            log('localStorage-log', '🔍 Vérification du localStorage...');
+            
+            // Chercher toutes les clés design_position
+            const designKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('design_position_')) {
+                    designKeys.push(key);
+                }
+            }
+            
+            log('localStorage-log', `📋 Trouvé ${designKeys.length} clés design_position`);
+            
+            designKeys.forEach(key => {
+                try {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    log('localStorage-log', `📍 ${key}:`);
+                    log('localStorage-log', `   Position: x=${data.position.x}, y=${data.position.y}, scale=${data.position.scale}`);
+                    log('localStorage-log', `   Rotation: ${data.position.rotation || 0}°`);
+                    log('localStorage-log', `   Dimensions: ${data.position.designWidth}x${data.position.designHeight}`);
+                } catch (e) {
+                    log('localStorage-log', `❌ Erreur parsing ${key}: ${e.message}`);
+                }
+            });
+        }
+
+        function clearLocalStorage() {
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('design_position_')) {
+                    keys.push(key);
+                }
+            }
+            
+            keys.forEach(key => localStorage.removeItem(key));
+            log('localStorage-log', `🗑️ Supprimé ${keys.length} clés design_position`);
+        }
+
+        async function testSaveTransform() {
+            log('api-log', '🚀 Test Save Transform...');
+            
+            const payload = {
+                vendorProductId: testData.vendorProductId,
+                productId: testData.vendorProductId,
+                designUrl: testData.designUrl,
+                transforms: {
+                    '0': testData.transform
+                },
+                lastModified: Date.now()
+            };
+            
+            log('api-log', '📤 Payload envoyé:');
+            log('api-log', JSON.stringify(payload, null, 2));
+            
+            try {
+                const response = await fetch('http://localhost:3004/vendor/design-transforms/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                log('api-log', `✅ Réponse (${response.status}): ${JSON.stringify(result, null, 2)}`);
+            } catch (error) {
+                log('api-log', `❌ Erreur: ${error.message}`);
+            }
+        }
+
+        async function testLoadTransform() {
+            log('api-log', '📥 Test Load Transform...');
+            
+            try {
+                const response = await fetch(`http://localhost:3004/vendor/design-transforms/${testData.vendorProductId}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                const result = await response.json();
+                log('api-log', `✅ Réponse (${response.status}): ${JSON.stringify(result, null, 2)}`);
+            } catch (error) {
+                log('api-log', `❌ Erreur: ${error.message}`);
+            }
+        }
+
+        function testPayloadFormat() {
+            log('payload-log', '📊 Test Format Payload...');
+            
+            // Simuler la récupération depuis localStorage
+            const localStorageData = {
+                designId: testData.designId,
+                baseProductId: testData.baseProductId,
+                position: testData.transform,
+                timestamp: Date.now(),
+                vendorId: 7
+            };
+            
+            log('payload-log', '📋 Données LocalStorage:');
+            log('payload-log', JSON.stringify(localStorageData, null, 2));
+            
+            // Conversion en format API
+            const apiPayload = {
+                vendorProductId: testData.vendorProductId,
+                designUrl: testData.designUrl,
+                transforms: {
+                    0: {
+                        x: localStorageData.position.x,
+                        y: localStorageData.position.y,
+                        scale: localStorageData.position.scale,
+                        rotation: localStorageData.position.rotation || 0
+                    }
+                },
+                lastModified: Date.now()
+            };
+            
+            log('payload-log', '📤 Payload API:');
+            log('payload-log', JSON.stringify(apiPayload, null, 2));
+            
+            // Vérifier la structure
+            const transform = apiPayload.transforms[0];
+            const isValid = transform && 
+                           typeof transform.x === 'number' && 
+                           typeof transform.y === 'number' && 
+                           typeof transform.scale === 'number';
+            
+            log('payload-log', `✅ Validation: ${isValid ? 'VALID' : 'INVALID'}`);
+        }
+
+        // Auto-check au chargement
+        window.addEventListener('load', () => {
+            checkLocalStorage();
+        });
+    </script>
+</body>
+</html> 

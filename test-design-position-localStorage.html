@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test localStorage Design Position</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .design-editor {
+            border: 2px dashed #ccc;
+            width: 400px;
+            height: 300px;
+            position: relative;
+            margin: 20px 0;
+            background-color: #fafafa;
+        }
+        .design-element {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-color: #3498db;
+            border: 2px solid #2980b9;
+            border-radius: 8px;
+            cursor: move;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transform-origin: center;
+            transition: transform 0.1s ease;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-group label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .control-group input {
+            width: 80px;
+        }
+        .position-info {
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-save { background-color: #27ae60; color: white; }
+        .btn-load { background-color: #3498db; color: white; }
+        .btn-reset { background-color: #e74c3c; color: white; }
+        .btn-clear { background-color: #95a5a6; color: white; }
+        .storage-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .log {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test localStorage Design Position</h1>
+        <p>Test du système de gestion des positions design avec localStorage selon le guide.</p>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Design ID:</label>
+                <input type="number" id="designId" value="42" min="1">
+            </div>
+            <div class="control-group">
+                <label>Vendor Product ID:</label>
+                <input type="number" id="vendorProductId" value="12" min="1">
+            </div>
+        </div>
+        
+        <div class="design-editor" id="designEditor">
+            <div class="design-element" id="designElement">
+                DESIGN
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>X:</label>
+                <input type="range" id="xSlider" min="-200" max="200" value="0">
+                <span id="xValue">0</span>
+            </div>
+            <div class="control-group">
+                <label>Y:</label>
+                <input type="range" id="ySlider" min="-150" max="150" value="0">
+                <span id="yValue">0</span>
+            </div>
+            <div class="control-group">
+                <label>Scale:</label>
+                <input type="range" id="scaleSlider" min="0.1" max="2" step="0.1" value="1">
+                <span id="scaleValue">1</span>
+            </div>
+            <div class="control-group">
+                <label>Rotation:</label>
+                <input type="range" id="rotationSlider" min="0" max="360" value="0">
+                <span id="rotationValue">0</span>
+            </div>
+        </div>
+        
+        <div class="buttons">
+            <button class="btn-save" onclick="savePosition()">💾 Sauvegarder</button>
+            <button class="btn-load" onclick="loadPosition()">📂 Charger</button>
+            <button class="btn-reset" onclick="resetPosition()">🔄 Reset</button>
+            <button class="btn-clear" onclick="clearAllPositions()">🗑️ Vider tout</button>
+        </div>
+        
+        <div class="position-info" id="positionInfo">
+            Position actuelle: x=0, y=0, scale=1, rotation=0°
+        </div>
+        
+        <div class="storage-info" id="storageInfo">
+            localStorage: Aucune donnée
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        // 🆕 Implémentation du service DesignPositionService
+        class DesignPositionService {
+            constructor() {
+                this.STORAGE_KEY = 'printalma_design_positions';
+            }
+
+            generateKey(designId, vendorProductId) {
+                return `design_${designId}_product_${vendorProductId}`;
+            }
+
+            savePosition(designId, vendorProductId, position) {
+                try {
+                    const positions = this.getAllPositions();
+                    const key = this.generateKey(designId, vendorProductId);
+                    
+                    positions[key] = {
+                        designId,
+                        vendorProductId,
+                        position: {
+                            x: position.x || 0,
+                            y: position.y || 0,
+                            scale: position.scale || 1,
+                            rotation: position.rotation || 0
+                        },
+                        lastModified: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(positions));
+                    this.log(`✅ Position sauvegardée: ${key}`, positions[key]);
+                    
+                    return true;
+                } catch (error) {
+                    this.log(`❌ Erreur sauvegarde: ${error.message}`, null, 'error');
+                    return false;
+                }
+            }
+
+            getPosition(designId, vendorProductId) {
+                try {
+                    const positions = this.getAllPositions();
+                    const key = this.generateKey(designId, vendorProductId);
+                    
+                    const result = positions[key] || null;
+                    this.log(`🔍 Position récupérée: ${key}`, result);
+                    return result;
+                } catch (error) {
+                    this.log(`❌ Erreur récupération: ${error.message}`, null, 'error');
+                    return null;
+                }
+            }
+
+            getAllPositions() {
+                try {
+                    const stored = localStorage.getItem(this.STORAGE_KEY);
+                    return stored ? JSON.parse(stored) : {};
+                } catch (error) {
+                    this.log(`❌ Erreur parsing localStorage: ${error.message}`, null, 'error');
+                    return {};
+                }
+            }
+
+            removePosition(designId, vendorProductId) {
+                try {
+                    const positions = this.getAllPositions();
+                    const key = this.generateKey(designId, vendorProductId);
+                    
+                    delete positions[key];
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(positions));
+                    
+                    this.log(`🗑️ Position supprimée: ${key}`);
+                    return true;
+                } catch (error) {
+                    this.log(`❌ Erreur suppression: ${error.message}`, null, 'error');
+                    return false;
+                }
+            }
+
+            clearAllPositions() {
+                try {
+                    localStorage.removeItem(this.STORAGE_KEY);
+                    this.log('🗑️ Toutes les positions supprimées');
+                    return true;
+                } catch (error) {
+                    this.log(`❌ Erreur vidage: ${error.message}`, null, 'error');
+                    return false;
+                }
+            }
+
+            log(message, data = null, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logElement = document.getElementById('log');
+                
+                const logEntry = document.createElement('div');
+                logEntry.style.marginBottom = '5px';
+                logEntry.style.color = type === 'error' ? '#e74c3c' : '#2ecc71';
+                
+                let logText = `[${timestamp}] ${message}`;
+                if (data) {
+                    logText += `\n${JSON.stringify(data, null, 2)}`;
+                }
+                
+                logEntry.textContent = logText;
+                logElement.appendChild(logEntry);
+                logElement.scrollTop = logElement.scrollHeight;
+                
+                console.log(message, data);
+            }
+        }
+
+        // Instance globale
+        const designPositionService = new DesignPositionService();
+
+        // Variables globales
+        let currentPosition = { x: 0, y: 0, scale: 1, rotation: 0 };
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Éléments DOM
+        const designElement = document.getElementById('designElement');
+        const xSlider = document.getElementById('xSlider');
+        const ySlider = document.getElementById('ySlider');
+        const scaleSlider = document.getElementById('scaleSlider');
+        const rotationSlider = document.getElementById('rotationSlider');
+
+        // Initialisation
+        function init() {
+            updatePosition();
+            updateStorageInfo();
+            loadPosition(); // Charger automatiquement au démarrage
+            
+            // Event listeners pour les sliders
+            xSlider.addEventListener('input', () => updateFromSliders());
+            ySlider.addEventListener('input', () => updateFromSliders());
+            scaleSlider.addEventListener('input', () => updateFromSliders());
+            rotationSlider.addEventListener('input', () => updateFromSliders());
+            
+            // Event listeners pour le drag & drop
+            designElement.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+            
+            designPositionService.log('🚀 Système initialisé');
+        }
+
+        // Mise à jour de la position visuelle
+        function updatePosition() {
+            const transform = `translate(${currentPosition.x}px, ${currentPosition.y}px) scale(${currentPosition.scale}) rotate(${currentPosition.rotation}deg)`;
+            designElement.style.transform = transform;
+            
+            // Mise à jour des sliders
+            xSlider.value = currentPosition.x;
+            ySlider.value = currentPosition.y;
+            scaleSlider.value = currentPosition.scale;
+            rotationSlider.value = currentPosition.rotation;
+            
+            // Mise à jour des valeurs affichées
+            document.getElementById('xValue').textContent = currentPosition.x;
+            document.getElementById('yValue').textContent = currentPosition.y;
+            document.getElementById('scaleValue').textContent = currentPosition.scale;
+            document.getElementById('rotationValue').textContent = currentPosition.rotation;
+            
+            // Mise à jour de l'info position
+            document.getElementById('positionInfo').textContent = 
+                `Position actuelle: x=${currentPosition.x}, y=${currentPosition.y}, scale=${currentPosition.scale}, rotation=${currentPosition.rotation}°`;
+        }
+
+        // Mise à jour depuis les sliders
+        function updateFromSliders() {
+            currentPosition.x = parseInt(xSlider.value);
+            currentPosition.y = parseInt(ySlider.value);
+            currentPosition.scale = parseFloat(scaleSlider.value);
+            currentPosition.rotation = parseInt(rotationSlider.value);
+            
+            updatePosition();
+        }
+
+        // Drag & Drop
+        function startDrag(e) {
+            isDragging = true;
+            const rect = designElement.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left - rect.width / 2;
+            dragOffset.y = e.clientY - rect.top - rect.height / 2;
+            designElement.style.cursor = 'grabbing';
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            
+            const editorRect = document.getElementById('designEditor').getBoundingClientRect();
+            const newX = e.clientX - editorRect.left - dragOffset.x - 50; // 50 = moitié de la largeur
+            const newY = e.clientY - editorRect.top - dragOffset.y - 50;  // 50 = moitié de la hauteur
+            
+            currentPosition.x = Math.round(newX);
+            currentPosition.y = Math.round(newY);
+            
+            updatePosition();
+        }
+
+        function stopDrag() {
+            isDragging = false;
+            designElement.style.cursor = 'move';
+        }
+
+        // Fonctions principales
+        function savePosition() {
+            const designId = parseInt(document.getElementById('designId').value);
+            const vendorProductId = parseInt(document.getElementById('vendorProductId').value);
+            
+            if (!designId || !vendorProductId) {
+                alert('Veuillez saisir un Design ID et Vendor Product ID valides');
+                return;
+            }
+            
+            const success = designPositionService.savePosition(designId, vendorProductId, currentPosition);
+            if (success) {
+                updateStorageInfo();
+                alert('✅ Position sauvegardée avec succès !');
+            } else {
+                alert('❌ Erreur lors de la sauvegarde');
+            }
+        }
+
+        function loadPosition() {
+            const designId = parseInt(document.getElementById('designId').value);
+            const vendorProductId = parseInt(document.getElementById('vendorProductId').value);
+            
+            if (!designId || !vendorProductId) {
+                alert('Veuillez saisir un Design ID et Vendor Product ID valides');
+                return;
+            }
+            
+            const savedPosition = designPositionService.getPosition(designId, vendorProductId);
+            if (savedPosition) {
+                currentPosition = { ...savedPosition.position };
+                updatePosition();
+                updateStorageInfo();
+                alert('✅ Position chargée avec succès !');
+            } else {
+                alert('ℹ️ Aucune position sauvegardée trouvée');
+            }
+        }
+
+        function resetPosition() {
+            currentPosition = { x: 0, y: 0, scale: 1, rotation: 0 };
+            updatePosition();
+            designPositionService.log('🔄 Position réinitialisée');
+        }
+
+        function clearAllPositions() {
+            if (confirm('Êtes-vous sûr de vouloir supprimer toutes les positions sauvegardées ?')) {
+                designPositionService.clearAllPositions();
+                updateStorageInfo();
+                alert('🗑️ Toutes les positions ont été supprimées');
+            }
+        }
+
+        // Mise à jour de l'info localStorage
+        function updateStorageInfo() {
+            const positions = designPositionService.getAllPositions();
+            const count = Object.keys(positions).length;
+            
+            let info = `localStorage: ${count} position(s) sauvegardée(s)`;
+            if (count > 0) {
+                info += '\n' + Object.keys(positions).join(', ');
+            }
+            
+            document.getElementById('storageInfo').textContent = info;
+        }
+
+        // Démarrage
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html> 

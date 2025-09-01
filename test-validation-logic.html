@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Logique de Validation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .scenario { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .step { margin: 10px 0; padding: 10px; background: white; border-left: 4px solid #007bff; }
+        .result { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .draft { background: #e9ecef; color: #495057; }
+        .pending-auto { background: #fff3cd; color: #856404; }
+        .pending-draft { background: #cce5ff; color: #004085; }
+        .published { background: #d1ecf1; color: #0c5460; }
+        .validated-draft { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Test de la Logique de Validation Vendeur</h1>
+    
+    <div class="scenario">
+        <h2>📋 Scénario 1 : AUTO_PUBLISH</h2>
+        
+        <div class="step">
+            <strong>Étape 1 :</strong> Création du produit<br>
+            Status: DRAFT, isValidated: false, postValidationAction: AUTO_PUBLISH<br>
+            <span class="badge draft">📝 Brouillon</span>
+        </div>
+        
+        <div class="step">
+            <strong>Étape 2 :</strong> Soumission pour validation<br>
+            Status: PENDING, isValidated: false, postValidationAction: AUTO_PUBLISH<br>
+            <span class="badge pending-auto">⏳ En attente - Publication auto après validation</span>
+        </div>
+        
+        <div class="step">
+            <strong>Étape 3 :</strong> Admin valide<br>
+            Status: PUBLISHED, isValidated: true, postValidationAction: AUTO_PUBLISH<br>
+            <span class="badge published">✅ Publié</span>
+        </div>
+        
+        <div class="result">
+            ✅ Résultat : Produit immédiatement en ligne !
+        </div>
+    </div>
+
+    <div class="scenario">
+        <h2>📋 Scénario 2 : TO_DRAFT</h2>
+        
+        <div class="step">
+            <strong>Étape 1 :</strong> Création du produit<br>
+            Status: DRAFT, isValidated: false, postValidationAction: TO_DRAFT<br>
+            <span class="badge draft">📝 Brouillon</span>
+        </div>
+        
+        <div class="step">
+            <strong>Étape 2 :</strong> Soumission pour validation<br>
+            Status: PENDING, isValidated: false, postValidationAction: TO_DRAFT<br>
+            <span class="badge pending-draft">⏳ En attente - Brouillon après validation</span>
+        </div>
+        
+        <div class="step">
+            <strong>Étape 3 :</strong> Admin valide<br>
+            Status: DRAFT, isValidated: true, postValidationAction: TO_DRAFT<br>
+            <span class="badge validated-draft">📝 Validé - Prêt à publier</span>
+        </div>
+        
+        <div class="step">
+            <strong>Étape 4 :</strong> Publication manuelle<br>
+            Status: PUBLISHED, isValidated: true<br>
+            <span class="badge published">✅ Publié</span>
+        </div>
+        
+        <div class="result">
+            ✅ Résultat : Vendeur contrôle le timing de publication !
+        </div>
+    </div>
+
+    <div class="scenario">
+        <h2>📋 Scénario 3 : Rejet</h2>
+        
+        <div class="step">
+            <strong>Étape 1-2 :</strong> Création et soumission<br>
+            Status: DRAFT → PENDING<br>
+        </div>
+        
+        <div class="step">
+            <strong>Étape 3 :</strong> Admin rejette<br>
+            Status: DRAFT, isValidated: false, rejectionReason: "Problème détecté"<br>
+            <span class="badge draft">📝 Brouillon</span><br>
+            <small style="color: red;">❌ Rejeté : Problème détecté</small>
+        </div>
+        
+        <div class="result">
+            🔄 Résultat : Vendeur peut corriger et resoumettre
+        </div>
+    </div>
+
+    <h2>🎮 Actions disponibles selon l'état</h2>
+    <table border="1" style="border-collapse: collapse; width: 100%;">
+        <tr>
+            <th>Status</th>
+            <th>isValidated</th>
+            <th>postValidationAction</th>
+            <th>Badge</th>
+            <th>Actions</th>
+        </tr>
+        <tr>
+            <td>DRAFT</td>
+            <td>false</td>
+            <td>-</td>
+            <td><span class="badge draft">📝 Brouillon</span></td>
+            <td>Soumettre, Modifier, Supprimer</td>
+        </tr>
+        <tr>
+            <td>PENDING</td>
+            <td>false</td>
+            <td>AUTO_PUBLISH</td>
+            <td><span class="badge pending-auto">⏳ En attente - Publication auto</span></td>
+            <td>Voir, Modifier choix</td>
+        </tr>
+        <tr>
+            <td>PENDING</td>
+            <td>false</td>
+            <td>TO_DRAFT</td>
+            <td><span class="badge pending-draft">⏳ En attente - Brouillon</span></td>
+            <td>Voir, Modifier choix</td>
+        </tr>
+        <tr>
+            <td>PUBLISHED</td>
+            <td>true</td>
+            <td>AUTO_PUBLISH</td>
+            <td><span class="badge published">✅ Publié</span></td>
+            <td>Voir, Modifier</td>
+        </tr>
+        <tr>
+            <td>DRAFT</td>
+            <td>true</td>
+            <td>TO_DRAFT</td>
+            <td><span class="badge validated-draft">📝 Validé - Prêt à publier</span></td>
+            <td>🚀 Publier, Modifier</td>
+        </tr>
+    </table>
+
+    <script>
+        console.log('🎯 Logique de validation testée - Voir le tableau ci-dessus pour les états possibles');
+    </script>
+</body>
+</html> 
+ 

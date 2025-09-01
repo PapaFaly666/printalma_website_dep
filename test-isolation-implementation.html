@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Isolation des positions de design</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .destructive {
+            background-color: #dc3545;
+        }
+        .destructive:hover {
+            background-color: #c82333;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛡️ Test - Isolation des positions de design</h1>
+    
+    <div class="test-container">
+        <h2>📋 Tests automatiques</h2>
+        <button onclick="runAllTests()">🧪 Lancer tous les tests</button>
+        <button onclick="runApiTests()">🔗 Tester APIs</button>
+        <button onclick="runIsolationTests()">🛡️ Tester Isolation</button>
+        <button onclick="clearResults()">🧹 Nettoyer résultats</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>🔧 Tests manuels</h2>
+        <button onclick="createTestPosition()">➕ Créer position test</button>
+        <button onclick="loadTestPosition()">📥 Charger position test</button>
+        <button onclick="updateTestPosition()">🔄 Modifier position test</button>
+        <button onclick="deleteTestPosition()">🗑️ Supprimer position test</button>
+        <button onclick="showCache()">💾 Afficher cache</button>
+        <button onclick="clearCache()" class="destructive">🧹 Vider cache</button>
+        <div id="manual-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>🔍 Diagnostic</h2>
+        <button onclick="checkBackendHealth()">🏥 Santé backend</button>
+        <button onclick="checkLocalStorage()">💾 Vérifier localStorage</button>
+        <button onclick="runMigration()">🔄 Lancer migration</button>
+        <button onclick="resetMigration()">↺ Reset migration</button>
+        <div id="diagnostic-results"></div>
+        
+        <div style="margin-top: 20px; padding: 15px; background-color: #e8f4fd; border-left: 4px solid #2196F3;">
+            <h3>🚀 Nouveaux utilitaires disponibles (Console F12) :</h3>
+            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 10px 0;">
+// Diagnostic rapide avec correction automatique
+await quickDiagnose(1, 1)  // productId, designId
+
+// Test de sauvegarde
+await testSavePosition(1, 1)
+
+// Informations système complètes  
+await designSystemInfo()
+
+// Nettoyage complet
+cleanupDesignSystem()
+
+// Accès direct au debugger
+window.debugDesignPosition
+            </pre>
+            <p><strong>💡 Astuce :</strong> Utilisez <code>quickDiagnose()</code> pour identifier et corriger automatiquement les problèmes d'IDs !</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration de test
+        const TEST_PRODUCT_ID = 123;
+        const TEST_DESIGN_ID = 1;
+        const TEST_POSITION = {
+            x: 100,
+            y: 150,
+            scale: 1.2,
+            rotation: 0,
+            constraints: {
+                adaptive: true,
+                area: 'test-area'
+            }
+        };
+
+        // Utilitaires
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `${new Date().toLocaleTimeString()} - ${message}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('manual-results').innerHTML = '';
+            document.getElementById('diagnostic-results').innerHTML = '';
+        }
+
+        // Tests automatiques
+        async function runAllTests() {
+            addResult('test-results', '🚀 Démarrage des tests automatiques', 'info');
+            
+            try {
+                await runApiTests();
+                await runIsolationTests();
+                addResult('test-results', '✅ Tous les tests terminés', 'success');
+            } catch (error) {
+                addResult('test-results', `❌ Erreur générale: ${error.message}`, 'error');
+            }
+        }
+
+        async function runApiTests() {
+            addResult('test-results', '🔗 Test des APIs...', 'info');
+            
+            // Test API directe PUT
+            try {
+                const response = await fetch(`/api/vendor-products/${TEST_PRODUCT_ID}/designs/${TEST_DESIGN_ID}/position/direct`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(TEST_POSITION)
+                });
+                
+                if (response.ok) {
+                    addResult('test-results', '✅ API PUT position/direct fonctionne', 'success');
+                } else {
+                    addResult('test-results', `❌ API PUT échouée: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addResult('test-results', `❌ Erreur API PUT: ${error.message}`, 'error');
+            }
+
+            // Test API directe GET
+            try {
+                const response = await fetch(`/api/vendor-products/${TEST_PRODUCT_ID}/designs/${TEST_DESIGN_ID}/position/direct`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('test-results', `✅ API GET position/direct fonctionne: ${JSON.stringify(data.data?.position)}`, 'success');
+                } else {
+                    addResult('test-results', `❌ API GET échouée: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addResult('test-results', `❌ Erreur API GET: ${error.message}`, 'error');
+            }
+        }
+
+        async function runIsolationTests() {
+            addResult('test-results', '🛡️ Test d\'isolation...', 'info');
+            
+            const productId1 = 101;
+            const productId2 = 102;
+            const designId = 1;
+            
+            const position1 = { x: 50, y: 100, scale: 1.0, rotation: 0 };
+            const position2 = { x: 200, y: 300, scale: 1.5, rotation: 45 };
+            
+            try {
+                // Sauvegarder position pour produit 1
+                await fetch(`/api/vendor-products/${productId1}/designs/${designId}/position/direct`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(position1)
+                });
+                
+                // Sauvegarder position pour produit 2
+                await fetch(`/api/vendor-products/${productId2}/designs/${designId}/position/direct`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(position2)
+                });
+                
+                // Vérifier isolation
+                const response1 = await fetch(`/api/vendor-products/${productId1}/designs/${designId}/position/direct`, {
+                    credentials: 'include'
+                });
+                const response2 = await fetch(`/api/vendor-products/${productId2}/designs/${designId}/position/direct`, {
+                    credentials: 'include'
+                });
+                
+                if (response1.ok && response2.ok) {
+                    const data1 = await response1.json();
+                    const data2 = await response2.json();
+                    
+                    const pos1 = data1.data?.position;
+                    const pos2 = data2.data?.position;
+                    
+                    if (pos1 && pos2 && pos1.x === position1.x && pos2.x === position2.x) {
+                        addResult('test-results', '✅ Isolation fonctionne! Positions préservées séparément', 'success');
+                    } else {
+                        addResult('test-results', `❌ Isolation échouée: pos1=${JSON.stringify(pos1)}, pos2=${JSON.stringify(pos2)}`, 'error');
+                    }
+                } else {
+                    addResult('test-results', '❌ Impossible de vérifier l\'isolation', 'error');
+                }
+                
+            } catch (error) {
+                addResult('test-results', `❌ Erreur test isolation: ${error.message}`, 'error');
+            }
+        }
+
+        // Tests manuels
+        async function createTestPosition() {
+            try {
+                const response = await fetch(`/api/vendor-products/${TEST_PRODUCT_ID}/designs/${TEST_DESIGN_ID}/position/direct`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(TEST_POSITION)
+                });
+                
+                if (response.ok) {
+                    addResult('manual-results', '✅ Position test créée', 'success');
+                } else {
+                    addResult('manual-results', `❌ Erreur création: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('manual-results', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadTestPosition() {
+            try {
+                const response = await fetch(`/api/vendor-products/${TEST_PRODUCT_ID}/designs/${TEST_DESIGN_ID}/position/direct`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('manual-results', `✅ Position chargée: ${JSON.stringify(data.data?.position, null, 2)}`, 'success');
+                } else {
+                    addResult('manual-results', `❌ Erreur chargement: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('manual-results', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateTestPosition() {
+            const newPosition = {
+                ...TEST_POSITION,
+                x: Math.random() * 300,
+                y: Math.random() * 200,
+                scale: 0.8 + Math.random() * 0.4
+            };
+            
+            try {
+                const response = await fetch(`/api/vendor-products/${TEST_PRODUCT_ID}/designs/${TEST_DESIGN_ID}/position/direct`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(newPosition)
+                });
+                
+                if (response.ok) {
+                    addResult('manual-results', `✅ Position mise à jour: x=${Math.round(newPosition.x)}, y=${Math.round(newPosition.y)}`, 'success');
+                } else {
+                    addResult('manual-results', `❌ Erreur mise à jour: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('manual-results', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteTestPosition() {
+            try {
+                const response = await fetch(`/api/vendor-products/${TEST_PRODUCT_ID}/designs/${TEST_DESIGN_ID}/position`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    addResult('manual-results', '✅ Position supprimée', 'success');
+                } else {
+                    addResult('manual-results', `❌ Erreur suppression: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('manual-results', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Diagnostic
+        async function checkBackendHealth() {
+            try {
+                const response = await fetch('/api/health', { credentials: 'include' });
+                if (response.ok) {
+                    addResult('diagnostic-results', '✅ Backend disponible', 'success');
+                } else {
+                    addResult('diagnostic-results', `⚠️ Backend répond avec statut ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('diagnostic-results', `❌ Backend indisponible: ${error.message}`, 'error');
+            }
+        }
+
+        function checkLocalStorage() {
+            const keys = Object.keys(localStorage);
+            const designKeys = keys.filter(key => 
+                key.includes('design') || key.includes('position') || key.includes('transform')
+            );
+            
+            if (designKeys.length > 0) {
+                addResult('diagnostic-results', `📦 ${designKeys.length} clés trouvées dans localStorage:`, 'info');
+                designKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    const preview = value ? value.substring(0, 100) + '...' : 'vide';
+                    addResult('diagnostic-results', `  • ${key}: ${preview}`, 'info');
+                });
+            } else {
+                addResult('diagnostic-results', '📦 Aucune donnée design dans localStorage', 'info');
+            }
+        }
+
+        function showCache() {
+            addResult('manual-results', '💾 Cache visible dans la console du navigateur', 'info');
+            if (window.designPositionManager) {
+                console.log('Cache DesignPositionManager:', window.designPositionManager.cache);
+            } else {
+                console.log('DesignPositionManager non disponible');
+            }
+        }
+
+        function clearCache() {
+            if (window.designPositionManager) {
+                window.designPositionManager.clearCache();
+                addResult('manual-results', '🧹 Cache vidé', 'success');
+            } else {
+                addResult('manual-results', '❌ DesignPositionManager non disponible', 'error');
+            }
+        }
+
+        async function runMigration() {
+            addResult('diagnostic-results', '🔄 Migration en cours...', 'info');
+            
+            if (window.MigrationHelper) {
+                try {
+                    await window.MigrationHelper.migrateExistingPositions();
+                    addResult('diagnostic-results', '✅ Migration terminée', 'success');
+                } catch (error) {
+                    addResult('diagnostic-results', `❌ Erreur migration: ${error.message}`, 'error');
+                }
+            } else {
+                addResult('diagnostic-results', '❌ MigrationHelper non disponible', 'error');
+            }
+        }
+
+        function resetMigration() {
+            if (window.MigrationHelper) {
+                window.MigrationHelper.resetMigration();
+                addResult('diagnostic-results', '↺ Migration reset', 'success');
+            } else {
+                addResult('diagnostic-results', '❌ MigrationHelper non disponible', 'error');
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            addResult('diagnostic-results', '🚀 Page de test chargée', 'info');
+            
+            // Vérifier disponibilité des composants
+            if (window.designPositionManager) {
+                addResult('diagnostic-results', '✅ DesignPositionManager disponible', 'success');
+            } else {
+                addResult('diagnostic-results', '❌ DesignPositionManager manquant', 'error');
+            }
+            
+            if (window.MigrationHelper) {
+                addResult('diagnostic-results', '✅ MigrationHelper disponible', 'success');
+            } else {
+                addResult('diagnostic-results', '❌ MigrationHelper manquant', 'error');
+            }
+        });
+    </script>
+</body>
+</html> 
+ 
+ 

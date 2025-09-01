@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Produits Vendeur V3 CORRIGÉ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .test-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: white;
+        }
+        .error { color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #dc2626; }
+        .success { color: #059669; background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #059669; }
+        .loading { color: #6b7280; text-align: center; padding: 20px; }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .product-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        .product-preview {
+            width: 100%;
+            height: 280px;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .product-preview canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .product-info {
+            padding: 20px;
+        }
+        .product-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 18px;
+            color: #1f2937;
+        }
+        .product-meta {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 12px;
+            line-height: 1.4;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-published { background: #dcfce7; color: #166534; }
+        .status-pending { background: #fef3c7; color: #d97706; }
+        .status-draft { background: #f3f4f6; color: #6b7280; }
+        .status-rejected { background: #fee2e2; color: #dc2626; }
+        pre { background: #f8fafc; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 12px; border: 1px solid #e2e8f0; }
+        .design-indicators {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .indicator {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .indicator.has-design { background: #dbeafe; color: #1e40af; }
+        .indicator.has-position { background: #dcfce7; color: #166534; }
+        .indicator.color-count { background: #fce7f3; color: #be185d; }
+        
+        .fixes-list {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .fixes-list h3 {
+            color: #0369a1;
+            margin-top: 0;
+        }
+        .fixes-list ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .fixes-list li {
+            margin: 8px 0;
+            color: #0369a1;
+        }
+        
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test - Produits Vendeur V3 CORRIGÉ</h1>
+        <p>Test du système corrigé sans le slider noir dérangeant et avec un meilleur positionnement des designs</p>
+        
+        <div class="fixes-list">
+            <h3>🔧 Corrections Apportées</h3>
+            <ul>
+                <li>✅ <strong>Suppression du slider noir</strong> : Plus de truc noir qui apparaît au hover</li>
+                <li>✅ <strong>Positionnement amélioré</strong> : Design affiché là où il a été défini</li>
+                <li>✅ <strong>Responsive design</strong> : Canvas adaptatif selon la taille du conteneur</li>
+                <li>✅ <strong>Taille correcte du design</strong> : Calcul proportionnel selon les délimitations</li>
+                <li>✅ <strong>Interface épurée</strong> : Fond blanc pour les overlays au lieu de noir</li>
+                <li>✅ <strong>Centrage automatique</strong> : Design centré dans le conteneur</li>
+            </ul>
+        </div>
+        
+        <div class="test-card">
+            <h2>📋 Chargement des produits</h2>
+            <button onclick="loadProducts()" class="btn">
+                Charger les produits
+            </button>
+            <div id="loading-status">Cliquez pour charger</div>
+            
+            <div id="products-grid" class="product-grid" style="display: none;">
+                <!-- Les produits seront affichés ici -->
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h2>🔍 Données brutes</h2>
+            <div id="raw-data" style="max-height: 400px; overflow-y: auto;">
+                <em>Chargez les produits pour voir les données brutes</em>
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h2>📊 Statistiques</h2>
+            <div id="stats">
+                <em>Chargez les produits pour voir les statistiques</em>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+        
+        function log(message) {
+            console.log(message);
+        }
+
+        function getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        // Fonction pour charger une image
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        // 🎯 Fonction pour calculer la position correcte comme dans sell-design
+        function calculateDesignPosition(delimitation, savedPosition, fallbackScale, imageWidth, imageHeight) {
+            console.log('🎯 Calcul position pour délimitation:', delimitation);
+            console.log('💾 Position sauvegardée:', savedPosition);
+            console.log('📐 Dimensions image:', imageWidth, 'x', imageHeight);
+            
+            // Si position sauvegardée, utiliser le système de sell-design
+            if (savedPosition) {
+                // Dans sell-design, les positions sont stockées comme des ratios 0-1
+                // Convertir en pixels absolus selon les dimensions de l'image
+                const finalX = savedPosition.x * imageWidth;
+                const finalY = savedPosition.y * imageHeight;
+                
+                console.log(`✅ Position depuis sell-design: (${finalX}, ${finalY}) scale=${savedPosition.scale}`);
+                
+                return {
+                    x: finalX,
+                    y: finalY,
+                    scale: savedPosition.scale,
+                    rotation: savedPosition.rotation
+                };
+            }
+            
+            // Sinon, utiliser le système de délimitation
+            let delim = { ...delimitation };
+            if (delimitation.coordinateType === 'PERCENTAGE') {
+                delim.x = (delimitation.x / 100) * imageWidth;
+                delim.y = (delimitation.y / 100) * imageHeight;
+                delim.width = (delimitation.width / 100) * imageWidth;
+                delim.height = (delimitation.height / 100) * imageHeight;
+                console.log('📐 Conversion PERCENTAGE -> PIXEL:', delim);
+            }
+
+            // Fallback : centrer dans la délimitation
+            const centerX = delim.x + delim.width / 2;
+            const centerY = delim.y + delim.height / 2;
+
+            return {
+                x: centerX,
+                y: centerY,
+                scale: fallbackScale,
+                rotation: 0
+            };
+        }
+
+        // 🔧 Fonction pour rendre un produit avec design (corrigée)
+        async function renderProductWithDesign(product, canvas, selectedColorId) {
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return false;
+
+            try {
+                // 1. Choisir la couleur
+                const selectedColor = product.selectedColors.find(c => c.id === selectedColorId) || product.selectedColors[0];
+                if (!selectedColor) return false;
+
+                // 2. Trouver la variation de couleur correspondante
+                const colorVariation = product.adminProduct.colorVariations.find(
+                    cv => cv.id === selectedColor.id
+                );
+                if (!colorVariation || !colorVariation.images.length) return false;
+
+                // 3. Prendre la première image
+                const mockupImage = colorVariation.images.find(img => img.viewType === 'Front') 
+                    || colorVariation.images[0];
+                if (!mockupImage.delimitations.length) return false;
+
+                // 4. Charger l'image du mock-up
+                const mockupImg = await loadImage(mockupImage.url);
+                
+                // 5. Charger l'image du design
+                if (!product.designApplication.designUrl) return false;
+                const designImg = await loadImage(product.designApplication.designUrl);
+
+                // 6. 🔧 Configurer le canvas pour être responsive
+                const containerWidth = 300;
+                const containerHeight = 280;
+                
+                // Maintenir les proportions de l'image originale
+                const mockupRatio = mockupImg.width / mockupImg.height;
+                const containerRatio = containerWidth / containerHeight;
+                
+                let canvasWidth, canvasHeight;
+                if (mockupRatio > containerRatio) {
+                    canvasWidth = containerWidth;
+                    canvasHeight = containerWidth / mockupRatio;
+                } else {
+                    canvasHeight = containerHeight;
+                    canvasWidth = containerHeight * mockupRatio;
+                }
+                
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+
+                // 7. Dessiner le mock-up
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(mockupImg, 0, 0, canvas.width, canvas.height);
+
+                // 8. Récupérer la position sauvegardée
+                const savedPosition = product.designPositions && product.designPositions.length > 0 
+                    ? product.designPositions[0].position 
+                    : null;
+
+                // 9. 🔧 Calculer la position finale du design selon les proportions du canvas
+                const delimitation = mockupImage.delimitations[0];
+                const finalPosition = calculateDesignPosition(
+                    delimitation,
+                    savedPosition,
+                    product.designApplication.scale,
+                    canvas.width,  // Utiliser les dimensions du canvas adaptatif
+                    canvas.height
+                );
+
+                console.log('📍 Position finale calculée:', finalPosition);
+
+                // 10. 🔧 Dessiner le design avec les transformations correctes
+                ctx.save();
+                ctx.translate(finalPosition.x, finalPosition.y);
+                ctx.rotate((finalPosition.rotation * Math.PI) / 180);
+                ctx.scale(finalPosition.scale, finalPosition.scale);
+
+                // 🔧 Calculer la taille du design selon l'échelle et les délimitations
+                const designSize = Math.min(
+                    delimitation.width * (delimitation.coordinateType === 'PERCENTAGE' ? canvas.width / 100 : 1),
+                    delimitation.height * (delimitation.coordinateType === 'PERCENTAGE' ? canvas.height / 100 : 1)
+                ) * 0.8; // 80% de la taille de la délimitation
+
+                const designWidth = designSize;
+                const designHeight = (designImg.height / designImg.width) * designSize;
+
+                console.log('🎨 Taille design calculée:', designWidth, 'x', designHeight);
+
+                // Dessiner le design centré sur le point de transformation
+                ctx.drawImage(designImg, -designWidth / 2, -designHeight / 2, designWidth, designHeight);
+
+                ctx.restore();
+
+                return true;
+            } catch (error) {
+                console.error('Erreur rendu:', error);
+                return false;
+            }
+        }
+
+        // Fonction pour créer une carte produit (épurée)
+        function createProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            card.id = `product-${product.id}`;
+            
+            const statusClass = `status-${product.status.toLowerCase()}`;
+            const currentColorId = product.selectedColors[0]?.id || 0;
+            
+            // Informations de position
+            const positionInfo = product.designPositions && product.designPositions.length > 0 
+                ? `Position: ${Math.round(product.designPositions[0].position.x * 100)}%, ${Math.round(product.designPositions[0].position.y * 100)}%`
+                : 'Position: Centrée';
+            
+            card.innerHTML = `
+                <div class="product-preview">
+                    <canvas id="canvas-${product.id}"></canvas>
+                </div>
+                <div class="product-info">
+                    <div class="product-title">${product.vendorName}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin: 8px 0;">
+                        <span style="font-weight: 600; color: #059669; font-size: 16px;">${product.price}€</span>
+                        <span class="status-badge ${statusClass}">${product.status}</span>
+                    </div>
+                    <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px; line-height: 1.4;">${product.description || 'Pas de description'}</div>
+                    <div class="design-indicators">
+                        ${product.designApplication.hasDesign ? '<span class="indicator has-design">🎨 Design</span>' : ''}
+                        ${product.designPositions && product.designPositions.length > 0 ? '<span class="indicator has-position">📍 Positionné</span>' : ''}
+                        <span class="indicator color-count">${product.selectedColors.length} couleurs</span>
+                    </div>
+                    <div class="product-meta">
+                        <strong>ID:</strong> ${product.id} | <strong>Base:</strong> ${product.adminProduct.name}<br>
+                        <strong>Couleurs:</strong> ${product.selectedColors.map(c => c.name).join(', ')}<br>
+                        <strong>Tailles:</strong> ${product.selectedSizes.length} disponibles<br>
+                        <strong>${positionInfo}</strong>
+                    </div>
+                </div>
+            `;
+            
+            // Stocker les données du produit
+            card.dataset.productData = JSON.stringify(product);
+            card.dataset.currentColorId = currentColorId;
+            
+            return card;
+        }
+
+        // Fonction principale pour charger les produits
+        async function loadProducts() {
+            const statusDiv = document.getElementById('loading-status');
+            const gridDiv = document.getElementById('products-grid');
+            const rawDataDiv = document.getElementById('raw-data');
+            const statsDiv = document.getElementById('stats');
+            
+            statusDiv.innerHTML = '<div class="loading">Chargement des produits...</div>';
+            gridDiv.style.display = 'none';
+            
+            try {
+                log('📡 Chargement des produits selon la documentation...');
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products?limit=20&offset=0`, {
+                    credentials: 'include',
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log('📋 Réponse API complète reçue');
+                
+                if (!result.success || !result.data || !result.data.products) {
+                    throw new Error('Format de réponse invalide');
+                }
+
+                const products = result.data.products;
+                log(`✅ ${products.length} produits chargés`);
+
+                // Afficher les données brutes
+                rawDataDiv.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+
+                // Calculer les statistiques
+                const stats = {
+                    total: products.length,
+                    published: products.filter(p => p.status === 'PUBLISHED').length,
+                    pending: products.filter(p => p.status === 'PENDING').length,
+                    draft: products.filter(p => p.status === 'DRAFT').length,
+                    rejected: products.filter(p => p.status === 'REJECTED').length,
+                    withDesign: products.filter(p => p.designApplication.hasDesign).length,
+                    withPosition: products.filter(p => p.designPositions && p.designPositions.length > 0).length,
+                    totalColors: products.reduce((sum, p) => sum + p.selectedColors.length, 0),
+                    avgColorsPerProduct: products.length > 0 ? Math.round(products.reduce((sum, p) => sum + p.selectedColors.length, 0) / products.length * 10) / 10 : 0
+                };
+
+                statsDiv.innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;">
+                        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
+                            <div style="font-size: 28px; font-weight: 700; color: #1f2937;">${stats.total}</div>
+                            <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Total</div>
+                        </div>
+                        <div style="background: #ecfdf5; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #10b981;">
+                            <div style="font-size: 28px; font-weight: 700; color: #059669;">${stats.published}</div>
+                            <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Publiés</div>
+                        </div>
+                        <div style="background: #fef3c7; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #f59e0b;">
+                            <div style="font-size: 28px; font-weight: 700; color: #d97706;">${stats.pending}</div>
+                            <div style="font-size: 13px; color: #6b7280; font-weight: 500;">En attente</div>
+                        </div>
+                        <div style="background: #dbeafe; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #3b82f6;">
+                            <div style="font-size: 28px; font-weight: 700; color: #1e40af;">${stats.withDesign}</div>
+                            <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Avec design</div>
+                        </div>
+                        <div style="background: #dcfce7; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #10b981;">
+                            <div style="font-size: 28px; font-weight: 700; color: #166534;">${stats.withPosition}</div>
+                            <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Positionnés</div>
+                        </div>
+                        <div style="background: #fce7f3; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #ec4899;">
+                            <div style="font-size: 28px; font-weight: 700; color: #be185d;">${stats.totalColors}</div>
+                            <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Couleurs totales</div>
+                        </div>
+                        <div style="background: #f3e8ff; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #8b5cf6;">
+                            <div style="font-size: 28px; font-weight: 700; color: #7c3aed;">${stats.avgColorsPerProduct}</div>
+                            <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Moy. couleurs/produit</div>
+                        </div>
+                    </div>
+                `;
+
+                // Afficher les produits
+                gridDiv.innerHTML = '';
+                
+                for (const product of products) {
+                    const card = createProductCard(product);
+                    gridDiv.appendChild(card);
+                    
+                    // Rendre le produit avec design si disponible
+                    if (product.designApplication.hasDesign) {
+                        const canvas = document.getElementById(`canvas-${product.id}`);
+                        if (canvas) {
+                            const success = await renderProductWithDesign(product, canvas, product.selectedColors[0].id);
+                            if (!success) {
+                                canvas.style.display = 'none';
+                                card.querySelector('.product-preview').innerHTML = `
+                                    <div style="color: #dc2626; text-align: center; padding: 20px; font-weight: 500;">
+                                        ❌ Erreur de rendu
+                                    </div>
+                                `;
+                            }
+                        }
+                    } else {
+                        // Afficher juste le mock-up sans design
+                        const canvas = document.getElementById(`canvas-${product.id}`);
+                        if (canvas && product.selectedColors.length > 0) {
+                            const firstColor = product.selectedColors[0];
+                            const colorVariation = product.adminProduct.colorVariations.find(cv => cv.id === firstColor.id);
+                            if (colorVariation && colorVariation.images.length > 0) {
+                                const mockupUrl = colorVariation.images[0].url;
+                                const img = new Image();
+                                img.crossOrigin = 'anonymous';
+                                img.onload = () => {
+                                    canvas.width = 300;
+                                    canvas.height = 280;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                };
+                                img.src = mockupUrl;
+                            }
+                        }
+                    }
+                }
+                
+                gridDiv.style.display = 'grid';
+                statusDiv.innerHTML = `<div class="success">✅ ${products.length} produits chargés et rendus avec les corrections appliquées</div>`;
+                
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`);
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-test au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Page de test V3 corrigée chargée');
+        });
+    </script>
+</body>
+</html> 

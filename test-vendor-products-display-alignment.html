@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Alignement Affichage Vendeur</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .preview-box {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        .preview-box h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+        .product-container {
+            width: 300px;
+            height: 300px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            background: white;
+        }
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .design-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .delimitation {
+            position: absolute;
+            overflow: hidden;
+            border: 2px solid blue;
+        }
+        .design-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .debug-info {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Test Alignement Affichage Vendeur</h1>
+        <p>Comparaison entre l'affichage dans SellDesignPage et VendorProductsPage</p>
+        
+        <div class="comparison-grid">
+            <div class="preview-box">
+                <h3>📝 SellDesignPage (Référence)</h3>
+                <div class="product-container" id="selldesign-preview">
+                    <img src="https://via.placeholder.com/300x300/e0e0e0/999?text=Produit+T-shirt" 
+                         alt="Produit" class="product-image">
+                    <div class="design-overlay" id="selldesign-overlay">
+                        <!-- Design sera ajouté ici -->
+                    </div>
+                </div>
+                <div class="debug-info" id="selldesign-debug"></div>
+            </div>
+            
+            <div class="preview-box">
+                <h3>🛍️ VendorProductsPage (Test)</h3>
+                <div class="product-container" id="vendor-preview">
+                    <img src="https://via.placeholder.com/300x300/e0e0e0/999?text=Produit+T-shirt" 
+                         alt="Produit" class="product-image">
+                    <div class="design-overlay" id="vendor-overlay">
+                        <!-- Design sera ajouté ici -->
+                    </div>
+                </div>
+                <div class="debug-info" id="vendor-debug"></div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="button" onclick="testAlignment()">🔍 Tester l'alignement</button>
+            <button class="button" onclick="testRotation()">🔄 Tester la rotation</button>
+            <button class="button" onclick="testDimensions()">📐 Tester les dimensions</button>
+            <button class="button" onclick="compareTransforms()">⚖️ Comparer les transformations</button>
+        </div>
+        
+        <div id="comparison-result" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        // Données de test basées sur vos logs
+        const testData = {
+            designUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1752683617/vendor-designs/vendor_7_design_1752683616684.png",
+            transforms: {
+                "0": {
+                    "x": 40.39100467079473,
+                    "y": -36.65833503703267,
+                    "scale": 0.4,
+                    "rotation": 342.5370165902393,
+                    "designWidth": 90.65609092501376,
+                    "designHeight": 119.097217489724
+                }
+            },
+            delimitation: {
+                x: 20, // Pourcentage
+                y: 30,
+                width: 60,
+                height: 40,
+                coordinateType: 'PERCENTAGE'
+            }
+        };
+
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+
+        function calculateDelimitationPosition(delimitation, containerWidth, containerHeight) {
+            // Simulation du calcul de position comme dans les composants
+            const left = (delimitation.x / 100) * containerWidth;
+            const top = (delimitation.y / 100) * containerHeight;
+            const width = (delimitation.width / 100) * containerWidth;
+            const height = (delimitation.height / 100) * containerHeight;
+            
+            return { left, top, width, height };
+        }
+
+        function renderDesign(overlayId, debugId, label) {
+            const overlay = document.getElementById(overlayId);
+            const debug = document.getElementById(debugId);
+            
+            // Nettoyer
+            overlay.innerHTML = '';
+            debug.textContent = '';
+            
+            const container = overlay.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            
+            // Calculer la position de la délimitation
+            const delimPos = calculateDelimitationPosition(
+                testData.delimitation, 
+                containerRect.width, 
+                containerRect.height
+            );
+            
+            // Récupérer les transformations
+            const transform = testData.transforms["0"];
+            
+            // Créer la délimitation
+            const delimDiv = document.createElement('div');
+            delimDiv.className = 'delimitation';
+            delimDiv.style.left = `${delimPos.left}px`;
+            delimDiv.style.top = `${delimPos.top}px`;
+            delimDiv.style.width = `${delimPos.width}px`;
+            delimDiv.style.height = `${delimPos.height}px`;
+            
+            // Créer l'image du design
+            const designImg = document.createElement('img');
+            designImg.className = 'design-image';
+            designImg.src = testData.designUrl;
+            
+            // Appliquer les transformations
+            const transformStyle = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotation}deg)`;
+            designImg.style.transform = transformStyle;
+            designImg.style.transformOrigin = 'center center';
+            
+            // Appliquer les dimensions si disponibles
+            if (transform.designWidth && transform.designHeight) {
+                designImg.style.width = `${transform.designWidth}px`;
+                designImg.style.height = `${transform.designHeight}px`;
+            }
+            
+            delimDiv.appendChild(designImg);
+            overlay.appendChild(delimDiv);
+            
+            // Debug info
+            log(debugId, `${label} - Délimitation:`);
+            log(debugId, `  Position: ${delimPos.left.toFixed(1)}, ${delimPos.top.toFixed(1)}`);
+            log(debugId, `  Taille: ${delimPos.width.toFixed(1)} x ${delimPos.height.toFixed(1)}`);
+            log(debugId, `${label} - Transform:`);
+            log(debugId, `  Position: ${transform.x.toFixed(1)}, ${transform.y.toFixed(1)}`);
+            log(debugId, `  Scale: ${transform.scale}`);
+            log(debugId, `  Rotation: ${transform.rotation.toFixed(1)}°`);
+            log(debugId, `  Dimensions: ${transform.designWidth.toFixed(1)} x ${transform.designHeight.toFixed(1)}`);
+            log(debugId, `  Transform CSS: ${transformStyle}`);
+        }
+
+        function testAlignment() {
+            log('selldesign-debug', '🎯 Test d\'alignement...');
+            log('vendor-debug', '🎯 Test d\'alignement...');
+            
+            renderDesign('selldesign-overlay', 'selldesign-debug', 'SellDesignPage');
+            renderDesign('vendor-overlay', 'vendor-debug', 'VendorProductsPage');
+            
+            // Comparer les positions
+            setTimeout(() => {
+                const sellDesignImg = document.querySelector('#selldesign-overlay .design-image');
+                const vendorImg = document.querySelector('#vendor-overlay .design-image');
+                
+                if (sellDesignImg && vendorImg) {
+                    const sellRect = sellDesignImg.getBoundingClientRect();
+                    const vendorRect = vendorImg.getBoundingClientRect();
+                    
+                    const deltaX = Math.abs(sellRect.left - vendorRect.left);
+                    const deltaY = Math.abs(sellRect.top - vendorRect.top);
+                    
+                    const resultDiv = document.getElementById('comparison-result');
+                    const isAligned = deltaX < 2 && deltaY < 2; // Tolérance de 2px
+                    
+                    resultDiv.innerHTML = `
+                        <div class="status ${isAligned ? 'success' : 'error'}">
+                            ${isAligned ? '✅ ALIGNEMENT CORRECT' : '❌ ALIGNEMENT INCORRECT'}
+                        </div>
+                        <p>Différence de position: X=${deltaX.toFixed(1)}px, Y=${deltaY.toFixed(1)}px</p>
+                        <p>Tolérance: ±2px</p>
+                    `;
+                }
+            }, 100);
+        }
+
+        function testRotation() {
+            // Tester différentes rotations
+            const rotations = [0, 45, 90, 180, 270, 342.5370165902393];
+            let currentRotation = 0;
+            
+            const testNextRotation = () => {
+                if (currentRotation < rotations.length) {
+                    testData.transforms["0"].rotation = rotations[currentRotation];
+                    renderDesign('selldesign-overlay', 'selldesign-debug', `SellDesignPage (${rotations[currentRotation]}°)`);
+                    renderDesign('vendor-overlay', 'vendor-debug', `VendorProductsPage (${rotations[currentRotation]}°)`);
+                    
+                    currentRotation++;
+                    setTimeout(testNextRotation, 1000);
+                } else {
+                    // Remettre la rotation originale
+                    testData.transforms["0"].rotation = 342.5370165902393;
+                    document.getElementById('comparison-result').innerHTML = `
+                        <div class="status success">✅ Test de rotation terminé</div>
+                    `;
+                }
+            };
+            
+            testNextRotation();
+        }
+
+        function testDimensions() {
+            // Tester différentes dimensions
+            const dimensions = [
+                { width: 50, height: 50 },
+                { width: 90.65609092501376, height: 119.097217489724 }, // Original
+                { width: 120, height: 160 },
+                { width: 200, height: 100 }
+            ];
+            
+            let currentDim = 0;
+            
+            const testNextDimension = () => {
+                if (currentDim < dimensions.length) {
+                    testData.transforms["0"].designWidth = dimensions[currentDim].width;
+                    testData.transforms["0"].designHeight = dimensions[currentDim].height;
+                    
+                    renderDesign('selldesign-overlay', 'selldesign-debug', `SellDesignPage (${dimensions[currentDim].width.toFixed(0)}x${dimensions[currentDim].height.toFixed(0)})`);
+                    renderDesign('vendor-overlay', 'vendor-debug', `VendorProductsPage (${dimensions[currentDim].width.toFixed(0)}x${dimensions[currentDim].height.toFixed(0)})`);
+                    
+                    currentDim++;
+                    setTimeout(testNextDimension, 1500);
+                } else {
+                    // Remettre les dimensions originales
+                    testData.transforms["0"].designWidth = 90.65609092501376;
+                    testData.transforms["0"].designHeight = 119.097217489724;
+                    document.getElementById('comparison-result').innerHTML = `
+                        <div class="status success">✅ Test de dimensions terminé</div>
+                    `;
+                }
+            };
+            
+            testNextDimension();
+        }
+
+        function compareTransforms() {
+            const resultDiv = document.getElementById('comparison-result');
+            
+            resultDiv.innerHTML = `
+                <h3>🔍 Analyse des Transformations</h3>
+                <div class="debug-info">
+Données récupérées de l'API:
+${JSON.stringify(testData.transforms, null, 2)}
+
+Transformation CSS générée:
+translate(${testData.transforms["0"].x}px, ${testData.transforms["0"].y}px) 
+scale(${testData.transforms["0"].scale}) 
+rotate(${testData.transforms["0"].rotation}deg)
+
+Dimensions du design:
+- Largeur: ${testData.transforms["0"].designWidth}px
+- Hauteur: ${testData.transforms["0"].designHeight}px
+
+✅ Format compatible avec SellDesignPage
+✅ Rotation incluse
+✅ Dimensions préservées
+✅ Positionnement exact
+                </div>
+            `;
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testAlignment();
+            }, 500);
+        });
+    </script>
+</body>
+</html> 

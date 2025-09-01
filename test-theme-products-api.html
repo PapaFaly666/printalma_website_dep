@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API - Produits Thème</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test API - Produits Thème</h1>
+        <p>Ce fichier teste les endpoints nécessaires pour la page ThemeProductsPage.</p>
+
+        <div class="test-section">
+            <div class="test-title">📊 Test GET /products</div>
+            <div class="test-description">
+                Testez l'endpoint pour récupérer la liste des produits.
+            </div>
+            <button class="test-button" onclick="testGetProducts()">
+                Tester GET /products
+            </button>
+            <div id="products-result" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🎨 Test GET /themes/:id</div>
+            <div class="test-description">
+                Testez l'endpoint pour récupérer un thème spécifique.
+            </div>
+            <input type="number" id="themeId" placeholder="ID du thème" value="1" style="padding: 8px; margin-right: 10px;">
+            <button class="test-button" onclick="testGetTheme()">
+                Tester GET /themes/:id
+            </button>
+            <div id="theme-result" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">➕ Test POST /themes/:id/products</div>
+            <div class="test-description">
+                Testez l'endpoint pour ajouter des produits à un thème.
+            </div>
+            <input type="number" id="themeIdPost" placeholder="ID du thème" value="1" style="padding: 8px; margin-right: 10px;">
+            <input type="text" id="productIds" placeholder="IDs produits (ex: 1,2,3)" value="1,2" style="padding: 8px; margin-right: 10px;">
+            <button class="test-button" onclick="testAddProductsToTheme()">
+                Tester POST /themes/:id/products
+            </button>
+            <div id="add-products-result" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🔧 Test POST /products</div>
+            <div class="test-description">
+                Testez l'endpoint pour créer un nouveau produit.
+            </div>
+            <button class="test-button" onclick="testCreateProduct()">
+                Tester POST /products
+            </button>
+            <div id="create-product-result" class="test-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+
+        async function testGetProducts() {
+            const result = document.getElementById('products-result');
+            result.style.display = 'block';
+            result.className = 'test-result info';
+            result.textContent = 'Test en cours...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/products`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Succès!\nStatus: ${response.status}\nDonnées: ${JSON.stringify(data, null, 2)}\n\nVérifications:\n- data est un tableau: ${Array.isArray(data.data)}\n- Nombre de produits: ${Array.isArray(data.data) ? data.data.length : 'N/A'}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Erreur!\nStatus: ${response.status}\nMessage: ${data.message || 'Erreur inconnue'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ Erreur de connexion!\n${error.message}`;
+            }
+        }
+
+        async function testGetTheme() {
+            const themeId = document.getElementById('themeId').value;
+            const result = document.getElementById('theme-result');
+            result.style.display = 'block';
+            result.className = 'test-result info';
+            result.textContent = 'Test en cours...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/themes/${themeId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Succès!\nStatus: ${response.status}\nDonnées: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Erreur!\nStatus: ${response.status}\nMessage: ${data.message || 'Erreur inconnue'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ Erreur de connexion!\n${error.message}`;
+            }
+        }
+
+        async function testAddProductsToTheme() {
+            const themeId = document.getElementById('themeIdPost').value;
+            const productIdsStr = document.getElementById('productIds').value;
+            const productIds = productIdsStr.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+            
+            const result = document.getElementById('add-products-result');
+            result.style.display = 'block';
+            result.className = 'test-result info';
+            result.textContent = 'Test en cours...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/themes/${themeId}/products`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ productIds })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Succès!\nStatus: ${response.status}\nDonnées: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Erreur!\nStatus: ${response.status}\nMessage: ${data.message || 'Erreur inconnue'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ Erreur de connexion!\n${error.message}`;
+            }
+        }
+
+        async function testCreateProduct() {
+            const result = document.getElementById('create-product-result');
+            result.style.display = 'block';
+            result.className = 'test-result info';
+            result.textContent = 'Test en cours...';
+
+            try {
+                const formData = new FormData();
+                formData.append('name', 'Produit Test');
+                formData.append('description', 'Description du produit test');
+                formData.append('price', '2500');
+                formData.append('status', 'draft');
+                formData.append('isReadyProduct', 'false');
+                formData.append('categories', JSON.stringify(['test']));
+
+                const response = await fetch(`${API_BASE_URL}/products`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Succès!\nStatus: ${response.status}\nDonnées: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Erreur!\nStatus: ${response.status}\nMessage: ${data.message || 'Erreur inconnue'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ Erreur de connexion!\n${error.message}`;
+            }
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', function() {
+            console.log('🧪 Test API ThemeProductsPage');
+            console.log('🔗 Base URL:', API_BASE_URL);
+            console.log('📋 Endpoints à tester:');
+            console.log('- GET /products');
+            console.log('- GET /themes/:id');
+            console.log('- POST /themes/:id/products');
+            console.log('- POST /products');
+        });
+    </script>
+</body>
+</html> 
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API - Produits Thème</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test API - Produits Thème</h1>
+        <p>Ce fichier teste les endpoints nécessaires pour la page ThemeProductsPage.</p>
+
+        <div class="test-section">
+            <div class="test-title">📊 Test GET /products</div>
+            <div class="test-description">
+                Testez l'endpoint pour récupérer la liste des produits.
+            </div>
+            <button class="test-button" onclick="testGetProducts()">
+                Tester GET /products
+            </button>
+            <div id="products-result" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🎨 Test GET /themes/:id</div>
+            <div class="test-description">
+                Testez l'endpoint pour récupérer un thème spécifique.
+            </div>
+            <input type="number" id="themeId" placeholder="ID du thème" value="1" style="padding: 8px; margin-right: 10px;">
+            <button class="test-button" onclick="testGetTheme()">
+                Tester GET /themes/:id
+            </button>
+            <div id="theme-result" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">➕ Test POST /themes/:id/products</div>
+            <div class="test-description">
+                Testez l'endpoint pour ajouter des produits à un thème.
+            </div>
+            <input type="number" id="themeIdPost" placeholder="ID du thème" value="1" style="padding: 8px; margin-right: 10px;">
+            <input type="text" id="productIds" placeholder="IDs produits (ex: 1,2,3)" value="1,2" style="padding: 8px; margin-right: 10px;">
+            <button class="test-button" onclick="testAddProductsToTheme()">
+                Tester POST /themes/:id/products
+            </button>
+            <div id="add-products-result" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🔧 Test POST /products</div>
+            <div class="test-description">
+                Testez l'endpoint pour créer un nouveau produit.
+            </div>
+            <button class="test-button" onclick="testCreateProduct()">
+                Tester POST /products
+            </button>
+            <div id="create-product-result" class="test-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+
+        async function testGetProducts() {
+            const result = document.getElementById('products-result');
+            result.style.display = 'block';
+            result.className = 'test-result info';
+            result.textContent = 'Test en cours...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/products`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Succès!\nStatus: ${response.status}\nDonnées: ${JSON.stringify(data, null, 2)}\n\nVérifications:\n- data est un tableau: ${Array.isArray(data.data)}\n- Nombre de produits: ${Array.isArray(data.data) ? data.data.length : 'N/A'}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Erreur!\nStatus: ${response.status}\nMessage: ${data.message || 'Erreur inconnue'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ Erreur de connexion!\n${error.message}`;
+            }
+        }
+
+        async function testGetTheme() {
+            const themeId = document.getElementById('themeId').value;
+            const result = document.getElementById('theme-result');
+            result.style.display = 'block';
+            result.className = 'test-result info';
+            result.textContent = 'Test en cours...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/themes/${themeId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Succès!\nStatus: ${response.status}\nDonnées: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Erreur!\nStatus: ${response.status}\nMessage: ${data.message || 'Erreur inconnue'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ Erreur de connexion!\n${error.message}`;
+            }
+        }
+
+        async function testAddProductsToTheme() {
+            const themeId = document.getElementById('themeIdPost').value;
+            const productIdsStr = document.getElementById('productIds').value;
+            const productIds = productIdsStr.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+            
+            const result = document.getElementById('add-products-result');
+            result.style.display = 'block';
+            result.className = 'test-result info';
+            result.textContent = 'Test en cours...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/themes/${themeId}/products`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ productIds })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Succès!\nStatus: ${response.status}\nDonnées: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Erreur!\nStatus: ${response.status}\nMessage: ${data.message || 'Erreur inconnue'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ Erreur de connexion!\n${error.message}`;
+            }
+        }
+
+        async function testCreateProduct() {
+            const result = document.getElementById('create-product-result');
+            result.style.display = 'block';
+            result.className = 'test-result info';
+            result.textContent = 'Test en cours...';
+
+            try {
+                const formData = new FormData();
+                formData.append('name', 'Produit Test');
+                formData.append('description', 'Description du produit test');
+                formData.append('price', '2500');
+                formData.append('status', 'draft');
+                formData.append('isReadyProduct', 'false');
+                formData.append('categories', JSON.stringify(['test']));
+
+                const response = await fetch(`${API_BASE_URL}/products`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ Succès!\nStatus: ${response.status}\nDonnées: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Erreur!\nStatus: ${response.status}\nMessage: ${data.message || 'Erreur inconnue'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ Erreur de connexion!\n${error.message}`;
+            }
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', function() {
+            console.log('🧪 Test API ThemeProductsPage');
+            console.log('🔗 Base URL:', API_BASE_URL);
+            console.log('📋 Endpoints à tester:');
+            console.log('- GET /products');
+            console.log('- GET /themes/:id');
+            console.log('- POST /themes/:id/products');
+            console.log('- POST /products');
+        });
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 

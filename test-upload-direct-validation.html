@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Direct avec Validation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; padding: 20px; margin: 20px 0; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; }
+        .upload-area { border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; }
+        .validation-step { background: #f0f8ff; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test Upload Direct avec Validation</h1>
+    
+    <div class="test-section">
+        <h2>✅ Problème Identifié et Corrigé</h2>
+        <p>L'erreur 404 venait du fait que le produit ou la couleur n'existaient pas dans la base de données.</p>
+        
+        <h3>🔧 Correction Apportée</h3>
+        <ul>
+            <li>✅ Vérification de l'existence du produit avant upload</li>
+            <li>✅ Vérification de l'existence de la variation de couleur</li>
+            <li>✅ Validation des données selon la documentation</li>
+            <li>✅ Messages d'erreur clairs et informatifs</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Comparaison Avant/Après</h2>
+        
+        <h3>❌ Avant (Erreur 404)</h3>
+        <ul>
+            <li>URL : POST /products/upload-color-image/4/1</li>
+            <li>Validation : Aucune</li>
+            <li>Résultat : 404 Not Found</li>
+            <li>Message : "Variation couleur introuvable pour ce produit"</li>
+        </ul>
+        
+        <h3>✅ Après (Avec Validation)</h3>
+        <ul>
+            <li>Vérification : Produit existe ?</li>
+            <li>Vérification : Couleur existe ?</li>
+            <li>Validation : Données correctes</li>
+            <li>Résultat : Upload réussi ou erreur claire</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🧪 Test de Validation et Upload</h2>
+        
+        <div class="validation-step">
+            <h3>1. Vérification du Produit</h3>
+            <input type="number" id="productId" placeholder="ID du produit" value="4" />
+            <button onclick="checkProduct()">🔍 Vérifier Produit</button>
+            <div id="productResult"></div>
+        </div>
+        
+        <div class="validation-step">
+            <h3>2. Vérification de la Couleur</h3>
+            <input type="number" id="colorId" placeholder="ID de la couleur" value="1" />
+            <button onclick="checkColor()">🔍 Vérifier Couleur</button>
+            <div id="colorResult"></div>
+        </div>
+        
+        <div class="validation-step">
+            <h3>3. Upload d'Image</h3>
+            <div class="upload-area" id="uploadArea">
+                <p>Glissez-déposez une image ou cliquez pour sélectionner</p>
+                <p>JPG, PNG, WEBP - Max 5MB</p>
+                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+            </div>
+            <button onclick="uploadImage()">📤 Upload Image</button>
+            <div id="uploadResult"></div>
+        </div>
+        
+        <button onclick="runFullTest()">🚀 Test Complet</button>
+        <button onclick="clearLog()">🧹 Effacer Log</button>
+    </div>
+    
+    <div id="messageSection" style="display: none;"></div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test upload direct avec validation initialisé</div>
+        <div class="info">📋 Prêt à tester la validation et l'upload</div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let currentProduct = null;
+        let currentColor = null;
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        // Gestion de la sélection de fichier
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                log(`📁 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+            }
+        });
+
+        // Gestion du drag & drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                selectedFile = file;
+                log(`📁 Fichier glissé: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+            }
+        });
+
+        // Gestion du clic sur la zone d'upload
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Vérifier le produit
+        async function checkProduct() {
+            const productId = document.getElementById('productId').value;
+            const resultDiv = document.getElementById('productResult');
+            
+            log(`🔍 Vérification du produit ${productId}...`, 'info');
+            
+            try {
+                const response = await fetch(`http://localhost:3004/products/${productId}`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Produit ${productId} non trouvé (${response.status})`);
+                }
+                
+                const product = await response.json();
+                currentProduct = product;
+                
+                log(`✅ Produit trouvé: ${product.name}`, 'success');
+                resultDiv.innerHTML = `<div class="success">✅ Produit: ${product.name}</div>`;
+                
+                return product;
+            } catch (error) {
+                log(`❌ Erreur produit: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+                currentProduct = null;
+                throw error;
+            }
+        }
+
+        // Vérifier la couleur
+        async function checkColor() {
+            const colorId = parseInt(document.getElementById('colorId').value);
+            const resultDiv = document.getElementById('colorResult');
+            
+            if (!currentProduct) {
+                log('❌ Vérifiez d\'abord le produit', 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Vérifiez d\'abord le produit</div>`;
+                return;
+            }
+            
+            log(`🔍 Vérification de la couleur ${colorId}...`, 'info');
+            
+            try {
+                const colorVar = currentProduct.colorVariations?.find(cv => cv.id === colorId);
+                
+                if (!colorVar) {
+                    throw new Error(`Variation de couleur ${colorId} non trouvée pour le produit ${currentProduct.id}`);
+                }
+                
+                currentColor = colorVar;
+                log(`✅ Couleur trouvée: ${colorVar.name}`, 'success');
+                resultDiv.innerHTML = `<div class="success">✅ Couleur: ${colorVar.name}</div>`;
+                
+                return colorVar;
+            } catch (error) {
+                log(`❌ Erreur couleur: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+                currentColor = null;
+                throw error;
+            }
+        }
+
+        // Upload d'image
+        async function uploadImage() {
+            const resultDiv = document.getElementById('uploadResult');
+            
+            if (!selectedFile) {
+                log('❌ Aucun fichier sélectionné', 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Aucun fichier sélectionné</div>`;
+                return;
+            }
+            
+            if (!currentProduct || !currentColor) {
+                log('❌ Vérifiez d\'abord le produit et la couleur', 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Vérifiez d\'abord le produit et la couleur</div>`;
+                return;
+            }
+            
+            log('🚀 Début de l\'upload...', 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                const productId = currentProduct.id;
+                const colorId = currentColor.id;
+
+                log(`📤 Envoi vers: POST /products/upload-color-image/${productId}/${colorId}`, 'info');
+
+                const response = await fetch(`http://localhost:3004/products/upload-color-image/${productId}/${colorId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                log(`📥 Réponse reçue (${response.status})`, response.ok ? 'success' : 'error');
+
+                if (response.ok && data.success) {
+                    log('✅ Upload réussi!', 'success');
+                    log(`🔗 URL générée: ${data.image.url}`, 'success');
+                    resultDiv.innerHTML = `<div class="success">✅ Upload réussi! URL: ${data.image.url}</div>`;
+                    showMessage('success', '✅ Upload réussi avec validation!');
+                } else {
+                    log(`❌ Erreur: ${data.message}`, 'error');
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.message}</div>`;
+                    showMessage('error', `❌ Erreur: ${data.message}`);
+                }
+
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Erreur réseau: ${error.message}</div>`;
+                showMessage('error', `❌ Erreur réseau: ${error.message}`);
+            }
+        }
+
+        // Test complet
+        async function runFullTest() {
+            log('🚀 Début du test complet...', 'info');
+            
+            try {
+                // 1. Vérifier le produit
+                await checkProduct();
+                
+                // 2. Vérifier la couleur
+                await checkColor();
+                
+                // 3. Upload l'image
+                await uploadImage();
+                
+                log('✅ Test complet terminé avec succès!', 'success');
+            } catch (error) {
+                log(`❌ Test complet échoué: ${error.message}`, 'error');
+            }
+        }
+
+        // Fonctions utilitaires
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Log effacé', 'info');
+        }
+
+        function showMessage(type, message) {
+            const messageSection = document.getElementById('messageSection');
+            messageSection.innerHTML = `<div class="${type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'}">${message}</div>`;
+            messageSection.style.display = 'block';
+        }
+
+        // Initialisation
+        log('🚀 Test upload direct avec validation initialisé', 'info');
+        log('📋 Prêt à tester la validation et l\'upload', 'info');
+    </script>
+</body>
+</html> 

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Création Vendeur Étendue</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .form-group.required label::after {
+            content: " *";
+            color: red;
+        }
+        .photo-upload {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .photo-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ddd;
+        }
+        .photo-preview img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .vendor-type-preview {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .vendor-type-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .vendor-type-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .vendor-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .feature-tag {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 15px;
+            padding: 4px 12px;
+            font-size: 12px;
+            color: #495057;
+        }
+        .submit-btn {
+            background: #000;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .submit-btn:hover {
+            background: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Test - Création Vendeur Étendue</h1>
+        <p>Formulaire avec nouveaux champs : Photo, Téléphone, Pays, Adresse, Nom de boutique</p>
+    </div>
+
+    <div class="form-container">
+        <form id="vendorForm">
+            <!-- Photo de profil -->
+            <div class="form-group">
+                <label>Photo de profil (optionnel)</label>
+                <div class="photo-upload">
+                    <div class="photo-preview" id="photoPreview">
+                        📷
+                    </div>
+                    <div>
+                        <input type="file" id="profilePhoto" accept="image/*" style="margin-bottom: 5px;">
+                        <div style="font-size: 12px; color: #666;">JPG, PNG ou GIF. Max 5MB.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prénom et Nom -->
+            <div class="form-row">
+                <div class="form-group required">
+                    <label for="firstName">Prénom</label>
+                    <input type="text" id="firstName" name="firstName" placeholder="Jean" required>
+                </div>
+                <div class="form-group required">
+                    <label for="lastName">Nom</label>
+                    <input type="text" id="lastName" name="lastName" placeholder="Dupont" required>
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group required">
+                <label for="email">Adresse email</label>
+                <input type="email" id="email" name="email" placeholder="jean.dupont@exemple.com" required>
+            </div>
+
+            <!-- Téléphone -->
+            <div class="form-group">
+                <label for="phone">Numéro de téléphone</label>
+                <input type="tel" id="phone" name="phone" placeholder="+33 6 12 34 56 78">
+            </div>
+
+            <!-- Pays -->
+            <div class="form-group">
+                <label for="country">Pays</label>
+                <select id="country" name="country">
+                    <option value="">Sélectionnez votre pays</option>
+                    <option value="France">France</option>
+                    <option value="Belgique">Belgique</option>
+                    <option value="Suisse">Suisse</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Maroc">Maroc</option>
+                    <option value="Tunisie">Tunisie</option>
+                    <option value="Algérie">Algérie</option>
+                    <option value="Sénégal">Sénégal</option>
+                    <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                </select>
+            </div>
+
+            <!-- Adresse -->
+            <div class="form-group">
+                <label for="address">Adresse</label>
+                <input type="text" id="address" name="address" placeholder="123 Rue de la Paix, 75001 Paris">
+            </div>
+
+            <!-- Nom de la boutique -->
+            <div class="form-group required">
+                <label for="shopName">Nom de la boutique</label>
+                <input type="text" id="shopName" name="shopName" placeholder="Ma Boutique Design" required>
+            </div>
+
+            <!-- Type de vendeur -->
+            <div class="form-group required">
+                <label for="vendeurType">Type de vendeur</label>
+                <select id="vendeurType" name="vendeurType" required>
+                    <option value="">Choisissez le type de vendeur</option>
+                    <option value="DESIGNER">🎨 Designer - Création de designs personnalisés</option>
+                    <option value="INFLUENCEUR">📱 Influenceur - Promotion sur réseaux sociaux</option>
+                    <option value="ARTISTE">🎭 Artiste - Créations artistiques originales</option>
+                </select>
+            </div>
+
+            <!-- Aperçu du type sélectionné -->
+            <div id="vendorTypePreview" style="display: none;"></div>
+
+            <!-- Bouton de soumission -->
+            <div style="margin-top: 30px;">
+                <button type="submit" class="submit-btn">
+                    ➕ Créer le vendeur
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Aperçu de la photo
+        document.getElementById('profilePhoto').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('photoPreview');
+            
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('⚠️ La taille de l\'image ne doit pas dépasser 5MB');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Aperçu">`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '📷';
+            }
+        });
+
+        // Aperçu du type de vendeur
+        const vendorTypeData = {
+            'DESIGNER': {
+                icon: '🎨',
+                label: 'Designer',
+                description: 'Création de designs graphiques et visuels',
+                color: '#6f42c1',
+                features: ['Outils de design', 'Templates', 'Galerie', 'Portfolio']
+            },
+            'INFLUENCEUR': {
+                icon: '📱',
+                label: 'Influenceur',
+                description: 'Promotion via réseaux sociaux et influence',
+                color: '#e83e8c',
+                features: ['Analytics', 'Codes promo', 'Marketing', 'Réseaux sociaux']
+            },
+            'ARTISTE': {
+                icon: '🎭',
+                label: 'Artiste',
+                description: 'Création artistique et œuvres originales',
+                color: '#fd7e14',
+                features: ['Portfolio', 'Galerie d\'œuvres', 'Ventes d\'art', 'Expositions']
+            }
+        };
+
+        document.getElementById('vendeurType').addEventListener('change', function(e) {
+            const selectedType = e.target.value;
+            const preview = document.getElementById('vendorTypePreview');
+            
+            if (selectedType && vendorTypeData[selectedType]) {
+                const data = vendorTypeData[selectedType];
+                preview.style.display = 'block';
+                preview.innerHTML = `
+                    <div class="vendor-type-preview">
+                        <div class="vendor-type-header">
+                            <div class="vendor-type-icon" style="background: ${data.color}20; color: ${data.color};">
+                                ${data.icon}
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; color: #333;">${data.label}</h4>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">${data.description}</p>
+                            </div>
+                        </div>
+                        <div class="vendor-features">
+                            ${data.features.map(feature => `<span class="feature-tag">${feature}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+
+        // Soumission du formulaire
+        document.getElementById('vendorForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            // Validation basique
+            const required = ['firstName', 'lastName', 'email', 'shopName', 'vendeurType'];
+            const missing = required.filter(field => !formData.get(field));
+            
+            if (missing.length > 0) {
+                alert(`❌ Champs obligatoires manquants: ${missing.join(', ')}`);
+                return;
+            }
+
+            // Validation email
+            const email = formData.get('email');
+            if (!/\S+@\S+\.\S+/.test(email)) {
+                alert('❌ Format d\'email invalide');
+                return;
+            }
+
+            // Validation téléphone si fourni
+            const phone = formData.get('phone');
+            if (phone && !/^[\+]?[0-9\s\-\(\)]{8,}$/.test(phone)) {
+                alert('❌ Format de téléphone invalide');
+                return;
+            }
+
+            // Simuler la création
+            const vendorData = {
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                country: formData.get('country'),
+                address: formData.get('address'),
+                shopName: formData.get('shopName'),
+                vendeurType: formData.get('vendeurType'),
+                profilePhoto: formData.get('profilePhoto')
+            };
+
+            console.log('🚀 Données du vendeur à créer:', vendorData);
+            
+            alert(`✅ Vendeur créé avec succès!\n\n📊 Résumé:\n• Nom: ${vendorData.firstName} ${vendorData.lastName}\n• Email: ${vendorData.email}\n• Boutique: ${vendorData.shopName}\n• Type: ${vendorData.vendeurType}\n• Pays: ${vendorData.country || 'Non spécifié'}\n• Téléphone: ${vendorData.phone || 'Non spécifié'}\n• Photo: ${vendorData.profilePhoto.name || 'Aucune'}`);
+        });
+    </script>
+</body>
+</html> 

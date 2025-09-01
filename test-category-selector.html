@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test CategorySelector - Gestion par Catégorie et Sous-catégorie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .category-item {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .category-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .dropdown-animation {
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-5xl mx-auto p-6">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">🏷️ Sélecteur de Catégories et Sous-catégories</h1>
+            <p class="text-gray-600 mb-4">Test du système hiérarchique pour /admin/add-product</p>
+            
+            <!-- Exemple demandé par l'utilisateur -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-blue-900 mb-2">✨ Exemple demandé :</h3>
+                <p class="text-blue-800">
+                    Un <strong>T-shirt</strong> appartient à la catégorie <strong>"Vêtements"</strong> 
+                    et à la sous-catégorie <strong>"T-shirts"</strong>
+                </p>
+                <p class="text-sm text-blue-600 mt-1">
+                    → Sélection : "Vêtements > T-shirts" (categoryId: 1, subcategoryId: 11)
+                </p>
+            </div>
+        </div>
+
+        <!-- Sélecteur interactif -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">🎯 Sélecteur Interactif</h2>
+            
+            <div class="max-w-md">
+                <label class="block text-gray-900 font-semibold mb-2">
+                    Catégorie <span class="text-red-500">*</span>
+                </label>
+                
+                <!-- Bouton de sélection -->
+                <div class="relative">
+                    <button 
+                        id="categoryButton" 
+                        class="w-full p-4 border-2 border-gray-200 rounded-xl bg-white hover:border-blue-500 transition-all duration-200 flex items-center justify-between text-left"
+                    >
+                        <span id="categoryText" class="text-gray-500">Sélectionner une catégorie</span>
+                        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown -->
+                    <div id="categoryDropdown" class="hidden absolute top-full left-0 right-0 z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto dropdown-animation">
+                        <div class="p-2">
+                            <!-- Vêtements -->
+                            <div class="category-main" data-category="1">
+                                <div class="flex items-center gap-2 p-3 rounded-md hover:bg-gray-100" onclick="toggleCategory(1)">
+                                    <svg id="chevron-1" class="h-4 w-4 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                    <svg class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                                    </svg>
+                                    <span class="font-medium">👕 Vêtements</span>
+                                    <span class="ml-auto bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">5</span>
+                                </div>
+                                
+                                <!-- Sous-catégories de Vêtements -->
+                                <div id="subcategories-1" class="hidden ml-6 border-l-2 border-gray-200 pl-2 mt-2">
+                                    <div class="category-item p-2 rounded-md hover:bg-blue-50" onclick="selectCategory(1, 11, 'Vêtements', 'T-shirts')">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-4 h-4"></div>
+                                            <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="text-sm">👕 T-shirts</span>
+                                            <span class="text-xs text-gray-500 ml-auto">ID: 11</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-item p-2 rounded-md hover:bg-blue-50" onclick="selectCategory(1, 12, 'Vêtements', 'Sweats')">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-4 h-4"></div>
+                                            <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="text-sm">🧥 Sweats</span>
+                                            <span class="text-xs text-gray-500 ml-auto">ID: 12</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-item p-2 rounded-md hover:bg-blue-50" onclick="selectCategory(1, 13, 'Vêtements', 'Polos')">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-4 h-4"></div>
+                                            <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="text-sm">👔 Polos</span>
+                                            <span class="text-xs text-gray-500 ml-auto">ID: 13</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-item p-2 rounded-md hover:bg-blue-50" onclick="selectCategory(1, 14, 'Vêtements', 'Chemises')">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-4 h-4"></div>
+                                            <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="text-sm">👔 Chemises</span>
+                                            <span class="text-xs text-gray-500 ml-auto">ID: 14</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-item p-2 rounded-md hover:bg-blue-50" onclick="selectCategory(1, 15, 'Vêtements', 'Pantalons')">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-4 h-4"></div>
+                                            <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="text-sm">👖 Pantalons</span>
+                                            <span class="text-xs text-gray-500 ml-auto">ID: 15</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Accessoires -->
+                            <div class="category-main" data-category="2">
+                                <div class="flex items-center gap-2 p-3 rounded-md hover:bg-gray-100" onclick="toggleCategory(2)">
+                                    <svg id="chevron-2" class="h-4 w-4 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                    <svg class="h-4 w-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                                    </svg>
+                                    <span class="font-medium">🎒 Accessoires</span>
+                                    <span class="ml-auto bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">4</span>
+                                </div>
+                                
+                                <div id="subcategories-2" class="hidden ml-6 border-l-2 border-gray-200 pl-2 mt-2">
+                                    <div class="category-item p-2 rounded-md hover:bg-purple-50" onclick="selectCategory(2, 21, 'Accessoires', 'Casquettes')">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-4 h-4"></div>
+                                            <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="text-sm">🧢 Casquettes</span>
+                                            <span class="text-xs text-gray-500 ml-auto">ID: 21</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-item p-2 rounded-md hover:bg-purple-50" onclick="selectCategory(2, 22, 'Accessoires', 'Sacs')">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-4 h-4"></div>
+                                            <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="text-sm">👜 Sacs</span>
+                                            <span class="text-xs text-gray-500 ml-auto">ID: 22</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Électronique (sans sous-catégories) -->
+                            <div class="category-main" data-category="5">
+                                <div class="flex items-center gap-2 p-3 rounded-md hover:bg-gray-100" onclick="selectCategory(5, null, 'Électronique', null)">
+                                    <div class="w-4 h-4"></div>
+                                    <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                                    </svg>
+                                    <span class="font-medium">⚡ Électronique</span>
+                                    <span class="ml-auto bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs">Pas de sous-catégories</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Affichage de la sélection -->
+                <div id="selectionDisplay" class="hidden mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-blue-700 font-medium">Sélection:</span>
+                            <span id="selectionText" class="text-sm text-blue-800"></span>
+                        </div>
+                        <button onclick="clearSelection()" class="text-blue-600 hover:text-blue-800">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- États de sélection -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">📊 État de la Sélection</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="font-medium text-gray-900 mb-2">categoryId</h3>
+                    <div id="categoryIdDisplay" class="text-lg font-mono text-blue-600">null</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="font-medium text-gray-900 mb-2">subcategoryId</h3>
+                    <div id="subcategoryIdDisplay" class="text-lg font-mono text-green-600">null</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-8">
+            <h2 class="text-2xl font-semibold text-blue-900 mb-4">📝 Instructions</h2>
+            <div class="space-y-3 text-blue-800">
+                <p><strong>1.</strong> Cliquez sur "Vêtements" pour voir les sous-catégories</p>
+                <p><strong>2.</strong> Sélectionnez "T-shirts" pour reproduire l'exemple demandé</p>
+                <p><strong>3.</strong> Observez les IDs générés : categoryId=1, subcategoryId=11</p>
+                <p><strong>4.</strong> Testez aussi "Électronique" qui n'a pas de sous-catégories</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedCategoryId = null;
+        let selectedSubcategoryId = null;
+
+        function toggleCategory(categoryId) {
+            const subcategories = document.getElementById(`subcategories-${categoryId}`);
+            const chevron = document.getElementById(`chevron-${categoryId}`);
+            
+            if (subcategories.classList.contains('hidden')) {
+                subcategories.classList.remove('hidden');
+                chevron.style.transform = 'rotate(90deg)';
+            } else {
+                subcategories.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function selectCategory(categoryId, subcategoryId, categoryName, subcategoryName) {
+            selectedCategoryId = categoryId;
+            selectedSubcategoryId = subcategoryId;
+
+            // Mettre à jour le texte du bouton
+            const categoryText = document.getElementById('categoryText');
+            if (subcategoryName) {
+                categoryText.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <svg class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                        </svg>
+                        <span class="text-gray-700">${categoryName}</span>
+                        <svg class="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                        <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"></path>
+                        </svg>
+                        <span class="font-medium text-gray-900">${subcategoryName}</span>
+                    </div>
+                `;
+            } else {
+                categoryText.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <svg class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                        </svg>
+                        <span class="font-medium text-gray-900">${categoryName}</span>
+                    </div>
+                `;
+            }
+
+            // Mettre à jour l'affichage de sélection
+            const selectionDisplay = document.getElementById('selectionDisplay');
+            const selectionText = document.getElementById('selectionText');
+            
+            if (subcategoryName) {
+                selectionText.textContent = `${categoryName} > ${subcategoryName}`;
+            } else {
+                selectionText.textContent = categoryName;
+            }
+            
+            selectionDisplay.classList.remove('hidden');
+
+            // Mettre à jour les IDs
+            document.getElementById('categoryIdDisplay').textContent = categoryId;
+            document.getElementById('subcategoryIdDisplay').textContent = subcategoryId || 'null';
+
+            // Fermer le dropdown
+            document.getElementById('categoryDropdown').classList.add('hidden');
+        }
+
+        function clearSelection() {
+            selectedCategoryId = null;
+            selectedSubcategoryId = null;
+            
+            document.getElementById('categoryText').textContent = 'Sélectionner une catégorie';
+            document.getElementById('categoryText').className = 'text-gray-500';
+            document.getElementById('selectionDisplay').classList.add('hidden');
+            document.getElementById('categoryIdDisplay').textContent = 'null';
+            document.getElementById('subcategoryIdDisplay').textContent = 'null';
+        }
+
+        // Toggle dropdown
+        document.getElementById('categoryButton').addEventListener('click', function() {
+            const dropdown = document.getElementById('categoryDropdown');
+            dropdown.classList.toggle('hidden');
+        });
+
+        // Fermer le dropdown en cliquant à l'extérieur
+        document.addEventListener('click', function(event) {
+            const button = document.getElementById('categoryButton');
+            const dropdown = document.getElementById('categoryDropdown');
+            
+            if (!button.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html> 

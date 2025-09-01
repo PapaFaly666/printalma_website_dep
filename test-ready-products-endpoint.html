@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Ready Products Endpoint</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        .product-card { border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .product-name { font-weight: bold; font-size: 16px; }
+        .product-status { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+        .status-draft { background-color: #ffc107; color: #000; }
+        .status-published { background-color: #28a745; color: #fff; }
+        .product-details { margin-top: 5px; font-size: 14px; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>Test Ready Products Endpoint</h1>
+    
+    <div class="test-section">
+        <h2>Test de l'endpoint /products</h2>
+        <button onclick="testGetProducts()">GET /products</button>
+        <button onclick="testFilterReadyProducts()">Filtrer Produits Prêts</button>
+        <button onclick="testGetProductById()">GET /products/26</button>
+        <button onclick="testUpdateProduct()">PATCH /products/26</button>
+        <button onclick="testDeleteProduct()">DELETE /products/26</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Résultats</h2>
+        <div id="logs"></div>
+        <div id="products-display"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function displayProducts(products) {
+            const displayDiv = document.getElementById('products-display');
+            displayDiv.innerHTML = '<h3>Produits Prêts (isReadyProduct: true)</h3>';
+            
+            const readyProducts = products.filter(p => p.isReadyProduct === true);
+            
+            if (readyProducts.length === 0) {
+                displayDiv.innerHTML += '<p>Aucun produit prêt trouvé</p>';
+                return;
+            }
+
+            readyProducts.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.innerHTML = `
+                    <div class="product-name">${product.name}</div>
+                    <span class="product-status status-${product.status.toLowerCase()}">${product.status}</span>
+                    <div class="product-details">
+                        <strong>ID:</strong> ${product.id} | 
+                        <strong>Prix:</strong> ${(product.price / 100).toFixed(2)} € | 
+                        <strong>Stock:</strong> ${product.stock} | 
+                        <strong>Catégories:</strong> ${product.categories.map(c => c.name).join(', ')} | 
+                        <strong>Couleurs:</strong> ${product.colorVariations.length} | 
+                        <strong>Tailles:</strong> ${product.sizes.length}
+                    </div>
+                `;
+                displayDiv.appendChild(card);
+            });
+        }
+
+        async function testGetProducts() {
+            log('🧪 Test: GET /products', 'info');
+            try {
+                const response = await fetch('http://localhost:3004/products', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                const products = await response.json();
+                log(`✅ Succès: ${products.length} produits récupérés`, 'success');
+                
+                const readyProducts = products.filter(p => p.isReadyProduct === true);
+                log(`📊 Produits prêts: ${readyProducts.length}/${products.length}`, 'info');
+                
+                displayProducts(products);
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFilterReadyProducts() {
+            log('🧪 Test: Filtrage des produits prêts', 'info');
+            try {
+                const response = await fetch('http://localhost:3004/products', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                const products = await response.json();
+                const readyProducts = products.filter(p => p.isReadyProduct === true);
+                
+                log(`✅ Produits prêts trouvés: ${readyProducts.length}`, 'success');
+                
+                readyProducts.forEach(product => {
+                    log(`📦 ${product.name} (ID: ${product.id}) - ${product.status}`, 'info');
+                });
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetProductById() {
+            log('🧪 Test: GET /products/26', 'info');
+            try {
+                const response = await fetch('http://localhost:3004/products/26', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                const product = await response.json();
+                log(`✅ Produit récupéré: ${product.name} (isReadyProduct: ${product.isReadyProduct})`, 'success');
+                
+                if (product.isReadyProduct) {
+                    log(`✅ C'est bien un produit prêt`, 'success');
+                } else {
+                    log(`⚠️ Ce produit n'est pas marqué comme prêt`, 'warning');
+                }
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpdateProduct() {
+            log('🧪 Test: PATCH /products/26', 'info');
+            try {
+                const response = await fetch('http://localhost:3004/products/26', {
+                    method: 'PATCH',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'published'
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                const result = await response.json();
+                log(`✅ Produit mis à jour: ${JSON.stringify(result)}`, 'success');
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteProduct() {
+            log('🧪 Test: DELETE /products/26', 'info');
+            try {
+                const response = await fetch('http://localhost:3004/products/26', {
+                    method: 'DELETE',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur HTTP ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                log(`✅ Produit supprimé avec succès`, 'success');
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        log('🚀 Tests Ready Products Endpoint prêts', 'info');
+    </script>
+</body>
+</html> 

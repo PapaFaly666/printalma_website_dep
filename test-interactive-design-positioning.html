@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Système InteractiveDesignPositioner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .test-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: white;
+        }
+        .error { color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #dc2626; }
+        .success { color: #059669; background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #059669; }
+        .loading { color: #6b7280; text-align: center; padding: 20px; }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .product-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        .product-preview {
+            width: 100%;
+            height: 350px;
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .product-info {
+            padding: 16px;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .interactive-positioning {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .position-info {
+            background: #fefce8;
+            border: 1px solid #eab308;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        
+        /* Slider de couleurs */
+        .color-slider {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .color-nav {
+            padding: 8px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .color-nav:hover {
+            background: #e5e7eb;
+        }
+        
+        .color-dots {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
+            margin: 0 12px;
+        }
+        
+        .color-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #d1d5db;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .color-dot.active {
+            border-color: #3b82f6;
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test - Système InteractiveDesignPositioner</h1>
+        <p>Test du composant avec la même logique que InteractiveDesignPositioner (ratios 0-1 + multiplication par taille conteneur)</p>
+        
+        <div class="interactive-positioning">
+            <h3>📋 Logique InteractiveDesignPositioner</h3>
+            <ul>
+                <li>✅ <strong>Positions en ratios 0-1</strong> : Stockées dans localStorage/API</li>
+                <li>✅ <strong>Multiplication par taille conteneur</strong> : <code>translateX = positionX * containerWidth</code></li>
+                <li>✅ <strong>Responsive automatique</strong> : Se redimensionne avec le conteneur</li>
+                <li>✅ <strong>Transform CSS</strong> : <code>translate(translateX px, translateY px) scale() rotate()</code></li>
+                <li>✅ <strong>Observer ResizeObserver</strong> : Détecte les changements de taille</li>
+            </ul>
+        </div>
+        
+        <div class="test-card">
+            <h2>📋 Chargement des produits</h2>
+            <button onclick="loadProducts()" class="btn">
+                Charger les produits (Logique InteractiveDesignPositioner)
+            </button>
+            <div id="loading-status">Cliquez pour charger</div>
+            
+            <div id="products-grid" class="product-grid" style="display: none;">
+                <!-- Les produits seront affichés ici -->
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h2>🔍 Analyse des calculs</h2>
+            <div id="calculation-analysis">
+                <em>Chargez les produits pour voir l'analyse des calculs</em>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+        
+        function log(message) {
+            console.log(message);
+        }
+
+        function getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        // 🎯 Fonction EXACTEMENT comme InteractiveDesignPositioner
+        function getDesignTransform(product, containerSize) {
+            // Valeurs par défaut (comme InteractiveDesignPositioner)
+            let positionX = 0.5; // 50% par défaut
+            let positionY = 0.3; // 30% par défaut
+            let scale = product.designApplication.scale || 1.0;
+            let rotation = 0;
+
+            if (product.designPositions && product.designPositions.length > 0) {
+                const position = product.designPositions[0].position;
+                
+                // 🔧 CORRECTION : Les positions de l'API sont en pourcentage (0-100)
+                // Il faut les convertir en ratios 0-1 comme dans InteractiveDesignPositioner
+                positionX = position.x / 100; // Convertir 0-100 en 0-1
+                positionY = position.y / 100; // Convertir 0-100 en 0-1
+                scale = position.scale;
+                rotation = position.rotation;
+            }
+
+            // EXACTEMENT comme InteractiveDesignPositioner : multiplier par la taille du conteneur
+            const translateX = positionX * containerSize.width;
+            const translateY = positionY * containerSize.height;
+
+            console.log(`🎨 Position appliquée pour produit ${product.id} (comme InteractiveDesignPositioner):`, {
+                ratioX: positionX,
+                ratioY: positionY,
+                containerSize,
+                translateX,
+                translateY,
+                scale,
+                finalTransform: `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`
+            });
+
+            // EXACTEMENT comme InteractiveDesignPositioner
+            return `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`;
+        }
+
+        // 🔧 Fonction pour créer un aperçu avec la logique InteractiveDesignPositioner
+        function createInteractivePositionerPreview(product) {
+            const preview = document.createElement('div');
+            preview.className = 'product-preview';
+            
+            // 1. Image produit (arrière-plan)
+            const baseImageUrl = product.adminProduct.colorVariations[0]?.images[0]?.url;
+            
+            if (!baseImageUrl) {
+                preview.innerHTML = '<div style="color: #dc2626; display: flex; align-items: center; justify-content: center; height: 100%;">❌ Aucune image produit</div>';
+                return preview;
+            }
+            
+            // Image du produit (exactement comme InteractiveDesignPositioner)
+            const productImg = document.createElement('img');
+            productImg.src = baseImageUrl;
+            productImg.alt = product.adminProduct.name;
+            productImg.className = 'absolute inset-0 w-full h-full object-contain';
+            productImg.style.position = 'absolute';
+            productImg.style.top = '0';
+            productImg.style.left = '0';
+            productImg.style.width = '100%';
+            productImg.style.height = '100%';
+            productImg.style.objectFit = 'contain';
+            productImg.draggable = false;
+            preview.appendChild(productImg);
+            
+            // Observer la taille du conteneur (comme InteractiveDesignPositioner)
+            const updateDesignPosition = () => {
+                const rect = preview.getBoundingClientRect();
+                const containerSize = { width: rect.width, height: rect.height };
+                
+                // Mettre à jour la position du design si il existe
+                if (product.designApplication.hasDesign && product.designApplication.designUrl && designDiv) {
+                    const transform = getDesignTransform(product, containerSize);
+                    designDiv.style.transform = transform;
+                }
+            };
+            
+            // Design superposé (EXACTEMENT comme InteractiveDesignPositioner)
+            let designDiv = null;
+            if (product.designApplication.hasDesign && product.designApplication.designUrl) {
+                designDiv = document.createElement('div');
+                designDiv.className = 'absolute top-0 left-0 select-none pointer-events-none';
+                designDiv.style.position = 'absolute';
+                designDiv.style.top = '0';
+                designDiv.style.left = '0';
+                designDiv.style.transformOrigin = 'top left';
+                designDiv.style.zIndex = '10';
+                designDiv.style.pointerEvents = 'none';
+                
+                const designImg = document.createElement('img');
+                designImg.src = product.designApplication.designUrl;
+                designImg.alt = `Design ${product.designId}`;
+                designImg.className = 'block max-w-none pointer-events-none';
+                designImg.style.width = '100px';
+                designImg.style.height = 'auto';
+                designImg.draggable = false;
+                
+                designDiv.appendChild(designImg);
+                preview.appendChild(designDiv);
+                
+                console.log(`🎨 Design appliqué pour produit ${product.id}`);
+            }
+            
+            // Observer les changements de taille avec ResizeObserver
+            const resizeObserver = new ResizeObserver(updateDesignPosition);
+            resizeObserver.observe(preview);
+            
+            // Mettre à jour la position initiale
+            setTimeout(updateDesignPosition, 100);
+            
+            // Slider de couleurs
+            if (product.selectedColors.length > 1) {
+                const slider = document.createElement('div');
+                slider.className = 'color-slider';
+                
+                // Bouton précédent
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'color-nav';
+                prevBtn.innerHTML = '‹';
+                
+                // Dots de couleurs
+                const colorDots = document.createElement('div');
+                colorDots.className = 'color-dots';
+                
+                product.selectedColors.forEach((color, index) => {
+                    const dot = document.createElement('button');
+                    dot.className = `color-dot ${index === 0 ? 'active' : ''}`;
+                    dot.style.backgroundColor = color.colorCode;
+                    dot.title = color.name;
+                    colorDots.appendChild(dot);
+                });
+                
+                // Bouton suivant
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'color-nav';
+                nextBtn.innerHTML = '›';
+                
+                slider.appendChild(prevBtn);
+                slider.appendChild(colorDots);
+                slider.appendChild(nextBtn);
+                
+                preview.appendChild(slider);
+            }
+            
+            return preview;
+        }
+
+        // Fonction pour analyser les calculs
+        function analyzeCalculations(products) {
+            const analysis = document.getElementById('calculation-analysis');
+            let html = '<h4>📊 Analyse des calculs InteractiveDesignPositioner :</h4>';
+            
+            products.forEach(product => {
+                const hasPosition = product.designPositions && product.designPositions.length > 0;
+                const position = hasPosition ? product.designPositions[0].position : null;
+                
+                if (hasPosition) {
+                    const ratioX = position.x / 100;
+                    const ratioY = position.y / 100;
+                    
+                    html += `
+                        <div class="position-info">
+                            <strong>Produit ${product.id} (${product.vendorName})</strong><br>
+                            <strong>API:</strong> x=${position.x}, y=${position.y}, scale=${position.scale}<br>
+                            <strong>Ratios:</strong> x=${ratioX.toFixed(3)}, y=${ratioY.toFixed(3)}<br>
+                            <strong>Calcul:</strong> translateX = ${ratioX.toFixed(3)} × containerWidth<br>
+                            <strong>Calcul:</strong> translateY = ${ratioY.toFixed(3)} × containerHeight<br>
+                            <strong>Transform:</strong> translate(translateX px, translateY px) scale(${position.scale})
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="position-info">
+                            <strong>Produit ${product.id} (${product.vendorName})</strong><br>
+                            Pas de position sauvegardée - Utilise valeurs par défaut (0.5, 0.3)
+                        </div>
+                    `;
+                }
+            });
+            
+            analysis.innerHTML = html;
+        }
+
+        // Fonction pour créer une carte produit
+        function createProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            // Créer l'aperçu avec la logique InteractiveDesignPositioner
+            const preview = createInteractivePositionerPreview(product);
+            
+            // Informations du produit
+            const info = document.createElement('div');
+            info.className = 'product-info';
+            
+            const hasPosition = product.designPositions && product.designPositions.length > 0;
+            const position = hasPosition ? product.designPositions[0].position : null;
+            
+            info.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 16px;">${product.vendorName}</div>
+                <div style="font-size: 12px; color: #6b7280; margin-top: 8px;">
+                    <strong>Base:</strong> ${product.adminProduct.name}<br>
+                    <strong>Design:</strong> ${product.designApplication.hasDesign ? 'Oui' : 'Non'}<br>
+                    ${hasPosition ? 
+                        `<strong>Position API:</strong> x=${position.x}, y=${position.y}<br>
+                         <strong>Ratios:</strong> x=${(position.x/100).toFixed(3)}, y=${(position.y/100).toFixed(3)}<br>
+                         <strong>Scale:</strong> ${position.scale}` :
+                        '<strong>Position:</strong> Valeurs par défaut (0.5, 0.3)'
+                    }
+                </div>
+            `;
+            
+            card.appendChild(preview);
+            card.appendChild(info);
+            
+            return card;
+        }
+
+        // Fonction principale pour charger les produits
+        async function loadProducts() {
+            const statusDiv = document.getElementById('loading-status');
+            const gridDiv = document.getElementById('products-grid');
+            
+            statusDiv.innerHTML = '<div class="loading">Chargement des produits...</div>';
+            gridDiv.style.display = 'none';
+            
+            try {
+                log('📡 Chargement des produits avec logique InteractiveDesignPositioner...');
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products?limit=20&offset=0`, {
+                    credentials: 'include',
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log('📋 Réponse API complète reçue');
+                
+                if (!result.success || !result.data || !result.data.products) {
+                    throw new Error('Format de réponse invalide');
+                }
+
+                const products = result.data.products;
+                log(`✅ ${products.length} produits chargés`);
+
+                // Analyser les calculs
+                analyzeCalculations(products);
+
+                // Afficher les produits
+                gridDiv.innerHTML = '';
+                
+                for (const product of products) {
+                    const card = createProductCard(product);
+                    gridDiv.appendChild(card);
+                }
+                
+                gridDiv.style.display = 'grid';
+                statusDiv.innerHTML = `<div class="success">✅ ${products.length} produits chargés avec logique InteractiveDesignPositioner</div>`;
+                
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`);
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-test au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Page de test InteractiveDesignPositioner chargée');
+        });
+    </script>
+</body>
+</html> 

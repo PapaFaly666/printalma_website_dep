@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fabric.js Import</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+</head>
+<body>
+    <h1>Test Fabric.js</h1>
+    <canvas id="testCanvas" width="400" height="300" style="border: 1px solid #ccc;"></canvas>
+    
+    <script>
+        console.log('🔍 Test Fabric.js import');
+        console.log('fabric object:', fabric);
+        
+        if (typeof fabric !== 'undefined') {
+            console.log('✅ Fabric.js est disponible');
+            
+            const canvas = new fabric.Canvas('testCanvas');
+            console.log('✅ Canvas créé:', canvas);
+            
+            // Test avec un rectangle simple
+            const rect = new fabric.Rect({
+                left: 100,
+                top: 100,
+                width: 50,
+                height: 50,
+                fill: 'red'
+            });
+            
+            canvas.add(rect);
+            canvas.renderAll();
+            console.log('✅ Rectangle ajouté');
+        } else {
+            console.error('❌ Fabric.js n\'est pas disponible');
+        }
+    </script>
+</body>
+</html> 
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fabric.js Import</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+</head>
+<body>
+    <h1>Test Fabric.js</h1>
+    <canvas id="testCanvas" width="400" height="300" style="border: 1px solid #ccc;"></canvas>
+    
+    <script>
+        console.log('🔍 Test Fabric.js import');
+        console.log('fabric object:', fabric);
+        
+        if (typeof fabric !== 'undefined') {
+            console.log('✅ Fabric.js est disponible');
+            
+            const canvas = new fabric.Canvas('testCanvas');
+            console.log('✅ Canvas créé:', canvas);
+            
+            // Test avec un rectangle simple
+            const rect = new fabric.Rect({
+                left: 100,
+                top: 100,
+                width: 50,
+                height: 50,
+                fill: 'red'
+            });
+            
+            canvas.add(rect);
+            canvas.renderAll();
+            console.log('✅ Rectangle ajouté');
+        } else {
+            console.error('❌ Fabric.js n\'est pas disponible');
+        }
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Auth Depuis le Navigateur</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .result { margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Test Authentification PrintAlma</h1>
+    <p><strong>URL actuelle:</strong> <span id="currentUrl"></span></p>
+    
+    <button onclick="testLogin()">Tester la connexion</button>
+    <button onclick="checkCors()">Vérifier CORS</button>
+    <button onclick="clearResults()">Effacer</button>
+    
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('currentUrl').textContent = window.location.href;
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function checkCors() {
+            addResult('🌐 Vérification des paramètres CORS...');
+            addResult(`URL actuelle du navigateur: ${window.location.href}`, 'info');
+            addResult(`Protocol: ${window.location.protocol}`, 'info');
+            addResult(`Host: ${window.location.host}`, 'info');
+            addResult(`Port: ${window.location.port || 'défaut'}`, 'info');
+        }
+
+        async function testLogin() {
+            addResult('🔄 Test de connexion...');
+            
+            try {
+                const response = await fetch('https://printalma-back-dep.onrender.com/auth/login', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'pfdiagne35@gmail.com',
+                        password: 'printalmatest123'
+                    })
+                });
+
+                addResult(`Status HTTP: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                // Afficher les headers CORS
+                const corsOrigin = response.headers.get('access-control-allow-origin');
+                const corsCredentials = response.headers.get('access-control-allow-credentials');
+                
+                addResult(`CORS Origin autorisé: ${corsOrigin}`, 'info');
+                addResult(`CORS Credentials: ${corsCredentials}`, 'info');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult(`✅ Connexion réussie! Utilisateur: ${data.user.firstName} ${data.user.lastName}`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    addResult(`❌ Erreur serveur: ${errorText}`, 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ Erreur de réseau: ${error.message}`, 'error');
+                
+                if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+                    addResult(`🔍 Problème CORS détecté. URL autorisée: http://localhost:5174`, 'error');
+                    addResult(`🔍 URL actuelle: ${window.location.href}`, 'error');
+                    
+                    if (window.location.href !== 'http://localhost:5174/') {
+                        addResult(`💡 Solution: Accédez à http://localhost:5174 au lieu de ${window.location.href}`, 'info');
+                    }
+                }
+            }
+        }
+
+        // Auto-run au chargement
+        window.onload = function() {
+            addResult('🚀 Page chargée. Cliquez sur "Tester la connexion" pour diagnostiquer.', 'info');
+            checkCors();
+        };
+    </script>
+</body>
+</html>

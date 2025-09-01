@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test localStorage Positioning Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .preview-container {
+            width: 400px;
+            height: 400px;
+            position: relative;
+            border: 2px solid #ddd;
+            margin: 20px auto;
+            background: white;
+            overflow: hidden;
+        }
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .delimitation {
+            position: absolute;
+            border: 2px solid red;
+            background: rgba(255, 0, 0, 0.1);
+        }
+        .design-container {
+            position: absolute;
+            overflow: hidden;
+            border: 2px solid blue;
+            background: rgba(0, 0, 255, 0.1);
+        }
+        .design-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transform-origin: top left;
+        }
+        .debug-info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test localStorage Positioning Debug</h1>
+        
+        <div class="test-section">
+            <h3>Test 1: Simulation localStorage (x: -30, y: -48)</h3>
+            <div class="debug-info" id="debug1"></div>
+            <div class="preview-container" id="preview1">
+                <img src="https://res.cloudinary.com/dxhh7qpob/image/upload/v1/products/tshirt-white.png" 
+                     alt="T-shirt" class="product-image">
+                <!-- Délimitation simulée -->
+                <div class="delimitation" id="delimitation1">
+                    <div class="design-container" id="design-container1">
+                        <img src="https://res.cloudinary.com/dxhh7qpob/image/upload/v1/designs/example-logo.png" 
+                             alt="Design" class="design-image" id="design1">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 2: Simulation Base de données (x: 70, y: -52)</h3>
+            <div class="debug-info" id="debug2"></div>
+            <div class="preview-container" id="preview2">
+                <img src="https://res.cloudinary.com/dxhh7qpob/image/upload/v1/products/tshirt-white.png" 
+                     alt="T-shirt" class="product-image">
+                <!-- Délimitation simulée -->
+                <div class="delimitation" id="delimitation2">
+                    <div class="design-container" id="design-container2">
+                        <img src="https://res.cloudinary.com/dxhh7qpob/image/upload/v1/designs/example-logo.png" 
+                             alt="Design" class="design-image" id="design2">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 3: Méthode InteractiveDesignPositioner</h3>
+            <div class="debug-info" id="debug3"></div>
+            <div class="preview-container" id="preview3">
+                <img src="https://res.cloudinary.com/dxhh7qpob/image/upload/v1/products/tshirt-white.png" 
+                     alt="T-shirt" class="product-image">
+                <!-- Design avec méthode InteractiveDesignPositioner -->
+                <div id="design-container3" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                    <img src="https://res.cloudinary.com/dxhh7qpob/image/upload/v1/designs/example-logo.png" 
+                         alt="Design" class="design-image" id="design3">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulation des données
+        const localStorageData = {
+            x: -30,
+            y: -48,
+            scale: 0.5083333333333333,
+            rotation: 0
+        };
+
+        const databaseData = {
+            x: 70,
+            y: -52,
+            scale: 0.5083333333333333,
+            rotation: 0
+        };
+
+        // Délimitation simulée (comme dans les vraies données)
+        const delimitation = {
+            x: 20,
+            y: 15,
+            width: 60,
+            height: 70,
+            coordinateType: 'PERCENTAGE'
+        };
+
+        function setupDelimitation(previewId, delimId) {
+            const preview = document.getElementById(previewId);
+            const delim = document.getElementById(delimId);
+            
+            // Calculer la position de la délimitation
+            const containerRect = preview.getBoundingClientRect();
+            const delimLeft = (delimitation.x / 100) * containerRect.width;
+            const delimTop = (delimitation.y / 100) * containerRect.height;
+            const delimWidth = (delimitation.width / 100) * containerRect.width;
+            const delimHeight = (delimitation.height / 100) * containerRect.height;
+            
+            delim.style.left = delimLeft + 'px';
+            delim.style.top = delimTop + 'px';
+            delim.style.width = delimWidth + 'px';
+            delim.style.height = delimHeight + 'px';
+            
+            return { delimLeft, delimTop, delimWidth, delimHeight };
+        }
+
+        function test1_localStorage() {
+            const { delimWidth, delimHeight } = setupDelimitation('preview1', 'delimitation1');
+            const design = document.getElementById('design1');
+            const container = document.getElementById('design-container1');
+            
+            // Méthode localStorage : utiliser x,y comme pixels directs dans la délimitation
+            const transform = `translate(${localStorageData.x}px, ${localStorageData.y}px) scale(${localStorageData.scale}) rotate(${localStorageData.rotation}deg)`;
+            design.style.transform = transform;
+            
+            // Ajuster le conteneur pour qu'il remplisse la délimitation
+            container.style.width = '100%';
+            container.style.height = '100%';
+            
+            document.getElementById('debug1').innerHTML = `
+                <strong>localStorage Data:</strong><br>
+                x: ${localStorageData.x}, y: ${localStorageData.y}<br>
+                scale: ${localStorageData.scale}, rotation: ${localStorageData.rotation}<br>
+                <strong>Transform:</strong> ${transform}<br>
+                <strong>Délimitation:</strong> ${delimWidth.toFixed(1)}x${delimHeight.toFixed(1)}px
+            `;
+        }
+
+        function test2_database() {
+            const { delimWidth, delimHeight } = setupDelimitation('preview2', 'delimitation2');
+            const design = document.getElementById('design2');
+            const container = document.getElementById('design-container2');
+            
+            // Méthode base de données : utiliser x,y comme pixels directs dans la délimitation
+            const transform = `translate(${databaseData.x}px, ${databaseData.y}px) scale(${databaseData.scale}) rotate(${databaseData.rotation}deg)`;
+            design.style.transform = transform;
+            
+            // Ajuster le conteneur pour qu'il remplisse la délimitation
+            container.style.width = '100%';
+            container.style.height = '100%';
+            
+            document.getElementById('debug2').innerHTML = `
+                <strong>Database Data:</strong><br>
+                x: ${databaseData.x}, y: ${databaseData.y}<br>
+                scale: ${databaseData.scale}, rotation: ${databaseData.rotation}<br>
+                <strong>Transform:</strong> ${transform}<br>
+                <strong>Délimitation:</strong> ${delimWidth.toFixed(1)}x${delimHeight.toFixed(1)}px
+            `;
+        }
+
+        function test3_interactiveDesignPositioner() {
+            const preview = document.getElementById('preview3');
+            const design = document.getElementById('design3');
+            const container = document.getElementById('design-container3');
+            
+            // Méthode InteractiveDesignPositioner : convertir pixels en pourcentages
+            const containerRect = preview.getBoundingClientRect();
+            const positionX = (localStorageData.x + containerRect.width/2) / containerRect.width;
+            const positionY = (localStorageData.y + containerRect.height/2) / containerRect.height;
+            
+            const translateX = positionX * containerRect.width;
+            const translateY = positionY * containerRect.height;
+            
+            const transform = `translate(${translateX}px, ${translateY}px) scale(${localStorageData.scale}) rotate(${localStorageData.rotation}deg)`;
+            design.style.transform = transform;
+            
+            document.getElementById('debug3').innerHTML = `
+                <strong>InteractiveDesignPositioner Method:</strong><br>
+                Pixels to %: x=${localStorageData.x} → ${positionX.toFixed(3)}, y=${localStorageData.y} → ${positionY.toFixed(3)}<br>
+                Final translate: ${translateX.toFixed(1)}px, ${translateY.toFixed(1)}px<br>
+                <strong>Transform:</strong> ${transform}
+            `;
+        }
+
+        // Exécuter les tests
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                test1_localStorage();
+                test2_database();
+                test3_interactiveDesignPositioner();
+            }, 100);
+        });
+
+        // Recalculer lors du redimensionnement
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                test1_localStorage();
+                test2_database();
+                test3_interactiveDesignPositioner();
+            }, 100);
+        });
+    </script>
+</body>
+</html> 

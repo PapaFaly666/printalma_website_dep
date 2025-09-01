@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Fix Check - PrintAlma</title>
+</head>
+<body>
+    <h1>🔧 Vérification Rapide - PrintAlma Auth</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const p = document.createElement('p');
+            p.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue';
+            p.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            output.appendChild(p);
+        }
+
+        try {
+            log('🔍 Vérification de la configuration...');
+            
+            // Import dynamique de la configuration
+            const configModule = await import('/src/config/api.ts');
+            const API_CONFIG = configModule.API_CONFIG;
+            const API_ENDPOINTS = configModule.API_ENDPOINTS;
+            
+            log(`Base URL configurée: ${API_CONFIG.BASE_URL}`);
+            log(`Endpoint de login: ${API_ENDPOINTS.AUTH.LOGIN}`);
+            log(`URL complète de login: ${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`);
+            
+            // Vérification
+            if (API_CONFIG.BASE_URL === 'https://printalma-back-dep.onrender.com') {
+                log('✅ Configuration correcte!', 'success');
+                log('L\'application devrait maintenant utiliser le bon backend.', 'success');
+            } else {
+                log('❌ Configuration incorrecte!', 'error');
+                log(`Attendu: https://printalma-back-dep.onrender.com`, 'error');
+                log(`Actuel: ${API_CONFIG.BASE_URL}`, 'error');
+            }
+            
+            // Test d'authentification rapide
+            log('🔄 Test d\'authentification...');
+            const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: 'pfdiagne35@gmail.com',
+                    password: 'printalmatest123'
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                log(`✅ Test d'authentification réussi! Utilisateur: ${data.user.firstName} ${data.user.lastName}`, 'success');
+            } else {
+                log(`❌ Test d'authentification échoué: ${response.status} ${response.statusText}`, 'error');
+            }
+            
+        } catch (error) {
+            log(`❌ Erreur: ${error.message}`, 'error');
+        }
+    </script>
+</body>
+</html>

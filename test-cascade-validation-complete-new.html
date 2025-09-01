@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Test Cascade Validation - Credentials Include</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-published {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-draft {
+            background: #cce5ff;
+            color: #004085;
+        }
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f9f9f9;
+        }
+        .log-output {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .workflow-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .workflow-arrow {
+            margin: 0 15px;
+            font-size: 20px;
+            color: #007bff;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Test Système Cascade Validation</h1>
+            <p><strong>Credentials Include</strong> - Test Frontend/Backend Integration</p>
+            <div id="connection-status" class="status-badge status-pending">🔄 Vérification connexion...</div>
+        </div>
+
+        <!-- Workflow Visualization -->
+        <div class="section">
+            <h3>🌊 Workflow Cascade Validation</h3>
+            <div class="workflow-step">
+                <div>📝 <strong>Étape 1:</strong> Vendeur crée produit + design</div>
+                <div class="workflow-arrow">→</div>
+                <div>⚙️ Choix action post-validation</div>
+                <div class="workflow-arrow">→</div>
+                <div>⏳ Status: PENDING</div>
+            </div>
+            <div class="workflow-step">
+                <div>👨‍💼 <strong>Étape 2:</strong> Admin valide design</div>
+                <div class="workflow-arrow">→</div>
+                <div>🌊 <strong>CASCADE AUTOMATIQUE</strong></div>
+                <div class="workflow-arrow">→</div>
+                <div>✅ isValidated: true</div>
+            </div>
+            <div class="workflow-step">
+                <div>🎯 <strong>Étape 3:</strong> AUTO_PUBLISH → PUBLISHED</div>
+                <div class="workflow-arrow">ou</div>
+                <div>📝 TO_DRAFT → DRAFT validé</div>
+                <div class="workflow-arrow">→</div>
+                <div>🚀 Publication manuelle</div>
+            </div>
+        </div>
+
+        <!-- Statistics Dashboard -->
+        <div class="section">
+            <h3>📊 Statistiques en Temps Réel</h3>
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-total">0</div>
+                    <div class="stat-label">Total Produits</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-pending">0</div>
+                    <div class="stat-label">En Attente</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-published">0</div>
+                    <div class="stat-label">Publiés</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-validated">0</div>
+                    <div class="stat-label">Validés</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-ready">0</div>
+                    <div class="stat-label">Prêts à publier</div>
+                </div>
+            </div>
+            <button class="btn" onclick="refreshStats()">🔄 Actualiser Statistiques</button>
+        </div>
+
+        <!-- Product Management -->
+        <div class="section">
+            <h3>🛍️ Gestion des Produits</h3>
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-success" onclick="createTestProduct()">➕ Créer Produit Test</button>
+                <button class="btn" onclick="loadProducts()">📦 Charger Produits</button>
+                <button class="btn btn-warning" onclick="simulateDesignValidation()">✅ Simuler Validation Design</button>
+            </div>
+            <div id="products-container">
+                <p>Cliquez sur "Charger Produits" pour voir vos produits</p>
+            </div>
+        </div>
+
+        <!-- Admin Actions -->
+        <div class="section">
+            <h3>👨‍💼 Actions Administrateur</h3>
+            <div style="margin-bottom: 15px;">
+                <label>Design ID à valider:</label>
+                <input type="number" id="design-id-input" placeholder="ID du design" style="margin-left: 10px; padding: 5px;">
+                <button class="btn btn-success" onclick="validateDesign()">✅ Valider Design</button>
+                <button class="btn btn-danger" onclick="rejectDesign()">❌ Rejeter Design</button>
+            </div>
+            <div>
+                <label>Raison de rejet (optionnel):</label>
+                <input type="text" id="rejection-reason" placeholder="Raison du rejet" style="margin-left: 10px; padding: 5px; width: 300px;">
+            </div>
+        </div>
+
+        <!-- Test Controls -->
+        <div class="section">
+            <h3>🧪 Contrôles de Test</h3>
+            <div style="margin-bottom: 15px;">
+                <button class="btn" onclick="testEndpoints()">🔍 Tester Endpoints</button>
+                <button class="btn" onclick="testCascadeLogic()">🌊 Tester Logique Cascade</button>
+                <button class="btn" onclick="clearTestData()">🗑️ Nettoyer Données Test</button>
+            </div>
+            <div>
+                <label>
+                    <input type="checkbox" id="auto-refresh" checked> 
+                    Actualisation automatique (30s)
+                </label>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="section">
+            <h3>📋 Logs de Test</h3>
+            <div id="log-output" class="log-output">
+                <div>🚀 Système de test cascade validation initialisé</div>
+                <div>📡 Utilisation de credentials: 'include' pour l'authentification</div>
+                <div>🔗 API Base: <span id="api-base-url">http://localhost:3004</span></div>
+            </div>
+            <button class="btn" onclick="clearLogs()">🗑️ Vider Logs</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration API
+        const API_BASE = 'http://localhost:3004';
+        let autoRefreshInterval = null;
+        let currentProducts = [];
+
+        // Fonction de log
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('log-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📝';
+            
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] ${icon} ${message}`;
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        // Configuration des requêtes avec credentials: 'include'
+        function getRequestConfig(method = 'GET', body = null) {
+            const config = {
+                method,
+                credentials: 'include', // ⭐ ESSENTIEL
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (body) {
+                config.body = JSON.stringify(body);
+            }
+            
+            return config;
+        }
+
+        // Vérification de la connexion
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/health`, getRequestConfig());
+                if (response.ok) {
+                    document.getElementById('connection-status').innerHTML = '✅ Connecté';
+                    document.getElementById('connection-status').className = 'status-badge status-published';
+                    log('Connexion au backend établie', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                document.getElementById('connection-status').innerHTML = '❌ Déconnecté';
+                document.getElementById('connection-status').className = 'status-badge status-pending';
+                log(`Erreur de connexion: ${error.message}`, 'error');
+            }
+        }
+
+        // Charger les produits vendeur
+        async function loadProducts() {
+            try {
+                log('🔄 Chargement des produits vendeur...');
+                
+                const response = await fetch(`${API_BASE}/vendor/products`, getRequestConfig());
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                currentProducts = data.products || data || [];
+                
+                log(`📦 ${currentProducts.length} produits chargés`, 'success');
+                displayProducts(currentProducts);
+                updateStats(currentProducts);
+                
+            } catch (error) {
+                log(`Erreur chargement produits: ${error.message}`, 'error');
+            }
+        }
+
+        // Afficher les produits
+        function displayProducts(products) {
+            const container = document.getElementById('products-container');
+            
+            if (products.length === 0) {
+                container.innerHTML = '<p>Aucun produit trouvé</p>';
+                return;
+            }
+            
+            container.innerHTML = products.map(product => `
+                <div class="product-card">
+                    <div style="display: flex; justify-content: between; align-items: center;">
+                        <div>
+                            <h4>${product.vendorName}</h4>
+                            <p>${product.vendorDescription}</p>
+                            <p><strong>Prix:</strong> ${(product.vendorPrice / 100).toFixed(2)} €</p>
+                        </div>
+                        <div>
+                            ${getStatusBadge(product)}
+                        </div>
+                    </div>
+                    
+                    ${!product.isValidated && product.status === 'PENDING' ? `
+                        <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+                            <p><strong>Action post-validation:</strong></p>
+                            <label>
+                                <input type="radio" name="action-${product.id}" value="AUTO_PUBLISH" 
+                                       ${product.postValidationAction === 'AUTO_PUBLISH' ? 'checked' : ''}
+                                       onchange="updateProductAction(${product.id}, 'AUTO_PUBLISH')">
+                                📢 Publication automatique
+                            </label><br>
+                            <label>
+                                <input type="radio" name="action-${product.id}" value="TO_DRAFT" 
+                                       ${product.postValidationAction === 'TO_DRAFT' ? 'checked' : ''}
+                                       onchange="updateProductAction(${product.id}, 'TO_DRAFT')">
+                                📝 Publication manuelle
+                            </label>
+                        </div>
+                    ` : ''}
+                    
+                    ${product.isValidated && product.status === 'DRAFT' ? `
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-success" onclick="publishProduct(${product.id})">
+                                🚀 Publier maintenant
+                            </button>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                        ID: ${product.id} | 
+                        Créé: ${new Date(product.createdAt).toLocaleDateString()} |
+                        isValidated: ${product.isValidated ? '✅' : '❌'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Obtenir le badge de statut
+        function getStatusBadge(product) {
+            if (product.status === 'PUBLISHED') {
+                return '<span class="status-badge status-published">✅ Publié</span>';
+            }
+            if (product.status === 'DRAFT' && product.isValidated) {
+                return '<span class="status-badge status-draft">🎯 Validé - Prêt à publier</span>';
+            }
+            if (product.status === 'PENDING') {
+                return '<span class="status-badge status-pending">⏳ En attente</span>';
+            }
+            return '<span class="status-badge">📝 Brouillon</span>';
+        }
+
+        // Mettre à jour les statistiques
+        function updateStats(products) {
+            const stats = {
+                total: products.length,
+                pending: products.filter(p => p.status === 'PENDING').length,
+                published: products.filter(p => p.status === 'PUBLISHED').length,
+                validated: products.filter(p => p.isValidated).length,
+                ready: products.filter(p => p.status === 'DRAFT' && p.isValidated).length
+            };
+            
+            document.getElementById('stat-total').textContent = stats.total;
+            document.getElementById('stat-pending').textContent = stats.pending;
+            document.getElementById('stat-published').textContent = stats.published;
+            document.getElementById('stat-validated').textContent = stats.validated;
+            document.getElementById('stat-ready').textContent = stats.ready;
+            
+            log(`📊 Stats: ${stats.total} total, ${stats.pending} en attente, ${stats.published} publiés, ${stats.ready} prêts`);
+        }
+
+        // Créer un produit de test
+        async function createTestProduct() {
+            try {
+                log('🔄 Création d\'un produit de test...');
+                
+                const productData = {
+                    vendorName: `Produit Test ${Date.now()}`,
+                    vendorDescription: 'Produit créé pour tester le système cascade',
+                    vendorPrice: 2500, // 25.00 €
+                    designCloudinaryUrl: 'https://res.cloudinary.com/test/image/upload/v1/test-design.jpg',
+                    postValidationAction: 'AUTO_PUBLISH'
+                };
+                
+                const response = await fetch(`${API_BASE}/vendor-product-validation/create`, 
+                    getRequestConfig('POST', productData));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`✅ Produit créé: ${result.message || 'Succès'}`, 'success');
+                
+                // Recharger les produits
+                await loadProducts();
+                
+            } catch (error) {
+                log(`Erreur création produit: ${error.message}`, 'error');
+            }
+        }
+
+        // Mettre à jour l'action post-validation
+        async function updateProductAction(productId, action) {
+            try {
+                log(`🔄 Mise à jour action produit ${productId}: ${action}`);
+                
+                const response = await fetch(`${API_BASE}/vendor/products/${productId}/post-validation-action`, 
+                    getRequestConfig('PUT', { postValidationAction: action }));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                log(`✅ Action mise à jour pour produit ${productId}`, 'success');
+                
+            } catch (error) {
+                log(`Erreur mise à jour action: ${error.message}`, 'error');
+            }
+        }
+
+        // Publier un produit
+        async function publishProduct(productId) {
+            try {
+                log(`🚀 Publication du produit ${productId}...`);
+                
+                const response = await fetch(`${API_BASE}/vendor/products/${productId}/publish`, 
+                    getRequestConfig('PUT', {}));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                log(`✅ Produit ${productId} publié`, 'success');
+                
+                // Recharger les produits
+                await loadProducts();
+                
+            } catch (error) {
+                log(`Erreur publication: ${error.message}`, 'error');
+            }
+        }
+
+        // Valider un design (admin)
+        async function validateDesign() {
+            const designId = document.getElementById('design-id-input').value;
+            if (!designId) {
+                alert('Veuillez entrer un ID de design');
+                return;
+            }
+            
+            try {
+                log(`🔄 Validation du design ${designId}...`);
+                
+                const response = await fetch(`${API_BASE}/designs/${designId}/validate`, 
+                    getRequestConfig('PUT', { action: 'VALIDATE' }));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`✅ Design ${designId} validé - Cascade appliquée`, 'success');
+                
+                // Recharger les produits pour voir les changements
+                setTimeout(() => loadProducts(), 1000);
+                
+            } catch (error) {
+                log(`Erreur validation design: ${error.message}`, 'error');
+            }
+        }
+
+        // Rejeter un design
+        async function rejectDesign() {
+            const designId = document.getElementById('design-id-input').value;
+            const reason = document.getElementById('rejection-reason').value;
+            
+            if (!designId) {
+                alert('Veuillez entrer un ID de design');
+                return;
+            }
+            
+            try {
+                log(`🔄 Rejet du design ${designId}...`);
+                
+                const response = await fetch(`${API_BASE}/designs/${designId}/validate`, 
+                    getRequestConfig('PUT', { action: 'REJECT', rejectionReason: reason }));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                log(`❌ Design ${designId} rejeté`, 'warning');
+                
+            } catch (error) {
+                log(`Erreur rejet design: ${error.message}`, 'error');
+            }
+        }
+
+        // Simuler la validation d'un design
+        async function simulateDesignValidation() {
+            if (currentProducts.length === 0) {
+                alert('Aucun produit chargé. Créez d\'abord un produit de test.');
+                return;
+            }
+            
+            const pendingProducts = currentProducts.filter(p => p.status === 'PENDING');
+            if (pendingProducts.length === 0) {
+                alert('Aucun produit en attente de validation.');
+                return;
+            }
+            
+            log('🎭 Simulation de validation de design...');
+            
+            // Simuler la cascade en mettant à jour les produits localement
+            currentProducts.forEach(product => {
+                if (product.status === 'PENDING') {
+                    product.isValidated = true;
+                    product.validatedAt = new Date().toISOString();
+                    
+                    if (product.postValidationAction === 'AUTO_PUBLISH') {
+                        product.status = 'PUBLISHED';
+                        log(`🚀 Produit ${product.id} publié automatiquement`);
+                    } else {
+                        product.status = 'DRAFT';
+                        log(`📝 Produit ${product.id} mis en brouillon validé`);
+                    }
+                }
+            });
+            
+            displayProducts(currentProducts);
+            updateStats(currentProducts);
+            log('✅ Simulation terminée - Cascade appliquée', 'success');
+        }
+
+        // Tester les endpoints
+        async function testEndpoints() {
+            log('🔍 Test des endpoints...');
+            
+            const endpoints = [
+                { url: '/health', method: 'GET', name: 'Health Check' },
+                { url: '/vendor/products', method: 'GET', name: 'Vendor Products' },
+                { url: '/vendor-product-validation/pending', method: 'GET', name: 'Pending Products' }
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${API_BASE}${endpoint.url}`, getRequestConfig(endpoint.method));
+                    const status = response.ok ? '✅' : '❌';
+                    log(`${status} ${endpoint.name}: ${response.status}`);
+                } catch (error) {
+                    log(`❌ ${endpoint.name}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Tester la logique cascade
+        async function testCascadeLogic() {
+            log('🌊 Test de la logique cascade...');
+            
+            // Créer un produit de test
+            await createTestProduct();
+            
+            // Attendre un peu
+            setTimeout(async () => {
+                // Simuler la validation
+                await simulateDesignValidation();
+                
+                log('🎯 Test cascade terminé', 'success');
+            }, 2000);
+        }
+
+        // Actualiser les statistiques
+        async function refreshStats() {
+            await loadProducts();
+        }
+
+        // Vider les logs
+        function clearLogs() {
+            document.getElementById('log-output').innerHTML = '';
+            log('📋 Logs vidés');
+        }
+
+        // Nettoyer les données de test
+        async function clearTestData() {
+            if (confirm('Êtes-vous sûr de vouloir supprimer tous les produits de test ?')) {
+                log('🗑️ Nettoyage des données de test...');
+                // Ici, vous pourriez appeler un endpoint de nettoyage
+                log('⚠️ Fonctionnalité de nettoyage non implémentée', 'warning');
+            }
+        }
+
+        // Auto-refresh
+        function toggleAutoRefresh() {
+            const checkbox = document.getElementById('auto-refresh');
+            
+            if (checkbox.checked) {
+                autoRefreshInterval = setInterval(() => {
+                    log('⏰ Actualisation automatique...');
+                    loadProducts();
+                }, 30000);
+                log('🔄 Actualisation automatique activée (30s)');
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                log('⏸️ Actualisation automatique désactivée');
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Initialisation du système de test cascade validation');
+            
+            // Vérifier la connexion
+            checkConnection();
+            
+            // Charger les produits
+            loadProducts();
+            
+            // Configurer l'auto-refresh
+            document.getElementById('auto-refresh').addEventListener('change', toggleAutoRefresh);
+            toggleAutoRefresh();
+            
+            // Afficher l'URL de l'API
+            document.getElementById('api-base-url').textContent = API_BASE;
+            
+            log('✅ Système prêt pour les tests', 'success');
+        });
+    </script>
+</body>
+</html> 

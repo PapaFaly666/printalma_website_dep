@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Validation Nom Boutique Unique</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        input.error {
+            border-color: #dc3545;
+            background-color: #fff5f5;
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .checking {
+            color: #007bff;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .success {
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .test-results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .test-case {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 4px solid #007bff;
+            background: white;
+        }
+        .test-case.success {
+            border-left-color: #28a745;
+        }
+        .test-case.error {
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Validation Nom Boutique Unique</h1>
+        <p>Ce test vérifie la validation en temps réel du nom de boutique.</p>
+
+        <div class="form-group">
+            <label for="shopName">Nom de la boutique *</label>
+            <input 
+                type="text" 
+                id="shopName" 
+                placeholder="Nom de votre boutique"
+                class=""
+            />
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <div id="checkingMessage" class="checking" style="display: none;">Vérification de la disponibilité...</div>
+            <div id="successMessage" class="success" style="display: none;">✅ Nom de boutique disponible</div>
+        </div>
+
+        <button id="submitBtn" disabled>Mettre à jour le profil</button>
+
+        <div class="test-results">
+            <h3>📋 Tests Automatiques</h3>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3004';
+        const shopNameInput = document.getElementById('shopName');
+        const errorMessage = document.getElementById('errorMessage');
+        const checkingMessage = document.getElementById('checkingMessage');
+        const successMessage = document.getElementById('successMessage');
+        const submitBtn = document.getElementById('submitBtn');
+        const testResults = document.getElementById('testResults');
+
+        let checkTimeout;
+
+        // Validation en temps réel
+        shopNameInput.addEventListener('input', (e) => {
+            const value = e.target.value;
+            
+            // Reset messages
+            errorMessage.style.display = 'none';
+            checkingMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            
+            // Validation basique
+            if (value.length > 0 && value.length < 3) {
+                showError('Le nom doit contenir au moins 3 caractères');
+                submitBtn.disabled = true;
+                return;
+            }
+            
+            if (value.length >= 3) {
+                // Vérification en temps réel
+                showChecking();
+                clearTimeout(checkTimeout);
+                
+                checkTimeout = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/auth/check-shop-name?name=${encodeURIComponent(value)}`);
+                        
+                        if (response.ok) {
+                            const { available } = await response.json();
+                            
+                            if (!available) {
+                                showError('Ce nom de boutique est déjà utilisé par un autre vendeur');
+                                submitBtn.disabled = true;
+                            } else {
+                                showSuccess();
+                                submitBtn.disabled = false;
+                            }
+                        } else {
+                            showError('Erreur lors de la vérification');
+                            submitBtn.disabled = true;
+                        }
+                    } catch (error) {
+                        console.error('Erreur:', error);
+                        showError('Erreur de connexion');
+                        submitBtn.disabled = true;
+                    }
+                }, 500);
+            } else {
+                submitBtn.disabled = true;
+            }
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'flex';
+            shopNameInput.classList.add('error');
+        }
+
+        function showChecking() {
+            checkingMessage.style.display = 'block';
+            shopNameInput.classList.remove('error');
+        }
+
+        function showSuccess() {
+            successMessage.style.display = 'block';
+            shopNameInput.classList.remove('error');
+        }
+
+        // Tests automatiques
+        async function runTests() {
+            const tests = [
+                {
+                    name: 'Nom trop court (< 3 caractères)',
+                    input: 'ab',
+                    expectedError: 'Le nom doit contenir au moins 3 caractères'
+                },
+                {
+                    name: 'Nom valide (3 caractères)',
+                    input: 'abc',
+                    expectedError: null
+                },
+                {
+                    name: 'Nom avec espaces',
+                    input: 'Ma Boutique',
+                    expectedError: null
+                },
+                {
+                    name: 'Nom avec caractères spéciaux',
+                    input: 'Boutique-123',
+                    expectedError: null
+                }
+            ];
+
+            for (const test of tests) {
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case';
+                testDiv.innerHTML = `<strong>${test.name}</strong><br>Input: "${test.input}"`;
+                
+                testResults.appendChild(testDiv);
+                
+                // Simuler l'input
+                shopNameInput.value = test.input;
+                shopNameInput.dispatchEvent(new Event('input'));
+                
+                // Attendre la validation
+                await new Promise(resolve => setTimeout(resolve, 600));
+                
+                // Vérifier le résultat
+                const hasError = errorMessage.style.display !== 'none';
+                const errorText = errorMessage.textContent;
+                
+                if (test.expectedError) {
+                    if (hasError && errorText.includes(test.expectedError)) {
+                        testDiv.classList.add('success');
+                        testDiv.innerHTML += '<br>✅ Test réussi';
+                    } else {
+                        testDiv.classList.add('error');
+                        testDiv.innerHTML += `<br>❌ Test échoué. Attendu: "${test.expectedError}", Reçu: "${errorText}"`;
+                    }
+                } else {
+                    if (!hasError) {
+                        testDiv.classList.add('success');
+                        testDiv.innerHTML += '<br>✅ Test réussi';
+                    } else {
+                        testDiv.classList.add('error');
+                        testDiv.innerHTML += `<br>❌ Test échoué. Erreur inattendue: "${errorText}"`;
+                    }
+                }
+            }
+        }
+
+        // Lancer les tests après chargement
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 1000);
+        });
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

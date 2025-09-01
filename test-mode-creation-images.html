@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Mode Création avec Images Temporaires</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+        .temp-image-test {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success-test {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .color-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+        .color-preview {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid #ddd;
+        }
+        .upload-section {
+            border: 2px dashed #ddd;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .upload-section.dragover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .log-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧠 Test - Mode Création avec Images Temporaires</h1>
+    
+    <div class="test-section">
+        <h2>🎯 Test du Mode Création</h2>
+        <p>Test du comportement en mode création où les images sont stockées temporairement.</p>
+        
+        <button onclick="testModeCreation()">Tester Mode Création</button>
+        <button onclick="testImageUpload()">Tester Upload d'Image</button>
+        <button onclick="testProductCreation()">Tester Création Produit</button>
+        <button onclick="clearResults()">Effacer les Résultats</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📤 Test d'Upload d'Image en Mode Création</h2>
+        <div class="upload-section" id="upload-area">
+            <p>Glissez-déposez une image ici pour tester l'upload en mode création</p>
+            <input type="file" id="file-input" accept="image/*" style="display: none;">
+            <button onclick="document.getElementById('file-input').click()">Sélectionner une image</button>
+        </div>
+        <div id="upload-results"></div>
+    </div>
+
+    <script>
+        // Simulation du mode création
+        let mockFormData = {
+            colorVariations: [
+                {
+                    id: '1753823474595', // Timestamp pour nouvelle couleur
+                    name: 'Nouvelle Couleur',
+                    colorCode: '#ff0000',
+                    images: []
+                }
+            ]
+        };
+
+        // Service de simulation du mode création
+        class CreationModeService {
+            constructor() {
+                this.tempImages = new Map();
+                this.logs = [];
+            }
+
+            log(message) {
+                this.logs.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+                console.log(message);
+            }
+
+            // Simulation de l'ajout d'image en mode création
+            async addImageToColor(colorId, file) {
+                this.log(`🚀 Ajout d'image pour couleur ${colorId} en mode création`);
+                
+                // Vérifier si c'est un timestamp (nouvelle couleur)
+                if (colorId && colorId.length > 10) {
+                    this.log('⚠️ Nouvelle couleur (timestamp), stockage local temporaire');
+                    
+                    // Créer une URL temporaire pour l'image
+                    const objectUrl = URL.createObjectURL(file);
+                    
+                    // Créer un objet image temporaire
+                    const tempImage = {
+                        id: Date.now().toString(),
+                        url: objectUrl,
+                        publicId: null,
+                        view: 'Front',
+                        delimitations: [],
+                        file: file,
+                        isTemp: true
+                    };
+                    
+                    // Stocker l'image temporaire
+                    this.tempImages.set(tempImage.id, tempImage);
+                    
+                    // Mettre à jour le mock formData
+                    const color = mockFormData.colorVariations.find(c => c.id === colorId);
+                    if (color) {
+                        color.images.push(tempImage);
+                    }
+                    
+                    this.log(`✅ Image temporaire créée: ${objectUrl}`);
+                    return tempImage.id;
+                } else {
+                    throw new Error('ID de couleur invalide pour le mode création');
+                }
+            }
+
+            // Simulation de la création du produit
+            async createProduct() {
+                this.log('🔄 Création du produit avec upload des images temporaires');
+                
+                const uploadedImages = [];
+                
+                // Simuler l'upload de toutes les images temporaires
+                for (const [imageId, tempImage] of this.tempImages) {
+                    this.log(`📤 Upload image temporaire ${imageId} vers le serveur`);
+                    
+                    // Simulation d'upload réussi
+                    const uploadedImage = {
+                        id: Math.floor(Math.random() * 1000) + 1,
+                        url: `https://example.com/uploaded/${imageId}.jpg`,
+                        publicId: `public_${imageId}`,
+                        view: 'Front',
+                        delimitations: []
+                    };
+                    
+                    uploadedImages.push(uploadedImage);
+                    this.log(`✅ Image ${imageId} uploadée: ${uploadedImage.url}`);
+                }
+                
+                this.log('🎉 Produit créé avec succès');
+                return {
+                    success: true,
+                    productId: Math.floor(Math.random() * 1000) + 1,
+                    uploadedImages
+                };
+            }
+
+            getLogs() {
+                return this.logs.join('\n');
+            }
+
+            clearLogs() {
+                this.logs = [];
+            }
+        }
+
+        const creationService = new CreationModeService();
+
+        // Tests globaux
+        window.testModeCreation = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test du Mode Création</h3>';
+
+            try {
+                creationService.log('📋 Début du test mode création');
+                
+                // Afficher l'état initial
+                resultsDiv.innerHTML += `
+                    <div class="test-result">
+                        <strong>📋 État initial:</strong><br>
+                        <div class="log-section">${creationService.getLogs()}</div>
+                    </div>
+                `;
+                
+                // Simuler l'ajout d'images
+                const blob = new Blob(['test image content'], { type: 'image/jpeg' });
+                const file = new File([blob], 'test-image.jpg', { type: 'image/jpeg' });
+                
+                const imageId1 = await creationService.addImageToColor('1753823474595', file);
+                const imageId2 = await creationService.addImageToColor('1753823474595', file);
+                
+                resultsDiv.innerHTML += `
+                    <div class="test-result temp-image-test">
+                        <strong>✅ Images temporaires ajoutées:</strong><br>
+                        <div class="log-section">${creationService.getLogs()}</div>
+                        <p>Images stockées temporairement: ${mockFormData.colorVariations[0].images.length}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.testImageUpload = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test Upload d\'Image</h3>';
+
+            try {
+                // Créer un fichier simulé
+                const blob = new Blob(['test image content'], { type: 'image/jpeg' });
+                const file = new File([blob], 'test-image.jpg', { type: 'image/jpeg' });
+                
+                const imageId = await creationService.addImageToColor('1753823474595', file);
+                
+                resultsDiv.innerHTML += `
+                    <div class="test-result success-test">
+                        <strong>✅ Upload simulé réussi:</strong><br>
+                        <div class="log-section">${creationService.getLogs()}</div>
+                        <p>ID de l'image: ${imageId}</p>
+                        <p>URL temporaire: ${mockFormData.colorVariations[0].images[mockFormData.colorVariations[0].images.length - 1].url}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur upload:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.testProductCreation = async () => {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Test Création Produit</h3>';
+
+            try {
+                const result = await creationService.createProduct();
+                
+                resultsDiv.innerHTML += `
+                    <div class="test-result success-test">
+                        <strong>✅ Création du produit réussie:</strong><br>
+                        <div class="log-section">${creationService.getLogs()}</div>
+                        <p>ID du produit: ${result.productId}</p>
+                        <p>Images uploadées: ${result.uploadedImages.length}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur création:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        };
+
+        window.clearResults = () => {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('upload-results').innerHTML = '';
+            creationService.clearLogs();
+            mockFormData.colorVariations[0].images = [];
+            console.log('🗑️ Résultats effacés');
+        };
+
+        // Gestion de l'upload de fichiers
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const uploadResults = document.getElementById('upload-results');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleFileUpload(file) {
+            uploadResults.innerHTML = '<h3>Résultat de l\'Upload en Mode Création</h3>';
+            
+            try {
+                const imageId = await creationService.addImageToColor('1753823474595', file);
+                const tempImage = mockFormData.colorVariations[0].images[mockFormData.colorVariations[0].images.length - 1];
+                
+                uploadResults.innerHTML += `
+                    <div class="test-result success-test">
+                        <strong>✅ Image ajoutée temporairement:</strong><br>
+                        <p>ID: ${imageId}</p>
+                        <p>URL temporaire: ${tempImage.url}</p>
+                        <p>Fichier: ${file.name}</p>
+                        <p>Taille: ${file.size} bytes</p>
+                        <p>Type: ${file.type}</p>
+                        <img src="${tempImage.url}" alt="Aperçu" class="image-preview">
+                    </div>
+                `;
+            } catch (error) {
+                uploadResults.innerHTML += `
+                    <div class="test-result test-error">
+                        <strong>❌ Erreur upload:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Afficher les informations au chargement
+        window.addEventListener('load', () => {
+            console.log('📋 Service de mode création initialisé');
+            console.log('🎨 Couleur de test:', mockFormData.colorVariations[0]);
+        });
+    </script>
+</body>
+</html> 

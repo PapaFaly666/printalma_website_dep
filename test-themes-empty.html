@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Thèmes Vides</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Thèmes Vides</h1>
+        
+        <div class="status info">
+            <h3>📋 Test du comportement sans thèmes</h3>
+            <p>Ce test vérifie comment l'interface se comporte quand il n'y a pas de thèmes.</p>
+        </div>
+        
+        <button onclick="testEmptyThemes()">Tester sans thèmes</button>
+        <button onclick="testWithThemes()">Tester avec thèmes</button>
+        
+        <div id="results"></div>
+        <div id="display"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:3004';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function testEmptyThemes() {
+            log('🧪 Test sans thèmes...', 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/themes`);
+                const data = await response.json();
+                
+                const display = document.getElementById('display');
+                
+                if (response.ok) {
+                    if (data.success && data.data && data.data.length > 0) {
+                        log(`✅ ${data.data.length} thèmes trouvés`, 'success');
+                        display.innerHTML = `
+                            <div class="status success">
+                                <h3>Thèmes disponibles</h3>
+                                <p>${data.data.length} thème(s) trouvé(s)</p>
+                            </div>
+                        `;
+                    } else if (data.data && data.data.success === false) {
+                        log('✅ Aucun thème - Gestion correcte', 'success');
+                        display.innerHTML = `
+                            <div class="empty-state">
+                                <h3>🎨 Aucun thème disponible</h3>
+                                <p>Commencez par créer votre premier thème pour organiser vos produits.</p>
+                                <button onclick="alert('Créer un thème')">Créer un thème</button>
+                            </div>
+                        `;
+                    } else {
+                        log('⚠️ Structure inattendue', 'warning');
+                        display.innerHTML = `
+                            <div class="status warning">
+                                <h3>Structure inattendue</h3>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                    }
+                } else {
+                    log(`❌ Erreur API: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testWithThemes() {
+            log('🧪 Test avec thèmes...', 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/themes`);
+                const data = await response.json();
+                
+                const display = document.getElementById('display');
+                
+                if (response.ok && data.success && data.data && data.data.length > 0) {
+                    log(`✅ ${data.data.length} thèmes trouvés`, 'success');
+                    display.innerHTML = `
+                        <div class="status success">
+                            <h3>Thèmes disponibles</h3>
+                            <ul>
+                                ${data.data.map(theme => `<li>${theme.name} (${theme.category})</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    log('ℹ️ Aucun thème disponible', 'info');
+                    display.innerHTML = `
+                        <div class="empty-state">
+                            <h3>🎨 Aucun thème disponible</h3>
+                            <p>Commencez par créer votre premier thème pour organiser vos produits.</p>
+                            <button onclick="alert('Créer un thème')">Créer un thème</button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                log(`💥 Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test automatique au chargement
+        window.onload = function() {
+            log('🚀 Tests automatiques...', 'info');
+            testEmptyThemes();
+        };
+    </script>
+</body>
+</html> 

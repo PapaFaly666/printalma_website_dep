@@ -1,0 +1,23 @@
+import { Module } from '@nestjs/common';
+import { ProductController } from './controllers/product.controller';
+import { MockupController } from './controllers/mockup.controller';
+import { ProductService } from './services/product.service';
+import { MockupService } from './services/mockup.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { DelimitationService } from './services/delimitation.service';
+import { MailModule } from '../mail/mail.module';
+
+@Module({
+  imports: [MailModule],
+  controllers: [ProductController, MockupController],
+  providers: [
+    ProductService, 
+    MockupService, 
+    PrismaService, 
+    CloudinaryService, 
+    DelimitationService
+  ],
+  exports: [ProductService, MockupService]
+})
+export class ProductModule {} 

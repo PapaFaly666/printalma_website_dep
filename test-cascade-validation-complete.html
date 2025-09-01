@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌊 Test Cascade Validation - Système Complet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-badge {
+            @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border;
+        }
+        .status-pending {
+            @apply bg-yellow-100 text-yellow-800 border-yellow-200;
+        }
+        .status-published {
+            @apply bg-green-100 text-green-800 border-green-200;
+        }
+        .status-draft {
+            @apply bg-gray-100 text-gray-800 border-gray-200;
+        }
+        .status-validated {
+            @apply bg-blue-100 text-blue-800 border-blue-200;
+        }
+        .card {
+            @apply bg-white rounded-lg shadow-md border border-gray-200 p-6;
+        }
+        .btn {
+            @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors;
+        }
+        .btn-primary {
+            @apply bg-blue-600 hover:bg-blue-700 text-white;
+        }
+        .btn-success {
+            @apply bg-green-600 hover:bg-green-700 text-white;
+        }
+        .btn-secondary {
+            @apply bg-gray-600 hover:bg-gray-700 text-white;
+        }
+        .btn-outline {
+            @apply border border-gray-300 text-gray-700 hover:bg-gray-50;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">
+                🌊 Test Cascade Validation - Système Complet
+            </h1>
+            <p class="text-gray-600">
+                Test complet du système de validation en cascade Design → Produits
+            </p>
+        </div>
+
+        <!-- Configuration -->
+        <div class="card mb-8">
+            <h2 class="text-xl font-semibold mb-4">⚙️ Configuration</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">URL Backend</label>
+                    <input 
+                        type="text" 
+                        id="apiUrl" 
+                        value="http://localhost:3004"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Token d'authentification</label>
+                    <input 
+                        type="text" 
+                        id="authToken" 
+                        placeholder="Bearer token..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions de Test -->
+        <div class="card mb-8">
+            <h2 class="text-xl font-semibold mb-4">🧪 Actions de Test</h2>
+            <div class="flex flex-wrap gap-3">
+                <button onclick="testConnection()" class="btn btn-primary">
+                    🔌 Tester la connexion
+                </button>
+                <button onclick="createTestProduct()" class="btn btn-success">
+                    ➕ Créer produit test
+                </button>
+                <button onclick="loadProducts()" class="btn btn-secondary">
+                    📋 Charger produits
+                </button>
+                <button onclick="simulateValidation()" class="btn btn-outline">
+                    ⚖️ Simuler validation
+                </button>
+                <button onclick="clearResults()" class="btn btn-outline">
+                    🗑️ Effacer résultats
+                </button>
+            </div>
+        </div>
+
+        <!-- Résultats -->
+        <div class="card mb-8">
+            <h2 class="text-xl font-semibold mb-4">📊 Résultats</h2>
+            <div id="results" class="space-y-3">
+                <div class="text-gray-500 text-center py-4">
+                    Aucun test exécuté
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflow Simulation -->
+        <div class="card mb-8">
+            <h2 class="text-xl font-semibold mb-4">🔄 Simulation Workflow</h2>
+            <div class="space-y-4">
+                <!-- Étape 1 -->
+                <div class="flex items-center gap-4 p-4 bg-blue-50 rounded-lg">
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">1</div>
+                    <div class="flex-1">
+                        <h3 class="font-medium">Création du produit</h3>
+                        <p class="text-sm text-gray-600">Vendeur crée un produit et choisit l'action post-validation</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="action" value="AUTO_PUBLISH" checked>
+                            <span class="text-sm">🚀 Auto-publish</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="action" value="TO_DRAFT">
+                            <span class="text-sm">📝 To-draft</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Étape 2 -->
+                <div class="flex items-center gap-4 p-4 bg-yellow-50 rounded-lg">
+                    <div class="w-8 h-8 bg-yellow-600 text-white rounded-full flex items-center justify-center text-sm font-medium">2</div>
+                    <div class="flex-1">
+                        <h3 class="font-medium">Statut PENDING</h3>
+                        <p class="text-sm text-gray-600">Produit en attente de validation admin</p>
+                    </div>
+                    <span class="status-badge status-pending">⏳ En attente</span>
+                </div>
+
+                <!-- Étape 3 -->
+                <div class="flex items-center gap-4 p-4 bg-orange-50 rounded-lg">
+                    <div class="w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-medium">3</div>
+                    <div class="flex-1">
+                        <h3 class="font-medium">Validation Admin</h3>
+                        <p class="text-sm text-gray-600">Admin valide le design associé</p>
+                    </div>
+                    <button onclick="simulateAdminValidation()" class="btn btn-primary">
+                        ⚖️ Valider design
+                    </button>
+                </div>
+
+                <!-- Étape 4 -->
+                <div class="flex items-center gap-4 p-4 bg-green-50 rounded-lg">
+                    <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-medium">4</div>
+                    <div class="flex-1">
+                        <h3 class="font-medium">CASCADE Automatique</h3>
+                        <p class="text-sm text-gray-600">Mise à jour automatique selon l'action choisie</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="status-badge status-published">✅ Publié (auto)</span>
+                        <span class="status-badge status-validated">📝 Validé (manuel)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Produits Test -->
+        <div class="card">
+            <h2 class="text-xl font-semibold mb-4">🛍️ Produits Test</h2>
+            <div id="products" class="space-y-4">
+                <!-- Les produits seront affichés ici -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration globale
+        let config = {
+            apiUrl: 'http://localhost:3004',
+            authToken: ''
+        };
+
+        // Utilitaires
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value || config.apiUrl;
+        }
+
+        function getAuthToken() {
+            return document.getElementById('authToken').value || config.authToken;
+        }
+
+        function addResult(type, title, message, data = null) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-green-50 border-green-200 text-green-800',
+                error: 'bg-red-50 border-red-200 text-red-800',
+                info: 'bg-blue-50 border-blue-200 text-blue-800',
+                warning: 'bg-yellow-50 border-yellow-200 text-yellow-800'
+            };
+
+            const icons = {
+                success: '✅',
+                error: '❌',
+                info: 'ℹ️',
+                warning: '⚠️'
+            };
+
+            resultDiv.className = `p-4 rounded-lg border ${colors[type] || colors.info}`;
+            resultDiv.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <span class="text-lg">${icons[type] || icons.info}</span>
+                    <div class="flex-1">
+                        <h3 class="font-medium">${title}</h3>
+                        <p class="text-sm mt-1">${message}</p>
+                        ${data ? `<details class="mt-2"><summary class="cursor-pointer text-xs">Détails</summary><pre class="text-xs mt-1 p-2 bg-gray-100 rounded overflow-auto">${JSON.stringify(data, null, 2)}</pre></details>` : ''}
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600">×</button>
+                </div>
+            `;
+            
+            if (resultsDiv.children[0]?.textContent?.includes('Aucun test')) {
+                resultsDiv.innerHTML = '';
+            }
+            
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        // Test de connexion
+        async function testConnection() {
+            try {
+                addResult('info', 'Test de connexion', 'Tentative de connexion...');
+                
+                const response = await fetch(`${getApiUrl()}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(getAuthToken() ? { 'Authorization': getAuthToken() } : {})
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('success', 'Connexion réussie', `Serveur accessible sur ${getApiUrl()}`, data);
+                } else {
+                    addResult('error', 'Erreur de connexion', `HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                addResult('error', 'Erreur de connexion', error.message);
+            }
+        }
+
+        // Créer un produit de test
+        async function createTestProduct() {
+            try {
+                const action = document.querySelector('input[name="action"]:checked').value;
+                
+                const productData = {
+                    vendorName: `Produit Test ${Date.now()}`,
+                    vendorDescription: 'Test du système de cascade validation',
+                    vendorPrice: 2500, // 25.00€
+                    designCloudinaryUrl: 'https://res.cloudinary.com/test/image/upload/test.jpg',
+                    postValidationAction: action
+                };
+
+                addResult('info', 'Création produit', 'Envoi des données...', productData);
+
+                const response = await fetch(`${getApiUrl()}/vendor-product-validation/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': getAuthToken()
+                    },
+                    body: JSON.stringify(productData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    addResult('success', 'Produit créé', result.message || 'Produit créé avec succès', result);
+                    loadProducts(); // Recharger la liste
+                } else {
+                    addResult('error', 'Erreur création', result.message || 'Erreur lors de la création', result);
+                }
+            } catch (error) {
+                addResult('error', 'Erreur création', error.message);
+            }
+        }
+
+        // Charger les produits
+        async function loadProducts() {
+            try {
+                addResult('info', 'Chargement produits', 'Récupération des produits...');
+
+                const response = await fetch(`${getApiUrl()}/vendor/products`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': getAuthToken()
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    const products = result.products || [];
+                    addResult('success', 'Produits chargés', `${products.length} produit(s) trouvé(s)`, products);
+                    displayProducts(products);
+                } else {
+                    addResult('error', 'Erreur chargement', result.message || 'Erreur lors du chargement', result);
+                }
+            } catch (error) {
+                addResult('error', 'Erreur chargement', error.message);
+            }
+        }
+
+        // Afficher les produits
+        function displayProducts(products) {
+            const productsDiv = document.getElementById('products');
+            
+            if (!products || products.length === 0) {
+                productsDiv.innerHTML = '<div class="text-gray-500 text-center py-4">Aucun produit trouvé</div>';
+                return;
+            }
+
+            productsDiv.innerHTML = products.map(product => `
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-start justify-between mb-3">
+                        <div>
+                            <h3 class="font-medium">${product.vendorName || product.name}</h3>
+                            <p class="text-sm text-gray-600">${product.vendorDescription || 'Pas de description'}</p>
+                            <p class="text-sm text-green-600 font-medium">${((product.vendorPrice || product.price || 0) / 100).toFixed(2)}€</p>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            ${getStatusBadge(product)}
+                            <div class="text-xs text-gray-500">
+                                ID: ${product.id}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-gray-500">
+                            Créé: ${new Date(product.createdAt).toLocaleDateString('fr-FR')}
+                            ${product.validatedAt ? `• Validé: ${new Date(product.validatedAt).toLocaleDateString('fr-FR')}` : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            ${getActionButtons(product)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Obtenir le badge de statut
+        function getStatusBadge(product) {
+            if (product.status === 'PUBLISHED') {
+                return '<span class="status-badge status-published">✅ Publié</span>';
+            }
+            if (product.status === 'DRAFT' && product.isValidated) {
+                return '<span class="status-badge status-validated">📝 Validé - Prêt à publier</span>';
+            }
+            if (product.status === 'PENDING') {
+                const actionText = product.postValidationAction === 'AUTO_PUBLISH' ? 'Auto-publish' : 'Manuel';
+                return `<span class="status-badge status-pending">⏳ En attente - ${actionText}</span>`;
+            }
+            return '<span class="status-badge status-draft">📄 Brouillon</span>';
+        }
+
+        // Obtenir les boutons d'action
+        function getActionButtons(product) {
+            const buttons = [];
+            
+            if (product.status === 'DRAFT' && product.isValidated) {
+                buttons.push(`<button onclick="publishProduct(${product.id})" class="btn btn-success text-xs">🚀 Publier</button>`);
+            }
+            
+            if (product.status === 'PENDING' && !product.isValidated) {
+                buttons.push(`<button onclick="updateAction(${product.id})" class="btn btn-outline text-xs">⚙️ Modifier action</button>`);
+            }
+            
+            return buttons.join('');
+        }
+
+        // Publier un produit
+        async function publishProduct(productId) {
+            try {
+                const response = await fetch(`${getApiUrl()}/vendor-product-validation/publish/${productId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': getAuthToken()
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    addResult('success', 'Produit publié', result.message || 'Publication réussie', result);
+                    loadProducts();
+                } else {
+                    addResult('error', 'Erreur publication', result.message || 'Erreur lors de la publication', result);
+                }
+            } catch (error) {
+                addResult('error', 'Erreur publication', error.message);
+            }
+        }
+
+        // Modifier l'action d'un produit
+        async function updateAction(productId) {
+            const newAction = prompt('Nouvelle action (AUTO_PUBLISH ou TO_DRAFT):');
+            if (!newAction || !['AUTO_PUBLISH', 'TO_DRAFT'].includes(newAction)) {
+                addResult('warning', 'Action annulée', 'Action invalide ou annulée');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${getApiUrl()}/vendor-product-validation/post-validation-action/${productId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': getAuthToken()
+                    },
+                    body: JSON.stringify({ action: newAction })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    addResult('success', 'Action modifiée', result.message || 'Action mise à jour', result);
+                    loadProducts();
+                } else {
+                    addResult('error', 'Erreur modification', result.message || 'Erreur lors de la modification', result);
+                }
+            } catch (error) {
+                addResult('error', 'Erreur modification', error.message);
+            }
+        }
+
+        // Simuler une validation admin
+        async function simulateAdminValidation() {
+            const designId = prompt('ID du design à valider:');
+            if (!designId) {
+                addResult('warning', 'Simulation annulée', 'ID du design requis');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${getApiUrl()}/designs/${designId}/validate`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': getAuthToken()
+                    },
+                    body: JSON.stringify({ action: 'VALIDATE' })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    addResult('success', 'Design validé', result.message || 'Validation réussie et cascade appliquée', result);
+                    loadProducts();
+                } else {
+                    addResult('error', 'Erreur validation', result.message || 'Erreur lors de la validation', result);
+                }
+            } catch (error) {
+                addResult('error', 'Erreur validation', error.message);
+            }
+        }
+
+        // Simuler le workflow complet
+        async function simulateValidation() {
+            addResult('info', 'Simulation workflow', 'Simulation du workflow complet...');
+            
+            // Étape 1: Créer un produit
+            await createTestProduct();
+            
+            // Attendre un peu
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Étape 2: Simuler la validation (nécessite un ID de design)
+            addResult('info', 'Simulation terminée', 'Produit créé. Utilisez "Simuler validation" avec un ID de design réel pour tester la cascade.');
+        }
+
+        // Effacer les résultats
+        function clearResults() {
+            document.getElementById('results').innerHTML = '<div class="text-gray-500 text-center py-4">Aucun test exécuté</div>';
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Charger les produits au démarrage
+            loadProducts();
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin Design Positioner - Drag & Drop avec Délimitations</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .preview-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #ddd;
+            margin: 0 auto;
+        }
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: white;
+        }
+        .delimitation {
+            position: absolute;
+            border: 2px dashed #007bff;
+            background: rgba(0, 123, 255, 0.1);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .delimitation-label {
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            background: #007bff;
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        .design-element {
+            position: absolute;
+            cursor: move;
+            z-index: 10;
+            user-select: none;
+            transition: box-shadow 0.2s ease;
+        }
+        .design-element:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .design-element.dragging {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            transform-origin: center;
+        }
+        .design-image {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+        .info-panel {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #2196f3;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .status.valid {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.invalid {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .preset-btn {
+            padding: 8px 12px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .preset-btn:hover {
+            background: #545b62;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🎯 Test Admin Design Positioner V2 - Drag & Drop avec Délimitations</h1>
+        
+        <div class="test-grid">
+            <!-- Panneau de contrôles -->
+            <div class="controls">
+                <h3>🎛️ Contrôles de Position</h3>
+                
+                <div class="control-group">
+                    <label>Position X: <span id="posX">50</span>%</label>
+                    <input type="range" id="positionX" class="slider" min="0" max="100" value="50">
+                    <div class="help-text">Déplacement horizontal du design</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Position Y: <span id="posY">30</span>%</label>
+                    <input type="range" id="positionY" class="slider" min="0" max="100" value="30">
+                    <div class="help-text">Déplacement vertical du design</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Échelle: <span id="scaleVal">100</span>%</label>
+                    <input type="range" id="scale" class="slider" min="10" max="200" value="100">
+                    <div class="help-text">Taille du design</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Rotation: <span id="rotVal">0</span>°</label>
+                    <input type="range" id="rotation" class="slider" min="0" max="360" value="0">
+                    <div class="help-text">Rotation du design</div>
+                </div>
+
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="setPreset('center')">Centrer</button>
+                    <button class="preset-btn" onclick="setPreset('top')">Haut</button>
+                    <button class="preset-btn" onclick="setPreset('corner')">Coin</button>
+                </div>
+
+                <div class="info-panel">
+                    <h4>📍 Informations Position</h4>
+                    <div>Coordonnées: (<span id="coordX">50</span>%, <span id="coordY">30</span>%)</div>
+                    <div>Échelle: <span id="coordScale">100</span>%</div>
+                    <div>Rotation: <span id="coordRot">0</span>°</div>
+                    <div id="validationStatus" class="status valid">✅ Position valide dans les délimitations</div>
+                </div>
+            </div>
+
+            <!-- Zone de prévisualisation -->
+            <div>
+                <h3>👁️ Prévisualisation Interactive</h3>
+                <div class="preview-container" id="previewContainer">
+                    <!-- Image du produit de base -->
+                    <img src="https://via.placeholder.com/400x400/e0e0e0/666?text=T-SHIRT+MOCKUP" 
+                         alt="Produit" class="product-image">
+                    
+                    <!-- Délimitations (zones autorisées) -->
+                    <div class="delimitation" style="left: 25%; top: 20%; width: 50%; height: 40%;">
+                        <div class="delimitation-label">Zone 1 - Poitrine</div>
+                    </div>
+                    <div class="delimitation" style="left: 30%; top: 65%; width: 40%; height: 25%;">
+                        <div class="delimitation-label">Zone 2 - Bas</div>
+                    </div>
+                    
+                    <!-- Design draggable -->
+                    <div class="design-element" id="designElement">
+                        <img src="https://via.placeholder.com/80x80/ff6b6b/ffffff?text=LOGO" 
+                             alt="Design" class="design-image">
+                    </div>
+                </div>
+                
+                <div class="help-text" style="text-align: center; margin-top: 10px;">
+                    🖱️ Cliquez et glissez le design pour le repositionner<br>
+                    📦 Le design doit rester dans les zones bleues
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h4>🔧 Fonctionnalités Testées</h4>
+            <ul>
+                <li>✅ <strong>Drag & Drop</strong> : Déplacement à la souris du design</li>
+                <li>✅ <strong>Contraintes de délimitations</strong> : Le design ne peut sortir des zones autorisées</li>
+                <li>✅ <strong>Contrôles précis</strong> : Sliders pour position, échelle et rotation</li>
+                <li>✅ <strong>Validation temps réel</strong> : Indication si la position est valide</li>
+                <li>✅ <strong>Presets de position</strong> : Boutons pour positionner rapidement</li>
+                <li>✅ <strong>Feedback visuel</strong> : Zones de délimitation visibles</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        class AdminDesignPositioner {
+            constructor() {
+                this.designElement = document.getElementById('designElement');
+                this.previewContainer = document.getElementById('previewContainer');
+                this.isDragging = false;
+                this.dragStart = { x: 0, y: 0, elementX: 0, elementY: 0 };
+                
+                // Position et transformations
+                this.position = { x: 50, y: 30, scale: 100, rotation: 0 };
+                
+                // Délimitations (en pourcentage)
+                this.delimitations = [
+                    { x: 25, y: 20, width: 50, height: 40 }, // Zone poitrine
+                    { x: 30, y: 65, width: 40, height: 25 }  // Zone bas
+                ];
+                
+                this.init();
+            }
+            
+            init() {
+                this.bindEvents();
+                this.updatePosition();
+                this.bindSliders();
+            }
+            
+            bindEvents() {
+                // Drag & Drop
+                this.designElement.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                
+                // Prévenir la sélection de texte
+                this.designElement.addEventListener('selectstart', e => e.preventDefault());
+                this.designElement.addEventListener('dragstart', e => e.preventDefault());
+            }
+            
+            bindSliders() {
+                const sliders = {
+                    positionX: (val) => this.updatePositionValue('x', parseInt(val)),
+                    positionY: (val) => this.updatePositionValue('y', parseInt(val)),
+                    scale: (val) => this.updatePositionValue('scale', parseInt(val)),
+                    rotation: (val) => this.updatePositionValue('rotation', parseInt(val))
+                };
+                
+                Object.keys(sliders).forEach(id => {
+                    document.getElementById(id).addEventListener('input', (e) => {
+                        sliders[id](e.target.value);
+                    });
+                });
+            }
+            
+            handleMouseDown(e) {
+                e.preventDefault();
+                this.isDragging = true;
+                this.designElement.classList.add('dragging');
+                
+                const rect = this.previewContainer.getBoundingClientRect();
+                const elementRect = this.designElement.getBoundingClientRect();
+                
+                this.dragStart = {
+                    x: e.clientX,
+                    y: e.clientY,
+                    elementX: ((elementRect.left + elementRect.width/2 - rect.left) / rect.width) * 100,
+                    elementY: ((elementRect.top + elementRect.height/2 - rect.top) / rect.height) * 100
+                };
+            }
+            
+            handleMouseMove(e) {
+                if (!this.isDragging) return;
+                
+                const rect = this.previewContainer.getBoundingClientRect();
+                const deltaX = e.clientX - this.dragStart.x;
+                const deltaY = e.clientY - this.dragStart.y;
+                
+                const newX = this.dragStart.elementX + (deltaX / rect.width) * 100;
+                const newY = this.dragStart.elementY + (deltaY / rect.height) * 100;
+                
+                // Contraindre dans les limites
+                const clampedX = Math.max(0, Math.min(100, newX));
+                const clampedY = Math.max(0, Math.min(100, newY));
+                
+                // Vérifier les délimitations
+                if (this.isWithinDelimitations(clampedX, clampedY)) {
+                    this.position.x = clampedX;
+                    this.position.y = clampedY;
+                    this.updatePosition();
+                    this.updateSliders();
+                }
+            }
+            
+            handleMouseUp() {
+                this.isDragging = false;
+                this.designElement.classList.remove('dragging');
+            }
+            
+            isWithinDelimitations(x, y) {
+                const designSize = this.position.scale / 100 * 20; // Taille en pourcentage
+                const halfSize = designSize / 2;
+                
+                return this.delimitations.some(delim => {
+                    const designLeft = x - halfSize;
+                    const designRight = x + halfSize;
+                    const designTop = y - halfSize;
+                    const designBottom = y + halfSize;
+                    
+                    return (
+                        designLeft >= delim.x &&
+                        designRight <= delim.x + delim.width &&
+                        designTop >= delim.y &&
+                        designBottom <= delim.y + delim.height
+                    );
+                });
+            }
+            
+            updatePositionValue(prop, value) {
+                // Vérifier les délimitations avant de mettre à jour
+                if (prop === 'x' || prop === 'y' || prop === 'scale') {
+                    const testPosition = { ...this.position, [prop]: value };
+                    if (!this.isWithinDelimitations(testPosition.x, testPosition.y)) {
+                        this.updateValidationStatus(false);
+                        return; // Ne pas appliquer la position invalide
+                    }
+                }
+                
+                this.position[prop] = value;
+                this.updatePosition();
+                if (prop !== 'x' && prop !== 'y') {
+                    this.updateSliders();
+                }
+            }
+            
+            updatePosition() {
+                const { x, y, scale, rotation } = this.position;
+                
+                this.designElement.style.left = `${x}%`;
+                this.designElement.style.top = `${y}%`;
+                this.designElement.style.transform = `translate(-50%, -50%) scale(${scale/100}) rotate(${rotation}deg)`;
+                
+                this.updateUI();
+                this.updateValidationStatus(this.isWithinDelimitations(x, y));
+            }
+            
+            updateSliders() {
+                document.getElementById('positionX').value = this.position.x;
+                document.getElementById('positionY').value = this.position.y;
+                document.getElementById('scale').value = this.position.scale;
+                document.getElementById('rotation').value = this.position.rotation;
+            }
+            
+            updateUI() {
+                const { x, y, scale, rotation } = this.position;
+                
+                document.getElementById('posX').textContent = Math.round(x);
+                document.getElementById('posY').textContent = Math.round(y);
+                document.getElementById('scaleVal').textContent = scale;
+                document.getElementById('rotVal').textContent = rotation;
+                
+                document.getElementById('coordX').textContent = Math.round(x);
+                document.getElementById('coordY').textContent = Math.round(y);
+                document.getElementById('coordScale').textContent = scale;
+                document.getElementById('coordRot').textContent = rotation;
+            }
+            
+            updateValidationStatus(isValid) {
+                const statusEl = document.getElementById('validationStatus');
+                
+                if (isValid) {
+                    statusEl.className = 'status valid';
+                    statusEl.textContent = '✅ Position valide dans les délimitations';
+                } else {
+                    statusEl.className = 'status invalid';
+                    statusEl.textContent = '❌ Position invalide - en dehors des délimitations';
+                }
+            }
+        }
+        
+        // Fonctions globales pour les presets
+        function setPreset(preset) {
+            const positioner = window.designPositioner;
+            
+            switch (preset) {
+                case 'center':
+                    positioner.updatePositionValue('x', 50);
+                    positioner.updatePositionValue('y', 40);
+                    positioner.updatePositionValue('scale', 100);
+                    positioner.updatePositionValue('rotation', 0);
+                    break;
+                case 'top':
+                    positioner.updatePositionValue('x', 50);
+                    positioner.updatePositionValue('y', 30);
+                    positioner.updatePositionValue('scale', 120);
+                    positioner.updatePositionValue('rotation', 0);
+                    break;
+                case 'corner':
+                    positioner.updatePositionValue('x', 40);
+                    positioner.updatePositionValue('y', 75);
+                    positioner.updatePositionValue('scale', 80);
+                    positioner.updatePositionValue('rotation', 15);
+                    break;
+            }
+            positioner.updateSliders();
+        }
+        
+        // Initialisation
+        window.designPositioner = new AdminDesignPositioner();
+        
+        console.log('🎯 Test Admin Design Positioner V2 initialisé !');
+        console.log('✅ Fonctionnalités testées :');
+        console.log('  - Drag & Drop avec la souris');
+        console.log('  - Respect des délimitations');
+        console.log('  - Contrôles précis avec sliders');
+        console.log('  - Validation temps réel');
+        console.log('  - Presets de position');
+    </script>
+</body>
+</html> 

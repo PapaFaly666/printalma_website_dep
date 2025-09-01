@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Dimensions Design en Base de Données</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .result { margin-top: 10px; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test - Stockage des Dimensions Design</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Objectif du Test</h3>
+            <p>Vérifier que les dimensions du design (<code>designWidth</code>, <code>designHeight</code>) sont bien stockées en base de données lors de la création d'un produit vendeur.</p>
+        </div>
+
+        <div class="test-section">
+            <h3>1️⃣ Test de Création avec Dimensions</h3>
+            <p>Simule la création d'un produit vendeur avec des dimensions spécifiques.</p>
+            
+            <div>
+                <label>Design Width: <input type="number" id="designWidth" value="300" /></label><br><br>
+                <label>Design Height: <input type="number" id="designHeight" value="250" /></label><br><br>
+                <label>Scale: <input type="number" step="0.1" id="designScale" value="0.8" /></label><br><br>
+                <label>Rotation: <input type="number" id="designRotation" value="15" /></label><br><br>
+                <label>Product ID: <input type="number" id="productId" value="1" /></label><br><br>
+                <label>Design ID: <input type="number" id="designId" value="1" /></label><br><br>
+            </div>
+            
+            <button onclick="testCreateWithDimensions()">🚀 Créer Produit avec Dimensions</button>
+            <button onclick="testWithRealLocalStorageData()">🎯 Test avec Vraies Données LocalStorage</button>
+            <div id="createResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2️⃣ Test de Récupération</h3>
+            <p>Récupère un produit vendeur existant et vérifie si les dimensions sont présentes.</p>
+            
+            <div>
+                <label>Vendor Product ID: <input type="number" id="vendorProductId" value="60" /></label><br><br>
+            </div>
+            
+            <button onclick="testGetVendorProduct()">📥 Récupérer Produit Vendeur</button>
+            <div id="getResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Test - Dimensions Différentes par Produit</h3>
+            <p>Teste que le même design peut avoir des dimensions différentes selon le produit.</p>
+            
+            <button onclick="testMultipleProductsDimensions()">🧪 Test Multi-Produits</button>
+            <div id="multiProductResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Debug - Données LocalStorage</h3>
+            <p>Affiche toutes les données de design stockées dans le localStorage pour diagnostic.</p>
+            
+            <button onclick="debugLocalStorage()">🔍 Analyser LocalStorage</button>
+            <div id="debugResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3️⃣ Test de Vérification Base de Données</h3>
+            <p>Vérifie directement dans la liste des produits vendeurs si les dimensions sont stockées.</p>
+            
+            <button onclick="testListVendorProducts()">📋 Lister Produits Vendeurs</button>
+            <div id="listResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3004';
+        
+        function getAuthToken() {
+            return localStorage.getItem('jwt_token') || 
+                   localStorage.getItem('authToken') || 
+                   sessionStorage.getItem('jwt_token') ||
+                   sessionStorage.getItem('authToken') || 
+                   'test-token';
+        }
+
+        async function testCreateWithDimensions() {
+            const resultDiv = document.getElementById('createResult');
+            resultDiv.innerHTML = '<p>🔄 Création en cours...</p>';
+            
+            try {
+                const designWidth = parseInt(document.getElementById('designWidth').value);
+                const designHeight = parseInt(document.getElementById('designHeight').value);
+                const designScale = parseFloat(document.getElementById('designScale').value);
+                const designRotation = parseInt(document.getElementById('designRotation').value);
+                const productId = parseInt(document.getElementById('productId').value);
+                const designId = parseInt(document.getElementById('designId').value);
+
+                const payload = {
+                    baseProductId: productId,
+                    designId: designId,
+                    vendorName: `Test Product avec Dimensions ${Date.now()}`,
+                    vendorDescription: 'Test de stockage des dimensions',
+                    vendorPrice: 15000,
+                    vendorStock: 10,
+                    selectedColors: [{ id: 1, name: 'Noir', colorCode: '#000000' }],
+                    selectedSizes: [{ id: 1, sizeName: 'M' }],
+                    productStructure: {
+                        adminProduct: {
+                            id: productId,
+                            name: 'Produit Test',
+                            description: 'Description test',
+                            price: 10000,
+                            images: {
+                                colorVariations: [{
+                                    id: 1,
+                                    name: 'Noir',
+                                    colorCode: '#000000',
+                                    images: [{
+                                        url: '/placeholder-image.jpg',
+                                        viewType: 'FRONT',
+                                        delimitations: []
+                                    }]
+                                }]
+                            },
+                            sizes: [{ id: 1, sizeName: 'M' }]
+                        },
+                        designApplication: {
+                            positioning: 'CENTER',
+                            scale: designScale
+                        }
+                    },
+                    designPosition: {
+                        x: 0.5,
+                        y: 0.5,
+                        scale: designScale,
+                        rotation: designRotation,
+                        designWidth: designWidth,
+                        designHeight: designHeight
+                    },
+                    forcedStatus: 'DRAFT',
+                    postValidationAction: 'TO_DRAFT',
+                    bypassValidation: true
+                };
+
+                console.log('📦 Payload test avec dimensions:', payload);
+
+                const response = await fetch(`${API_BASE}/vendor/products`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Création Réussie !</h4>
+                            <p><strong>Product ID:</strong> ${result.productId || result.id}</p>
+                            <p><strong>Message:</strong> ${result.message}</p>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                    
+                    // Automatiquement tester la récupération
+                    if (result.productId || result.id) {
+                        document.getElementById('vendorProductId').value = result.productId || result.id;
+                        setTimeout(() => testGetVendorProduct(), 1000);
+                    }
+                } else {
+                    throw new Error(result.message || 'Erreur de création');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erreur de Création</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testMultipleProductsDimensions() {
+            const resultDiv = document.getElementById('multiProductResult');
+            resultDiv.innerHTML = '<p>🔄 Test multi-produits en cours...</p>';
+            
+            try {
+                // 🎯 Créer des données localStorage pour 3 produits différents avec le même design
+                const designId = 1;
+                const testProducts = [
+                    {
+                        baseProductId: 12,
+                        position: { x: 17, y: -47, scale: 1, rotation: 0, designWidth: 30, designHeight: 45.21 }
+                    },
+                    {
+                        baseProductId: 13, 
+                        position: { x: 0, y: -13, scale: 1, rotation: 0, designWidth: 25, designHeight: 37.67 }
+                    },
+                    {
+                        baseProductId: 14,
+                        position: { x: 5, y: 10, scale: 0.8, rotation: 15, designWidth: 40, designHeight: 60 }
+                    }
+                ];
+                
+                let results = [];
+                
+                // Stocker les données dans localStorage pour chaque produit
+                for (const product of testProducts) {
+                    const localStorageData = {
+                        designId: designId,
+                        baseProductId: product.baseProductId,
+                        position: product.position,
+                        timestamp: Date.now(),
+                        vendorId: 2
+                    };
+                    
+                    const key = `design_position_${product.baseProductId}_${designId}`;
+                    localStorage.setItem(key, JSON.stringify(localStorageData));
+                    console.log(`💾 Stocké pour produit ${product.baseProductId}:`, localStorageData);
+                }
+                
+                // Créer un produit vendeur pour chaque baseProductId
+                for (const product of testProducts) {
+                    try {
+                        const payload = {
+                            baseProductId: product.baseProductId,
+                            designId: designId,
+                            vendorName: `Test Produit ${product.baseProductId} - Dimensions Spécifiques`,
+                            vendorDescription: `Test dimensions: ${product.position.designWidth}x${product.position.designHeight}`,
+                            vendorPrice: 15000,
+                            vendorStock: 10,
+                            selectedColors: [{ id: 1, name: 'Noir', colorCode: '#000000' }],
+                            selectedSizes: [{ id: 1, sizeName: 'M' }],
+                            productStructure: {
+                                adminProduct: {
+                                    id: product.baseProductId,
+                                    name: `Produit ${product.baseProductId}`,
+                                    description: 'Test multi-produits',
+                                    price: 10000,
+                                    images: {
+                                        colorVariations: [{
+                                            id: 1,
+                                            name: 'Noir',
+                                            colorCode: '#000000',
+                                            images: [{
+                                                url: '/placeholder-image.jpg',
+                                                viewType: 'FRONT',
+                                                delimitations: []
+                                            }]
+                                        }]
+                                    },
+                                    sizes: [{ id: 1, sizeName: 'M' }]
+                                },
+                                designApplication: {
+                                    positioning: 'CENTER',
+                                    scale: product.position.scale
+                                }
+                            },
+                            designPosition: {
+                                x: product.position.x,
+                                y: product.position.y,
+                                scale: product.position.scale,
+                                rotation: product.position.rotation,
+                                designWidth: product.position.designWidth,
+                                designHeight: product.position.designHeight
+                            },
+                            forcedStatus: 'DRAFT',
+                            postValidationAction: 'TO_DRAFT',
+                            bypassValidation: true
+                        };
+                        
+                        console.log(`📦 Création produit ${product.baseProductId} avec dimensions:`, payload.designPosition);
+                        
+                        const response = await fetch(`${API_BASE}/vendor/products`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${getAuthToken()}`
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (response.ok && result.success) {
+                            results.push({
+                                baseProductId: product.baseProductId,
+                                vendorProductId: result.productId || result.id,
+                                expectedDimensions: product.position,
+                                success: true,
+                                message: result.message
+                            });
+                        } else {
+                            results.push({
+                                baseProductId: product.baseProductId,
+                                success: false,
+                                error: result.message || 'Erreur création'
+                            });
+                        }
+                        
+                        // Petit délai entre les créations
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                    } catch (error) {
+                        results.push({
+                            baseProductId: product.baseProductId,
+                            success: false,
+                            error: error.message
+                        });
+                    }
+                }
+                
+                // Nettoyer le localStorage
+                for (const product of testProducts) {
+                    const key = `design_position_${product.baseProductId}_${designId}`;
+                    localStorage.removeItem(key);
+                }
+                
+                // Afficher les résultats
+                const successCount = results.filter(r => r.success).length;
+                const totalCount = results.length;
+                
+                let html = `
+                    <div class="${successCount === totalCount ? 'success' : 'error'}">
+                        <h4>📊 Résultats Test Multi-Produits (${successCount}/${totalCount})</h4>
+                        <p><strong>Objectif:</strong> Vérifier que le même design a des dimensions différentes par produit</p>
+                `;
+                
+                results.forEach(result => {
+                    if (result.success) {
+                        html += `
+                            <div style="margin: 10px 0; padding: 10px; border: 1px solid #c3e6cb; border-radius: 5px; background: #d4edda;">
+                                <h5>✅ Produit ${result.baseProductId}</h5>
+                                <p><strong>Vendor Product ID:</strong> ${result.vendorProductId}</p>
+                                <p><strong>Dimensions attendues:</strong> ${result.expectedDimensions.designWidth}x${result.expectedDimensions.designHeight}</p>
+                                <p><strong>Position attendue:</strong> x=${result.expectedDimensions.x}, y=${result.expectedDimensions.y}</p>
+                                <p style="font-size: 12px; color: #666;">⚠️ Vérifiez en base de données que ces valeurs exactes sont stockées</p>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div style="margin: 10px 0; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px; background: #f8d7da;">
+                                <h5>❌ Produit ${result.baseProductId}</h5>
+                                <p><strong>Erreur:</strong> ${result.error}</p>
+                            </div>
+                        `;
+                    }
+                });
+                
+                html += `
+                        <div style="margin-top: 20px; padding: 15px; border: 1px solid #bee5eb; border-radius: 5px; background: #d1ecf1;">
+                            <h5>🔍 Vérification Manuelle Requise</h5>
+                            <p>Allez dans votre base de données et vérifiez que :</p>
+                            <ol>
+                                <li>Produit 12 : dimensions 30x45.21, position x=17, y=-47</li>
+                                <li>Produit 13 : dimensions 25x37.67, position x=0, y=-13</li>
+                                <li>Produit 14 : dimensions 40x60, position x=5, y=10</li>
+                            </ol>
+                            <p><strong>Si toutes les valeurs sont identiques, le problème d'isolation persiste.</strong></p>
+                        </div>
+                    </div>
+                `;
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Erreur test multi-produits:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erreur Test Multi-Produits</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testWithRealLocalStorageData() {
+            const resultDiv = document.getElementById('createResult');
+            resultDiv.innerHTML = '<p>🔄 Test avec vraies données localStorage...</p>';
+            
+            try {
+                // 🎯 Utiliser les VRAIES données exactes du localStorage de l'utilisateur
+                const realLocalStorageData = {
+                    designId: 1,
+                    baseProductId: 13,
+                    position: {
+                        x: 0,        // 🔧 VALEUR CRITIQUE : x: 0 (pas 0.5)
+                        y: -13,      // 🔧 VALEUR CRITIQUE : y: -13 (pas 0.5)
+                        scale: 1,    // 🔧 VALEUR CRITIQUE : scale: 1 (pas 0.6)
+                        rotation: 0,
+                        designWidth: 25,                    // 🔧 VALEUR EXACTE
+                        designHeight: 37.675070028011206,   // 🔧 VALEUR EXACTE
+                        designScale: 1                      // 🔧 VALEUR EXACTE
+                    },
+                    timestamp: 1754669433932,
+                    vendorId: 2
+                };
+
+                // Stocker temporairement dans localStorage pour le test
+                const testKey = `design_position_${realLocalStorageData.baseProductId}_${realLocalStorageData.designId}`;
+                localStorage.setItem(testKey, JSON.stringify(realLocalStorageData));
+                
+                console.log('💾 Données EXACTES stockées dans localStorage:', testKey, realLocalStorageData);
+
+                const payload = {
+                    baseProductId: realLocalStorageData.baseProductId,
+                    designId: realLocalStorageData.designId,
+                    vendorName: `Test Données EXACTES ${Date.now()}`,
+                    vendorDescription: 'Test avec les VRAIES dimensions exactes du localStorage',
+                    vendorPrice: 15000,
+                    vendorStock: 10,
+                    selectedColors: [{ id: 1, name: 'Noir', colorCode: '#000000' }],
+                    selectedSizes: [{ id: 1, sizeName: 'M' }],
+                    productStructure: {
+                        adminProduct: {
+                            id: realLocalStorageData.baseProductId,
+                            name: 'Produit Test EXACT',
+                            description: 'Test avec dimensions exactes',
+                            price: 10000,
+                            images: {
+                                colorVariations: [{
+                                    id: 1,
+                                    name: 'Noir',
+                                    colorCode: '#000000',
+                                    images: [{
+                                        url: '/placeholder-image.jpg',
+                                        viewType: 'FRONT',
+                                        delimitations: []
+                                    }]
+                                }]
+                            },
+                            sizes: [{ id: 1, sizeName: 'M' }]
+                        },
+                        designApplication: {
+                            positioning: 'CENTER',
+                            scale: realLocalStorageData.position.scale
+                        }
+                    },
+                    // 🎯 UTILISER LES VRAIES DONNÉES EXACTES DU LOCALSTORAGE
+                    designPosition: {
+                        x: realLocalStorageData.position.x,                    // 0 (pas 0.5)
+                        y: realLocalStorageData.position.y,                    // -13 (pas 0.5)
+                        scale: realLocalStorageData.position.scale,            // 1 (pas 0.6)
+                        rotation: realLocalStorageData.position.rotation,      // 0
+                        designWidth: realLocalStorageData.position.designWidth,        // 25
+                        designHeight: realLocalStorageData.position.designHeight       // 37.675...
+                    },
+                    forcedStatus: 'DRAFT',
+                    postValidationAction: 'TO_DRAFT',
+                    bypassValidation: true
+                };
+
+                console.log('📦 Payload avec VRAIES dimensions exactes:', payload);
+                console.log('🎯 designPosition envoyé:', payload.designPosition);
+
+                const response = await fetch(`${API_BASE}/vendor/products`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Test avec Données EXACTES Réussi !</h4>
+                            <p><strong>Product ID:</strong> ${result.productId || result.id}</p>
+                            <p><strong>Données EXACTES utilisées:</strong></p>
+                            <ul>
+                                <li><strong>X:</strong> ${realLocalStorageData.position.x} (doit être 0, pas 0.5)</li>
+                                <li><strong>Y:</strong> ${realLocalStorageData.position.y} (doit être -13, pas 0.5)</li>
+                                <li><strong>Scale:</strong> ${realLocalStorageData.position.scale} (doit être 1, pas 0.6)</li>
+                                <li><strong>Design Width:</strong> ${realLocalStorageData.position.designWidth}</li>
+                                <li><strong>Design Height:</strong> ${realLocalStorageData.position.designHeight}</li>
+                            </ul>
+                            <p><strong>⚠️ Vérifiez que ces valeurs exactes sont en base de données !</strong></p>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                    
+                    // Tester automatiquement la récupération
+                    if (result.productId || result.id) {
+                        document.getElementById('vendorProductId').value = result.productId || result.id;
+                        setTimeout(() => testGetVendorProduct(), 1000);
+                    }
+                } else {
+                    throw new Error(result.message || 'Erreur de création');
+                }
+                
+                // Nettoyer la clé temporaire après 5 secondes
+                setTimeout(() => {
+                    localStorage.removeItem(testKey);
+                    console.log('🧹 Clé test supprimée:', testKey);
+                }, 5000);
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erreur Test Données Exactes</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testGetVendorProduct() {
+            const resultDiv = document.getElementById('getResult');
+            resultDiv.innerHTML = '<p>🔄 Récupération en cours...</p>';
+            
+            try {
+                const vendorProductId = document.getElementById('vendorProductId').value;
+                
+                const response = await fetch(`${API_BASE}/vendor/products/${vendorProductId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    },
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const hasDimensions = result.data && (
+                        result.data.designPosition?.designWidth || 
+                        result.data.designPositions?.length > 0 ||
+                        result.data.designTransforms?.length > 0
+                    );
+                    
+                    resultDiv.innerHTML = `
+                        <div class="${hasDimensions ? 'success' : 'error'}">
+                            <h4>${hasDimensions ? '✅' : '❌'} Récupération ${hasDimensions ? 'avec' : 'sans'} Dimensions</h4>
+                            <p><strong>Dimensions trouvées:</strong> ${hasDimensions ? 'OUI' : 'NON'}</p>
+                            ${result.data.designPosition ? `<p><strong>Design Position:</strong> ${JSON.stringify(result.data.designPosition)}</p>` : ''}
+                            <details>
+                                <summary>Données complètes</summary>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.message || 'Erreur de récupération');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erreur de Récupération</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testListVendorProducts() {
+            const resultDiv = document.getElementById('listResult');
+            resultDiv.innerHTML = '<p>🔄 Chargement de la liste...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/vendor/products`, {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    },
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const products = result.data || result.products || [];
+                    const productsWithDimensions = products.filter(p => 
+                        p.designPosition?.designWidth || 
+                        p.designPositions?.length > 0 ||
+                        p.designTransforms?.length > 0
+                    );
+                    
+                    resultDiv.innerHTML = `
+                        <div class="${productsWithDimensions.length > 0 ? 'success' : 'info'}">
+                            <h4>📋 Liste des Produits Vendeurs</h4>
+                            <p><strong>Total:</strong> ${products.length} produits</p>
+                            <p><strong>Avec dimensions:</strong> ${productsWithDimensions.length} produits</p>
+                            
+                            ${productsWithDimensions.length > 0 ? `
+                                <h5>Produits avec dimensions :</h5>
+                                <ul>
+                                    ${productsWithDimensions.map(p => `
+                                        <li>
+                                            <strong>${p.vendorName}</strong> (ID: ${p.id})
+                                            ${p.designPosition ? `<br>Position: ${JSON.stringify(p.designPosition)}` : ''}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            ` : '<p>Aucun produit avec dimensions trouvé.</p>'}
+                            
+                            <details>
+                                <summary>Tous les produits (${products.length})</summary>
+                                <pre>${JSON.stringify(products, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.message || 'Erreur de récupération');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erreur de Liste</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function debugLocalStorage() {
+            const resultDiv = document.getElementById('debugResult');
+            resultDiv.innerHTML = '<p>🔍 Analyse du localStorage...</p>';
+            
+            try {
+                let designKeys = [];
+                let otherKeys = [];
+                
+                // Analyser toutes les clés
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key) {
+                        const value = localStorage.getItem(key);
+                        
+                        if (key.includes('design') || key.includes('position') || key.includes('vendor')) {
+                            designKeys.push({ key, value });
+                        } else {
+                            otherKeys.push({ key, value });
+                        }
+                    }
+                }
+                
+                let html = `
+                    <div class="info">
+                        <h4>🎨 Clés liées au Design (${designKeys.length})</h4>
+                        ${designKeys.length === 0 ? '<p>Aucune clé design trouvée</p>' : ''}
+                `;
+                
+                designKeys.forEach(({ key, value }) => {
+                    let parsedValue = value;
+                    let isParsable = false;
+                    
+                    try {
+                        const parsed = JSON.parse(value);
+                        parsedValue = JSON.stringify(parsed, null, 2);
+                        isParsable = true;
+                    } catch (e) {
+                        // Valeur non-JSON
+                    }
+                    
+                    html += `
+                        <div style="margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                            <strong>🔑 ${key}</strong>
+                            <pre style="margin: 5px 0; max-height: 200px; overflow-y: auto;">${parsedValue}</pre>
+                            ${isParsable ? '<span style="color: green;">✅ JSON valide</span>' : '<span style="color: red;">❌ Pas JSON</span>'}
+                        </div>
+                    `;
+                });
+                
+                html += `
+                    </div>
+                    <details style="margin-top: 20px;">
+                        <summary>🔧 Autres clés (${otherKeys.length})</summary>
+                `;
+                
+                otherKeys.forEach(({ key, value }) => {
+                    html += `<p><strong>${key}:</strong> ${value.substring(0, 100)}${value.length > 100 ? '...' : ''}</p>`;
+                });
+                
+                html += '</details>';
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Erreur d'analyse</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html> 

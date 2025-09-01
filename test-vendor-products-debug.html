@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Produits Vendeur</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: white;
+        }
+        .error { color: #ef4444; background: #fef2f2; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { color: #10b981; background: #f0fdf4; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .loading { color: #666; text-align: center; padding: 20px; }
+        pre { background: #f9fafb; padding: 15px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug - Produits Vendeur</h1>
+        
+        <div class="test-card">
+            <h2>1. Test de chargement des produits</h2>
+            <button onclick="testLoadProducts()">Charger les produits</button>
+            <div id="products-result">Cliquez pour tester</div>
+        </div>
+        
+        <div class="test-card">
+            <h2>2. Test de détails produit</h2>
+            <input type="number" id="product-id" placeholder="ID du produit" value="1">
+            <button onclick="testProductDetails()">Charger les détails</button>
+            <div id="details-result">Entrez un ID et cliquez pour tester</div>
+        </div>
+        
+        <div class="test-card">
+            <h2>3. Test de position design</h2>
+            <input type="number" id="position-product-id" placeholder="ID du produit" value="1">
+            <input type="number" id="position-design-id" placeholder="ID du design" value="1">
+            <button onclick="testDesignPosition()">Charger la position</button>
+            <div id="position-result">Entrez les IDs et cliquez pour tester</div>
+    </div>
+
+        <div class="test-card">
+            <h2>4. Logs détaillés</h2>
+            <div id="debug-logs" style="background: #f9fafb; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 400px; overflow-y: auto;">
+                <div>Initialisation...</div>
+    </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+        
+        function log(message, type = 'info') {
+            const debugLogs = document.getElementById('debug-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#374151';
+            debugLogs.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            debugLogs.scrollTop = debugLogs.scrollHeight;
+            console.log(message);
+        }
+
+        function getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        async function testLoadProducts() {
+            const resultDiv = document.getElementById('products-result');
+            resultDiv.innerHTML = '<div class="loading">Chargement...</div>';
+            
+            try {
+                log('📡 Test: Chargement des produits vendeur');
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products`, {
+                    headers: getAuthHeaders(),
+                    credentials: 'include'
+                });
+
+                log(`📡 Response status: ${response.status}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log(`✅ Réponse reçue:`, 'success');
+                console.log('Réponse complète:', result);
+                
+                let products = [];
+                if (Array.isArray(result)) {
+                    products = result;
+                } else if (Array.isArray(result.data)) {
+                    products = result.data;
+                } else if (Array.isArray(result.products)) {
+                    products = result.products;
+                }
+
+                resultDiv.innerHTML = `
+                    <div class="success">✅ ${products.length} produits trouvés</div>
+                    <pre>${JSON.stringify(products, null, 2)}</pre>
+                `;
+                
+                log(`✅ ${products.length} produits chargés`, 'success');
+                
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        async function testProductDetails() {
+            const productId = document.getElementById('product-id').value;
+            const resultDiv = document.getElementById('details-result');
+            
+            if (!productId) {
+                resultDiv.innerHTML = '<div class="error">Veuillez entrer un ID de produit</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">Chargement...</div>';
+            
+            try {
+                log(`📋 Test: Chargement détails produit ${productId}`);
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products/${productId}`, {
+                    headers: getAuthHeaders(),
+                    credentials: 'include'
+                });
+
+                log(`📋 Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log(`✅ Détails reçus:`, 'success');
+                console.log('Détails complets:', result);
+                
+                resultDiv.innerHTML = `
+                    <div class="success">✅ Détails du produit ${productId}</div>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                log(`❌ Erreur détails: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        async function testDesignPosition() {
+            const productId = document.getElementById('position-product-id').value;
+            const designId = document.getElementById('position-design-id').value;
+            const resultDiv = document.getElementById('position-result');
+            
+            if (!productId || !designId) {
+                resultDiv.innerHTML = '<div class="error">Veuillez entrer les IDs de produit et design</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">Chargement...</div>';
+            
+            try {
+                log(`📍 Test: Chargement position design ${designId} pour produit ${productId}`);
+                
+                const response = await fetch(`${API_BASE_URL}/api/vendor-products/${productId}/designs/${designId}/position/direct`, {
+                    headers: getAuthHeaders(),
+                    credentials: 'include'
+                });
+
+                log(`📍 Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        resultDiv.innerHTML = '<div class="error">❌ Position non trouvée (404)</div>';
+                        log(`📍 Position non trouvée pour design ${designId}`, 'error');
+                        return;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log(`✅ Position reçue:`, 'success');
+                console.log('Position complète:', result);
+                
+                resultDiv.innerHTML = `
+                    <div class="success">✅ Position du design ${designId}</div>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                log(`❌ Erreur position: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-test au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Page de debug chargée');
+            
+            // Test automatique de chargement des produits
+            setTimeout(() => {
+                testLoadProducts();
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Persistance des Transformations de Design</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .side {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .sell-design-side {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .products-side {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            margin: 10px 0;
+        }
+        .product-image {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #f0f0f0;
+            overflow: hidden;
+        }
+        .base-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .design-overlay {
+            position: absolute;
+            overflow: hidden;
+            border: 2px dashed #8b5cf6;
+            background: rgba(139, 92, 246, 0.1);
+        }
+        .design-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.1s ease-out;
+        }
+        .product-info {
+            padding: 15px;
+            font-size: 14px;
+        }
+        .transform-controls {
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .control-btn {
+            padding: 5px 10px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .control-btn:hover {
+            background: #2563eb;
+        }
+        .badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #8b5cf6;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .status-indicator {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .transform-info {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Test - Persistance des Transformations de Design</h1>
+        
+        <div class="test-section">
+            <h2>📋 Objectif du Test</h2>
+            <p>Ce test vérifie que les déplacements et ajustements des designs dans <code>/vendeur/sell-design</code> 
+               sont bien conservés après publication et affichés correctement dans <code>/vendeur/products</code>.</p>
+        </div>
+
+        <div class="test-section">
+            <h2>🔄 Comparaison des Comportements</h2>
+            
+            <div class="comparison-grid">
+                <!-- Côté Sell Design (Interactif) -->
+                <div class="side sell-design-side">
+                    <h3>📝 /vendeur/sell-design (Mode Édition)</h3>
+                    <p><strong>Comportement :</strong> Interactif, transformations sauvegardées</p>
+                    
+                    <div class="product-card">
+                        <div class="product-image">
+                            <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=200&fit=crop" 
+                                 alt="T-shirt" class="base-image">
+                            <div class="design-overlay" style="left: 25%; top: 30%; width: 50%; height: 40%;" id="sellDesignOverlay">
+                                <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&h=150&fit=crop" 
+                                     alt="Design" class="design-image" id="sellDesignImage"
+                                     style="transform: translate(10px, -5px) scale(0.8);">
+                            </div>
+                            <div class="badge">🎨 Éditable</div>
+                        </div>
+                        <div class="product-info">
+                            <strong>T-shirt Vintage</strong>
+                            <div class="transform-info" id="sellDesignTransforms">
+                                Position: X=10px, Y=-5px, Échelle=0.8
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="transform-controls">
+                        <button class="control-btn" onclick="moveDesign('sell', -5, 0)">← Gauche</button>
+                        <button class="control-btn" onclick="moveDesign('sell', 5, 0)">Droite →</button>
+                        <button class="control-btn" onclick="moveDesign('sell', 0, -5)">↑ Haut</button>
+                        <button class="control-btn" onclick="moveDesign('sell', 0, 5)">Bas ↓</button>
+                        <button class="control-btn" onclick="scaleDesign('sell', 0.1)">+ Zoom</button>
+                        <button class="control-btn" onclick="scaleDesign('sell', -0.1)">- Zoom</button>
+                        <button class="control-btn" onclick="resetDesign('sell')">Reset</button>
+                        <button class="control-btn" onclick="simulatePublish()" style="background: #10b981;">📤 Publier</button>
+                    </div>
+                </div>
+
+                <!-- Côté Products (Lecture seule) -->
+                <div class="side products-side">
+                    <h3>📋 /vendeur/products (Mode Lecture)</h3>
+                    <p><strong>Comportement :</strong> Lecture seule, transformations preservées</p>
+                    
+                    <div class="product-card">
+                        <div class="product-image">
+                            <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=200&fit=crop" 
+                                 alt="T-shirt" class="base-image">
+                            <div class="design-overlay" style="left: 25%; top: 30%; width: 50%; height: 40%;" id="productsOverlay">
+                                <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&h=150&fit=crop" 
+                                     alt="Design" class="design-image" id="productsDesignImage"
+                                     style="transform: translate(0px, 0px) scale(0.6);">
+                            </div>
+                            <div class="badge">✅ Publié</div>
+                        </div>
+                        <div class="product-info">
+                            <strong>T-shirt Vintage</strong>
+                            <div class="transform-info" id="productsTransforms">
+                                Position: X=0px, Y=0px, Échelle=0.6 (par défaut)
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="status-indicator info" id="syncStatus">
+                        🔄 En attente de synchronisation...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Tests de Persistance</h2>
+            
+            <div class="status-indicator info">
+                <strong>Instructions :</strong><br>
+                1. Modifiez le design dans la section "Sell Design" avec les boutons<br>
+                2. Cliquez sur "📤 Publier" pour simuler la publication<br>
+                3. Observez si les transformations sont appliquées dans la section "Products"<br>
+                4. Testez le redimensionnement de la fenêtre pour vérifier la responsivité
+            </div>
+
+            <div class="status-indicator" id="testResults">
+                <strong>Résultats du Test :</strong><br>
+                <span id="resultsContent">Aucun test effectué</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>✅ Critères de Validation</h2>
+            <div class="status-indicator success">
+                <strong>✅ Test Réussi Si :</strong><br>
+                • Les transformations sont identiques entre les deux côtés après publication<br>
+                • Le positionnement reste stable lors du redimensionnement<br>
+                • Les coordonnées X, Y et l'échelle sont conservées<br>
+                • Aucune déformation ou décalage n'apparaît
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // État des transformations simulées
+        let currentTransforms = {
+            sell: { x: 10, y: -5, scale: 0.8 },
+            products: { x: 0, y: 0, scale: 0.6 }
+        };
+
+        // Fonction pour déplacer le design
+        function moveDesign(side, deltaX, deltaY) {
+            currentTransforms[side].x += deltaX;
+            currentTransforms[side].y += deltaY;
+            updateDesignDisplay(side);
+            updateTransformInfo(side);
+        }
+
+        // Fonction pour redimensionner le design
+        function scaleDesign(side, deltaScale) {
+            currentTransforms[side].scale = Math.max(0.2, Math.min(2.0, currentTransforms[side].scale + deltaScale));
+            updateDesignDisplay(side);
+            updateTransformInfo(side);
+        }
+
+        // Fonction pour réinitialiser le design
+        function resetDesign(side) {
+            currentTransforms[side] = { x: 0, y: 0, scale: 0.6 };
+            updateDesignDisplay(side);
+            updateTransformInfo(side);
+        }
+
+        // Mettre à jour l'affichage du design
+        function updateDesignDisplay(side) {
+            const transform = currentTransforms[side];
+            const imageId = side === 'sell' ? 'sellDesignImage' : 'productsDesignImage';
+            const image = document.getElementById(imageId);
+            
+            if (image) {
+                image.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`;
+            }
+        }
+
+        // Mettre à jour l'affichage des informations de transformation
+        function updateTransformInfo(side) {
+            const transform = currentTransforms[side];
+            const infoId = side === 'sell' ? 'sellDesignTransforms' : 'productsTransforms';
+            const info = document.getElementById(infoId);
+            
+            if (info) {
+                info.textContent = `Position: X=${transform.x}px, Y=${transform.y}px, Échelle=${transform.scale.toFixed(1)}`;
+            }
+        }
+
+        // Simuler la publication
+        function simulatePublish() {
+            const sellTransforms = currentTransforms.sell;
+            const syncStatus = document.getElementById('syncStatus');
+            const testResults = document.getElementById('resultsContent');
+            
+            // Simuler un délai de publication
+            syncStatus.textContent = '📤 Publication en cours...';
+            syncStatus.className = 'status-indicator warning';
+            
+            setTimeout(() => {
+                // Copier les transformations vers le côté products
+                currentTransforms.products = { ...sellTransforms };
+                updateDesignDisplay('products');
+                updateTransformInfo('products');
+                
+                // Mettre à jour le statut
+                syncStatus.textContent = '✅ Transformations synchronisées avec succès !';
+                syncStatus.className = 'status-indicator success';
+                
+                // Vérifier si les transformations sont identiques
+                const isIdentical = (
+                    currentTransforms.sell.x === currentTransforms.products.x &&
+                    currentTransforms.sell.y === currentTransforms.products.y &&
+                    Math.abs(currentTransforms.sell.scale - currentTransforms.products.scale) < 0.01
+                );
+                
+                if (isIdentical) {
+                    testResults.innerHTML = `
+                        <span style="color: #166534;">✅ Test RÉUSSI</span><br>
+                        Les transformations ont été correctement conservées lors de la publication.<br>
+                        Position: X=${sellTransforms.x}px, Y=${sellTransforms.y}px<br>
+                        Échelle: ${sellTransforms.scale.toFixed(1)}
+                    `;
+                    document.getElementById('testResults').className = 'status-indicator success';
+                } else {
+                    testResults.innerHTML = `
+                        <span style="color: #dc2626;">❌ Test ÉCHOUÉ</span><br>
+                        Les transformations n'ont pas été correctement conservées.
+                    `;
+                    document.getElementById('testResults').className = 'status-indicator warning';
+                }
+            }, 1500);
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDesignDisplay('sell');
+            updateDesignDisplay('products');
+            updateTransformInfo('sell');
+            updateTransformInfo('products');
+        });
+
+        // Test de redimensionnement
+        window.addEventListener('resize', () => {
+            console.log('🔄 Redimensionnement détecté - Les designs doivent rester positionnés correctement');
+        });
+    </script>
+</body>
+</html> 

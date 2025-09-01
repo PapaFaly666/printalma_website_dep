@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interface Moderne - Compte Vendeur</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .field-group {
+            margin-bottom: 20px;
+        }
+        .field-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        .field-edit {
+            display: none;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        .field-edit.active {
+            display: block;
+        }
+        input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input.error {
+            border-color: #dc3545;
+            background-color: #fff5f5;
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .checking {
+            color: #007bff;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        .btn-edit {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-save {
+            background: #28a745;
+            color: white;
+        }
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .photo-section {
+            text-align: center;
+            padding: 20px;
+        }
+        .avatar {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: #e9ecef;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #6c757d;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .badge {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            background: #007bff;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+        .drag-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 16px 0;
+            transition: all 0.3s;
+        }
+        .drag-area.dragover {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        .sidebar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .security-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .badge-status {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+        }
+        .badge-warning {
+            background: #ffc107;
+            color: #212529;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        .alert-danger {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            z-index: 1001;
+            display: none;
+        }
+        .toast.success {
+            background: #28a745;
+        }
+        .toast.error {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Interface Moderne - Compte Vendeur</h1>
+        <p>Ce test vérifie la nouvelle interface moderne de modification de profil avec édition individuelle.</p>
+
+        <div class="grid">
+            <!-- Colonne principale -->
+            <div>
+                
+                <!-- Section Photo de profil -->
+                <div class="section">
+                    <h3>📷 Photo de profil</h3>
+                    <div class="photo-section">
+                        <div class="avatar">
+                            J
+                            <div class="badge" id="photoBadge" style="display: none;">Nouvelle</div>
+                        </div>
+                        <div class="drag-area" id="dragArea">
+                            <p>📁 Glissez-déposez votre photo ici ou</p>
+                            <button class="btn-edit">Choisir un fichier</button>
+                            <p style="font-size: 12px; color: #666;">JPG, PNG, WebP (max 5MB)</p>
+                        </div>
+                        <div id="photoActions" style="display: none;">
+                            <button class="btn-save">Uploader la photo</button>
+                            <button class="btn-cancel">Supprimer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Informations personnelles -->
+                <div class="section">
+                    <h3>👤 Informations personnelles</h3>
+                    
+                    <div class="field-group">
+                        <label>Prénom</label>
+                        <div class="field-display" id="firstNameDisplay">
+                            <span>Jean</span>
+                            <button class="btn-edit" onclick="startEditing('firstName')">✏️</button>
+                        </div>
+                        <div class="field-edit" id="firstNameEdit">
+                            <input type="text" value="Jean" placeholder="Votre prénom">
+                            <div class="error-message" id="firstNameError"></div>
+                            <div style="margin-top: 8px;">
+                                <button class="btn-save" onclick="saveField('firstName')">Sauvegarder</button>
+                                <button class="btn-cancel" onclick="cancelEditing('firstName')">Annuler</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label>Nom</label>
+                        <div class="field-display" id="lastNameDisplay">
+                            <span>Dupont</span>
+                            <button class="btn-edit" onclick="startEditing('lastName')">✏️</button>
+                        </div>
+                        <div class="field-edit" id="lastNameEdit">
+                            <input type="text" value="Dupont" placeholder="Votre nom">
+                            <div class="error-message" id="lastNameError"></div>
+                            <div style="margin-top: 8px;">
+                                <button class="btn-save" onclick="saveField('lastName')">Sauvegarder</button>
+                                <button class="btn-cancel" onclick="cancelEditing('lastName')">Annuler</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label>Adresse email</label>
+                        <div class="field-display" id="emailDisplay">
+                            <span>jean.dupont@exemple.com</span>
+                            <button class="btn-edit" onclick="startEditing('email')">✏️</button>
+                        </div>
+                        <div class="field-edit" id="emailEdit">
+                            <input type="email" value="jean.dupont@exemple.com" placeholder="votre@email.com">
+                            <div class="error-message" id="emailError"></div>
+                            <div style="margin-top: 8px;">
+                                <button class="btn-save" onclick="saveField('email')">Sauvegarder</button>
+                                <button class="btn-cancel" onclick="cancelEditing('email')">Annuler</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label>Nom de la boutique</label>
+                        <div class="field-display" id="shopNameDisplay">
+                            <span>Ma Boutique Design</span>
+                            <button class="btn-edit" onclick="startEditing('shopName')">✏️</button>
+                        </div>
+                        <div class="field-edit" id="shopNameEdit">
+                            <input type="text" value="Ma Boutique Design" placeholder="Nom de votre boutique">
+                            <div class="error-message" id="shopNameError"></div>
+                            <div class="checking" id="shopNameChecking" style="display: none;">Vérification...</div>
+                            <div style="margin-top: 8px;">
+                                <button class="btn-save" onclick="saveField('shopName')">Sauvegarder</button>
+                                <button class="btn-cancel" onclick="cancelEditing('shopName')">Annuler</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Sécurité -->
+                <div class="section">
+                    <h3>🔒 Sécurité</h3>
+                    
+                    <div class="security-item">
+                        <div>
+                            <h4>Mot de passe</h4>
+                            <p style="font-size: 12px; color: #666;">Dernière modification il y a 30 jours</p>
+                        </div>
+                        <button class="btn-edit" onclick="showPasswordModal()">Modifier</button>
+                    </div>
+
+                    <div class="security-item">
+                        <div>
+                            <h4>Authentification à deux facteurs</h4>
+                            <p style="font-size: 12px; color: #666;">Ajoutez une couche de sécurité supplémentaire</p>
+                        </div>
+                        <span class="badge-warning">Non activé</span>
+                    </div>
+                </div>
+
+                <!-- Section Paramètres du compte -->
+                <div class="section">
+                    <h3>⚙️ Paramètres du compte</h3>
+                    
+                    <div class="security-item">
+                        <div>
+                            <h4>Supprimer le compte</h4>
+                            <p style="font-size: 12px; color: #666;">Cette action est irréversible</p>
+                        </div>
+                        <button class="btn-danger" onclick="showDeleteModal()">Supprimer</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <h3>📊 Statistiques du compte</h3>
+                <div class="stats-item">
+                    <span>Membre depuis</span>
+                    <span>15/01/2024</span>
+                </div>
+                <div class="stats-item">
+                    <span>Dernière connexion</span>
+                    <span>Aujourd'hui</span>
+                </div>
+                <div class="stats-item">
+                    <span>Statut</span>
+                    <span class="badge-status">Actif</span>
+                </div>
+
+                <h3 style="margin-top: 24px;">🚀 Actions rapides</h3>
+                <button class="btn-edit" style="width: 100%; margin-bottom: 8px;">📧 Changer l'email</button>
+                <button class="btn-edit" style="width: 100%; margin-bottom: 8px;">🔒 Paramètres de sécurité</button>
+                <button class="btn-edit" style="width: 100%;">⚙️ Préférences</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de changement de mot de passe -->
+    <div class="modal" id="passwordModal">
+        <div class="modal-content">
+            <h3>Changer le mot de passe</h3>
+            <p>Entrez votre mot de passe actuel et votre nouveau mot de passe</p>
+            
+            <div style="margin: 16px 0;">
+                <label>Mot de passe actuel</label>
+                <input type="password" placeholder="Votre mot de passe actuel">
+            </div>
+            
+            <div style="margin: 16px 0;">
+                <label>Nouveau mot de passe</label>
+                <input type="password" placeholder="Nouveau mot de passe">
+            </div>
+            
+            <div style="margin: 16px 0;">
+                <label>Confirmer le nouveau mot de passe</label>
+                <input type="password" placeholder="Confirmer le nouveau mot de passe">
+            </div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn-cancel" onclick="hidePasswordModal()">Annuler</button>
+                <button class="btn-save" onclick="changePassword()">Modifier le mot de passe</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de suppression de compte -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <h3 style="color: #dc3545;">Supprimer le compte</h3>
+            <p>Cette action est irréversible. Toutes vos données seront définitivement supprimées.</p>
+            
+            <div class="alert alert-danger">
+                <strong>Attention :</strong> La suppression de votre compte entraînera la perte de toutes vos données, 
+                y compris vos produits, designs et informations personnelles.
+            </div>
+            
+            <div style="margin: 16px 0;">
+                <label>Tapez "SUPPRIMER" pour confirmer</label>
+                <input type="text" id="deleteConfirmation" placeholder="SUPPRIMER">
+            </div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn-cancel" onclick="hideDeleteModal()">Annuler</button>
+                <button class="btn-danger" id="deleteButton" disabled onclick="deleteAccount()">Supprimer définitivement</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Gestion de l'édition des champs
+        function startEditing(fieldName) {
+            document.getElementById(fieldName + 'Display').style.display = 'none';
+            document.getElementById(fieldName + 'Edit').classList.add('active');
+        }
+
+        function cancelEditing(fieldName) {
+            document.getElementById(fieldName + 'Display').style.display = 'flex';
+            document.getElementById(fieldName + 'Edit').classList.remove('active');
+            document.getElementById(fieldName + 'Error').textContent = '';
+        }
+
+        function saveField(fieldName) {
+            const input = document.querySelector(`#${fieldName}Edit input`);
+            const value = input.value;
+            
+            // Validation basique
+            if (!value.trim()) {
+                document.getElementById(fieldName + 'Error').textContent = 'Ce champ est requis';
+                return;
+            }
+            
+            // Validation spécifique pour le nom de boutique
+            if (fieldName === 'shopName') {
+                if (value.length < 3) {
+                    document.getElementById(fieldName + 'Error').textContent = 'Le nom doit contenir au moins 3 caractères';
+                    return;
+                }
+                // Simuler la vérification en temps réel
+                document.getElementById('shopNameChecking').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('shopNameChecking').style.display = 'none';
+                    if (value === 'Boutique Existante') {
+                        document.getElementById(fieldName + 'Error').textContent = 'Ce nom de boutique est déjà utilisé par un autre vendeur';
+                        return;
+                    }
+                    showToast('Nom de boutique mis à jour avec succès', 'success');
+                    cancelEditing(fieldName);
+                    document.querySelector(`#${fieldName}Display span`).textContent = value;
+                }, 1000);
+                return;
+            }
+            
+            // Validation pour l'email
+            if (fieldName === 'email') {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(value)) {
+                    document.getElementById(fieldName + 'Error').textContent = 'Format d\'email invalide';
+                    return;
+                }
+            }
+            
+            showToast(`${fieldName === 'firstName' ? 'Prénom' : 
+                      fieldName === 'lastName' ? 'Nom' :
+                      fieldName === 'email' ? 'Email' : 'Champ'} mis à jour avec succès`, 'success');
+            cancelEditing(fieldName);
+            document.querySelector(`#${fieldName}Display span`).textContent = value;
+        }
+
+        // Gestion du drag & drop
+        const dragArea = document.getElementById('dragArea');
+        const photoBadge = document.getElementById('photoBadge');
+        const photoActions = document.getElementById('photoActions');
+
+        dragArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragArea.classList.add('dragover');
+        });
+
+        dragArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dragArea.classList.remove('dragover');
+        });
+
+        dragArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragArea.classList.remove('dragover');
+            handleFileUpload();
+        });
+
+        function handleFileUpload() {
+            photoBadge.style.display = 'block';
+            photoActions.style.display = 'block';
+            showToast('Photo sélectionnée avec succès', 'success');
+        }
+
+        // Gestion des modals
+        function showPasswordModal() {
+            document.getElementById('passwordModal').classList.add('active');
+        }
+
+        function hidePasswordModal() {
+            document.getElementById('passwordModal').classList.remove('active');
+        }
+
+        function showDeleteModal() {
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function hideDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            document.getElementById('deleteConfirmation').value = '';
+            document.getElementById('deleteButton').disabled = true;
+        }
+
+        // Gestion de la suppression de compte
+        document.getElementById('deleteConfirmation').addEventListener('input', (e) => {
+            const deleteButton = document.getElementById('deleteButton');
+            deleteButton.disabled = e.target.value !== 'SUPPRIMER';
+        });
+
+        function deleteAccount() {
+            showToast('Compte supprimé avec succès', 'success');
+            hideDeleteModal();
+        }
+
+        function changePassword() {
+            showToast('Mot de passe modifié avec succès', 'success');
+            hidePasswordModal();
+        }
+
+        // Système de toast
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Tests automatiques
+        function runTests() {
+            console.log('🧪 Tests de l\'interface moderne...');
+            
+            // Test 1: Édition de champ
+            console.log('✅ Test 1: Édition de champ');
+            startEditing('firstName');
+            
+            // Test 2: Validation
+            console.log('✅ Test 2: Validation');
+            setTimeout(() => {
+                const input = document.querySelector('#firstNameEdit input');
+                input.value = '';
+                saveField('firstName');
+            }, 500);
+            
+            // Test 3: Sauvegarde réussie
+            console.log('✅ Test 3: Sauvegarde réussie');
+            setTimeout(() => {
+                const input = document.querySelector('#firstNameEdit input');
+                input.value = 'Nouveau Prénom';
+                saveField('firstName');
+            }, 1000);
+            
+            // Test 4: Validation nom de boutique
+            console.log('✅ Test 4: Validation nom de boutique');
+            setTimeout(() => {
+                startEditing('shopName');
+                const input = document.querySelector('#shopNameEdit input');
+                input.value = 'Boutique Existante';
+                saveField('shopName');
+            }, 2000);
+        }
+
+        // Lancer les tests après chargement
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 1000);
+        });
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

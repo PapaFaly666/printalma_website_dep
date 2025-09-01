@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Créer en attente (SellDesignPage)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            color: #007bff;
+            border: 1px solid #007bff;
+        }
+        
+        .btn-outline:hover {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .success {
+            color: #28a745;
+            background-color: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .info {
+            color: #17a2b8;
+            background-color: #d1ecf1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        
+        .localStorage-display {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .api-response {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test - Créer en attente (SellDesignPage)</h1>
+    
+    <div class="test-container">
+        <h2>Test de la fonctionnalité "Créer en attente"</h2>
+        <p>Ce test simule le processus de sauvegarde des données localStorage en base de données.</p>
+    </div>
+
+    <!-- Étape 1: Simuler les données localStorage -->
+    <div class="test-section">
+        <h3>1. Simulation des données localStorage</h3>
+        <p>Simulons les données qui seraient normalement sauvegardées par InteractiveDesignPositioner:</p>
+        
+        <div class="form-group">
+            <label>Product ID:</label>
+            <input type="number" id="productId" value="1" />
+        </div>
+        
+        <div class="form-group">
+            <label>Design URL:</label>
+            <input type="text" id="designUrl" value="https://res.cloudinary.com/dxhh7qpob/image/upload/v1/designs/example-logo.png" />
+        </div>
+        
+        <div class="form-group">
+            <label>Position X (0-1):</label>
+            <input type="number" id="positionX" value="0.3" step="0.1" />
+        </div>
+        
+        <div class="form-group">
+            <label>Position Y (0-1):</label>
+            <input type="number" id="positionY" value="0.4" step="0.1" />
+        </div>
+        
+        <div class="form-group">
+            <label>Scale (0.1-2):</label>
+            <input type="number" id="scale" value="1.2" step="0.1" />
+        </div>
+        
+        <div class="form-group">
+            <label>Rotation (0-360):</label>
+            <input type="number" id="rotation" value="15" />
+        </div>
+        
+        <button class="btn" onclick="saveToLocalStorage()">💾 Sauvegarder dans localStorage</button>
+        <button class="btn btn-outline" onclick="loadFromLocalStorage()">📁 Charger depuis localStorage</button>
+        
+        <div id="localStorageStatus"></div>
+        <div class="localStorage-display" id="localStorageDisplay"></div>
+    </div>
+
+    <!-- Étape 2: Simuler les données produit -->
+    <div class="test-section">
+        <h3>2. Simulation des données produit</h3>
+        
+        <div class="form-group">
+            <label>Nom du produit:</label>
+            <input type="text" id="productName" value="T-shirt Custom Design" />
+        </div>
+        
+        <div class="form-group">
+            <label>Description:</label>
+            <textarea id="productDescription">Design personnalisé appliqué sur T-shirt Classique Blanc</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Design ID:</label>
+            <input type="number" id="designId" value="1" />
+        </div>
+    </div>
+
+    <!-- Étape 3: Test de la sauvegarde -->
+    <div class="test-section">
+        <h3>3. Test de la sauvegarde "Créer en attente"</h3>
+        <p>Teste la logique de sauvegarde des données localStorage vers l'API backend:</p>
+        
+        <button class="btn btn-outline" onclick="testSaveDraft()">💾 Tester "Créer en attente"</button>
+        <button class="btn" onclick="testSaveProduct()">✅ Tester "Créer le produit"</button>
+        
+        <div id="saveStatus"></div>
+        <div class="api-response" id="apiResponse"></div>
+    </div>
+
+    <!-- Étape 4: Vérification des APIs -->
+    <div class="test-section">
+        <h3>4. Vérification des APIs</h3>
+        
+        <button class="btn btn-outline" onclick="testTransformsAPI()">🔄 Tester API Transformations</button>
+        <button class="btn btn-outline" onclick="testPositionAPI()">📍 Tester API Position</button>
+        <button class="btn btn-outline" onclick="testCreateProductAPI()">🏭 Tester API Création Produit</button>
+        
+        <div id="apiTestStatus"></div>
+        <div class="api-response" id="apiTestResponse"></div>
+    </div>
+
+    <script>
+        // Configuration API
+        const API_BASE_URL = 'http://localhost:3004';
+        
+        // Fonction pour obtenir le token d'authentification
+        function getAuthToken() {
+            return localStorage.getItem('authToken') || localStorage.getItem('accessToken');
+        }
+        
+        // Headers pour les requêtes
+        function getHeaders() {
+            const token = getAuthToken();
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            };
+        }
+
+        // Sauvegarder les données dans localStorage
+        function saveToLocalStorage() {
+            const productId = document.getElementById('productId').value;
+            const designUrl = document.getElementById('designUrl').value;
+            const positionX = parseFloat(document.getElementById('positionX').value);
+            const positionY = parseFloat(document.getElementById('positionY').value);
+            const scale = parseFloat(document.getElementById('scale').value);
+            const rotation = parseFloat(document.getElementById('rotation').value);
+            
+            const storageKey = `design-position-${productId}-${designUrl}`;
+            const transforms = {
+                positionX,
+                positionY,
+                scale,
+                rotation
+            };
+            
+            localStorage.setItem(storageKey, JSON.stringify(transforms));
+            
+            document.getElementById('localStorageStatus').innerHTML = 
+                `<div class="success">✅ Données sauvegardées dans localStorage avec la clé: ${storageKey}</div>`;
+            
+            displayLocalStorageData();
+        }
+
+        // Charger les données depuis localStorage
+        function loadFromLocalStorage() {
+            const productId = document.getElementById('productId').value;
+            const designUrl = document.getElementById('designUrl').value;
+            const storageKey = `design-position-${productId}-${designUrl}`;
+            
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                try {
+                    const transforms = JSON.parse(saved);
+                    document.getElementById('positionX').value = transforms.positionX || 0.5;
+                    document.getElementById('positionY').value = transforms.positionY || 0.3;
+                    document.getElementById('scale').value = transforms.scale || 1.0;
+                    document.getElementById('rotation').value = transforms.rotation || 0;
+                    
+                    document.getElementById('localStorageStatus').innerHTML = 
+                        `<div class="success">✅ Données chargées depuis localStorage</div>`;
+                } catch (e) {
+                    document.getElementById('localStorageStatus').innerHTML = 
+                        `<div class="error">❌ Erreur lors du parsing: ${e.message}</div>`;
+                }
+            } else {
+                document.getElementById('localStorageStatus').innerHTML = 
+                    `<div class="info">ℹ️ Aucune donnée trouvée dans localStorage pour la clé: ${storageKey}</div>`;
+            }
+            
+            displayLocalStorageData();
+        }
+
+        // Afficher les données localStorage
+        function displayLocalStorageData() {
+            const productId = document.getElementById('productId').value;
+            const designUrl = document.getElementById('designUrl').value;
+            const storageKey = `design-position-${productId}-${designUrl}`;
+            
+            const saved = localStorage.getItem(storageKey);
+            document.getElementById('localStorageDisplay').textContent = saved || 'Aucune donnée';
+        }
+
+        // Tester la sauvegarde en brouillon
+        async function testSaveDraft() {
+            const statusDiv = document.getElementById('saveStatus');
+            const responseDiv = document.getElementById('apiResponse');
+            
+            statusDiv.innerHTML = '<div class="info">🔄 Test en cours...</div>';
+            
+            try {
+                // Récupérer les données localStorage
+                const productId = document.getElementById('productId').value;
+                const designUrl = document.getElementById('designUrl').value;
+                const storageKey = `design-position-${productId}-${designUrl}`;
+                const savedTransforms = localStorage.getItem(storageKey);
+                
+                if (!savedTransforms) {
+                    throw new Error('Aucune donnée dans localStorage. Veuillez d\'abord sauvegarder les données.');
+                }
+                
+                const localStorageTransforms = JSON.parse(savedTransforms);
+                const productName = document.getElementById('productName').value;
+                const productDescription = document.getElementById('productDescription').value;
+                const designId = document.getElementById('designId').value;
+                
+                // Simuler selectedProduct et selectedDesign
+                const selectedProduct = {
+                    id: parseInt(productId),
+                    name: "T-shirt Classique Blanc",
+                    description: "T-shirt en coton 100% biologique",
+                    price: 19.99,
+                    imageUrl: "https://res.cloudinary.com/dxhh7qpob/image/upload/v1/products/tshirt-white.png"
+                };
+                
+                const selectedDesign = {
+                    id: parseInt(designId),
+                    name: "Design Test",
+                    imageUrl: designUrl
+                };
+                
+                // 1. Créer le produit vendor
+                const vendorProductData = {
+                    baseProductId: selectedProduct.id,
+                    productStructure: {
+                        adminProduct: {
+                            id: selectedProduct.id,
+                            name: selectedProduct.name,
+                            description: selectedProduct.description,
+                            price: selectedProduct.price,
+                            images: {
+                                colorVariations: []
+                            },
+                            sizes: []
+                        },
+                        designApplication: {
+                            designBase64: selectedDesign.imageUrl,
+                            positioning: 'CENTER',
+                            scale: localStorageTransforms.scale || 1.0
+                        }
+                    },
+                    vendorName: productName || `${selectedProduct.name} - ${selectedDesign.name}`,
+                    vendorDescription: productDescription || `Design personnalisé appliqué sur ${selectedProduct.name}`,
+                    vendorPrice: selectedProduct.price,
+                    vendorStock: 10,
+                    selectedColors: [],
+                    selectedSizes: [],
+                    finalImagesBase64: {},
+                    forcedStatus: 'DRAFT',
+                    designPosition: {
+                        x: localStorageTransforms.positionX || 0.5,
+                        y: localStorageTransforms.positionY || 0.3,
+                        scale: localStorageTransforms.scale || 1.0,
+                        rotation: localStorageTransforms.rotation || 0
+                    },
+                    bypassValidation: true
+                };
+                
+                console.log('🚀 Données pour création produit:', vendorProductData);
+                
+                // Test de création produit
+                const createResponse = await fetch(`${API_BASE_URL}/vendor/products`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(vendorProductData)
+                });
+                
+                if (!createResponse.ok) {
+                    throw new Error(`HTTP error! status: ${createResponse.status}`);
+                }
+                
+                const createResult = await createResponse.json();
+                console.log('✅ Produit créé:', createResult);
+                
+                if (!createResult.success || !createResult.productId) {
+                    throw new Error(createResult.message || 'Erreur lors de la création du produit');
+                }
+                
+                const vendorProductId = createResult.productId;
+                
+                // 2. Sauvegarder les transformations
+                const transformsPayload = {
+                    vendorProductId: vendorProductId,
+                    designUrl: selectedDesign.imageUrl,
+                    transforms: {
+                        '0': {
+                            x: localStorageTransforms.positionX || 0.5,
+                            y: localStorageTransforms.positionY || 0.3,
+                            scale: localStorageTransforms.scale || 1.0
+                        },
+                        positioning: {
+                            x: localStorageTransforms.positionX || 0.5,
+                            y: localStorageTransforms.positionY || 0.3,
+                            scale: localStorageTransforms.scale || 1.0,
+                            rotation: localStorageTransforms.rotation || 0
+                        }
+                    },
+                    lastModified: Date.now()
+                };
+                
+                console.log('🚀 Données pour transformations:', transformsPayload);
+                
+                const transformsResponse = await fetch(`${API_BASE_URL}/vendor/design-transforms/save`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(transformsPayload)
+                });
+                
+                if (!transformsResponse.ok) {
+                    throw new Error(`HTTP error! status: ${transformsResponse.status}`);
+                }
+                
+                const transformsResult = await transformsResponse.json();
+                console.log('✅ Transformations sauvegardées:', transformsResult);
+                
+                // 3. Sauvegarder la position si designId existe
+                if (selectedDesign.id) {
+                    const positionPayload = {
+                        x: localStorageTransforms.positionX || 0.5,
+                        y: localStorageTransforms.positionY || 0.3,
+                        scale: localStorageTransforms.scale || 1.0,
+                        rotation: localStorageTransforms.rotation || 0
+                    };
+                    
+                    console.log('🚀 Données pour position:', positionPayload);
+                    
+                    const positionResponse = await fetch(`${API_BASE_URL}/vendor/design-position`, {
+                        method: 'POST',
+                        headers: getHeaders(),
+                        body: JSON.stringify({
+                            vendorProductId: vendorProductId,
+                            designId: selectedDesign.id,
+                            position: positionPayload
+                        })
+                    });
+                    
+                    if (!positionResponse.ok) {
+                        throw new Error(`HTTP error! status: ${positionResponse.status}`);
+                    }
+                    
+                    const positionResult = await positionResponse.json();
+                    console.log('✅ Position sauvegardée:', positionResult);
+                }
+                
+                statusDiv.innerHTML = '<div class="success">✅ Sauvegarde en brouillon réussie!</div>';
+                responseDiv.textContent = JSON.stringify({
+                    produit: createResult,
+                    transformations: transformsResult,
+                    position: 'Sauvegardée'
+                }, null, 2);
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du test:', error);
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+                responseDiv.textContent = error.stack || error.message;
+            }
+        }
+
+        // Tester la sauvegarde normale
+        async function testSaveProduct() {
+            const statusDiv = document.getElementById('saveStatus');
+            statusDiv.innerHTML = '<div class="info">🔄 Test de sauvegarde normale (simulation)...</div>';
+            
+            // Simuler l'ancienne logique
+            setTimeout(() => {
+                statusDiv.innerHTML = '<div class="success">✅ Sauvegarde normale simulée</div>';
+            }, 1000);
+        }
+
+        // Tester l'API des transformations
+        async function testTransformsAPI() {
+            const statusDiv = document.getElementById('apiTestStatus');
+            const responseDiv = document.getElementById('apiTestResponse');
+            
+            statusDiv.innerHTML = '<div class="info">🔄 Test API Transformations...</div>';
+            
+            try {
+                const testPayload = {
+                    vendorProductId: 1,
+                    designUrl: "https://test.com/design.png",
+                    transforms: {
+                        '0': { x: 0.5, y: 0.3, scale: 1.0 },
+                        positioning: { x: 0.5, y: 0.3, scale: 1.0, rotation: 0 }
+                    },
+                    lastModified: Date.now()
+                };
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/design-transforms/save`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(testPayload)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<div class="success">✅ API Transformations OK</div>';
+                } else {
+                    statusDiv.innerHTML = `<div class="error">❌ API Transformations Error: ${response.status}</div>`;
+                }
+                
+                responseDiv.textContent = JSON.stringify(result, null, 2);
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+                responseDiv.textContent = error.stack || error.message;
+            }
+        }
+
+        // Tester l'API des positions
+        async function testPositionAPI() {
+            const statusDiv = document.getElementById('apiTestStatus');
+            const responseDiv = document.getElementById('apiTestResponse');
+            
+            statusDiv.innerHTML = '<div class="info">🔄 Test API Position...</div>';
+            
+            try {
+                const testPayload = {
+                    vendorProductId: 1,
+                    designId: 1,
+                    position: {
+                        x: 0.5,
+                        y: 0.3,
+                        scale: 1.0,
+                        rotation: 0
+                    }
+                };
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/design-position`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(testPayload)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<div class="success">✅ API Position OK</div>';
+                } else {
+                    statusDiv.innerHTML = `<div class="error">❌ API Position Error: ${response.status}</div>`;
+                }
+                
+                responseDiv.textContent = JSON.stringify(result, null, 2);
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+                responseDiv.textContent = error.stack || error.message;
+            }
+        }
+
+        // Tester l'API de création de produit
+        async function testCreateProductAPI() {
+            const statusDiv = document.getElementById('apiTestStatus');
+            const responseDiv = document.getElementById('apiTestResponse');
+            
+            statusDiv.innerHTML = '<div class="info">🔄 Test API Création Produit...</div>';
+            
+            try {
+                const testPayload = {
+                    baseProductId: 1,
+                    productStructure: {
+                        adminProduct: {
+                            id: 1,
+                            name: "Test Product",
+                            description: "Test Description",
+                            price: 19.99,
+                            images: { colorVariations: [] },
+                            sizes: []
+                        },
+                        designApplication: {
+                            designBase64: "https://test.com/design.png",
+                            positioning: 'CENTER',
+                            scale: 1.0
+                        }
+                    },
+                    vendorName: "Test Vendor Product",
+                    vendorDescription: "Test Description",
+                    vendorPrice: 19.99,
+                    vendorStock: 10,
+                    selectedColors: [],
+                    selectedSizes: [],
+                    finalImagesBase64: {},
+                    forcedStatus: 'DRAFT',
+                    bypassValidation: true
+                };
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(testPayload)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<div class="success">✅ API Création Produit OK</div>';
+                } else {
+                    statusDiv.innerHTML = `<div class="error">❌ API Création Produit Error: ${response.status}</div>`;
+                }
+                
+                responseDiv.textContent = JSON.stringify(result, null, 2);
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+                responseDiv.textContent = error.stack || error.message;
+            }
+        }
+
+        // Initialiser l'affichage
+        displayLocalStorageData();
+    </script>
+</body>
+</html> 

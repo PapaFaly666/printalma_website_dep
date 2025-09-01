@@ -1,0 +1,464 @@
+/* Dashboard Statistics Styles */
+
+/* ==========================================
+   KPI CARDS
+   ========================================== */
+
+.kpi-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.kpi-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.kpi-card.green { 
+  border-left: 4px solid #28a745; 
+}
+
+.kpi-card.blue { 
+  border-left: 4px solid #007bff; 
+}
+
+.kpi-card.purple { 
+  border-left: 4px solid #6f42c1; 
+}
+
+.kpi-card.orange { 
+  border-left: 4px solid #fd7e14; 
+}
+
+.kpi-card.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.kpi-icon {
+  font-size: 2.5rem;
+  opacity: 0.8;
+  min-width: 60px;
+  text-align: center;
+}
+
+.kpi-icon-skeleton {
+  width: 60px;
+  height: 60px;
+  background: #f3f4f6;
+  border-radius: 50%;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.kpi-content {
+  min-width: 0; /* Pour éviter l'overflow */
+}
+
+.kpi-title {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin: 0 0 5px 0;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #212529;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.kpi-sub-value {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 2px;
+}
+
+.kpi-change {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kpi-change.positive { 
+  color: #28a745; 
+}
+
+.kpi-change.negative { 
+  color: #dc3545; 
+}
+
+.kpi-change.neutral { 
+  color: #6c757d; 
+}
+
+/* ==========================================
+   REVENUE CHART
+   ========================================== */
+
+.revenue-chart {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 30px;
+  border: 1px solid #e5e7eb;
+}
+
+.chart-skeleton {
+  padding: 20px;
+}
+
+.revenue-chart .recharts-cartesian-grid-horizontal line,
+.revenue-chart .recharts-cartesian-grid-vertical line {
+  stroke: #f0f0f0;
+}
+
+.revenue-chart .recharts-tooltip-wrapper {
+  outline: none;
+}
+
+/* ==========================================
+   TOP PRODUCTS
+   ========================================== */
+
+.top-products {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.products-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.product-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  gap: 16px;
+  transition: all 0.2s ease;
+  border: 1px solid #e9ecef;
+}
+
+.product-item:hover {
+  background: #e9ecef;
+  transform: translateX(2px);
+}
+
+.product-item.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.product-rank {
+  font-size: 1.2rem;
+  font-weight: bold;
+  min-width: 40px;
+  text-align: center;
+  padding: 8px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid currentColor;
+}
+
+.product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-name {
+  margin: 0 0 8px 0;
+  color: #212529;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.product-meta {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.product-meta .category {
+  font-size: 0.85rem;
+  color: #6c757d;
+  background: #e9ecef;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.product-meta .sku {
+  font-size: 0.75rem;
+  color: #868e96;
+  font-family: 'Courier New', monospace;
+}
+
+.product-details {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.product-details span {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.product-stats {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.product-stats .revenue {
+  font-weight: bold;
+  color: #28a745;
+  font-size: 1.1rem;
+}
+
+.product-stats .orders {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.product-stats .profit {
+  font-size: 0.8rem;
+  color: #17a2b8;
+  font-weight: 500;
+}
+
+.product-stats .profit-margin {
+  font-size: 0.75rem;
+  color: #6f42c1;
+}
+
+.trend-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+}
+
+/* ==========================================
+   ANIMATIONS ET UTILITIES
+   ========================================== */
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+   ========================================== */
+
+@media (max-width: 768px) {
+  .kpi-cards {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .kpi-card .flex {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+  
+  .kpi-icon {
+    font-size: 2rem;
+  }
+  
+  .kpi-value {
+    font-size: 1.5rem;
+  }
+  
+  .product-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .product-info {
+    text-align: center;
+  }
+  
+  .product-stats {
+    text-align: center;
+    align-items: center;
+  }
+  
+  .product-details {
+    justify-content: center;
+  }
+  
+  .revenue-chart .recharts-responsive-container {
+    height: 250px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-cards {
+    gap: 12px;
+  }
+  
+  .kpi-card {
+    padding: 16px;
+  }
+  
+  .kpi-value {
+    font-size: 1.3rem;
+  }
+  
+  .product-item {
+    padding: 12px;
+  }
+  
+  .product-name {
+    font-size: 0.9rem;
+  }
+}
+
+/* ==========================================
+   DARK MODE SUPPORT
+   ========================================== */
+
+@media (prefers-color-scheme: dark) {
+  .kpi-card {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+  
+  .kpi-title {
+    color: #9ca3af;
+  }
+  
+  .kpi-value {
+    color: #f9fafb;
+  }
+  
+  .kpi-sub-value {
+    color: #9ca3af;
+  }
+  
+  .revenue-chart {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .top-products {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .product-item {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .product-item:hover {
+    background: #4b5563;
+  }
+  
+  .product-name {
+    color: #f9fafb;
+  }
+  
+  .product-meta .category {
+    background: #4b5563;
+    color: #d1d5db;
+  }
+  
+  .skeleton {
+    background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+    background-size: 200% 100%;
+  }
+}
+
+/* ==========================================
+   PRINT STYLES
+   ========================================== */
+
+@media print {
+  .kpi-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    break-inside: avoid;
+  }
+  
+  .kpi-card {
+    border: 1px solid #000;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  
+  .revenue-chart,
+  .top-products {
+    break-inside: avoid;
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+  
+  .kpi-card:hover,
+  .product-item:hover {
+    transform: none;
+  }
+} 

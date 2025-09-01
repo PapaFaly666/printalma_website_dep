@@ -1,0 +1,93 @@
+{
+  "baseProductId": 287,
+  "designUrl": "blob:http://localhost:5174/724d35be-8b22-459e-a45f-71740e10fbd3",
+  "finalImages": {
+    "colorImages": {
+      "Blanc": {
+        "colorInfo": {
+          "id": 340,
+          "name": "Blanc",
+          "colorCode": "#e0e0dc"
+        },
+        "imageUrl": "blob:http://localhost:5174/7f82336b-517b-4b8e-b84e-16b492e2dcb9",
+        "imageKey": "Blanc"
+      },
+      "Blue": {
+        "colorInfo": {
+          "id": 341,
+          "name": "Blue",
+          "colorCode": "#245d96"
+        },
+        "imageUrl": "blob:http://localhost:5174/f84bdcaf-e741-4a31-84bf-c87013783b2f",
+        "imageKey": "Blue"
+      },
+      "Noir": {
+        "colorInfo": {
+          "id": 342,
+          "name": "Noir",
+          "colorCode": "#2c2c2c"
+        },
+        "imageUrl": "blob:http://localhost:5174/28d081da-ff64-49cc-ac72-e0769a953106",
+        "imageKey": "Noir"
+      },
+      "Rouge": {
+        "colorInfo": {
+          "id": 343,
+          "name": "Rouge",
+          "colorCode": "#aa2424"
+        },
+        "imageUrl": "blob:http://localhost:5174/526da1a8-5f9d-4a81-96d0-d26fbb4f02d6",
+        "imageKey": "Rouge"
+      }
+    },
+    "statistics": {
+      "totalColorImages": 4,
+      "hasDefaultImage": false,
+      "availableColors": ["Blanc", "Blue", "Noir", "Rouge"],
+      "totalImagesGenerated": 4
+    }
+  },
+  "finalImagesBase64": {
+    "Blanc": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABkAAAAOECAYAAABVergGAAAAAklEQVR4AewaftIAAEAASURBVOz/kG1bx5Xet6L3e9...",
+    "Blue": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABkAAAAOECAYAAABVergGAAAAAklEQVR4AewaftIAAEAASURBVOz/kG1bx5Xet6L3e9...",
+    "Noir": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABkAAAAOECAYAAABVergGAAAAAklEQVR4AewaftIAAEAASURBVOz/kG1bx5Xet6L3e9...",
+    "Rouge": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABkAAAAOECAYAAABVergGAAAAAklEQVR4AewaftIAAEAASURBVOz/kG1bx5Xet6L3e9..."
+  },
+  "vendorPrice": 25,
+  "vendorName": "Tshirt prenium",
+  "vendorDescription": "T-shirt premium avec design personnalisé",
+  "vendorStock": 100,
+  "basePriceAdmin": 15,
+  "selectedSizes": [
+    { "id": 1, "sizeName": "S" },
+    { "id": 2, "sizeName": "M" },
+    { "id": 3, "sizeName": "L" },
+    { "id": 4, "sizeName": "XL" }
+  ],
+  "selectedColors": [
+    { "id": 340, "name": "Blanc", "colorCode": "#e0e0dc" },
+    { "id": 341, "name": "Blue", "colorCode": "#245d96" },
+    { "id": 342, "name": "Noir", "colorCode": "#2c2c2c" },
+    { "id": 343, "name": "Rouge", "colorCode": "#aa2424" }
+  ],
+  "previewView": {
+    "viewType": "FRONT",
+    "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1750412374/printalma/1750412373475-T-Shirt_Premium_Blanc.jpg",
+    "id": 319,
+    "width": 500,
+    "height": 500,
+    "naturalWidth": 500,
+    "naturalHeight": 500,
+    "delimitations": [
+      {
+        "x": 153.3365885416667,
+        "y": 112.7224392361111,
+        "width": 175.0636132315521,
+        "height": 311.1111111111111,
+        "coordinateType": "PERCENTAGE"
+      }
+    ]
+  },
+  "publishedAt": "2024-01-20T10:30:45.123Z",
+  "vendorId": 1
+} 

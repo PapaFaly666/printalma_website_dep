@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Nouvelles Cartes Produits Vendeur</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .line-clamp-1 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 1;
+        }
+        .line-clamp-2 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-6">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">🎨 Nouvelles Cartes Produits Vendeur</h1>
+        <p class="text-gray-600 mb-8">Design épuré en noir et blanc avec prix en francs CFA</p>
+
+        <!-- Grid de cartes -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- Carte 1 - Produit Publié -->
+            <div class="group border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 rounded-lg overflow-hidden">
+                <div class="p-0">
+                    <!-- Aperçu du produit -->
+                    <div class="relative">
+                        <div class="aspect-square bg-gray-100 flex items-center justify-center">
+                            <div class="text-gray-400 text-center">
+                                <div class="w-16 h-16 mx-auto mb-2 bg-gray-300 rounded"></div>
+                                <p class="text-sm">Aperçu Produit</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Badge de statut -->
+                        <div class="absolute top-3 right-3 z-10">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white border-gray-900">
+                                Publié
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Informations du produit -->
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <h3 class="font-semibold text-lg text-gray-900 mb-2 line-clamp-1">
+                                T-shirt Logo Corporate
+                            </h3>
+                            <p class="text-sm text-gray-500 mb-3 font-medium">
+                                Basé sur: T-shirt Classique Blanc
+                            </p>
+                            <p class="text-gray-600 text-sm line-clamp-2 leading-relaxed">
+                                T-shirt personnalisé avec logo d'entreprise professionnel, parfait pour les événements corporate.
+                            </p>
+                        </div>
+                        
+                        <!-- Prix et indicateurs -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-xl font-bold text-gray-900">
+                                13 119 FCFA
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs border-gray-300 text-gray-700 border">
+                                    Design
+                                </span>
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs border-gray-300 text-gray-700 border">
+                                    Positionné
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Boutons d'action -->
+                        <div class="flex items-center gap-2 pt-4 border-t border-gray-100">
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                Aperçu
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Modifier
+                            </button>
+                            <button class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300 rounded-md text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carte 2 - Produit en Brouillon avec Design Validé -->
+            <div class="group border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 rounded-lg overflow-hidden">
+                <div class="p-0">
+                    <!-- Aperçu du produit -->
+                    <div class="relative">
+                        <div class="aspect-square bg-gray-100 flex items-center justify-center">
+                            <div class="text-gray-400 text-center">
+                                <div class="w-16 h-16 mx-auto mb-2 bg-gray-300 rounded"></div>
+                                <p class="text-sm">Aperçu Produit</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Badge de statut -->
+                        <div class="absolute top-3 right-3 z-10">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-gray-900 border-gray-900 border">
+                                Brouillon
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Informations du produit -->
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <h3 class="font-semibold text-lg text-gray-900 mb-2 line-clamp-1">
+                                Mug Design Artistique
+                            </h3>
+                            <p class="text-sm text-gray-500 mb-3 font-medium">
+                                Basé sur: Mug Blanc 350ml
+                            </p>
+                            <p class="text-gray-600 text-sm line-clamp-2 leading-relaxed">
+                                Mug personnalisé avec motif artistique coloré, idéal pour un cadeau original et unique.
+                            </p>
+                        </div>
+                        
+                        <!-- Prix et indicateurs -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-xl font-bold text-gray-900">
+                                8 504 FCFA
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs border-gray-300 text-gray-700 border">
+                                    Design
+                                </span>
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs border-gray-300 text-gray-700 border">
+                                    Positionné
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Boutons d'action avec Publier -->
+                        <div class="flex items-center gap-2 pt-4 border-t border-gray-100">
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Publier
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                Aperçu
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Modifier
+                            </button>
+                            <button class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300 rounded-md text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carte 3 - Produit en Attente -->
+            <div class="group border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 rounded-lg overflow-hidden">
+                <div class="p-0">
+                    <!-- Aperçu du produit -->
+                    <div class="relative">
+                        <div class="aspect-square bg-gray-100 flex items-center justify-center">
+                            <div class="text-gray-400 text-center">
+                                <div class="w-16 h-16 mx-auto mb-2 bg-gray-300 rounded"></div>
+                                <p class="text-sm">Aperçu Produit</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Badge de statut -->
+                        <div class="absolute top-3 right-3 z-10">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-900 border-gray-300 border">
+                                En attente
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Informations du produit -->
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <h3 class="font-semibold text-lg text-gray-900 mb-2 line-clamp-1">
+                                Casquette Logo Moderne
+                            </h3>
+                            <p class="text-sm text-gray-500 mb-3 font-medium">
+                                Basé sur: Casquette Noire
+                            </p>
+                            <p class="text-gray-600 text-sm line-clamp-2 leading-relaxed">
+                                Casquette avec logo moderne en attente de validation du design par l'administrateur.
+                            </p>
+                        </div>
+                        
+                        <!-- Prix et indicateurs -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-xl font-bold text-gray-900">
+                                16 398 FCFA
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs border-gray-300 text-gray-700 border">
+                                    Design
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Boutons d'action -->
+                        <div class="flex items-center gap-2 pt-4 border-t border-gray-100">
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                Aperçu
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Modifier
+                            </button>
+                            <button class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300 rounded-md text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carte 4 - Produit Rejeté -->
+            <div class="group border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 rounded-lg overflow-hidden">
+                <div class="p-0">
+                    <!-- Aperçu du produit -->
+                    <div class="relative">
+                        <div class="aspect-square bg-gray-100 flex items-center justify-center">
+                            <div class="text-gray-400 text-center">
+                                <div class="w-16 h-16 mx-auto mb-2 bg-gray-300 rounded"></div>
+                                <p class="text-sm">Aperçu Produit</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Badge de statut -->
+                        <div class="absolute top-3 right-3 z-10">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-white border-gray-600">
+                                Rejeté
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Informations du produit -->
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <h3 class="font-semibold text-lg text-gray-900 mb-2 line-clamp-1">
+                                Sac Design Refusé
+                            </h3>
+                            <p class="text-sm text-gray-500 mb-3 font-medium">
+                                Basé sur: Tote Bag Canvas
+                            </p>
+                            <p class="text-gray-600 text-sm line-clamp-2 leading-relaxed">
+                                Produit avec design rejeté par l'administrateur. Nécessite une modification du design.
+                            </p>
+                        </div>
+                        
+                        <!-- Prix et indicateurs -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-xl font-bold text-gray-900">
+                                11 151 FCFA
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs border-gray-300 text-gray-700 border">
+                                    Design
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Boutons d'action -->
+                        <div class="flex items-center gap-2 pt-4 border-t border-gray-100">
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                Aperçu
+                            </button>
+                            <button class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-md text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Modifier
+                            </button>
+                            <button class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300 rounded-md text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Résumé des améliorations -->
+        <div class="mt-12 bg-white rounded-lg border border-gray-200 p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">✨ Améliorations du Design</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="font-semibold text-lg text-gray-900 mb-4">🎨 Design Épuré</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• Palette noir et blanc uniquement</li>
+                        <li>• Typographie claire et lisible</li>
+                        <li>• Espacement généreux et aéré</li>
+                        <li>• Effets de hover subtils</li>
+                        <li>• Suppression des informations de debug</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="font-semibold text-lg text-gray-900 mb-4">💰 Prix en Francs CFA</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• Conversion automatique EUR → FCFA</li>
+                        <li>• Format localisé français</li>
+                        <li>• Affichage sans décimales</li>
+                        <li>• Typographie mise en valeur</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-8">
+                <h3 class="font-semibold text-lg text-gray-900 mb-4">🔧 Composants Shadcn UI</h3>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-gray-600">
+                        Utilisation des composants Shadcn UI pour une cohérence parfaite avec le design system :
+                        <strong>Card</strong>, <strong>Badge</strong>, <strong>Button</strong> avec variants personnalisés.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

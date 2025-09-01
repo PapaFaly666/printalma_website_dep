@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Implémentation Documentation Backend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .test-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: white;
+        }
+        .error { color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #dc2626; }
+        .success { color: #059669; background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #059669; }
+        .loading { color: #6b7280; text-align: center; padding: 20px; }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .product-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        .product-preview {
+            width: 100%;
+            height: 300px;
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .product-info {
+            padding: 16px;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .backend-doc {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .position-info {
+            background: #fefce8;
+            border: 1px solid #eab308;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        
+        .delimitation-info {
+            background: #f0fdf4;
+            border: 1px solid #22c55e;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test - Implémentation Documentation Backend</h1>
+        <p>Test suivant exactement la documentation backend officielle avec délimitations</p>
+        
+        <div class="backend-doc">
+            <h3>📋 Documentation Backend Officielle</h3>
+            <ul>
+                <li>✅ <strong>Image produit</strong> : <code>adminProduct.colorVariations[].images[].url</code></li>
+                <li>✅ <strong>Image design</strong> : <code>designApplication.designUrl</code></li>
+                <li>✅ <strong>Position</strong> : <code>designPositions[0].position</code> avec fallback vers <code>designApplication.scale</code></li>
+                <li>✅ <strong>Délimitations</strong> : <code>images[].delimitations[]</code> avec x,y,width,height</li>
+                <li>✅ <strong>Application</strong> : Design appliqué DANS chaque délimitation (comme SellDesignPage)</li>
+                <li>✅ <strong>Transform</strong> : <code>scale(scale) rotate(rotation deg)</code> dans la délimitation</li>
+            </ul>
+        </div>
+        
+        <div class="test-card">
+            <h2>📋 Chargement des produits</h2>
+            <button onclick="loadProducts()" class="btn">
+                Charger les produits (Documentation Backend)
+            </button>
+            <div id="loading-status">Cliquez pour charger</div>
+            
+            <div id="products-grid" class="product-grid" style="display: none;">
+                <!-- Les produits seront affichés ici -->
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h2>🔍 Analyse des délimitations</h2>
+            <div id="delimitation-analysis">
+                <em>Chargez les produits pour voir l'analyse des délimitations</em>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3004';
+        
+        function log(message) {
+            console.log(message);
+        }
+
+        function getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        // 🎯 Fonction pour calculer la position des délimitations (comme SellDesignPage)
+        function computePxPosition(delim, naturalSize, containerSize) {
+            const isPixel = delim.coordinateType === 'PIXEL' || delim.x > 100 || delim.y > 100;
+
+            const imgW = naturalSize.width || 1;
+            const imgH = naturalSize.height || 1;
+
+            let pct = {
+                x: isPixel ? (delim.x / imgW) * 100 : delim.x,
+                y: isPixel ? (delim.y / imgH) * 100 : delim.y,
+                w: isPixel ? (delim.width / imgW) * 100 : delim.width,
+                h: isPixel ? (delim.height / imgH) * 100 : delim.height,
+            };
+
+            const { width: contW, height: contH } = containerSize;
+            if (contW === 0 || contH === 0) return { left: 0, top: 0, width: 0, height: 0 };
+
+            const imgRatio = imgW / imgH;
+            const contRatio = contW / contH;
+
+            let dispW, dispH, offsetX, offsetY;
+            if (imgRatio > contRatio) {
+                dispW = contW;
+                dispH = contW / imgRatio;
+                offsetX = 0;
+                offsetY = (contH - dispH) / 2;
+            } else {
+                dispH = contH;
+                dispW = contH * imgRatio;
+                offsetX = (contW - dispW) / 2;
+                offsetY = 0;
+            }
+
+            return {
+                left: offsetX + (pct.x / 100) * dispW,
+                top: offsetY + (pct.y / 100) * dispH,
+                width: (pct.w / 100) * dispW,
+                height: (pct.h / 100) * dispH,
+            };
+        }
+
+        // 🔧 Fonction pour créer un aperçu selon la documentation backend
+        function createBackendDocPreview(product) {
+            const preview = document.createElement('div');
+            preview.className = 'product-preview';
+            
+            // Image produit selon la documentation
+            const baseImageUrl = product.adminProduct.colorVariations[0]?.images[0]?.url;
+            
+            if (!baseImageUrl) {
+                preview.innerHTML = '<div style="color: #dc2626; display: flex; align-items: center; justify-content: center; height: 100%;">❌ Aucune image produit</div>';
+                return preview;
+            }
+            
+            // Image du produit
+            const productImg = document.createElement('img');
+            productImg.src = baseImageUrl;
+            productImg.alt = product.adminProduct.name;
+            productImg.style.width = '100%';
+            productImg.style.height = '100%';
+            productImg.style.objectFit = 'contain';
+            
+            // Attendre que l'image soit chargée pour obtenir les dimensions naturelles
+            productImg.onload = () => {
+                const naturalSize = { width: productImg.naturalWidth, height: productImg.naturalHeight };
+                const containerSize = { width: preview.offsetWidth, height: preview.offsetHeight };
+                
+                // Délimitations de l'image
+                const delimitations = product.adminProduct.colorVariations[0]?.images[0]?.delimitations || [];
+                
+                console.log(`🎨 Produit ${product.id} - Délimitations:`, delimitations);
+                
+                // Appliquer le design dans chaque délimitation (comme SellDesignPage)
+                if (product.designApplication.hasDesign && product.designApplication.designUrl && delimitations.length > 0) {
+                    delimitations.forEach((delim, idx) => {
+                        const pos = computePxPosition(delim, naturalSize, containerSize);
+                        if (pos.width <= 0 || pos.height <= 0) return;
+                        
+                        const delimitationDiv = document.createElement('div');
+                        delimitationDiv.style.position = 'absolute';
+                        delimitationDiv.style.left = pos.left + 'px';
+                        delimitationDiv.style.top = pos.top + 'px';
+                        delimitationDiv.style.width = pos.width + 'px';
+                        delimitationDiv.style.height = pos.height + 'px';
+                        delimitationDiv.style.overflow = 'hidden';
+                        delimitationDiv.style.border = 'none';
+                        delimitationDiv.style.outline = 'none';
+                        
+                        // Design dans la délimitation
+                        const designImg = document.createElement('img');
+                        designImg.src = product.designApplication.designUrl;
+                        designImg.alt = `Design ${product.designId}`;
+                        designImg.style.width = '100%';
+                        designImg.style.height = '100%';
+                        designImg.style.objectFit = 'contain';
+                        
+                        // Transformation selon la documentation
+                        let scale = product.designApplication.scale || 0.6;
+                        let rotation = 0;
+                        
+                        if (product.designPositions && product.designPositions.length > 0) {
+                            const position = product.designPositions[0].position;
+                            scale = position.scale || scale;
+                            rotation = position.rotation || 0;
+                        }
+                        
+                        designImg.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+                        designImg.style.border = 'none';
+                        designImg.style.outline = 'none';
+                        designImg.style.boxShadow = 'none';
+                        designImg.draggable = false;
+                        
+                        delimitationDiv.appendChild(designImg);
+                        preview.appendChild(delimitationDiv);
+                        
+                        console.log(`🎨 Design appliqué dans délimitation ${idx} pour produit ${product.id}`);
+                    });
+                } else if (product.designApplication.hasDesign && delimitations.length === 0) {
+                    // Indicateur pas de délimitations
+                    const noDelimBadge = document.createElement('div');
+                    noDelimBadge.style.position = 'absolute';
+                    noDelimBadge.style.top = '8px';
+                    noDelimBadge.style.left = '8px';
+                    noDelimBadge.style.background = '#dc2626';
+                    noDelimBadge.style.color = 'white';
+                    noDelimBadge.style.padding = '4px 8px';
+                    noDelimBadge.style.borderRadius = '4px';
+                    noDelimBadge.style.fontSize = '10px';
+                    noDelimBadge.style.fontWeight = '600';
+                    noDelimBadge.textContent = 'Pas de délimitations';
+                    preview.appendChild(noDelimBadge);
+                } else if (!product.designApplication.hasDesign) {
+                    // Indicateur pas de design
+                    const noDesignBadge = document.createElement('div');
+                    noDesignBadge.style.position = 'absolute';
+                    noDesignBadge.style.top = '8px';
+                    noDesignBadge.style.left = '8px';
+                    noDesignBadge.style.background = '#f59e0b';
+                    noDesignBadge.style.color = 'white';
+                    noDesignBadge.style.padding = '4px 8px';
+                    noDesignBadge.style.borderRadius = '4px';
+                    noDesignBadge.style.fontSize = '10px';
+                    noDesignBadge.style.fontWeight = '600';
+                    noDesignBadge.textContent = 'Pas de design';
+                    preview.appendChild(noDesignBadge);
+                }
+            };
+            
+            preview.appendChild(productImg);
+            
+            return preview;
+        }
+
+        // Fonction pour analyser les délimitations
+        function analyzeDelimitations(products) {
+            const analysis = document.getElementById('delimitation-analysis');
+            let html = '<h4>📊 Analyse des délimitations selon la documentation backend :</h4>';
+            
+            products.forEach(product => {
+                const image = product.adminProduct.colorVariations[0]?.images[0];
+                const delimitations = image?.delimitations || [];
+                
+                html += `
+                    <div class="delimitation-info">
+                        <strong>Produit ${product.id} (${product.vendorName})</strong><br>
+                        <strong>Image:</strong> ${image?.url ? 'Disponible' : 'Manquante'}<br>
+                        <strong>Délimitations:</strong> ${delimitations.length} zone(s)<br>
+                        <strong>Design:</strong> ${product.designApplication.hasDesign ? 'Oui' : 'Non'}<br>
+                        ${delimitations.length > 0 ? 
+                            delimitations.map((delim, idx) => 
+                                `<strong>Zone ${idx + 1}:</strong> x=${delim.x}, y=${delim.y}, w=${delim.width}, h=${delim.height} (${delim.coordinateType})`
+                            ).join('<br>') :
+                            '<em>Aucune délimitation définie</em>'
+                        }
+                    </div>
+                `;
+            });
+            
+            analysis.innerHTML = html;
+        }
+
+        // Fonction pour créer une carte produit
+        function createProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            // Créer l'aperçu selon la documentation backend
+            const preview = createBackendDocPreview(product);
+            
+            // Informations du produit
+            const info = document.createElement('div');
+            info.className = 'product-info';
+            
+            const hasPosition = product.designPositions && product.designPositions.length > 0;
+            const position = hasPosition ? product.designPositions[0].position : null;
+            const delimitations = product.adminProduct.colorVariations[0]?.images[0]?.delimitations || [];
+            
+            info.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 16px;">${product.vendorName}</div>
+                <div style="font-size: 12px; color: #6b7280; margin-top: 8px;">
+                    <strong>Base:</strong> ${product.adminProduct.name}<br>
+                    <strong>Design:</strong> ${product.designApplication.hasDesign ? 'Oui' : 'Non'}<br>
+                    <strong>Délimitations:</strong> ${delimitations.length} zone(s)<br>
+                    ${hasPosition ? 
+                        `<strong>Position:</strong> scale=${position.scale}, rotation=${position.rotation}°` :
+                        '<strong>Position:</strong> Valeurs par défaut'
+                    }
+                </div>
+            `;
+            
+            card.appendChild(preview);
+            card.appendChild(info);
+            
+            return card;
+        }
+
+        // Fonction principale pour charger les produits
+        async function loadProducts() {
+            const statusDiv = document.getElementById('loading-status');
+            const gridDiv = document.getElementById('products-grid');
+            
+            statusDiv.innerHTML = '<div class="loading">Chargement des produits...</div>';
+            gridDiv.style.display = 'none';
+            
+            try {
+                log('📡 Chargement des produits selon la documentation backend...');
+                
+                const response = await fetch(`${API_BASE_URL}/vendor/products?limit=20&offset=0`, {
+                    credentials: 'include',
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                log('📋 Réponse API complète reçue');
+                
+                if (!result.success || !result.data || !result.data.products) {
+                    throw new Error('Format de réponse invalide');
+                }
+
+                const products = result.data.products;
+                log(`✅ ${products.length} produits chargés`);
+
+                // Analyser les délimitations
+                analyzeDelimitations(products);
+
+                // Afficher les produits
+                gridDiv.innerHTML = '';
+                
+                for (const product of products) {
+                    const card = createProductCard(product);
+                    gridDiv.appendChild(card);
+                }
+                
+                gridDiv.style.display = 'grid';
+                statusDiv.innerHTML = `<div class="success">✅ ${products.length} produits chargés selon la documentation backend</div>`;
+                
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`);
+                statusDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-test au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Page de test Documentation Backend chargée');
+        });
+    </script>
+</body>
+</html> 

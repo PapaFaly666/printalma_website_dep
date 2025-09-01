@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Design Transforms Optimisé</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .status-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-success { background: #28a745; }
+        .status-warning { background: #ffc107; }
+        .status-error { background: #dc3545; }
+        
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 4px;
+        }
+        
+        .button:hover {
+            background: #0056b3;
+        }
+        
+        .button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .test-section {
+            margin: 24px 0;
+            padding: 16px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        
+        .console-log {
+            background: #000;
+            color: #00ff00;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin: 8px 0;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+        
+        .metric-card {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .metric-label {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Test Design Transforms Optimisé</h1>
+            <p>Validation de la solution LocalStorage + Auto-sauvegarde</p>
+        </div>
+        
+        <!-- Status Global -->
+        <div class="status-card">
+            <h3>📊 Status Système</h3>
+            <div id="system-status">
+                <div><span class="status-indicator status-warning"></span> Initialisation en cours...</div>
+            </div>
+        </div>
+        
+        <!-- Métriques -->
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="metric-value" id="storage-count">0</div>
+                <div class="metric-label">Items LocalStorage</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="api-calls">0</div>
+                <div class="metric-label">Appels API</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="load-time">0ms</div>
+                <div class="metric-label">Temps Chargement</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="dirty-count">0</div>
+                <div class="metric-label">Non sauvegardés</div>
+            </div>
+        </div>
+        
+        <!-- Test LocalStorage -->
+        <div class="test-section">
+            <h3>🗄️ Test LocalStorage</h3>
+            <button class="button" onclick="testLocalStorage()">Tester Sauvegarde Locale</button>
+            <button class="button" onclick="testLoadFromLocal()">Tester Chargement Local</button>
+            <button class="button" onclick="clearLocalStorage()">Nettoyer LocalStorage</button>
+            <div id="localStorage-result"></div>
+        </div>
+        
+        <!-- Test Auto-sauvegarde -->
+        <div class="test-section">
+            <h3>⏰ Test Auto-sauvegarde</h3>
+            <button class="button" onclick="testAutoSave()">Démarrer Auto-sauvegarde</button>
+            <button class="button" onclick="cancelAutoSave()">Annuler Auto-sauvegarde</button>
+            <div id="autosave-status"></div>
+        </div>
+        
+        <!-- Test Performance -->
+        <div class="test-section">
+            <h3>⚡ Test Performance</h3>
+            <button class="button" onclick="testPerformance()">Test Charge Massive</button>
+            <button class="button" onclick="testConcurrentUpdates()">Test Mises à jour Concurrentes</button>
+            <div id="performance-result"></div>
+        </div>
+        
+        <!-- Test Offline -->
+        <div class="test-section">
+            <h3>🔌 Test Mode Offline</h3>
+            <button class="button" onclick="simulateOffline()">Simuler Offline</button>
+            <button class="button" onclick="simulateOnline()">Simuler Online</button>
+            <div id="offline-status"></div>
+        </div>
+        
+        <!-- Console -->
+        <div class="test-section">
+            <h3>🖥️ Console</h3>
+            <div class="console-log" id="console-output"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Simulation du service localStorage
+        const STORAGE_PREFIX = 'design_transforms';
+        let apiCallCount = 0;
+        let startTime = Date.now();
+        let autoSaveTimeout = null;
+        
+        // Logger pour console simulée
+        function log(message) {
+            const now = new Date().toLocaleTimeString();
+            const consoleEl = document.getElementById('console-output');
+            consoleEl.innerHTML += `[${now}] ${message}\n`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+        
+        // Simulation service localStorage
+        function saveTransformToLocal(productId, designUrl, transforms) {
+            const key = `${STORAGE_PREFIX}_${productId}_${btoa(designUrl).slice(0, 16)}`;
+            const state = {
+                transforms,
+                lastModified: Date.now(),
+                isDirty: true,
+                isLoading: false
+            };
+            
+            localStorage.setItem(key, JSON.stringify(state));
+            log(`💾 LocalStorage: Transforms sauvés pour produit ${productId}`);
+            updateMetrics();
+        }
+        
+        function loadTransformFromLocal(productId, designUrl) {
+            const key = `${STORAGE_PREFIX}_${productId}_${btoa(designUrl).slice(0, 16)}`;
+            const stored = localStorage.getItem(key);
+            
+            if (stored) {
+                const state = JSON.parse(stored);
+                log(`📥 LocalStorage: Transforms chargés pour produit ${productId}`);
+                return state;
+            }
+            
+            log(`ℹ️ LocalStorage: Aucun transform trouvé pour produit ${productId}`);
+            return null;
+        }
+        
+        // Simulation API
+        function simulateAPICall(endpoint, data) {
+            return new Promise((resolve, reject) => {
+                apiCallCount++;
+                updateMetrics();
+                
+                log(`🚀 API Request: ${endpoint}`);
+                
+                // Simuler délai réseau
+                setTimeout(() => {
+                    if (navigator.onLine) {
+                        log(`✅ API Response: 200 - ${endpoint}`);
+                        resolve({ success: true, data });
+                    } else {
+                        log(`❌ API Error: Network offline - ${endpoint}`);
+                        reject(new Error('Network offline'));
+                    }
+                }, 200 + Math.random() * 300);
+            });
+        }
+        
+        // Mise à jour des métriques
+        function updateMetrics() {
+            // Compter items localStorage
+            let storageCount = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(STORAGE_PREFIX)) {
+                    storageCount++;
+                }
+            }
+            
+            // Compter items dirty
+            let dirtyCount = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(STORAGE_PREFIX)) {
+                    try {
+                        const item = JSON.parse(localStorage.getItem(key));
+                        if (item.isDirty) dirtyCount++;
+                    } catch (e) {}
+                }
+            }
+            
+            document.getElementById('storage-count').textContent = storageCount;
+            document.getElementById('api-calls').textContent = apiCallCount;
+            document.getElementById('load-time').textContent = `${Date.now() - startTime}ms`;
+            document.getElementById('dirty-count').textContent = dirtyCount;
+        }
+        
+        // Tests
+        function testLocalStorage() {
+            log('🧪 Test LocalStorage démarré');
+            
+            const productId = 15;
+            const designUrl = 'https://example.com/design.png';
+            const transforms = {
+                '0': { x: 100, y: 50, scale: 1.2 }
+            };
+            
+            // Sauvegarder
+            saveTransformToLocal(productId, designUrl, transforms);
+            
+            // Charger
+            const loaded = loadTransformFromLocal(productId, designUrl);
+            
+            if (loaded && loaded.transforms['0'].x === 100) {
+                log('✅ Test LocalStorage: SUCCESS');
+                document.getElementById('localStorage-result').innerHTML = 
+                    '<div style="color: green;">✅ LocalStorage fonctionne correctement</div>';
+            } else {
+                log('❌ Test LocalStorage: FAILED');
+                document.getElementById('localStorage-result').innerHTML = 
+                    '<div style="color: red;">❌ Erreur LocalStorage</div>';
+            }
+        }
+        
+        function testLoadFromLocal() {
+            log('🧪 Test chargement depuis LocalStorage');
+            
+            const start = performance.now();
+            const productId = 15;
+            const designUrl = 'https://example.com/design.png';
+            
+            const loaded = loadTransformFromLocal(productId, designUrl);
+            const end = performance.now();
+            
+            log(`⚡ Chargement local en ${(end - start).toFixed(2)}ms`);
+            
+            if (loaded) {
+                log('✅ Chargement instantané réussi');
+            } else {
+                log('ℹ️ Aucune donnée à charger');
+            }
+        }
+        
+        function clearLocalStorage() {
+            log('🧹 Nettoyage LocalStorage');
+            
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(STORAGE_PREFIX)) {
+                    keys.push(key);
+                }
+            }
+            
+            keys.forEach(key => {
+                localStorage.removeItem(key);
+                log(`🗑️ Supprimé: ${key}`);
+            });
+            
+            updateMetrics();
+        }
+        
+        function testAutoSave() {
+            log('🧪 Test auto-sauvegarde démarré');
+            
+            const productId = 15;
+            const designUrl = 'https://example.com/design.png';
+            const transforms = {
+                '0': { x: Math.random() * 200, y: Math.random() * 200, scale: 1 + Math.random() }
+            };
+            
+            // Sauvegarder localement immédiatement
+            saveTransformToLocal(productId, designUrl, transforms);
+            
+            // Programmer auto-sauvegarde
+            if (autoSaveTimeout) {
+                clearTimeout(autoSaveTimeout);
+            }
+            
+            let countdown = 3;
+            document.getElementById('autosave-status').innerHTML = 
+                `<div style="color: orange;">⏳ Auto-sauvegarde dans ${countdown}s...</div>`;
+            
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    document.getElementById('autosave-status').innerHTML = 
+                        `<div style="color: orange;">⏳ Auto-sauvegarde dans ${countdown}s...</div>`;
+                } else {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+            
+            autoSaveTimeout = setTimeout(async () => {
+                log('🔄 Auto-sauvegarde déclenchée');
+                try {
+                    await simulateAPICall('POST /vendor/design-transforms', transforms);
+                    log('✅ Auto-sauvegarde réussie');
+                    document.getElementById('autosave-status').innerHTML = 
+                        '<div style="color: green;">✅ Auto-sauvegarde terminée</div>';
+                } catch (error) {
+                    log('❌ Auto-sauvegarde échouée');
+                    document.getElementById('autosave-status').innerHTML = 
+                        '<div style="color: red;">❌ Auto-sauvegarde échouée</div>';
+                }
+            }, 3000);
+        }
+        
+        function cancelAutoSave() {
+            if (autoSaveTimeout) {
+                clearTimeout(autoSaveTimeout);
+                autoSaveTimeout = null;
+                log('🚫 Auto-sauvegarde annulée');
+                document.getElementById('autosave-status').innerHTML = 
+                    '<div style="color: gray;">🚫 Auto-sauvegarde annulée</div>';
+            }
+        }
+        
+        function testPerformance() {
+            log('🧪 Test de performance démarré');
+            
+            const start = performance.now();
+            
+            // Simuler 100 mises à jour rapides
+            for (let i = 0; i < 100; i++) {
+                const productId = 10 + i;
+                const designUrl = `https://example.com/design${i}.png`;
+                const transforms = {
+                    '0': { x: Math.random() * 200, y: Math.random() * 200, scale: 1 }
+                };
+                
+                saveTransformToLocal(productId, designUrl, transforms);
+            }
+            
+            const end = performance.now();
+            log(`⚡ 100 sauvegardes en ${(end - start).toFixed(2)}ms`);
+            
+            document.getElementById('performance-result').innerHTML = 
+                `<div style="color: green;">✅ Performance: ${(end - start).toFixed(2)}ms pour 100 ops</div>`;
+        }
+        
+        function testConcurrentUpdates() {
+            log('🧪 Test mises à jour concurrentes');
+            
+            const productId = 15;
+            const designUrl = 'https://example.com/design.png';
+            
+            // Simuler 10 mises à jour concurrentes
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    const transforms = {
+                        '0': { x: i * 20, y: i * 20, scale: 1 + i * 0.1 }
+                    };
+                    saveTransformToLocal(productId, designUrl, transforms);
+                    log(`🔄 Mise à jour concurrente ${i + 1}/10`);
+                }, i * 100);
+            }
+            
+            setTimeout(() => {
+                const final = loadTransformFromLocal(productId, designUrl);
+                log(`✅ État final: ${JSON.stringify(final.transforms)}`);
+            }, 1200);
+        }
+        
+        function simulateOffline() {
+            Object.defineProperty(navigator, 'onLine', {
+                writable: true,
+                value: false
+            });
+            log('🔌 Mode offline activé');
+            document.getElementById('offline-status').innerHTML = 
+                '<div style="color: orange;">📵 Mode offline - LocalStorage uniquement</div>';
+        }
+        
+        function simulateOnline() {
+            Object.defineProperty(navigator, 'onLine', {
+                writable: true,
+                value: true
+            });
+            log('🔌 Mode online activé');
+            document.getElementById('offline-status').innerHTML = 
+                '<div style="color: green;">📶 Mode online - Sync backend disponible</div>';
+        }
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Test Design Transforms Optimisé - Initialisation');
+            updateMetrics();
+            
+            document.getElementById('system-status').innerHTML = 
+                '<div><span class="status-indicator status-success"></span> Système prêt</div>';
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Thèmes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test API Thèmes</h1>
+        
+        <div class="status info">
+            <h3>📋 Test de l'API des thèmes</h3>
+            <p>Ce test vérifie si l'API backend fonctionne pour les thèmes.</p>
+        </div>
+        
+        <div class="status warning">
+            <h3>⚠️ Note importante</h3>
+            <p>L'API des thèmes n'est probablement pas encore implémentée côté backend.</p>
+            <p>C'est normal d'avoir une erreur 404.</p>
+        </div>
+        
+        <button onclick="testGetThemes()">Tester GET /themes</button>
+        <button onclick="testCreateTheme()">Tester POST /themes</button>
+        <button onclick="testBackendStatus()">Tester le backend</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:3004';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function testGetThemes() {
+            log('🧪 Test GET /themes...', 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/themes`);
+                const data = await response.text();
+                
+                if (response.ok) {
+                    log(`✅ GET /themes - Status: ${response.status}`, 'success');
+                    log(`📄 Réponse: ${data}`, 'info');
+                } else {
+                    log(`❌ GET /themes - Status: ${response.status}`, 'error');
+                    log(`📄 Réponse: ${data}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testCreateTheme() {
+            log('🧪 Test POST /themes...', 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('name', 'Test Theme');
+                formData.append('description', 'Description de test');
+                formData.append('category', 'Test');
+                formData.append('status', 'active');
+                formData.append('featured', 'false');
+                
+                const response = await fetch(`${BASE_URL}/themes`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.text();
+                
+                if (response.ok) {
+                    log(`✅ POST /themes - Status: ${response.status}`, 'success');
+                    log(`📄 Réponse: ${data}`, 'info');
+                } else {
+                    log(`❌ POST /themes - Status: ${response.status}`, 'error');
+                    log(`📄 Réponse: ${data}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testBackendStatus() {
+            log('🧪 Test du backend...', 'info');
+            
+            try {
+                // Test simple pour voir si le backend répond
+                const response = await fetch(`${BASE_URL}/health`);
+                const data = await response.text();
+                
+                if (response.ok) {
+                    log(`✅ Backend accessible - Status: ${response.status}`, 'success');
+                } else {
+                    log(`⚠️ Backend répond mais endpoint /health non trouvé - Status: ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                log(`💥 Backend inaccessible: ${error.message}`, 'error');
+                log('💡 Vérifiez que le serveur backend est démarré sur le port 3004', 'info');
+            }
+        }
+        
+        // Test automatique au chargement
+        window.onload = function() {
+            log('🚀 Tests automatiques...', 'info');
+            testBackendStatus();
+        };
+    </script>
+</body>
+</html> 

@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin Create Vendor Product V3 - Positionnement avec Délimitations</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #4f46e5;
+            padding-bottom: 15px;
+        }
+        .test-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .controls-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .preview-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            background: #f9fafb;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #ddd;
+            margin: 0 auto;
+        }
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: white;
+        }
+        .delimitation {
+            position: absolute;
+            border: 2px dashed #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .delimitation-label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #3b82f6;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+        .design-element {
+            position: absolute;
+            cursor: move;
+            z-index: 10;
+            user-select: none;
+            transition: all 0.15s ease;
+        }
+        .design-element:hover {
+            z-index: 20;
+        }
+        .design-element.dragging {
+            z-index: 30;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+        .design-element.invalid {
+            opacity: 0.75;
+            filter: grayscale(50%);
+        }
+        .design-border {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border: 2px solid transparent;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+        .design-element:hover .design-border {
+            border-color: #6366f1;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+        .design-element.invalid .design-border {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .design-image {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #6366f1;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 20;
+        }
+        .design-element:hover .resize-handle,
+        .design-element.dragging .resize-handle {
+            opacity: 1;
+        }
+        .resize-handle.top-left {
+            top: -4px;
+            left: -4px;
+            cursor: nw-resize;
+        }
+        .resize-handle.top-right {
+            top: -4px;
+            right: -4px;
+            cursor: ne-resize;
+        }
+        .resize-handle.bottom-left {
+            bottom: -4px;
+            left: -4px;
+            cursor: sw-resize;
+        }
+        .resize-handle.bottom-right {
+            bottom: -4px;
+            right: -4px;
+            cursor: se-resize;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+        }
+        .status-panel {
+            background: #e0f2fe;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #0284c7;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+        .status.valid {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .status.invalid {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .preset-btn {
+            padding: 8px 12px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        .preset-btn:hover {
+            background: #3730a3;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+        .overlay-status {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 25;
+        }
+        .overlay-badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .overlay-badge.help {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+        }
+        .overlay-badge.invalid {
+            background: #ef4444;
+            color: white;
+        }
+        .delimiter-info {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+        .delimiter-info h4 {
+            margin: 0 0 8px 0;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🎯 Test Admin Create Vendor Product V3 - SellDesignPage Logic</h1>
+        
+        <div class="delimiter-info">
+            <h4>📍 Logique Exacte de SellDesignPage.tsx</h4>
+            <p>Le design ne peut pas sortir des délimitations grâce aux contraintes : maxX = (1 - scale) * width / 2. Sauvegarde automatique en localStorage.</p>
+        </div>
+
+        <div class="test-layout">
+            <!-- Panneau de contrôles -->
+            <div class="controls-panel">
+                <h3>🎛️ Contrôles de Positionnement</h3>
+                
+                <div class="control-group">
+                    <label>Position X: <span id="posX">50</span>%</label>
+                    <input type="range" id="positionX" class="slider" min="0" max="100" value="50">
+                    <div class="help-text">Position horizontale du design</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Position Y: <span id="posY">30</span>%</label>
+                    <input type="range" id="positionY" class="slider" min="0" max="100" value="30">
+                    <div class="help-text">Position verticale du design</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Échelle: <span id="scaleVal">100</span>%</label>
+                    <input type="range" id="scale" class="slider" min="20" max="300" value="100">
+                    <div class="help-text">Taille du design (20% à 300%)</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Rotation: <span id="rotVal">0</span>°</label>
+                    <input type="range" id="rotation" class="slider" min="0" max="360" value="0">
+                    <div class="help-text">Rotation du design</div>
+                </div>
+
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="setPreset('center')">Centrer</button>
+                    <button class="preset-btn" onclick="setPreset('top')">Haut</button>
+                    <button class="preset-btn" onclick="setPreset('bottom')">Bas</button>
+                    <button class="preset-btn" onclick="setPreset('corner')">Coin</button>
+                    <button class="preset-btn" onclick="resetPosition()">Reset</button>
+                </div>
+
+                <div class="status-panel">
+                    <h4>📊 Informations Position</h4>
+                    <div><strong>Coordonnées:</strong> (<span id="coordX">50</span>%, <span id="coordY">30</span>%)</div>
+                    <div><strong>Échelle:</strong> <span id="coordScale">100</span>%</div>
+                    <div><strong>Rotation:</strong> <span id="coordRot">0</span>°</div>
+                    <div><strong>Taille réelle:</strong> <span id="realSize">80</span>px</div>
+                    <div id="validationStatus" class="status valid">✅ Position valide dans les délimitations</div>
+                </div>
+            </div>
+
+            <!-- Zone de prévisualisation -->
+            <div>
+                <h3>👁️ Prévisualisation Interactive</h3>
+                <div class="preview-container" id="previewContainer">
+                    <!-- Image du produit de base -->
+                    <img id="productImage" 
+                         src="https://via.placeholder.com/400x400/e8e8e8/999?text=T-SHIRT+MOCKUP" 
+                         alt="Produit" class="product-image">
+                    
+                    <!-- Délimitations (zones autorisées) -->
+                    <div class="delimitation" style="left: 25%; top: 20%; width: 50%; height: 35%;">
+                        <div class="delimitation-label">Zone 1 - Poitrine</div>
+                    </div>
+                    <div class="delimitation" style="left: 30%; top: 60%; width: 40%; height: 25%;">
+                        <div class="delimitation-label">Zone 2 - Bas</div>
+                    </div>
+                    <div class="delimitation" style="left: 5%; top: 15%; width: 15%; height: 20%;">
+                        <div class="delimitation-label">Zone 3 - Manche</div>
+                    </div>
+                    
+                    <!-- Design draggable -->
+                    <div class="design-element" id="designElement">
+                        <div class="design-border"></div>
+                        <img src="https://via.placeholder.com/80x80/6366f1/ffffff?text=LOGO" 
+                             alt="Design" class="design-image">
+                        
+                        <!-- Poignées de redimensionnement -->
+                        <div class="resize-handle top-left"></div>
+                        <div class="resize-handle top-right"></div>
+                        <div class="resize-handle bottom-left"></div>
+                        <div class="resize-handle bottom-right"></div>
+                    </div>
+
+                    <!-- Overlay de statut -->
+                    <div class="overlay-status">
+                        <div class="overlay-badge help">🎯 Glissez le design dans les zones bleues</div>
+                        <div class="overlay-badge invalid" id="invalidBadge" style="display: none;">⚠️ Position invalide</div>
+                    </div>
+                </div>
+                
+                <div class="help-text" style="text-align: center; margin-top: 15px;">
+                    <strong>Instructions:</strong><br>
+                    🖱️ Glissez le design • 🔲 Utilisez les poignées pour redimensionner<br>
+                    📦 Le design doit rester dans les zones bleues pour être valide
+                </div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <h4>🔧 Test de Validation - Système AdminDesignPositioner</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+                <div>
+                    <h5>✅ Fonctionnalités Testées</h5>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li>Affichage permanent du design (même si invalide)</li>
+                        <li>Vérification des délimitations en temps réel</li>
+                        <li>Feedback visuel (rouge si invalide)</li>
+                        <li>Drag & Drop avec contraintes</li>
+                        <li>Poignées de redimensionnement</li>
+                        <li>Synchronisation sliders ↔ drag</li>
+                    </ul>
+                </div>
+                <div>
+                    <h5>🎯 Zones de Test</h5>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li><strong>Zone 1 - Poitrine:</strong> 25%, 20%, 50% × 35%</li>
+                        <li><strong>Zone 2 - Bas:</strong> 30%, 60%, 40% × 25%</li>
+                        <li><strong>Zone 3 - Manche:</strong> 5%, 15%, 15% × 20%</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AdminDesignPositionerTest {
+            constructor() {
+                this.position = { x: 50, y: 30, scale: 100, rotation: 0 };
+                this.delimitations = [
+                    { x: 25, y: 20, width: 50, height: 35, name: "Poitrine" },
+                    { x: 30, y: 60, width: 40, height: 25, name: "Bas" },
+                    { x: 5, y: 15, width: 15, height: 20, name: "Manche" }
+                ];
+                
+                this.containerRef = document.getElementById('previewContainer');
+                this.designElement = document.getElementById('designElement');
+                this.productImage = document.getElementById('productImage');
+                this.invalidBadge = document.getElementById('invalidBadge');
+                
+                this.containerSize = { width: 400, height: 400 };
+                this.dragState = null;
+                this.isDragging = false;
+                
+                // 🆕 localStorage comme SellDesignPage.tsx
+                this.storageKey = 'admin_design_position_test_product';
+                this.saveTimeout = null;
+                this.isSaving = false;
+                
+                this.init();
+            }
+            
+            init() {
+                this.bindEvents();
+                this.bindSliders();
+                this.loadFromLocalStorage(); // 🆕 Charger les positions sauvegardées
+                this.updatePosition();
+                this.observeContainerSize();
+                
+                console.log('🎯 AdminDesignPositionerTest initialisé avec localStorage !');
+                console.log('📍 Délimitations:', this.delimitations);
+            }
+            
+            bindEvents() {
+                // Drag & Drop du design
+                this.designElement.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                
+                // Resize handles
+                const resizeHandles = this.designElement.querySelectorAll('.resize-handle');
+                resizeHandles.forEach(handle => {
+                    handle.addEventListener('mousedown', this.handleResizeMouseDown.bind(this));
+                });
+                
+                // Global mouse events
+                document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                
+                // Prévenir la sélection
+                this.designElement.addEventListener('selectstart', e => e.preventDefault());
+                this.designElement.addEventListener('dragstart', e => e.preventDefault());
+            }
+            
+            observeContainerSize() {
+                const updateSize = () => {
+                    const rect = this.containerRef.getBoundingClientRect();
+                    this.containerSize = { width: rect.width, height: rect.height };
+                };
+                
+                updateSize();
+                window.addEventListener('resize', updateSize);
+            }
+            
+            handleMouseDown(e) {
+                if (e.target.classList.contains('resize-handle')) return;
+                
+                e.preventDefault();
+                this.isDragging = true;
+                this.dragState = {
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    origX: this.position.x,
+                    origY: this.position.y,
+                    mode: 'move',
+                    origScale: this.position.scale
+                };
+                
+                this.designElement.classList.add('dragging');
+            }
+            
+            handleResizeMouseDown(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                this.isDragging = true;
+                this.dragState = {
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    origX: this.position.x,
+                    origY: this.position.y,
+                    mode: 'resize',
+                    origScale: this.position.scale
+                };
+                
+                this.designElement.classList.add('dragging');
+            }
+            
+            handleMouseMove(e) {
+                if (!this.dragState) return;
+                
+                const { startX, startY, origX, origY, mode, origScale } = this.dragState;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                if (mode === 'move') {
+                    // 🎯 CONTRAINTES EXACTES de SellDesignPage.tsx
+                    // Supposons qu'on est dans la délimitation principale (Poitrine: 25%, 20%, 50% × 35%)
+                    const delimWidth = (50 / 100) * this.containerSize.width;  // 50% de largeur
+                    const delimHeight = (35 / 100) * this.containerSize.height; // 35% de hauteur
+                    const scale = this.position.scale / 100; // Normaliser l'échelle
+                    
+                    // Contraintes SellDesignPage : le design ne peut pas sortir de la délimitation
+                    const maxX = (1 - scale) * delimWidth / 2;
+                    const minX = -(1 - scale) * delimWidth / 2;
+                    const maxY = (1 - scale) * delimHeight / 2;
+                    const minY = -(1 - scale) * delimHeight / 2;
+                    
+                    // Appliquer les contraintes
+                    const newX = Math.max(minX, Math.min(origX + dx, maxX));
+                    const newY = Math.max(minY, Math.min(origY + dy, maxY));
+                    
+                    this.position.x = ((25 + (newX / delimWidth) * 50) + 50/2); // Convertir vers position globale
+                    this.position.y = ((20 + (newY / delimHeight) * 35) + 35/2);
+                    
+                    this.updatePosition();
+                    this.updateSliders();
+                } else if (mode === 'resize') {
+                    const delta = Math.max(dx, dy);
+                    let newScale = origScale + (delta / 120) * 100;
+                    newScale = Math.max(20, Math.min(300, newScale));
+                    
+                    this.position.scale = newScale;
+                    this.updatePosition();
+                    this.updateSliders();
+                }
+            }
+            
+            handleMouseUp() {
+                if (this.dragState) {
+                    this.isDragging = false;
+                    this.dragState = null;
+                    this.designElement.classList.remove('dragging');
+                }
+            }
+            
+            isWithinDelimitations(x, y, scale) {
+                // Calculer la taille du design
+                const designSizePercent = (20 * scale / 100) / 100; // 20% de base normalisé
+                const halfSize = designSizePercent / 2;
+                
+                // Vérifier si le design est dans au moins une délimitation
+                return this.delimitations.some(delim => {
+                    const designLeft = x - halfSize;
+                    const designRight = x + halfSize;
+                    const designTop = y - halfSize;
+                    const designBottom = y + halfSize;
+                    
+                    return (
+                        designLeft >= delim.x &&
+                        designRight <= delim.x + delim.width &&
+                        designTop >= delim.y &&
+                        designBottom <= delim.y + delim.height
+                    );
+                });
+            }
+            
+            updatePosition() {
+                const { x, y, scale, rotation } = this.position;
+                
+                // Mettre à jour la position du design
+                this.designElement.style.left = `${x}%`;
+                this.designElement.style.top = `${y}%`;
+                this.designElement.style.transform = `translate(-50%, -50%) scale(${scale / 100}) rotate(${rotation}deg)`;
+                
+                // Vérifier la validité
+                const isValid = this.isWithinDelimitations(x, y, scale);
+                
+                // Mettre à jour les classes et styles
+                this.designElement.classList.toggle('invalid', !isValid);
+                this.invalidBadge.style.display = isValid ? 'none' : 'block';
+                
+                // Mettre à jour l'UI
+                this.updateUI();
+                this.updateValidationStatus(isValid);
+                this.saveToLocalStorage(); // 🆕 Sauvegarder à chaque mise à jour
+            }
+            
+            bindSliders() {
+                const sliders = {
+                    positionX: (val) => this.updatePositionValue('x', parseInt(val)),
+                    positionY: (val) => this.updatePositionValue('y', parseInt(val)),
+                    scale: (val) => this.updatePositionValue('scale', parseInt(val)),
+                    rotation: (val) => this.updatePositionValue('rotation', parseInt(val))
+                };
+                
+                Object.keys(sliders).forEach(id => {
+                    document.getElementById(id).addEventListener('input', (e) => {
+                        sliders[id](e.target.value);
+                    });
+                });
+            }
+            
+            updatePositionValue(prop, value) {
+                this.position[prop] = value;
+                this.updatePosition();
+            }
+            
+            updateSliders() {
+                document.getElementById('positionX').value = this.position.x;
+                document.getElementById('positionY').value = this.position.y;
+                document.getElementById('scale').value = this.position.scale;
+                document.getElementById('rotation').value = this.position.rotation;
+            }
+            
+            updateUI() {
+                const { x, y, scale, rotation } = this.position;
+                
+                document.getElementById('posX').textContent = Math.round(x);
+                document.getElementById('posY').textContent = Math.round(y);
+                document.getElementById('scaleVal').textContent = Math.round(scale);
+                document.getElementById('rotVal').textContent = Math.round(rotation);
+                
+                document.getElementById('coordX').textContent = Math.round(x);
+                document.getElementById('coordY').textContent = Math.round(y);
+                document.getElementById('coordScale').textContent = Math.round(scale);
+                document.getElementById('coordRot').textContent = Math.round(rotation);
+                
+                // Calculer la taille réelle
+                const realSize = Math.round(80 * scale / 100);
+                document.getElementById('realSize').textContent = realSize;
+            }
+            
+            updateValidationStatus(isValid) {
+                const statusEl = document.getElementById('validationStatus');
+                
+                if (isValid) {
+                    statusEl.className = 'status valid';
+                    statusEl.textContent = '✅ Position valide dans les délimitations';
+                } else {
+                    statusEl.className = 'status invalid';
+                    statusEl.textContent = '❌ Position invalide - Le design dépasse les délimitations';
+                }
+            }
+
+            // 🆕 Fonctions localStorage comme SellDesignPage.tsx
+            loadFromLocalStorage() {
+                try {
+                    const saved = localStorage.getItem(this.storageKey);
+                    if (saved) {
+                        const parsedPosition = JSON.parse(saved);
+                        this.position = { ...this.position, ...parsedPosition };
+                        console.log('📥 Position chargée depuis localStorage:', parsedPosition);
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur chargement localStorage:', error);
+                }
+            }
+            
+            saveToLocalStorage() {
+                if (this.saveTimeout) {
+                    clearTimeout(this.saveTimeout);
+                }
+                
+                this.isSaving = true;
+                this.updateSavingIndicator();
+                
+                // Debounce de 300ms comme SellDesignPage
+                this.saveTimeout = setTimeout(() => {
+                    try {
+                        localStorage.setItem(this.storageKey, JSON.stringify(this.position));
+                        console.log('💾 Position sauvegardée en localStorage:', this.position);
+                    } catch (error) {
+                        console.error('❌ Erreur sauvegarde localStorage:', error);
+                    } finally {
+                        this.isSaving = false;
+                        this.updateSavingIndicator();
+                    }
+                }, 300);
+            }
+            
+            updateSavingIndicator() {
+                const indicator = document.querySelector('.saving-indicator');
+                if (this.isSaving && !indicator) {
+                    const div = document.createElement('div');
+                    div.className = 'saving-indicator';
+                    div.style.cssText = 'position: absolute; top: 8px; right: 8px; background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; z-index: 30;';
+                    div.innerHTML = '💾 Sauvegarde...';
+                    this.containerRef.appendChild(div);
+                } else if (!this.isSaving && indicator) {
+                    indicator.remove();
+                }
+            }
+        }
+        
+        // Fonctions globales
+        function setPreset(preset) {
+            const positioner = window.adminPositioner;
+            
+            switch (preset) {
+                case 'center':
+                    positioner.updatePositionValue('x', 50);
+                    positioner.updatePositionValue('y', 40);
+                    positioner.updatePositionValue('scale', 100);
+                    positioner.updatePositionValue('rotation', 0);
+                    break;
+                case 'top':
+                    positioner.updatePositionValue('x', 50);
+                    positioner.updatePositionValue('y', 30);
+                    positioner.updatePositionValue('scale', 120);
+                    positioner.updatePositionValue('rotation', 0);
+                    break;
+                case 'bottom':
+                    positioner.updatePositionValue('x', 50);
+                    positioner.updatePositionValue('y', 70);
+                    positioner.updatePositionValue('scale', 80);
+                    positioner.updatePositionValue('rotation', 0);
+                    break;
+                case 'corner':
+                    positioner.updatePositionValue('x', 12);
+                    positioner.updatePositionValue('y', 25);
+                    positioner.updatePositionValue('scale', 60);
+                    positioner.updatePositionValue('rotation', 0);
+                    break;
+            }
+            positioner.updateSliders();
+        }
+        
+        function resetPosition() {
+            const positioner = window.adminPositioner;
+            positioner.updatePositionValue('x', 50);
+            positioner.updatePositionValue('y', 30);
+            positioner.updatePositionValue('scale', 100);
+            positioner.updatePositionValue('rotation', 0);
+            positioner.updateSliders();
+        }
+        
+        // Initialisation
+        window.addEventListener('load', () => {
+            window.adminPositioner = new AdminDesignPositionerTest();
+        });
+        
+        console.log('🎯 Test AdminDesignPositioner V3 prêt !');
+        console.log('✅ Fonctionnalités testées :');
+        console.log('  - Affichage permanent du design');
+        console.log('  - Validation des délimitations');
+        console.log('  - Feedback visuel (rouge si invalide)');
+        console.log('  - Drag & Drop avec contraintes');
+        console.log('  - Poignées de redimensionnement');
+        console.log('  - Synchronisation complète');
+    </script>
+</body>
+</html> 

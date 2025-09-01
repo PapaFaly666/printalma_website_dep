@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Images Direct</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .image-test {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+        }
+        .image-preview {
+            width: 300px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 2px solid #ddd;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Images Direct</h1>
+        
+        <div class="status info">
+            <h3>📋 Test des images Cloudinary</h3>
+            <p>Test direct des URLs des images de couverture.</p>
+        </div>
+        
+        <div class="image-test">
+            <h3>🎨 Thème: Mangas</h3>
+            <p><strong>URL:</strong> https://res.cloudinary.com/dsxab4qnu/image/upload/v1753958656/themes/1753958655237-Casquette_bleu.jpg</p>
+            <img src="https://res.cloudinary.com/dsxab4qnu/image/upload/v1753958656/themes/1753958655237-Casquette_bleu.jpg" 
+                 alt="Mangas" 
+                 class="image-preview"
+                 onload="console.log('✅ Image Mangas chargée')"
+                 onerror="console.log('❌ Erreur image Mangas')">
+        </div>
+        
+        <div class="image-test">
+            <h3>🎨 Thème: Manga</h3>
+            <p><strong>URL:</strong> https://res.cloudinary.com/dsxab4qnu/image/upload/v1753958038/themes/1753958037653-1753358164913-Mug_blanc.jpg</p>
+            <img src="https://res.cloudinary.com/dsxab4qnu/image/upload/v1753958038/themes/1753958037653-1753358164913-Mug_blanc.jpg" 
+                 alt="Manga" 
+                 class="image-preview"
+                 onload="console.log('✅ Image Manga chargée')"
+                 onerror="console.log('❌ Erreur image Manga')">
+        </div>
+        
+        <div class="status info">
+            <h3>🔍 Instructions</h3>
+            <p>1. Vérifiez si les images s'affichent ci-dessus</p>
+            <p>2. Ouvrez la console (F12) pour voir les logs</p>
+            <p>3. Si les images ne s'affichent pas, c'est un problème CORS ou d'URL</p>
+        </div>
+    </div>
+</body>
+</html> 

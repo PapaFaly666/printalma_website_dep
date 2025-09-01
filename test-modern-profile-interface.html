@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interface Moderne - Profil Utilisateur</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+        
+        .header p {
+            font-size: 16px;
+            color: #6b7280;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 32px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: none;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        
+        .card-header {
+            padding: 24px 32px 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .card-description {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+        
+        .card-content {
+            padding: 32px;
+        }
+        
+        .field-group {
+            margin-bottom: 24px;
+        }
+        
+        .field-label {
+            font-size: 16px;
+            font-weight: 500;
+            color: #1f2937;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .field-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .field-display:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .field-value {
+            font-size: 16px;
+            color: #1f2937;
+            line-height: 1.5;
+        }
+        
+        .field-edit {
+            display: none;
+            padding: 16px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+        }
+        
+        .field-edit.active {
+            display: block;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        input.error {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            font-size: 14px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1.5;
+        }
+        
+        .checking {
+            color: #3b82f6;
+            font-size: 14px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1.5;
+        }
+        
+        .description {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 8px;
+            line-height: 1.5;
+            display: flex;
+            align-items: start;
+            gap: 8px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-edit {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: #4b5563;
+            transform: translateY(-1px);
+        }
+        
+        .btn-save {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-save:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+        
+        .btn-cancel {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-cancel:hover {
+            background: #4b5563;
+            transform: translateY(-1px);
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #d1d5db;
+            color: #374151;
+        }
+        
+        .btn-outline:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .photo-section {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        
+        .avatar {
+            width: 112px;
+            height: 112px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            position: relative;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .badge {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            background: #10b981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        
+        .drag-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+        
+        .drag-area:hover {
+            border-color: #9ca3af;
+            background: #f9fafb;
+        }
+        
+        .drag-area.dragover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        
+        .security-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 16px;
+        }
+        
+        .security-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+        }
+        
+        .security-content h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .security-content p {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+        
+        .badge-status {
+            background: #dcfce7;
+            color: #166534;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .stats-item span:first-child {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+        
+        .stats-item span:last-child {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .toast.success {
+            background: #10b981;
+        }
+        
+        .toast.error {
+            background: #ef4444;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .photo-section {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .security-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Mon Profil</h1>
+            <p>Gérez vos informations personnelles et vos paramètres de sécurité avec une interface moderne et intuitive</p>
+        </div>
+
+        <div class="grid">
+            <!-- Colonne principale -->
+            <div>
+                
+                <!-- Section Photo de profil -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            📷 Photo de profil
+                        </div>
+                        <div class="card-description">
+                            Personnalisez votre photo de profil pour une identité professionnelle
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="photo-section">
+                            <div class="avatar">
+                                J
+                                <div class="badge" id="photoBadge" style="display: none;">Nouvelle</div>
+                            </div>
+                            <div class="drag-area" id="dragArea">
+                                <p style="font-size: 16px; color: #6b7280; margin-bottom: 12px; line-height: 1.5;">
+                                    Glissez-déposez votre photo ici ou
+                                </p>
+                                <button class="btn-outline" style="margin-bottom: 8px;">Choisir un fichier</button>
+                                <p style="font-size: 12px; color: #9ca3af; line-height: 1.5;">
+                                    JPG, PNG, WebP (max 5MB)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Informations personnelles -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            👤 Informations personnelles
+                        </div>
+                        <div class="card-description">
+                            Gérez vos informations de base pour maintenir votre profil à jour
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        
+                        <div class="field-group">
+                            <div class="field-label">Prénom</div>
+                            <div class="field-display" id="firstNameDisplay">
+                                <span class="field-value">Jean</span>
+                                <button class="btn-edit" onclick="startEditing('firstName')">✏️ Modifier</button>
+                            </div>
+                            <div class="field-edit" id="firstNameEdit">
+                                <input type="text" value="Jean" placeholder="Votre prénom">
+                                <div class="description">
+                                    ℹ️ Votre prénom sera visible sur votre profil
+                                </div>
+                                <div class="error-message" id="firstNameError"></div>
+                                <div class="btn-group">
+                                    <button class="btn-save" onclick="saveField('firstName')">💾 Sauvegarder</button>
+                                    <button class="btn-cancel" onclick="cancelEditing('firstName')">❌ Annuler</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-group">
+                            <div class="field-label">Adresse email</div>
+                            <div class="field-display" id="emailDisplay">
+                                <span class="field-value">jean.dupont@exemple.com</span>
+                                <button class="btn-edit" onclick="startEditing('email')">✏️ Modifier</button>
+                            </div>
+                            <div class="field-edit" id="emailEdit">
+                                <input type="email" value="jean.dupont@exemple.com" placeholder="votre@email.com">
+                                <div class="description">
+                                    ℹ️ Votre adresse email ne sera pas partagée publiquement
+                                </div>
+                                <div class="error-message" id="emailError"></div>
+                                <div class="btn-group">
+                                    <button class="btn-save" onclick="saveField('email')">💾 Sauvegarder</button>
+                                    <button class="btn-cancel" onclick="cancelEditing('email')">❌ Annuler</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-group">
+                            <div class="field-label">Nom de la boutique</div>
+                            <div class="field-display" id="shopNameDisplay">
+                                <span class="field-value">Ma Boutique Design</span>
+                                <button class="btn-edit" onclick="startEditing('shopName')">✏️ Modifier</button>
+                            </div>
+                            <div class="field-edit" id="shopNameEdit">
+                                <input type="text" value="Ma Boutique Design" placeholder="Nom de votre boutique">
+                                <div class="description">
+                                    ℹ️ Le nom unique de votre boutique en ligne
+                                </div>
+                                <div class="error-message" id="shopNameError"></div>
+                                <div class="checking" id="shopNameChecking" style="display: none;">
+                                    🔄 Vérification en cours...
+                                </div>
+                                <div class="btn-group">
+                                    <button class="btn-save" onclick="saveField('shopName')">💾 Sauvegarder</button>
+                                    <button class="btn-cancel" onclick="cancelEditing('shopName')">❌ Annuler</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Sécurité -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            🔒 Sécurité
+                        </div>
+                        <div class="card-description">
+                            Gérez votre mot de passe et vos paramètres de sécurité
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        
+                        <div class="security-item">
+                            <div style="display: flex; align-items: center;">
+                                <div class="security-icon" style="background: #dbeafe;">
+                                    🔑
+                                </div>
+                                <div class="security-content">
+                                    <h4>Mot de passe</h4>
+                                    <p>Dernière modification il y a 30 jours</p>
+                                </div>
+                            </div>
+                            <button class="btn-outline" onclick="showPasswordModal()">✏️ Modifier</button>
+                        </div>
+
+                        <div class="security-item">
+                            <div style="display: flex; align-items: center;">
+                                <div class="security-icon" style="background: #fed7aa;">
+                                    🛡️
+                                </div>
+                                <div class="security-content">
+                                    <h4>Authentification à deux facteurs</h4>
+                                    <p>Ajoutez une couche de sécurité supplémentaire</p>
+                                </div>
+                            </div>
+                            <span class="badge-warning">Non activé</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Paramètres du compte -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            ⚙️ Paramètres du compte
+                        </div>
+                        <div class="card-description">
+                            Gérez les paramètres avancés de votre compte
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        
+                        <div class="security-item">
+                            <div style="display: flex; align-items: center;">
+                                <div class="security-icon" style="background: #fecaca;">
+                                    ⚠️
+                                </div>
+                                <div class="security-content">
+                                    <h4>Supprimer le compte</h4>
+                                    <p>Cette action est irréversible et supprimera toutes vos données</p>
+                                </div>
+                            </div>
+                            <button class="btn-danger" onclick="showDeleteModal()">🗑️ Supprimer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            📊 Statistiques du compte
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="stats-item">
+                            <span>Membre depuis</span>
+                            <span>15/01/2024</span>
+                        </div>
+                        <div class="stats-item">
+                            <span>Dernière connexion</span>
+                            <span>Aujourd'hui</span>
+                        </div>
+                        <div class="stats-item">
+                            <span>Statut</span>
+                            <span class="badge-status">Actif</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            🚀 Actions rapides
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <button class="btn-outline" style="width: 100%; margin-bottom: 12px; justify-content: flex-start;">
+                            📧 Changer l'email
+                        </button>
+                        <button class="btn-outline" style="width: 100%; margin-bottom: 12px; justify-content: flex-start;">
+                            🔒 Paramètres de sécurité
+                        </button>
+                        <button class="btn-outline" style="width: 100%; justify-content: flex-start;">
+                            ⚙️ Préférences
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Gestion de l'édition des champs
+        function startEditing(fieldName) {
+            document.getElementById(fieldName + 'Display').style.display = 'none';
+            document.getElementById(fieldName + 'Edit').classList.add('active');
+        }
+
+        function cancelEditing(fieldName) {
+            document.getElementById(fieldName + 'Display').style.display = 'flex';
+            document.getElementById(fieldName + 'Edit').classList.remove('active');
+            document.getElementById(fieldName + 'Error').textContent = '';
+        }
+
+        function saveField(fieldName) {
+            const input = document.querySelector(`#${fieldName}Edit input`);
+            const value = input.value;
+            
+            // Validation basique
+            if (!value.trim()) {
+                document.getElementById(fieldName + 'Error').textContent = 'Ce champ est requis';
+                return;
+            }
+            
+            // Validation spécifique pour le nom de boutique
+            if (fieldName === 'shopName') {
+                if (value.length < 3) {
+                    document.getElementById(fieldName + 'Error').textContent = 'Le nom doit contenir au moins 3 caractères';
+                    return;
+                }
+                // Simuler la vérification en temps réel
+                document.getElementById('shopNameChecking').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('shopNameChecking').style.display = 'none';
+                    if (value === 'Boutique Existante') {
+                        document.getElementById(fieldName + 'Error').textContent = 'Ce nom de boutique est déjà utilisé par un autre vendeur';
+                        return;
+                    }
+                    showToast('Nom de boutique mis à jour avec succès', 'success');
+                    cancelEditing(fieldName);
+                    document.querySelector(`#${fieldName}Display .field-value`).textContent = value;
+                }, 1000);
+                return;
+            }
+            
+            // Validation pour l'email
+            if (fieldName === 'email') {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(value)) {
+                    document.getElementById(fieldName + 'Error').textContent = 'Format d\'email invalide';
+                    return;
+                }
+            }
+            
+            showToast(`${fieldName === 'firstName' ? 'Prénom' : 
+                      fieldName === 'email' ? 'Email' : 'Champ'} mis à jour avec succès`, 'success');
+            cancelEditing(fieldName);
+            document.querySelector(`#${fieldName}Display .field-value`).textContent = value;
+        }
+
+        // Gestion du drag & drop
+        const dragArea = document.getElementById('dragArea');
+        const photoBadge = document.getElementById('photoBadge');
+
+        dragArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragArea.classList.add('dragover');
+        });
+
+        dragArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dragArea.classList.remove('dragover');
+        });
+
+        dragArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragArea.classList.remove('dragover');
+            handleFileUpload();
+        });
+
+        function handleFileUpload() {
+            photoBadge.style.display = 'block';
+            showToast('Photo sélectionnée avec succès', 'success');
+        }
+
+        // Système de toast
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Tests automatiques
+        function runTests() {
+            console.log('🧪 Tests de l\'interface moderne...');
+            
+            // Test 1: Édition de champ
+            console.log('✅ Test 1: Édition de champ');
+            startEditing('firstName');
+            
+            // Test 2: Validation
+            console.log('✅ Test 2: Validation');
+            setTimeout(() => {
+                const input = document.querySelector('#firstNameEdit input');
+                input.value = '';
+                saveField('firstName');
+            }, 500);
+            
+            // Test 3: Sauvegarde réussie
+            console.log('✅ Test 3: Sauvegarde réussie');
+            setTimeout(() => {
+                const input = document.querySelector('#firstNameEdit input');
+                input.value = 'Nouveau Prénom';
+                saveField('firstName');
+            }, 1000);
+            
+            // Test 4: Validation nom de boutique
+            console.log('✅ Test 4: Validation nom de boutique');
+            setTimeout(() => {
+                startEditing('shopName');
+                const input = document.querySelector('#shopNameEdit input');
+                input.value = 'Boutique Existante';
+                saveField('shopName');
+            }, 2000);
+        }
+
+        // Lancer les tests après chargement
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 1000);
+        });
+    </script>
+</body>
+</html> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Backend - Ajout Produits aux Thèmes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .endpoint-test {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+        }
+        .response {
+            background: #f1f3f4;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Backend - Ajout Produits aux Thèmes</h1>
+        
+        <div class="status info">
+            <h3>📋 Test des endpoints backend</h3>
+            <p>Ce test vérifie que les endpoints nécessaires pour l'ajout de produits aux thèmes fonctionnent.</p>
+        </div>
+        
+        <div class="endpoint-test">
+            <h3>1. Test GET /themes</h3>
+            <p>Vérifier que les thèmes sont accessibles</p>
+            <button onclick="testGetThemes()">Tester GET /themes</button>
+            <div id="themes-response" class="response"></div>
+        </div>
+        
+        <div class="endpoint-test">
+            <h3>2. Test GET /products</h3>
+            <p>Vérifier que les produits sont accessibles</p>
+            <button onclick="testGetProducts()">Tester GET /products</button>
+            <div id="products-response" class="response"></div>
+        </div>
+        
+        <div class="endpoint-test">
+            <h3>3. Test POST /themes/:id/products</h3>
+            <p>Vérifier l'ajout de produits à un thème</p>
+            <button onclick="testAddProductsToTheme()">Tester POST /themes/1/products</button>
+            <div id="add-products-response" class="response"></div>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:3004';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function testGetThemes() {
+            log('🎨 Test GET /themes...', 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/themes`);
+                const data = await response.json();
+                
+                const responseDiv = document.getElementById('themes-response');
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+                if (response.ok) {
+                    log('✅ GET /themes fonctionne', 'success');
+                } else {
+                    log(`❌ GET /themes erreur: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur GET /themes: ${error.message}`, 'error');
+                document.getElementById('themes-response').textContent = `Erreur: ${error.message}`;
+            }
+        }
+        
+        async function testGetProducts() {
+            log('📦 Test GET /products...', 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/products`);
+                const data = await response.json();
+                
+                const responseDiv = document.getElementById('products-response');
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+                if (response.ok) {
+                    log('✅ GET /products fonctionne', 'success');
+                } else {
+                    log(`❌ GET /products erreur: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur GET /products: ${error.message}`, 'error');
+                document.getElementById('products-response').textContent = `Erreur: ${error.message}`;
+            }
+        }
+        
+        async function testAddProductsToTheme() {
+            log('🎯 Test POST /themes/1/products...', 'info');
+            
+            try {
+                const response = await fetch(`${BASE_URL}/themes/1/products`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        productIds: [1, 2] // Test avec 2 produits
+                    })
+                });
+                
+                const data = await response.json();
+                
+                const responseDiv = document.getElementById('add-products-response');
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+                if (response.ok) {
+                    log('✅ POST /themes/:id/products fonctionne', 'success');
+                } else {
+                    log(`❌ POST /themes/:id/products erreur: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Erreur POST /themes/:id/products: ${error.message}`, 'error');
+                document.getElementById('add-products-response').textContent = `Erreur: ${error.message}`;
+            }
+        }
+        
+        // Test automatique au chargement
+        window.onload = function() {
+            log('🚀 Tests backend pour ajout de produits aux thèmes', 'info');
+        };
+    </script>
+</body>
+</html> 
