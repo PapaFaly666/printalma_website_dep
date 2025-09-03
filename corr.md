@@ -35,4 +35,4 @@ Dockerfile:17
   19 |     # Production stage
 --------------------
 error: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
-error: exit status 1
+error: exit status 1g
