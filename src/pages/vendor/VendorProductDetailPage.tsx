@@ -221,7 +221,7 @@ export const VendorProductDetailPage: React.FC = () => {
 
   const handleEdit = () => {
     toast.info('Redirection vers l\'édition...');
-    // TODO: Navigate to edit page
+    navigate(`/vendeur/products/${product.id}/edit`);
   };
 
   const handleDelete = async () => {

@@ -31,6 +31,7 @@ import VendorSales from './pages/vendor/VendorSales';
 import ModernProductDetail from './pages/ModernProductDetail';
 import { VendorLayout } from './layouts/VendorLayout';
 import { VendorProductDetailPage } from './pages/vendor/VendorProductDetailPage';
+import { EditVendorProductPage } from './pages/vendor/EditVendorProductPage';
 import { VendorDesignsPage } from './pages/vendor/VendorDesignsPage';
 
 // Nouveaux composants d'authentification
@@ -262,6 +263,7 @@ function App() {
                   <Route path="dashboard" element={<VendorDashboard />} />
                   <Route path="products" element={<VendorProductsPage />} />
                   <Route path="products/:id" element={<VendorProductDetailPage />} />
+                  <Route path="products/:id/edit" element={<EditVendorProductPage />} />
                   <Route path="designs" element={<VendorDesignsPage />} />
                   <Route path="deleted-products" element={<VendorDeletedProducts />} />
                   <Route path="add-product" element={<AddProductPage />} />
