@@ -499,14 +499,14 @@ export const VendorDesignsPage: React.FC = () => {
   };
 
   const handleDeleteDesign = async (designId: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce design ?')) return;
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce design ? Cette action supprimera également tous les produits associés à ce design et est irréversible.')) return;
     
-    const { success } = await handleApiCall(() => 
+    const { success, data } = await handleApiCall(() => 
       vendorDesignService.deleteDesign(designId)
     );
     
-    if (success) {
-      toast.success('Design supprimé avec succès !');
+    if (success && data) {
+      toast.success(data.message);
       loadDesigns();
     }
   };
@@ -730,9 +730,13 @@ export const VendorDesignsPage: React.FC = () => {
 
   const confirmDelete = async () => {
     if (!designToDelete) return;
-    const { success } = await handleApiCall(() => vendorDesignService.deleteDesign(designToDelete));
-    if (success) {
-      toast.success('Design supprimé avec succès !');
+    
+    const { success, data } = await handleApiCall(() => 
+      vendorDesignService.deleteDesign(designToDelete)
+    );
+    
+    if (success && data) {
+      toast.success(data.message);
       setDesigns(designs => designs.filter(d => d.id !== designToDelete));
     }
     setDeleteModalOpen(false);
@@ -1240,12 +1244,25 @@ export const VendorDesignsPage: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Confirmer la suppression</DialogTitle>
             </DialogHeader>
-            <p>Voulez-vous vraiment supprimer ce design ? Cette action est réversible.</p>
+            <div className="space-y-3">
+              <p>Voulez-vous vraiment supprimer ce design ?</p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <div className="w-4 h-4 bg-red-100 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-red-600 text-xs">!</span>
+                  </div>
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium">Attention :</p>
+                    <p>Cette action supprimera également tous les produits associés à ce design et est irréversible.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline">Annuler</Button>
               </DialogClose>
-              <Button variant="destructive" onClick={confirmDelete}>Supprimer</Button>
+              <Button variant="destructive" onClick={confirmDelete}>Supprimer définitivement</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
