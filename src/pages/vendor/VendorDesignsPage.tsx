@@ -215,12 +215,64 @@ class VendorDesignService {
   }
   
   async deleteDesign(designId: number): Promise<ApiResponse<any>> {
-    const response = await fetch(`${this.apiUrl}/${designId}`, 
-      this.getFetchOptions('DELETE')
-    );
-    
-    await this.handleError(response);
-    return response.json();
+    try {
+      // Importer l'API des produits design vendeur pour supprimer les produits associés
+      const { vendorDesignProductAPI } = await import('../../services/vendorDesignProductAPI');
+      
+      let deletedProductsCount = 0;
+      
+      try {
+        // 1. Chercher et supprimer tous les VendorDesignProducts associés
+        const allDesignProducts = await vendorDesignProductAPI.getDesignProducts();
+        
+        // Dans le contexte de cette page, chaque "design" dans la liste peut correspondre
+        // à un VendorDesignProduct, donc nous cherchons par designUrl similaire
+        const mainDesignProduct = allDesignProducts.find(dp => dp.id === designId);
+        
+        if (mainDesignProduct) {
+          // Trouver tous les autres produits qui utilisent le même design (même designUrl)
+          const associatedProducts = allDesignProducts.filter(dp => 
+            dp.designUrl === mainDesignProduct.designUrl && dp.id !== designId
+          );
+          
+          // Supprimer tous les produits associés (même designUrl)
+          for (const product of associatedProducts) {
+            await vendorDesignProductAPI.deleteDesignProduct(product.id);
+            deletedProductsCount++;
+          }
+        }
+      } catch (productsError) {
+        console.warn('⚠️ Erreur lors de la suppression des produits associés:', productsError);
+        // Continue quand même pour supprimer le design principal
+      }
+      
+      // 2. Supprimer le design principal via l'API classique
+      const response = await fetch(`${this.apiUrl}/${designId}`, 
+        this.getFetchOptions('DELETE')
+      );
+      
+      await this.handleError(response);
+      const result = await response.json();
+      
+      // Enrichir la réponse avec le nombre de produits supprimés
+      return {
+        ...result,
+        deletedProductsCount,
+        message: deletedProductsCount > 0 
+          ? `Design et ${deletedProductsCount} produit(s) associé(s) supprimé(s)`
+          : result.message || 'Design supprimé avec succès'
+      };
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de la suppression complète:', error);
+      // Fallback: essayer de supprimer juste le design principal
+      const response = await fetch(`${this.apiUrl}/${designId}`, 
+        this.getFetchOptions('DELETE')
+      );
+      
+      await this.handleError(response);
+      return response.json();
+    }
   }
 }
 
@@ -506,7 +558,9 @@ export const VendorDesignsPage: React.FC = () => {
     );
     
     if (success && data) {
-      toast.success(data.message);
+      // Le message peut venir soit de data.message, soit être un message par défaut
+      const message = data.message || 'Design supprimé avec succès !';
+      toast.success(message);
       loadDesigns();
     }
   };
@@ -736,7 +790,9 @@ export const VendorDesignsPage: React.FC = () => {
     );
     
     if (success && data) {
-      toast.success(data.message);
+      // Le message peut venir soit de data.message, soit être un message par défaut
+      const message = data.message || 'Design supprimé avec succès !';
+      toast.success(message);
       setDesigns(designs => designs.filter(d => d.id !== designToDelete));
     }
     setDeleteModalOpen(false);

@@ -1188,31 +1188,39 @@ class DesignService {
     message: string;
   }> {
     try {
-      // Utiliser la nouvelle API VendorDesignProduct
+      // Dans cette architecture, nous allons d'abord essayer l'approche VendorDesignProduct
       const { vendorDesignProductAPI } = await import('./vendorDesignProductAPI');
       
       let deletedProductsCount = 0;
       
       try {
-        // 1. D'abord, récupérer et supprimer tous les produits associés à ce design
-        const designProducts = await vendorDesignProductAPI.getDesignProducts();
-        const associatedProducts = designProducts.filter(dp => 
-          dp.designId === Number(id) || dp.id === Number(id)
-        );
+        // 1. Chercher et supprimer tous les VendorDesignProducts qui utilisent la même designUrl
+        // C'est notre approche pour trouver les "produits associés" au design
+        const allDesignProducts = await vendorDesignProductAPI.getDesignProducts();
         
-        // Supprimer tous les produits associés
-        for (const product of associatedProducts) {
-          await vendorDesignProductAPI.deleteDesignProduct(product.id);
-          deletedProductsCount++;
+        // Trouver d'abord le design principal pour obtenir son designUrl
+        const mainDesignProduct = allDesignProducts.find(dp => dp.id === Number(id));
+        
+        if (mainDesignProduct) {
+          // Trouver tous les autres produits qui utilisent le même design (même designUrl)
+          const associatedProducts = allDesignProducts.filter(dp => 
+            dp.designUrl === mainDesignProduct.designUrl && dp.id !== Number(id)
+          );
+          
+          // Supprimer tous les produits associés (même designUrl)
+          for (const product of associatedProducts) {
+            await vendorDesignProductAPI.deleteDesignProduct(product.id);
+            deletedProductsCount++;
+          }
+          
+          console.log(`✅ ${deletedProductsCount} produit(s) associé(s) supprimé(s)`);
         }
-        
-        console.log(`✅ ${deletedProductsCount} produit(s) associé(s) supprimé(s)`);
       } catch (productsError: any) {
         console.warn('⚠️ Erreur lors de la suppression des produits associés:', productsError);
-        // Continue quand même pour supprimer le design
+        // Continue quand même pour supprimer le design principal
       }
       
-      // 2. Supprimer le design lui-même
+      // 2. Supprimer le design principal
       await vendorDesignProductAPI.deleteDesignProduct(Number(id));
       
       console.log('✅ Design supprimé via nouvelle API VendorDesignProduct');
