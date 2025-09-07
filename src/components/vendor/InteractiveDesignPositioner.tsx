@@ -261,15 +261,41 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     }
   }, [autoSave, storageKey]);
 
-  // Mettre à jour les transformations
+  // Référence pour throttler les mises à jour
+  const updateTimeoutRef = useRef<number | null>(null);
+  
+  // Mettre à jour les transformations avec throttling
   const updateTransforms = useCallback((newTransforms: DesignTransforms) => {
     setTransforms(newTransforms);
     onTransformsChange?.(newTransforms);
-    saveToLocalStorage(newTransforms);
+    
+    // Throttler la sauvegarde pour éviter les performances dégradées
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+    
+    updateTimeoutRef.current = window.setTimeout(() => {
+      saveToLocalStorage(newTransforms);
+    }, 100); // Attendre 100ms avant de sauvegarder
   }, [onTransformsChange, saveToLocalStorage]);
+  
+  // Mettre à jour immédiatement (pour les interactions fluides)
+  const updateTransformsImmediate = useCallback((newTransforms: DesignTransforms) => {
+    setTransforms(newTransforms);
+    // Ne pas appeler onTransformsChange pendant le drag pour éviter les re-renders
+    if (!isDragging && !isResizing && !isRotating) {
+      onTransformsChange?.(newTransforms);
+    }
+  }, [onTransformsChange, isDragging, isResizing, isRotating]);
 
+  // State pour optimiser le rendu pendant le drag
+  const [dragTransform, setDragTransform] = useState<string | null>(null);
+  
   // Calculer les transformations CSS
-  const getDesignTransform = () => {
+  const getDesignTransform = useCallback(() => {
+    // Utiliser la transformation de drag si disponible (plus fluide)
+    if (dragTransform) return dragTransform;
+    
     if (!containerRef.current) return 'translate(0px, 0px) scale(1) rotate(0deg)';
     
     const container = containerRef.current.getBoundingClientRect();
@@ -287,7 +313,7 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     const rotation = transforms.rotation || 0;
     
     return `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`;
-  };
+  }, [transforms, dragTransform]);
 
   // Gestionnaires de drag pour le déplacement
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -312,29 +338,53 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
     
-    const rect = containerRef.current.getBoundingClientRect();
-    const deltaX = (e.clientX - dragStart.current.x) / rect.width;
-    const deltaY = (e.clientY - dragStart.current.y) / rect.height;
-    
-    const newX = dragStart.current.startX + deltaX;
-    const newY = dragStart.current.startY + deltaY;
-    
-    // Contraindre les valeurs entre 0 et 1
-    const clampedX = Math.max(0, Math.min(1, newX));
-    const clampedY = Math.max(0, Math.min(1, newY));
-    
-    updateTransforms({
-      ...transforms,
-      positionX: clampedX,
-      positionY: clampedY
+    requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      const deltaX = (e.clientX - dragStart.current.x) / rect.width;
+      const deltaY = (e.clientY - dragStart.current.y) / rect.height;
+      
+      const newX = dragStart.current.startX + deltaX;
+      const newY = dragStart.current.startY + deltaY;
+      
+      // Contraindre les valeurs entre 0 et 1
+      const clampedX = Math.max(0, Math.min(1, newX));
+      const clampedY = Math.max(0, Math.min(1, newY));
+      
+      // Calculer directement la transformation CSS pour plus de fluidité
+      const translateX = Math.round(clampedX * rect.width);
+      const translateY = Math.round(clampedY * rect.height);
+      const scale = transforms.scale || 1;
+      const rotation = transforms.rotation || 0;
+      
+      const transformString = `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`;
+      setDragTransform(transformString);
+      
+      // Mettre à jour les transforms de manière throttled
+      const newTransforms = {
+        ...transforms,
+        positionX: clampedX,
+        positionY: clampedY
+      };
+      
+      // Mettre à jour immédiatement pour la fluidité
+      updateTransformsImmediate(newTransforms);
     });
-  }, [isDragging, transforms, updateTransforms]);
+  }, [isDragging, transforms, updateTransformsImmediate]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
     setIsResizing(false);
     setIsRotating(false);
-  }, []);
+    
+    // Nettoyer la transformation de drag pour revenir au calcul normal
+    setDragTransform(null);
+    
+    // Synchroniser les transformations finales
+    onTransformsChange?.(transforms);
+    saveToLocalStorage(transforms);
+  }, [transforms, onTransformsChange, saveToLocalStorage]);
 
   // Gestionnaires pour le redimensionnement
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -352,15 +402,28 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
   const handleResizeMove = useCallback((e: MouseEvent) => {
     if (!isResizing) return;
     
-    const deltaX = e.clientX - resizeStart.current.startX;
-    const scaleDelta = deltaX / 200; // 200px = 1.0 de scale (plus fluide)
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, resizeStart.current.scale + scaleDelta));
-    
-    updateTransforms({
-      ...transforms,
-      scale: newScale
+    requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      
+      const deltaX = e.clientX - resizeStart.current.startX;
+      const scaleDelta = deltaX / 200; // 200px = 1.0 de scale (plus fluide)
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, resizeStart.current.scale + scaleDelta));
+      
+      // Calculer directement la transformation pour la fluidité
+      const rect = containerRef.current.getBoundingClientRect();
+      const translateX = Math.round((transforms.positionX || 0) * rect.width);
+      const translateY = Math.round((transforms.positionY || 0) * rect.height);
+      const rotation = transforms.rotation || 0;
+      
+      const transformString = `translate(${translateX}px, ${translateY}px) scale(${newScale}) rotate(${rotation}deg)`;
+      setDragTransform(transformString);
+      
+      updateTransformsImmediate({
+        ...transforms,
+        scale: newScale
+      });
     });
-  }, [isResizing, transforms, updateTransforms]);
+  }, [isResizing, transforms, updateTransformsImmediate]);
 
   // Gestionnaires pour la rotation
   const handleRotateStart = (e: React.MouseEvent) => {
@@ -382,19 +445,31 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
   const handleRotateMove = useCallback((e: MouseEvent) => {
     if (!isRotating || !containerRef.current) return;
     
-    const rect = containerRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
-    
-    const deltaAngle = currentAngle - rotateStart.current.startAngle;
-    const newRotation = (rotateStart.current.rotation + deltaAngle + 360) % 360;
-    
-    updateTransforms({
-      ...transforms,
-      rotation: newRotation
+    requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+      
+      const deltaAngle = currentAngle - rotateStart.current.startAngle;
+      const newRotation = (rotateStart.current.rotation + deltaAngle + 360) % 360;
+      
+      // Calculer directement la transformation pour la fluidité
+      const translateX = Math.round((transforms.positionX || 0) * rect.width);
+      const translateY = Math.round((transforms.positionY || 0) * rect.height);
+      const scale = transforms.scale || 1;
+      
+      const transformString = `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${newRotation}deg)`;
+      setDragTransform(transformString);
+      
+      updateTransformsImmediate({
+        ...transforms,
+        rotation: newRotation
+      });
     });
-  }, [isRotating, transforms, updateTransforms]);
+  }, [isRotating, transforms, updateTransformsImmediate]);
 
   // Ajouter les event listeners
   useEffect(() => {
@@ -463,7 +538,13 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
           <div
             ref={containerRef}
             className="relative bg-gray-50 aspect-square overflow-hidden cursor-crosshair select-none"
-            style={{ minHeight: '400px' }}
+            style={{ 
+              minHeight: '400px',
+              // Optimisations CSS pour les performances
+              transform: 'translateZ(0)', // Force hardware acceleration
+              backfaceVisibility: 'hidden',
+              perspective: '1000px'
+            }}
           >
             {/* Image du produit */}
             <img
@@ -492,12 +573,18 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
             <div
               ref={designRef}
               className={`absolute top-0 left-0 cursor-move ${
-                isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                isDragging || isResizing || isRotating ? 'cursor-grabbing' : 'cursor-grab'
               } select-none`}
               style={{
                 transform: getDesignTransform(),
                 transformOrigin: 'top left',
-                zIndex: 10
+                zIndex: 10,
+                // Transition fluide seulement quand on ne drag pas
+                transition: (isDragging || isResizing || isRotating) 
+                  ? 'none' 
+                  : 'transform 0.1s ease-out',
+                // Améliorer les performances avec will-change
+                willChange: (isDragging || isResizing || isRotating) ? 'transform' : 'auto'
               }}
               onMouseDown={handleMouseDown}
             >
