@@ -517,120 +517,83 @@ const ModernDesignCanvas: React.FC<{
   const handleResizeMove = useCallback((e: MouseEvent) => {
     if (!containerRef.current || !resizeStart || !initialSize || !initialTransform || selectedIdx === null || !isResizing || !resizeHandle) return;
     
-    // 🔧 Throttling avec requestAnimationFrame pour fluidité maximale
-    if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current);
+    // 🚀 RESIZE FLUIDE : Mise à jour directe sans requestAnimationFrame pour plus de fluidité
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    const deltaX = mouseX - resizeStart.x;
+    const deltaY = mouseY - resizeStart.y;
+    
+    // Dimensions de départ pour les calculs relatifs
+    const currentDisplayWidth = initialSize.width;
+    const currentDisplayHeight = initialSize.height;
+    
+    // Calculer les nouvelles dimensions selon la poignée utilisée
+    let newDisplayWidth = currentDisplayWidth;
+    let newDisplayHeight = currentDisplayHeight;
+    
+    const aspectRatio = designNaturalSize.width / designNaturalSize.height;
+    
+    // Calculs simplifiés selon la direction du resize
+    switch (resizeHandle) {
+      case 'se': // Coin sud-est - le plus utilisé
+        newDisplayWidth = Math.max(20, currentDisplayWidth + deltaX);
+        newDisplayHeight = aspectRatioLocked 
+          ? newDisplayWidth / aspectRatio 
+          : Math.max(20, currentDisplayHeight + deltaY);
+        break;
+      case 'sw': // Coin sud-ouest
+        newDisplayWidth = Math.max(20, currentDisplayWidth - deltaX);
+        newDisplayHeight = aspectRatioLocked 
+          ? newDisplayWidth / aspectRatio 
+          : Math.max(20, currentDisplayHeight + deltaY);
+        break;
+      case 'ne': // Coin nord-est
+        newDisplayWidth = Math.max(20, currentDisplayWidth + deltaX);
+        newDisplayHeight = aspectRatioLocked 
+          ? newDisplayWidth / aspectRatio 
+          : Math.max(20, currentDisplayHeight - deltaY);
+        break;
+      case 'nw': // Coin nord-ouest
+        newDisplayWidth = Math.max(20, currentDisplayWidth - deltaX);
+        newDisplayHeight = aspectRatioLocked 
+          ? newDisplayWidth / aspectRatio 
+          : Math.max(20, currentDisplayHeight - deltaY);
+        break;
+      case 'e': // Côté est
+        newDisplayWidth = Math.max(20, currentDisplayWidth + deltaX);
+        if (aspectRatioLocked) newDisplayHeight = newDisplayWidth / aspectRatio;
+        break;
+      case 'w': // Côté ouest
+        newDisplayWidth = Math.max(20, currentDisplayWidth - deltaX);
+        if (aspectRatioLocked) newDisplayHeight = newDisplayWidth / aspectRatio;
+        break;
+      case 'n': // Côté nord
+        newDisplayHeight = Math.max(20, currentDisplayHeight - deltaY);
+        if (aspectRatioLocked) newDisplayWidth = newDisplayHeight * aspectRatio;
+        break;
+      case 's': // Côté sud
+        newDisplayHeight = Math.max(20, currentDisplayHeight + deltaY);
+        if (aspectRatioLocked) newDisplayWidth = newDisplayHeight * aspectRatio;
+        break;
     }
     
-    animationFrameId.current = requestAnimationFrame(() => {
-      const rect = containerRef.current!.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      const deltaX = mouseX - resizeStart.x;
-      const deltaY = mouseY - resizeStart.y;
-      
-      // 🔧 Maintenant initialSize contient déjà les dimensions affichées (scale=1)
-      const currentDisplayWidth = initialSize.width;
-      const currentDisplayHeight = initialSize.height;
-      
-      // Calculer les nouvelles dimensions affichées directement
-      let newDisplayWidth = currentDisplayWidth;
-      let newDisplayHeight = currentDisplayHeight;
-      
-      const aspectRatio = designNaturalSize.width / designNaturalSize.height;
-      
-      switch (resizeHandle) {
-        case 'se': // Coin sud-est
-          newDisplayWidth = Math.max(20, currentDisplayWidth + deltaX);
-          if (aspectRatioLocked) {
-            newDisplayHeight = newDisplayWidth / aspectRatio;
-          } else {
-            newDisplayHeight = Math.max(20, currentDisplayHeight + deltaY);
-          }
-          break;
-        case 'sw': // Coin sud-ouest
-          newDisplayWidth = Math.max(20, currentDisplayWidth - deltaX);
-          if (aspectRatioLocked) {
-            newDisplayHeight = newDisplayWidth / aspectRatio;
-          } else {
-            newDisplayHeight = Math.max(20, currentDisplayHeight + deltaY);
-          }
-          break;
-        case 'ne': // Coin nord-est
-          newDisplayWidth = Math.max(20, currentDisplayWidth + deltaX);
-          if (aspectRatioLocked) {
-            newDisplayHeight = newDisplayWidth / aspectRatio;
-          } else {
-            newDisplayHeight = Math.max(20, currentDisplayHeight - deltaY);
-          }
-          break;
-        case 'nw': // Coin nord-ouest
-          newDisplayWidth = Math.max(20, currentDisplayWidth - deltaX);
-          if (aspectRatioLocked) {
-            newDisplayHeight = newDisplayWidth / aspectRatio;
-          } else {
-            newDisplayHeight = Math.max(20, currentDisplayHeight - deltaY);
-          }
-          break;
-        case 'e': // Côté est
-          newDisplayWidth = Math.max(20, currentDisplayWidth + deltaX);
-          if (aspectRatioLocked) {
-            newDisplayHeight = newDisplayWidth / aspectRatio;
-          }
-          break;
-        case 'w': // Côté ouest
-          newDisplayWidth = Math.max(20, currentDisplayWidth - deltaX);
-          if (aspectRatioLocked) {
-            newDisplayHeight = newDisplayWidth / aspectRatio;
-          }
-          break;
-        case 'n': // Côté nord
-          newDisplayHeight = Math.max(20, currentDisplayHeight - deltaY);
-          if (aspectRatioLocked) {
-            newDisplayWidth = newDisplayHeight * aspectRatio;
-          }
-          break;
-        case 's': // Côté sud
-          newDisplayHeight = Math.max(20, currentDisplayHeight + deltaY);
-          if (aspectRatioLocked) {
-            newDisplayWidth = newDisplayHeight * aspectRatio;
-          }
-          break;
-      }
-      
-      // 🔧 Calculer la nouvelle échelle basée sur les dimensions affichées
-      
-      // 🔧 NOUVELLE APPROCHE : Sauvegarder les dimensions affichées réelles
-      // Au lieu de sauvegarder les dimensions intrinsèques, on sauvegarde les dimensions finales affichées
-      
-      // Contraintes pour garder le design dans la délimitation
-      const delim = delimitations[selectedIdx];
-      const pos = computePxPosition(delim);
-      
-      // 🔧 Vérifier que le design redimensionné reste dans la délimitation
-      if (newDisplayWidth > pos.width || newDisplayHeight > pos.height) {
-        const scaleX = pos.width / newDisplayWidth;
-        const scaleY = pos.height / newDisplayHeight;
-        const constrainedScale = Math.min(scaleX, scaleY, 1);
-        
-        const finalDisplayWidth = newDisplayWidth * constrainedScale;
-        const finalDisplayHeight = newDisplayHeight * constrainedScale;
-        
-        // 🎯 NOUVEAU SYSTÈME : Sauvegarder le ratio constant au lieu des dimensions absolues
-        const newScale = Math.min(finalDisplayWidth / pos.width, finalDisplayHeight / pos.height);
-        updateTransform(selectedIdx, {
-          ...initialTransform,
-          designScale: newScale  // 🎯 Sauvegarder le ratio par rapport à la délimitation
-        });
-      } else {
-        // 🎯 NOUVEAU SYSTÈME : Sauvegarder le ratio constant au lieu des dimensions absolues
-        const newScale = Math.min(newDisplayWidth / pos.width, newDisplayHeight / pos.height);
-        updateTransform(selectedIdx, {
-          ...initialTransform,
-          designScale: newScale  // 🎯 Sauvegarder le ratio par rapport à la délimitation
-        });
-      }
+    // Contraintes rapides pour la délimitation
+    const delim = delimitations[selectedIdx];
+    const pos = computePxPosition(delim);
+    
+    // Calcul direct de la nouvelle échelle
+    let newScale = Math.min(newDisplayWidth / pos.width, newDisplayHeight / pos.height);
+    
+    // Contrainte maximale pour rester dans la délimitation
+    if (newScale > 1) newScale = 1;
+    if (newScale < 0.1) newScale = 0.1; // Minimum de 10%
+    
+    // Mise à jour immédiate pour la fluidité
+    updateTransform(selectedIdx, {
+      ...initialTransform,
+      designScale: newScale
     });
   }, [isResizing, resizeStart, initialSize, initialTransform, selectedIdx, delimitations, updateTransform, resizeHandle, aspectRatioLocked, designNaturalSize]);
 
@@ -643,7 +606,17 @@ const ModernDesignCanvas: React.FC<{
       
       // Empêcher la sélection de texte pendant le resize
       document.body.style.userSelect = 'none';
-      document.body.style.cursor = 'se-resize';
+      // Curseur dynamique selon la direction du resize
+      const getCursorForHandle = (handle: string) => {
+        switch (handle) {
+          case 'nw': case 'se': return 'nw-resize';
+          case 'ne': case 'sw': return 'ne-resize';
+          case 'n': case 's': return 'ns-resize';
+          case 'e': case 'w': return 'ew-resize';
+          default: return 'se-resize';
+        }
+      };
+      document.body.style.cursor = getCursorForHandle(resizeHandle || 'se');
       
       return () => {
         document.removeEventListener('mousemove', handleResizeMove);
@@ -690,6 +663,7 @@ const ModernDesignCanvas: React.FC<{
   const handleRotationMove = useCallback((e: MouseEvent) => {
     if (!containerRef.current || !rotationStart || !initialTransform || selectedIdx === null || !isRotating) return;
     
+    // 🚀 ROTATION FLUIDE : Calculs optimisés et mise à jour directe
     const rect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
@@ -697,27 +671,27 @@ const ModernDesignCanvas: React.FC<{
     const delim = delimitations[selectedIdx];
     const pos = computePxPosition(delim);
     
-    // Centre de l'élément
+    // Centre de l'élément pour la rotation
     const centerX = pos.left + pos.width / 2;
     const centerY = pos.top + pos.height / 2;
     
-    // Calculer l'angle actuel
+    // Calculer l'angle actuel par rapport au centre
     const currentAngle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
     
-    // Différence d'angle
+    // Différence d'angle depuis le début de la rotation
     const angleDiff = currentAngle - rotationStart.angle;
     let newRotation = initialRotation + angleDiff;
     
-    // Normaliser l'angle entre 0 et 360
+    // Normaliser l'angle entre 0 et 360 degrés
     newRotation = ((newRotation % 360) + 360) % 360;
     
-    // Snap à des angles spécifiques si on maintient Shift (facultatif)
+    // Snap à des angles de 15° si Shift est maintenu
     if (e.shiftKey) {
-      const snapAngle = 15; // Snap tous les 15°
+      const snapAngle = 15;
       newRotation = Math.round(newRotation / snapAngle) * snapAngle;
     }
     
-    // Mise à jour de la transformation
+    // Mise à jour immédiate pour la fluidité
     updateTransform(selectedIdx, {
       ...initialTransform,
       rotation: newRotation
