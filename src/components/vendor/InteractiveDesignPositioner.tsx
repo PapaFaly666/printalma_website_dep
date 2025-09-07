@@ -268,32 +268,31 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     saveToLocalStorage(newTransforms);
   }, [onTransformsChange, saveToLocalStorage]);
 
-  // State pour optimiser le rendu pendant le drag
-  const [dragTransform, setDragTransform] = useState<string | null>(null);
+  // Position absolue pour le drag direct
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   
-  // Calculer les transformations CSS
+  // Calculer les transformations CSS de manière simple
   const getDesignTransform = useCallback(() => {
-    // Utiliser la transformation de drag si disponible (plus fluide)
-    if (dragTransform) return dragTransform;
-    
     if (!containerRef.current) return 'translate(0px, 0px) scale(1) rotate(0deg)';
     
     const container = containerRef.current.getBoundingClientRect();
     
-    // Vérifier que les dimensions sont valides
-    if (container.width === 0 || container.height === 0) {
-      return 'translate(0px, 0px) scale(1) rotate(0deg)';
+    // Si on est en train de drag, utiliser la position directe
+    let translateX, translateY;
+    if (dragPosition) {
+      translateX = dragPosition.x;
+      translateY = dragPosition.y;
+    } else {
+      // Sinon, utiliser les transformations normales
+      translateX = (transforms.positionX || 0) * container.width;
+      translateY = (transforms.positionY || 0) * container.height;
     }
     
-    // Calculer la position absolue basée sur les pourcentages
-    // Avec transform-origin: top left, on positionne directement
-    const translateX = Math.round((transforms.positionX || 0) * container.width);
-    const translateY = Math.round((transforms.positionY || 0) * container.height);
     const scale = transforms.scale || 1;
     const rotation = transforms.rotation || 0;
     
     return `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`;
-  }, [transforms, dragTransform]);
+  }, [transforms, dragPosition]);
 
   // Gestionnaires de drag pour le déplacement
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -304,11 +303,26 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     
     setIsDragging(true);
     
+    // Immédiatement positionner le design sous le curseur
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Centrer le design sur le curseur immédiatement
+    const designCenterX = mouseX - 50;
+    const designCenterY = mouseY - 50;
+    
+    const clampedX = Math.max(0, Math.min(rect.width - 100, designCenterX));
+    const clampedY = Math.max(0, Math.min(rect.height - 100, designCenterY));
+    
+    // Position immédiate
+    setDragPosition({ x: clampedX, y: clampedY });
+    
     dragStart.current = {
       x: e.clientX,
       y: e.clientY,
-      startX: transforms.positionX,
-      startY: transforms.positionY
+      startX: clampedX / rect.width,
+      startY: clampedY / rect.height
     };
   };
 
@@ -316,47 +330,65 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     if (!isDragging || !containerRef.current) return;
     
     const rect = containerRef.current.getBoundingClientRect();
-    const deltaX = (e.clientX - dragStart.current.x) / rect.width;
-    const deltaY = (e.clientY - dragStart.current.y) / rect.height;
     
-    const newX = dragStart.current.startX + deltaX;
-    const newY = dragStart.current.startY + deltaY;
+    // Calculer la position directe de la souris dans le conteneur
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
     
-    // Contraindre les valeurs entre 0 et 1
-    const clampedX = Math.max(0, Math.min(1, newX));
-    const clampedY = Math.max(0, Math.min(1, newY));
+    // Centrer le design sur le curseur (50px = moitié de la taille du design)
+    const designCenterX = mouseX - 50; 
+    const designCenterY = mouseY - 50;
     
-    // Calculer directement la transformation CSS pour plus de fluidité
-    const translateX = clampedX * rect.width;
-    const translateY = clampedY * rect.height;
-    const scale = transforms.scale || 1;
-    const rotation = transforms.rotation || 0;
+    // Position directe contrainte dans les limites
+    const clampedX = Math.max(0, Math.min(rect.width - 100, designCenterX));
+    const clampedY = Math.max(0, Math.min(rect.height - 100, designCenterY));
     
-    const transformString = `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`;
-    setDragTransform(transformString);
+    // Mettre à jour la position de drag immédiatement
+    setDragPosition({ x: clampedX, y: clampedY });
     
-    // Mettre à jour les transforms de manière immédiate
+    // Calculer les pourcentages pour les transforms
+    const percentX = clampedX / rect.width;
+    const percentY = clampedY / rect.height;
+    
+    // Mettre à jour les transforms (throttled)
     const newTransforms = {
       ...transforms,
-      positionX: clampedX,
-      positionY: clampedY
+      positionX: percentX,
+      positionY: percentY
     };
     
-    setTransforms(newTransforms);
+    // Throttle les mises à jour pendant le drag
+    if (Date.now() - (window.lastTransformUpdate || 0) > 16) { // ~60fps
+      setTransforms(newTransforms);
+      window.lastTransformUpdate = Date.now();
+    }
   }, [isDragging, transforms]);
 
   const handleMouseUp = useCallback(() => {
+    if (isDragging && dragPosition && containerRef.current) {
+      // Calculer les transformations finales depuis dragPosition
+      const rect = containerRef.current.getBoundingClientRect();
+      const finalPercentX = dragPosition.x / rect.width;
+      const finalPercentY = dragPosition.y / rect.height;
+      
+      const finalTransforms = {
+        ...transforms,
+        positionX: finalPercentX,
+        positionY: finalPercentY
+      };
+      
+      setTransforms(finalTransforms);
+      onTransformsChange?.(finalTransforms);
+      saveToLocalStorage(finalTransforms);
+    }
+    
     setIsDragging(false);
     setIsResizing(false);
     setIsRotating(false);
     
-    // Nettoyer la transformation de drag pour revenir au calcul normal
-    setDragTransform(null);
-    
-    // Synchroniser les transformations finales
-    onTransformsChange?.(transforms);
-    saveToLocalStorage(transforms);
-  }, [transforms, onTransformsChange, saveToLocalStorage]);
+    // Nettoyer la position de drag
+    setDragPosition(null);
+  }, [isDragging, dragPosition, transforms, onTransformsChange, saveToLocalStorage]);
 
   // Gestionnaires pour le redimensionnement
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -372,20 +404,11 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
   };
 
   const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!isResizing || !containerRef.current) return;
+    if (!isResizing) return;
     
     const deltaX = e.clientX - resizeStart.current.startX;
     const scaleDelta = deltaX / 200; // 200px = 1.0 de scale (plus fluide)
     const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, resizeStart.current.scale + scaleDelta));
-    
-    // Calculer directement la transformation pour la fluidité
-    const rect = containerRef.current.getBoundingClientRect();
-    const translateX = (transforms.positionX || 0) * rect.width;
-    const translateY = (transforms.positionY || 0) * rect.height;
-    const rotation = transforms.rotation || 0;
-    
-    const transformString = `translate(${translateX}px, ${translateY}px) scale(${newScale}) rotate(${rotation}deg)`;
-    setDragTransform(transformString);
     
     const newTransforms = {
       ...transforms,
@@ -421,14 +444,6 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     
     const deltaAngle = currentAngle - rotateStart.current.startAngle;
     const newRotation = (rotateStart.current.rotation + deltaAngle + 360) % 360;
-    
-    // Calculer directement la transformation pour la fluidité
-    const translateX = (transforms.positionX || 0) * rect.width;
-    const translateY = (transforms.positionY || 0) * rect.height;
-    const scale = transforms.scale || 1;
-    
-    const transformString = `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${newRotation}deg)`;
-    setDragTransform(transformString);
     
     const newTransforms = {
       ...transforms,
@@ -557,7 +572,8 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
                 MozUserSelect: 'none',
-                msUserSelect: 'none'
+                msUserSelect: 'none',
+                pointerEvents: isDragging ? 'none' : 'auto' // Éviter les conflits pendant le drag
               }}
               onMouseDown={handleMouseDown}
               draggable={false}
