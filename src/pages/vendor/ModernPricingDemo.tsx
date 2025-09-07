@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ModernPricingProductCard } from '../../components/vendor/ModernPricingProductCard';
+import type { ModernPricingProduct } from '../../components/vendor/ModernPricingProductCard';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -17,7 +18,7 @@ import {
 import { useToast } from '../../components/ui/use-toast';
 
 // Données de démonstration
-const mockProducts = [
+const mockProducts: ModernPricingProduct[] = [
   {
     id: 1,
     vendorName: "T-Shirt Premium Design Wax",
@@ -74,6 +75,7 @@ const mockProducts = [
   {
     id: 2,
     vendorName: "Casquette Urbaine Motif",
+    vendorDescription: "Casquette moderne avec motif urbain personnalisé",
     price: 6200,
     status: 'DRAFT' as const,
     isValidated: true,
@@ -110,6 +112,7 @@ const mockProducts = [
   {
     id: 3,
     vendorName: "Mug Céramique Personnalisé",
+    vendorDescription: "Mug en céramique de haute qualité avec design personnalisé",
     price: 4800,
     status: 'PENDING' as const,
     isValidated: false,
@@ -145,7 +148,7 @@ const mockProducts = [
 ];
 
 export const ModernPricingDemo: React.FC = () => {
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState<ModernPricingProduct[]>(mockProducts);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const { toast } = useToast();

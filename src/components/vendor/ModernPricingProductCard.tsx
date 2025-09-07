@@ -35,7 +35,7 @@ import {
 import ProductImageWithDesign from '../ProductImageWithDesign';
 
 // Types pour le produit vendeur avec pricing moderne
-interface ModernPricingProduct {
+export interface ModernPricingProduct {
   id: number;
   vendorName: string;
   vendorDescription?: string;
