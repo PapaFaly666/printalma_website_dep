@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../services/productService';
-import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins } from 'lucide-react';
 import designService, { Design } from '../services/designService';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorPublish } from '../hooks/useVendorPublish';
@@ -2119,6 +2120,9 @@ const SellDesignPage: React.FC = () => {
   const [productColors, setProductColors] = useState<Record<number, Color[]>>({});
   const [selectedColorIds, setSelectedColorIds] = useState<Record<number, number>>({});
   const [priceErrors, setPriceErrors] = useState<Record<number, string>>({});
+  const [expandedPricingIds, setExpandedPricingIds] = useState<Record<number, boolean>>({});
+  const [customProfits, setCustomProfits] = useState<Record<number, number>>({});
+  const [editingProfitIds, setEditingProfitIds] = useState<Record<number, boolean>>({});
   const ALL_COLORS = 'ALL';
   const [filterColorName, setFilterColorName] = useState<string>(ALL_COLORS);
   
@@ -3168,6 +3172,46 @@ const SellDesignPage: React.FC = () => {
     }
   };
 
+  // Fonctions utilitaires pour le système de pricing moderne
+  const togglePricingExpansion = (productId: number) => {
+    setExpandedPricingIds(prev => ({
+      ...prev,
+      [productId]: !prev[productId]
+    }));
+  };
+
+  const handleProfitChange = (productId: number, newProfit: number) => {
+    setCustomProfits(prev => ({
+      ...prev,
+      [productId]: Math.max(0, newProfit)
+    }));
+  };
+
+  const handleSavePricing = (productId: number) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const basePrice = basePrices[productId] || product.price;
+    const customProfit = customProfits[productId] || 0;
+    const newPrice = basePrice + customProfit;
+
+    handleFieldChange(productId, 'price', newPrice);
+    handleSave(productId);
+    setEditingProfitIds(prev => ({ ...prev, [productId]: false }));
+  };
+
+  const handleResetPricing = (productId: number) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const basePrice = basePrices[productId] || product.price;
+    setCustomProfits(prev => ({
+      ...prev,
+      [productId]: product.price - basePrice
+    }));
+    setEditingProfitIds(prev => ({ ...prev, [productId]: false }));
+  };
+
   // Initialiser les tailles au chargement du produit
   useEffect(() => {
     if (products.length > 0) {
@@ -3209,6 +3253,18 @@ const SellDesignPage: React.FC = () => {
       setProductColors(initialColors);
     }
   }, [products]);
+
+  // Initialiser les profits personnalisés au chargement des produits
+  useEffect(() => {
+    if (products.length > 0) {
+      const initialProfits: Record<number, number> = {};
+      products.forEach(product => {
+        const basePrice = basePrices[product.id] || product.price;
+        initialProfits[product.id] = Math.max(0, product.price - basePrice);
+      });
+      setCustomProfits(initialProfits);
+    }
+  }, [products, basePrices]);
 
   // Initialiser la couleur sélectionnée (première couleur active ou première variation)
   useEffect(() => {
@@ -4324,32 +4380,327 @@ const SellDesignPage: React.FC = () => {
                             />
                           </div>
                           
-                          {/* Prix avec indicateurs */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  min={basePrices[product.id] || product.price}
-                                  value={editStates[product.id]?.price ?? product.price}
-                                  onChange={e => handleFieldChange(product.id, 'price', Number(e.target.value))}
-                                  onBlur={() => handleSave(product.id)}
-                                className="text-xl font-bold bg-transparent border-none focus:ring-0 p-0 w-24 text-black dark:text-white"
-                                />
-                              <span className="text-sm text-gray-500">FCFA</span>
-                              </div>
-                                    <div className="flex items-center gap-2">
-                              {isSaving && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
-                              {isSaved && (
-                                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                                  <Check className="h-3 w-3 text-white" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
+                          {/* Système de pricing moderne et responsive */}
+                          <div className="space-y-3">
+                            {(() => {
+                              const basePrice = basePrices[product.id] || product.price;
+                              const customProfit = customProfits[product.id] || 0;
+                              const currentPrice = basePrice + customProfit;
+                              const profitPercentage = basePrice ? ((customProfit / basePrice) * 100).toFixed(1) : '0';
+                              const isExpanded = expandedPricingIds[product.id];
+                              const isEditing = editingProfitIds[product.id];
 
-                          {priceErrors[product.id] && (
-                            <p className="text-xs text-red-500">{priceErrors[product.id]}</p>
-                          )}
+                              return (
+                                <>
+                                  {/* Affichage principal responsive avec indicateurs intelligents */}
+                                  <motion.div 
+                                    className="relative overflow-hidden"
+                                    layout
+                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                  >
+                                    <div className="bg-gradient-to-br from-white via-gray-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
+                                      {/* Header avec prix principal */}
+                                      <div className="p-4 sm:p-5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-baseline gap-2 mb-1">
+                                              <span className="text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">
+                                                Prix de vente
+                                              </span>
+                                              <div className="flex items-center gap-1">
+                                                {isSaving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+                                                {isSaved && (
+                                                  <motion.div
+                                                    initial={{ scale: 0 }}
+                                                    animate={{ scale: 1 }}
+                                                    className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center"
+                                                  >
+                                                    <Check className="h-2 w-2 text-white" />
+                                                  </motion.div>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                                              {new Intl.NumberFormat('fr-FR', {
+                                                style: 'currency',
+                                                currency: 'XOF',
+                                                maximumFractionDigits: 0
+                                              }).format(currentPrice)}
+                                            </div>
+                                            
+                                            {/* Indicateur de bénéfice compact mobile */}
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                              <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
+                                                <PiggyBank className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                                <span className="text-xs font-semibold text-green-700 dark:text-green-300">
+                                                  +{new Intl.NumberFormat('fr-FR', {
+                                                    style: 'currency',
+                                                    currency: 'XOF',
+                                                    maximumFractionDigits: 0
+                                                  }).format(customProfit)}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full">
+                                                <BarChart3 className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                                <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                                                  {profitPercentage}%
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* Bouton d'action moderne avec état */}
+                                          <motion.button
+                                            onClick={() => togglePricingExpansion(product.id)}
+                                            className={`relative group flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 ${
+                                              isExpanded 
+                                                ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg' 
+                                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                                            }`}
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              {isExpanded ? (
+                                                <Eye className="h-4 w-4" />
+                                              ) : (
+                                                <Calculator className="h-4 w-4 group-hover:rotate-12 transition-transform duration-300" />
+                                              )}
+                                              <span className="hidden sm:inline">
+                                                {isExpanded ? 'Masquer' : 'Ajuster'}
+                                              </span>
+                                              <span className="sm:hidden">
+                                                {isExpanded ? 'OK' : 'Prix'}
+                                              </span>
+                                            </div>
+                                            <motion.div
+                                              animate={{ rotate: isExpanded ? 180 : 0 }}
+                                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                                            >
+                                              <ChevronDown className="h-4 w-4" />
+                                            </motion.div>
+                                            
+                                            {/* Effet de brillance sur hover */}
+                                            {!isExpanded && (
+                                              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+                                              </div>
+                                            )}
+                                          </motion.button>
+                                        </div>
+                                      </div>
+
+                                      {/* Panel expansible avec design moderne */}
+                                      <AnimatePresence mode="wait">
+                                        {isExpanded && (
+                                          <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ 
+                                              height: { duration: 0.4, ease: "easeInOut" },
+                                              opacity: { duration: 0.3, delay: 0.1 }
+                                            }}
+                                            className="border-t border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10"
+                                          >
+                                            <div className="p-4 sm:p-5 space-y-5">
+                                              {/* Header avec micro-animations */}
+                                              <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                  <motion.div
+                                                    initial={{ rotate: 0 }}
+                                                    animate={{ rotate: 360 }}
+                                                    transition={{ duration: 0.6, ease: "easeInOut" }}
+                                                  >
+                                                    <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                                  </motion.div>
+                                                  <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+                                                    Calculateur intelligent
+                                                  </h4>
+                                                </div>
+                                                
+                                                {isEditing && (
+                                                  <motion.div
+                                                    initial={{ x: 20, opacity: 0 }}
+                                                    animate={{ x: 0, opacity: 1 }}
+                                                    className="flex gap-2"
+                                                  >
+                                                    <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                      onClick={() => handleResetPricing(product.id)}
+                                                      className="h-8 px-3 text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
+                                                    >
+                                                      <RotateCcw className="h-3 w-3 mr-1" />
+                                                      Reset
+                                                    </Button>
+                                                    <Button
+                                                      size="sm"
+                                                      onClick={() => handleSavePricing(product.id)}
+                                                      className="h-8 px-3 text-xs bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-sm"
+                                                    >
+                                                      <Save className="h-3 w-3 mr-1" />
+                                                      Sauver
+                                                    </Button>
+                                                  </motion.div>
+                                                )}
+                                              </div>
+
+                                              {/* Interface de calcul responsive */}
+                                              <div className="space-y-4">
+                                                {/* Prix de revient - Design épuré */}
+                                                <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
+                                                  <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                      <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                                                      <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                                                        Prix de revient
+                                                      </label>
+                                                    </div>
+                                                    <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full text-gray-500 dark:text-gray-400">
+                                                      Fixe
+                                                    </span>
+                                                  </div>
+                                                  <div className="text-xl font-bold text-gray-700 dark:text-gray-300">
+                                                    {new Intl.NumberFormat('fr-FR', {
+                                                      style: 'currency',
+                                                      currency: 'XOF',
+                                                      maximumFractionDigits: 0
+                                                    }).format(basePrice)}
+                                                  </div>
+                                                </div>
+
+                                                {/* Interface de bénéfice - Interactive et moderne */}
+                                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-200/50 dark:border-green-700/50">
+                                                  <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                      <motion.div
+                                                        animate={{ scale: isEditing ? 1.2 : 1 }}
+                                                        className="w-2 h-2 rounded-full bg-green-500"
+                                                      />
+                                                      <label className="text-sm font-medium text-green-700 dark:text-green-300">
+                                                        Votre bénéfice
+                                                      </label>
+                                                    </div>
+                                                    <span className="text-xs bg-green-100 dark:bg-green-800 px-2 py-1 rounded-full text-green-600 dark:text-green-300">
+                                                      Ajustable
+                                                    </span>
+                                                  </div>
+                                                  
+                                                  <div className="flex items-center gap-3">
+                                                    <div className="flex-1">
+                                                      <div className="relative">
+                                                        <input
+                                                          type="number"
+                                                          min="0"
+                                                          step="500"
+                                                          value={customProfit}
+                                                          onChange={(e) => handleProfitChange(product.id, Number(e.target.value))}
+                                                          onFocus={() => setEditingProfitIds(prev => ({ ...prev, [product.id]: true }))}
+                                                          className="w-full px-4 py-3 text-lg font-bold bg-white dark:bg-gray-800 border border-green-300 dark:border-green-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                                                          placeholder="0"
+                                                        />
+                                                        <div className="absolute inset-y-0 right-3 flex items-center">
+                                                          <Coins className="h-4 w-4 text-green-500" />
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                    
+                                                    {/* Boutons rapides pour ajustement */}
+                                                    <div className="flex flex-col gap-1">
+                                                      <button
+                                                        onClick={() => handleProfitChange(product.id, customProfit + 500)}
+                                                        className="w-8 h-6 rounded bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 transition-colors flex items-center justify-center"
+                                                      >
+                                                        <ChevronUp className="h-3 w-3 text-green-600 dark:text-green-300" />
+                                                      </button>
+                                                      <button
+                                                        onClick={() => handleProfitChange(product.id, Math.max(0, customProfit - 500))}
+                                                        className="w-8 h-6 rounded bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 transition-colors flex items-center justify-center"
+                                                      >
+                                                        <ChevronDown className="h-3 w-3 text-green-600 dark:text-green-300" />
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+
+                                                {/* Résultat final - Mise en valeur */}
+                                                <motion.div
+                                                  animate={{ 
+                                                    scale: isEditing ? 1.02 : 1,
+                                                    boxShadow: isEditing ? "0 8px 25px rgba(79, 70, 229, 0.15)" : "0 0px 0px rgba(79, 70, 229, 0)"
+                                                  }}
+                                                  className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-purple-200/50 dark:border-purple-700/50"
+                                                >
+                                                  <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                      <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                                      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                                                        Prix final
+                                                      </span>
+                                                    </div>
+                                                    <ArrowRight className="h-4 w-4 text-purple-500" />
+                                                  </div>
+                                                  <div className="text-2xl font-bold text-purple-800 dark:text-purple-200">
+                                                    {new Intl.NumberFormat('fr-FR', {
+                                                      style: 'currency',
+                                                      currency: 'XOF',
+                                                      maximumFractionDigits: 0
+                                                    }).format(currentPrice)}
+                                                  </div>
+                                                </motion.div>
+
+                                                {/* Statistiques rapides - Layout mobile optimisé */}
+                                                <div className="grid grid-cols-2 gap-3">
+                                                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 text-center border border-gray-200/50 dark:border-gray-700/50">
+                                                    <div className="flex items-center justify-center mb-1">
+                                                      <Percent className="h-4 w-4 text-blue-500 mr-1" />
+                                                      <span className="text-xs text-gray-600 dark:text-gray-400">Marge</span>
+                                                    </div>
+                                                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                                                      {profitPercentage}%
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 text-center border border-gray-200/50 dark:border-gray-700/50">
+                                                    <div className="flex items-center justify-center mb-1">
+                                                      <TrendingUp className="h-4 w-4 text-emerald-500 mr-1" />
+                                                      <span className="text-xs text-gray-600 dark:text-gray-400">Markup</span>
+                                                    </div>
+                                                    <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                                                      {basePrice ? (((currentPrice / basePrice) - 1) * 100).toFixed(1) : '0'}%
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </div>
+                                    
+                                    {/* Effet de lueur pour état actif */}
+                                    {isExpanded && (
+                                      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl" />
+                                    )}
+                                  </motion.div>
+
+                                  {priceErrors[product.id] && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+                                    >
+                                      <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                                        <X className="h-4 w-4" />
+                                        {priceErrors[product.id]}
+                                      </p>
+                                    </motion.div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
 
                           {/* Couleurs et tailles */}
                           <div className="space-y-4">
