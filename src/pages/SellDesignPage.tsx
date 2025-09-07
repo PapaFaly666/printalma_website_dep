@@ -415,23 +415,30 @@ const ModernDesignCanvas: React.FC<{
       animationFrameId.current = null;
     }
     
-    // Reset interaction states - commented out for compilation fix
-    // setIsDragging(false);
-    // setDragStart(null);
-    // setInitialTransform(null);
-    // setIsResizing(false);
-    // setResizeHandle(null);
-    // setResizeStart(null);
-    // setInitialSize(null);
-    // setIsRotating(false);
-    // setRotationStart(null);
-    // setInitialRotation(0);
+    // Reset interaction states - ARRÊT IMMÉDIAT comme dans Illustrator
+    setIsDragging(false);
+    setDragStart(null);
+    setInitialTransform(null);
+    setIsResizing(false);
+    setResizeHandle(null);
+    setResizeStart(null);
+    setInitialSize(null);
+    setIsRotating(false);
+    setRotationStart(null);
+    setInitialRotation(0);
   }, []);
 
   useEffect(() => {
     if (isDragging) {
+      // Gestionnaires globaux pour capturer même quand la souris sort du canvas
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mouseleave', handleMouseUp); // Arrêt si souris sort de la page
+      
+      // Empêcher la sélection de texte pendant les interactions
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'grabbing';
+      
       // 🆕 Support mobile: listeners tactiles
       const touchMove = (ev: TouchEvent) => {
         ev.preventDefault();
@@ -458,11 +465,15 @@ const ModernDesignCanvas: React.FC<{
       const touchEnd = () => handleMouseUp();
       document.addEventListener('touchmove', touchMove, { passive: false });
       document.addEventListener('touchend', touchEnd, { passive: false });
+      
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mouseleave', handleMouseUp);
         document.removeEventListener('touchmove', touchMove as any);
         document.removeEventListener('touchend', touchEnd as any);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
       };
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
@@ -628,9 +639,18 @@ const ModernDesignCanvas: React.FC<{
     if (isResizing) {
       document.addEventListener('mousemove', handleResizeMove);
       document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mouseleave', handleMouseUp); // Arrêt si souris sort de la page
+      
+      // Empêcher la sélection de texte pendant le resize
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'se-resize';
+      
       return () => {
         document.removeEventListener('mousemove', handleResizeMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mouseleave', handleMouseUp);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
       };
     }
   }, [isResizing, handleResizeMove, handleMouseUp]);
@@ -709,9 +729,18 @@ const ModernDesignCanvas: React.FC<{
     if (isRotating) {
       document.addEventListener('mousemove', handleRotationMove);
       document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mouseleave', handleMouseUp); // Arrêt si souris sort de la page
+      
+      // Empêcher la sélection de texte pendant la rotation
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'alias';
+      
       return () => {
         document.removeEventListener('mousemove', handleRotationMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mouseleave', handleMouseUp);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
       };
     }
   }, [isRotating, handleRotationMove, handleMouseUp]);
@@ -1621,18 +1650,11 @@ const ProductViewWithDesign: React.FC<ProductViewWithDesignProps> = ({ view, des
       animationFrameId.current = null;
     }
     
-    // Reset interaction states - commented out for compilation fix
-    // setIsDragging(false);
-    // setDragStart(null);
-    // setInitialTransform(null);
-    // setIsResizing(false);
-    // setResizeHandle(null);
-    // setResizeStart(null);
-    // setInitialSize(null);
-    // setIsRotating(false);
-    // setRotationStart(null);
-    // setInitialRotation(0);
-  }, []);
+    // Reset interaction states - ARRÊT IMMÉDIAT comme dans Illustrator
+    dragState.current = null;
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+  }, [handleMouseMove]);
 
   // 🆕 Mode moderne par défaut avec possibilité de basculer vers le mode classique
   if (useModernCanvas && designUrl && delimitations.length > 0) {
