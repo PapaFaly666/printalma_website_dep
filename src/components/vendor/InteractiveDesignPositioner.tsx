@@ -304,27 +304,22 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     
     setIsDragging(true);
     
-    // Immédiatement positionner le design sous le curseur
     const rect = containerRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
     
-    // Centrer le design sur le curseur immédiatement
-    const designCenterX = mouseX - 50;
-    const designCenterY = mouseY - 50;
+    // Calculer la position actuelle du design en pixels
+    const currentX = transforms.positionX * rect.width;
+    const currentY = transforms.positionY * rect.height;
     
-    const clampedX = Math.max(0, Math.min(rect.width - 100, designCenterX));
-    const clampedY = Math.max(0, Math.min(rect.height - 100, designCenterY));
-    
-    // Position immédiate
-    setDragPosition({ x: clampedX, y: clampedY });
-    
+    // Stocker le point de départ avec la position actuelle comme référence
     dragStart.current = {
       x: e.clientX,
       y: e.clientY,
-      startX: clampedX / rect.width,
-      startY: clampedY / rect.height
+      startX: transforms.positionX,
+      startY: transforms.positionY
     };
+    
+    // Pas de saut - le design reste à sa position actuelle
+    setDragPosition({ x: currentX, y: currentY });
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -332,41 +327,43 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     
     const rect = containerRef.current.getBoundingClientRect();
     
-    // Calculer la position directe de la souris dans le conteneur
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    // Calculer le delta depuis le point de départ du drag
+    const deltaX = e.clientX - dragStart.current.x;
+    const deltaY = e.clientY - dragStart.current.y;
     
-    // Centrer le design sur le curseur (50px = moitié de la taille du design)
-    const designCenterX = mouseX - 50; 
-    const designCenterY = mouseY - 50;
+    // Calculer la nouvelle position en utilisant la position de départ comme référence
+    const startPixelX = dragStart.current.startX * rect.width;
+    const startPixelY = dragStart.current.startY * rect.height;
     
-    // Position directe contrainte dans les limites
-    const clampedX = Math.max(0, Math.min(rect.width - 100, designCenterX));
-    const clampedY = Math.max(0, Math.min(rect.height - 100, designCenterY));
+    const newX = startPixelX + deltaX;
+    const newY = startPixelY + deltaY;
     
-    // Mettre à jour la position de drag immédiatement
+    // Contraindre dans les limites du conteneur
+    const clampedX = Math.max(0, Math.min(rect.width - 100, newX));
+    const clampedY = Math.max(0, Math.min(rect.height - 100, newY));
+    
+    // Mettre à jour la position de drag immédiatement pour le rendu visuel
     setDragPosition({ x: clampedX, y: clampedY });
     
     // Calculer les pourcentages pour les transforms
     const percentX = clampedX / rect.width;
     const percentY = clampedY / rect.height;
     
-    // Mettre à jour les transforms (throttled)
-    const newTransforms = {
-      ...transforms,
-      positionX: percentX,
-      positionY: percentY
-    };
-    
-    // Throttle les mises à jour pendant le drag
+    // Mettre à jour les transforms (throttled pour les performances)
     const now = Date.now();
     if (now - lastUpdateTime.current > 16) { // ~60fps
+      const newTransforms = {
+        ...transforms,
+        positionX: percentX,
+        positionY: percentY
+      };
       setTransforms(newTransforms);
       lastUpdateTime.current = now;
     }
   }, [isDragging, transforms]);
 
   const handleMouseUp = useCallback(() => {
+    // Réinitialiser tous les états immédiatement (comme dans Illustrator)
     if (isDragging && dragPosition && containerRef.current) {
       // Calculer les transformations finales depuis dragPosition
       const rect = containerRef.current.getBoundingClientRect();
@@ -384,6 +381,7 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
       saveToLocalStorage(finalTransforms);
     }
     
+    // Arrêt immédiat de tous les états (pas de maintien)
     setIsDragging(false);
     setIsResizing(false);
     setIsRotating(false);
@@ -398,6 +396,7 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     e.stopPropagation();
     setIsResizing(true);
     
+    // Stocker la référence de départ
     resizeStart.current = {
       scale: transforms.scale,
       startX: e.clientX,
@@ -408,8 +407,11 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
   const handleResizeMove = useCallback((e: MouseEvent) => {
     if (!isResizing) return;
     
+    // Calculer le delta depuis le point de départ du resize
     const deltaX = e.clientX - resizeStart.current.startX;
     const scaleDelta = deltaX / 200; // 200px = 1.0 de scale (plus fluide)
+    
+    // Utiliser la scale de départ comme référence pour éviter les glitches
     const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, resizeStart.current.scale + scaleDelta));
     
     const newTransforms = {
@@ -430,6 +432,7 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     const centerY = rect.top + rect.height / 2;
     const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
     
+    // Stocker la référence de départ
     rotateStart.current = {
       rotation: transforms.rotation,
       startAngle
@@ -444,7 +447,9 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     const centerY = rect.top + rect.height / 2;
     const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
     
+    // Calculer le delta depuis le point de départ de la rotation
     const deltaAngle = currentAngle - rotateStart.current.startAngle;
+    // Utiliser la rotation de départ comme référence pour éviter les glitches
     const newRotation = (rotateStart.current.rotation + deltaAngle + 360) % 360;
     
     const newTransforms = {
@@ -454,7 +459,7 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     setTransforms(newTransforms);
   }, [isRotating, transforms]);
 
-  // Ajouter les event listeners
+  // Ajouter les event listeners globaux (comme dans Illustrator)
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (isDragging) {
@@ -466,14 +471,19 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
       }
     };
 
+    // Gestionnaire global mouseup - s'arrête même si la souris sort du canvas
     const handleGlobalMouseUp = () => {
+      // Arrêt immédiat de tous les états (réinitialisation complète)
       handleMouseUp();
     };
 
     if (isDragging || isResizing || isRotating) {
+      // Ajout des listeners globaux sur document pour capturer même quand la souris sort
       document.addEventListener('mousemove', handleGlobalMouseMove, { passive: false });
       document.addEventListener('mouseup', handleGlobalMouseUp);
-      // Empêcher la sélection de texte pendant le drag
+      document.addEventListener('mouseleave', handleGlobalMouseUp); // Arrêt si souris sort de la page
+      
+      // Empêcher la sélection de texte pendant les interactions
       document.body.style.userSelect = 'none';
       document.body.style.cursor = isDragging ? 'grabbing' : isResizing ? 'se-resize' : 'alias';
     }
@@ -481,6 +491,7 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('mouseleave', handleGlobalMouseUp);
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
