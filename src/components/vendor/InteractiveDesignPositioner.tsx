@@ -91,6 +91,7 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
   const dragStart = useRef({ x: 0, y: 0, startX: 0, startY: 0 });
   const resizeStart = useRef({ scale: 1, startX: 0, startY: 0 });
   const rotateStart = useRef({ rotation: 0, startAngle: 0 });
+  const lastUpdateTime = useRef(0);
 
   // Clé pour localStorage
   const storageKey = `design-position-${productId}-${designUrl}`;
@@ -358,9 +359,10 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     };
     
     // Throttle les mises à jour pendant le drag
-    if (Date.now() - (window.lastTransformUpdate || 0) > 16) { // ~60fps
+    const now = Date.now();
+    if (now - lastUpdateTime.current > 16) { // ~60fps
       setTransforms(newTransforms);
-      window.lastTransformUpdate = Date.now();
+      lastUpdateTime.current = now;
     }
   }, [isDragging, transforms]);
 
