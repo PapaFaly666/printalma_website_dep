@@ -33,6 +33,7 @@ import { VendorLayout } from './layouts/VendorLayout';
 import { VendorProductDetailPage } from './pages/vendor/VendorProductDetailPage';
 import { EditVendorProductPage } from './pages/vendor/EditVendorProductPage';
 import { VendorDesignsPage } from './pages/vendor/VendorDesignsPage';
+import VendorDashboardPage from './pages/vendor/VendorDashboardPage';
 
 // Nouveaux composants d'authentification
 import { AuthProvider } from './contexts/AuthContext';
@@ -260,7 +261,7 @@ function App() {
                     <VendorLayout />
                   </VendeurRoute>
                 }>
-                  <Route path="dashboard" element={<VendorDashboard />} />
+                  <Route path="dashboard" element={<VendorDashboardPage />} />
                   <Route path="products" element={<VendorProductsPage />} />
                   <Route path="products/:id" element={<VendorProductDetailPage />} />
                   <Route path="products/:id/edit" element={<EditVendorProductPage />} />

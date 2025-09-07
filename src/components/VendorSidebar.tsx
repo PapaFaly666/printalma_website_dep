@@ -22,8 +22,6 @@ import {
     Settings,
     LogOut,
     Home,
-    Moon,
-    Sun,
     Menu,
     X,
     Palette,
@@ -68,7 +66,6 @@ type VendorUser = {
 
 export default function VendorSidebar() {
     const [collapsed, setCollapsed] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [activeItem, setActiveItem] = useState('dashboard');
@@ -201,14 +198,7 @@ export default function VendorSidebar() {
         }
     };
 
-    const toggleDarkMode = () => {
-        setIsDarkMode(!isDarkMode);
-    };
 
-    // Classes to apply based on dark mode
-    const appClasses = cn(
-        isDarkMode ? 'dark' : '',
-    );
 
     // Handle navigation
     const handleNavigation = (path: string) => {
@@ -228,47 +218,39 @@ export default function VendorSidebar() {
     };
 
     return (
-        <div className={cn("flex h-screen overflow-hidden", appClasses)}>
+        <div className="flex h-screen overflow-hidden">
             {/* Mobile header bar */}
             {isMobile && (
-                <div className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 z-50 flex items-center px-4">
+                <div className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center px-4">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={toggleSidebar}
-                        className="mr-4 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="mr-4 text-black hover:bg-gray-100"
                     >
                         {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
                     </Button>
                     <div className="flex items-center space-x-3 flex-1">
-                        <div className="h-8 w-8 rounded-md bg-black dark:bg-white flex items-center justify-center">
-                            <Store size={16} className="text-white dark:text-black" />
+                        <div className="h-8 w-8 rounded-md bg-black flex items-center justify-center">
+                            <Store size={16} className="text-white" />
                         </div>
                         <div className="flex flex-col">
-                            <h2 className="text-lg font-semibold text-black dark:text-white">{vendorUser.shopName || 'Espace Vendeur'}</h2>
+                            <h2 className="text-lg font-semibold text-black">{vendorUser.shopName || 'Espace Vendeur'}</h2>
                             {vendorUser.shopName && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{vendorUser.email}</span>
+                                <span className="text-xs text-gray-500 truncate max-w-[120px]">{vendorUser.email}</span>
                             )}
                             {vendorUser.phone && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{vendorUser.phone}</span>
+                                <span className="text-xs text-gray-500 truncate max-w-[120px]">{vendorUser.phone}</span>
                             )}
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={toggleDarkMode}
-                            className="rounded-full w-10 h-10 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                        </Button>
-                        <Avatar className="h-10 w-10 relative border-2 border-gray-200 dark:border-gray-700">
+                        <Avatar className="h-10 w-10 relative border-2 border-gray-200">
                             <AvatarImage src={vendorUser.avatarUrl || undefined} alt={vendorUser.name} />
-                            <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-black dark:text-white text-sm font-medium">
+                            <AvatarFallback className="bg-gray-100 text-black text-sm font-medium">
                                 {vendorUser.name.split(' ').map(n => n[0]).join('')}
                             </AvatarFallback>
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-white dark:bg-black rounded-full flex items-center justify-center text-xs border-2 border-white dark:border-black">
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs border-2 border-white">
                                 {getVendorTypeIcon(vendorUser.vendorType)}
                             </div>
                         </Avatar>
@@ -280,7 +262,7 @@ export default function VendorSidebar() {
             <aside
                 ref={sidebarRef}
                 className={cn(
-                    "bg-white dark:bg-black h-full border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300 ease-in-out",
+                    "bg-white h-full border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out",
                     collapsed && !isMobile ? "w-20" : "w-72",
                     isMobile && "fixed left-0 top-0 bottom-0 shadow-2xl z-40",
                     isMobile && !isMenuOpen && "transform -translate-x-full"
@@ -289,20 +271,20 @@ export default function VendorSidebar() {
             >
                 {/* Logo - Only visible on desktop */}
                 {!isMobile && (
-                    <div className="p-6 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
+                    <div className="p-6 flex items-center justify-between border-b border-gray-200">
                         {!collapsed && (
                             <div className="flex items-center space-x-3">
-                                <div className="h-10 w-10 rounded-md bg-black dark:bg-white flex items-center justify-center">
-                                    <Store size={20} className="text-white dark:text-black" />
+                                <div className="h-10 w-10 rounded-md bg-black flex items-center justify-center">
+                                    <Store size={20} className="text-white" />
                                 </div>
-                                <h2 className="text-xl font-bold text-black dark:text-white">Espace Vendeur</h2>
+                                <h2 className="text-xl font-bold text-black">Espace Vendeur</h2>
                             </div>
                         )}
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={toggleSidebar}
-                            className={cn("hover:bg-gray-100 dark:hover:bg-gray-800 p-2", collapsed && "ml-auto")}
+                            className={cn("hover:bg-gray-100 p-2", collapsed && "ml-auto")}
                         >
                             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                         </Button>
@@ -313,25 +295,25 @@ export default function VendorSidebar() {
                 {(!collapsed || isMobile) && (
                     <div className="p-6">
                         <div className="flex items-center space-x-4">
-                            <Avatar className="h-14 w-14 border-2 border-gray-200 dark:border-gray-700 relative">
+                            <Avatar className="h-14 w-14 border-2 border-gray-200 relative">
                                 <AvatarImage src={vendorUser.avatarUrl || undefined} alt={vendorUser.name} />
-                                <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-black dark:text-white font-semibold">
+                                <AvatarFallback className="bg-gray-100 text-black font-semibold">
                                     {vendorUser.name.split(' ').map(n => n[0]).join('')}
                                 </AvatarFallback>
-                                <div className="absolute -top-1 -right-1 w-6 h-6 bg-white dark:bg-black rounded-full flex items-center justify-center text-sm border-2 border-white dark:border-black">
+                                <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-sm border-2 border-white">
                                     {getVendorTypeIcon(vendorUser.vendorType)}
                                 </div>
                             </Avatar>
                             <div className="flex flex-col flex-1 min-w-0">
-                                <span className="font-semibold text-base text-black dark:text-white truncate">{vendorUser.name}</span>
-                                <span className="text-sm text-gray-600 dark:text-gray-400 truncate">{vendorUser.vendorType}</span>
+                                <span className="font-semibold text-base text-black truncate">{vendorUser.name}</span>
+                                <span className="text-sm text-gray-600 truncate">{vendorUser.vendorType}</span>
                                 {vendorUser.shopName && (
-                                    <span className="text-xs text-gray-500 dark:text-gray-500 truncate">🏪 {vendorUser.shopName}</span>
+                                    <span className="text-xs text-gray-500 truncate">🏪 {vendorUser.shopName}</span>
                                 )}
                                 {vendorUser.phone && (
-                                    <span className="text-xs text-gray-500 dark:text-gray-500 truncate">📞 {vendorUser.phone}</span>
+                                    <span className="text-xs text-gray-500 truncate">📞 {vendorUser.phone}</span>
                                 )}
-                                <span className="text-xs text-gray-500 dark:text-gray-500 truncate">{vendorUser.email}</span>
+                                <span className="text-xs text-gray-500 truncate">{vendorUser.email}</span>
                             </div>
                         </div>
                     </div>
@@ -339,16 +321,16 @@ export default function VendorSidebar() {
 
                 {/* Collapsed avatar */}
                 {collapsed && !isMobile && (
-                    <div className="p-4 flex justify-center border-b border-gray-200 dark:border-gray-800">
+                    <div className="p-4 flex justify-center border-b border-gray-200">
                         <TooltipProvider>
                             <Tooltip delayDuration={100}>
                                 <TooltipTrigger asChild>
-                                    <Avatar className="h-12 w-12 border-2 border-gray-200 dark:border-gray-700 relative">
+                                    <Avatar className="h-12 w-12 border-2 border-gray-200 relative">
                                         <AvatarImage src={vendorUser.avatarUrl || undefined} alt={vendorUser.name} />
-                                        <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-black dark:text-white font-semibold">
+                                        <AvatarFallback className="bg-gray-100 text-black font-semibold">
                                             {vendorUser.name.split(' ').map(n => n[0]).join('')}
                                         </AvatarFallback>
-                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-white dark:bg-black rounded-full flex items-center justify-center text-xs border-2 border-white dark:border-black">
+                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs border-2 border-white">
                                             {getVendorTypeIcon(vendorUser.vendorType)}
                                         </div>
                                     </Avatar>
@@ -433,7 +415,7 @@ export default function VendorSidebar() {
                 </nav>
 
                 {/* Footer */}
-                <div className="p-4 space-y-2 border-t border-gray-200 dark:border-gray-800">
+                <div className="p-4 space-y-2 border-t border-gray-200">
                     <NavItem
                         icon={<User size={20} />}
                         label="Compte"
@@ -453,36 +435,13 @@ export default function VendorSidebar() {
                         textColor=""
                     />
 
-                    {!isMobile && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={toggleDarkMode}
-                            className={cn(
-                                "w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 py-3 text-black dark:text-white",
-                                collapsed && "justify-center px-0"
-                            )}
-                        >
-                            {isDarkMode ? (
-                                <>
-                                    <Sun size={20} />
-                                    {!collapsed && <span className="ml-3 text-sm">Mode Clair</span>}
-                                </>
-                            ) : (
-                                <>
-                                    <Moon size={20} />
-                                    {!collapsed && <span className="ml-3 text-sm">Mode Sombre</span>}
-                                </>
-                            )}
-                        </Button>
-                    )}
 
                     <NavItem
-                        icon={<LogOut size={20} className="text-gray-500 dark:text-gray-400" />}
+                        icon={<LogOut size={20} className="text-gray-500" />}
                         label="Déconnexion"
                         collapsed={collapsed && !isMobile}
                         onClick={handleLogoutClick}
-                        textColor="text-gray-500 dark:text-gray-400"
+                        textColor="text-gray-500"
                         badge=""
                     />
                 </div>
@@ -498,34 +457,34 @@ export default function VendorSidebar() {
 
             {/* Main Content */}
             <div className={cn(
-                "flex-1 bg-gray-50 dark:bg-gray-900 flex flex-col overflow-y-auto",
+                "flex-1 bg-gray-50 flex flex-col overflow-y-auto",
                 isMobile && "pt-16"
             )}>
-                <Outlet context={{ isDarkMode }} />
+                <Outlet />
             </div>
 
             {/* Modal de confirmation de déconnexion */}
             <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
-                <AlertDialogContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <AlertDialogContent className="bg-white border border-gray-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+                        <AlertDialogTitle className="text-gray-900 flex items-center gap-2">
                             <LogOut className="h-5 w-5 text-gray-600" />
                             Confirmer la déconnexion
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                        <AlertDialogDescription className="text-gray-600">
                             Êtes-vous sûr de vouloir vous déconnecter ? Vous devrez vous reconnecter pour accéder à nouveau à votre espace vendeur.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel 
                             onClick={handleLogoutCancel}
-                            className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            className="border-gray-300 text-gray-700 hover:bg-gray-50"
                         >
                             Annuler
                         </AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={handleLogoutConfirm}
-                            className="bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black border-black dark:border-white"
+                            className="bg-black hover:bg-gray-800 text-white border-black"
                         >
                             <LogOut className="h-4 w-4 mr-2" />
                             Se déconnecter
@@ -546,7 +505,7 @@ const NavGroup = ({ title, children, collapsed }: NavGroupProps) => {
     return (
         <div className="space-y-2 mb-6">
             <div className="px-4 py-2">
-                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     {title}
                 </h3>
             </div>
@@ -568,10 +527,10 @@ const NavItem = ({
 }: NavItemProps) => {
     const baseClasses = "group flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 w-full";
     const activeClasses = active
-        ? "bg-black dark:bg-white text-white dark:text-black"
-        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white";
+        ? "bg-black text-white"
+        : "text-gray-700 hover:bg-gray-100 hover:text-black";
     
-    const textColorClasses = textColor || (active ? "text-white dark:text-black" : "text-gray-700 dark:text-gray-300");
+    const textColorClasses = textColor || (active ? "text-white" : "text-gray-700");
 
     if (collapsed) {
         return (
