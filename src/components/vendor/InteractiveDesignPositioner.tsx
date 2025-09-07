@@ -145,49 +145,6 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
   const validateBoundaries = useCallback((currentTransforms: DesignTransforms): BoundaryValidation => {
     const violations: string[] = [];
     
-    // Calculer les dimensions du design transformé
-    const designWidth = 100 * currentTransforms.scale; // Largeur de base du design
-    const designHeight = 100 * currentTransforms.scale; // Hauteur de base du design (approximative)
-    
-    // Calculer les positions des coins du design
-    const centerX = currentTransforms.positionX * containerSize.width;
-    const centerY = currentTransforms.positionY * containerSize.height;
-    
-    // Calculer les positions des coins en tenant compte de la rotation
-    const cos = Math.cos((currentTransforms.rotation * Math.PI) / 180);
-    const sin = Math.sin((currentTransforms.rotation * Math.PI) / 180);
-    
-    // Points des coins du design (relatifs au centre)
-    const corners = [
-      { x: -designWidth / 2, y: -designHeight / 2 },
-      { x: designWidth / 2, y: -designHeight / 2 },
-      { x: designWidth / 2, y: designHeight / 2 },
-      { x: -designWidth / 2, y: designHeight / 2 }
-    ];
-    
-    // Appliquer la rotation et calculer les positions absolues
-    const rotatedCorners = corners.map(corner => ({
-      x: centerX + (corner.x * cos - corner.y * sin),
-      y: centerY + (corner.x * sin + corner.y * cos)
-    }));
-    
-    // Vérifier si les coins sortent des limites
-    const marginX = containerSize.width * BOUNDARY_MARGIN;
-    const marginY = containerSize.height * BOUNDARY_MARGIN;
-    const maxX = containerSize.width - marginX;
-    const maxY = containerSize.height - marginY;
-    const minX = marginX;
-    const minY = marginY;
-    
-    let isOutOfBounds = false;
-    
-    rotatedCorners.forEach((corner, index) => {
-      if (corner.x < minX || corner.x > maxX || corner.y < minY || corner.y > maxY) {
-        isOutOfBounds = true;
-        violations.push(`Coin ${index + 1} sort de la zone autorisée`);
-      }
-    });
-    
     // Vérifier l'échelle
     if (currentTransforms.scale > MAX_SCALE) {
       violations.push(`Échelle trop grande (max: ${MAX_SCALE}x)`);
@@ -197,13 +154,35 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
       violations.push(`Échelle trop petite (min: ${MIN_SCALE}x)`);
     }
     
-    // Vérifier la position de base
-    if (currentTransforms.positionX < BOUNDARY_MARGIN || currentTransforms.positionX > (1 - BOUNDARY_MARGIN)) {
-      violations.push('Position horizontale hors limites');
-    }
+    // Calculer les dimensions du design après scaling (100px base * scale)
+    const designSize = 100 * currentTransforms.scale;
     
-    if (currentTransforms.positionY < BOUNDARY_MARGIN || currentTransforms.positionY > (1 - BOUNDARY_MARGIN)) {
-      violations.push('Position verticale hors limites');
+    // Calculer la position en pixels
+    const designX = currentTransforms.positionX * containerSize.width;
+    const designY = currentTransforms.positionY * containerSize.height;
+    
+    // Limites de la zone autorisée (avec marge)
+    const marginX = containerSize.width * BOUNDARY_MARGIN;
+    const marginY = containerSize.height * BOUNDARY_MARGIN;
+    
+    // Le design ne doit pas sortir de la zone (en tenant compte de sa taille)
+    const minX = marginX;
+    const maxX = containerSize.width - marginX - designSize;
+    const minY = marginY;  
+    const maxY = containerSize.height - marginY - designSize;
+    
+    // Vérifier les limites
+    if (designX < minX) {
+      violations.push('Le design dépasse à gauche');
+    }
+    if (designX > maxX) {
+      violations.push('Le design dépasse à droite');
+    }
+    if (designY < minY) {
+      violations.push('Le design dépasse en haut');
+    }
+    if (designY > maxY) {
+      violations.push('Le design dépasse en bas');
     }
     
     const isValid = violations.length === 0;
@@ -291,38 +270,42 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
 
   // Calculer les transformations CSS
   const getDesignTransform = () => {
-    // Calculer la taille responsive du design basée sur l'image du produit
-    const baseDesignSize = 100; // Taille de base du design
-    const responsiveScale = imageMetrics.displayWidth > 0 ? 
-      Math.min(imageMetrics.displayWidth, imageMetrics.displayHeight) / 400 : 1; // 400px comme référence
+    if (!containerRef.current) return 'translate(0px, 0px) scale(1) rotate(0deg)';
     
-    // Calculer la position relative à l'image affichée
-    const imageX = transforms.positionX * imageMetrics.displayWidth;
-    const imageY = transforms.positionY * imageMetrics.displayHeight;
+    const container = containerRef.current.getBoundingClientRect();
     
-    // Ajuster la position pour tenir compte des offsets de l'image
-    const translateX = imageX + imageMetrics.offsetX;
-    const translateY = imageY + imageMetrics.offsetY;
+    // Vérifier que les dimensions sont valides
+    if (container.width === 0 || container.height === 0) {
+      return 'translate(0px, 0px) scale(1) rotate(0deg)';
+    }
     
-    // Appliquer le scale responsive ET le scale utilisateur
-    const finalScale = responsiveScale * transforms.scale;
+    // Calculer la position absolue basée sur les pourcentages
+    // Avec transform-origin: top left, on positionne directement
+    const translateX = Math.round((transforms.positionX || 0) * container.width);
+    const translateY = Math.round((transforms.positionY || 0) * container.height);
+    const scale = transforms.scale || 1;
+    const rotation = transforms.rotation || 0;
     
-    return `translate(${translateX}px, ${translateY}px) scale(${finalScale}) rotate(${transforms.rotation}deg)`;
+    return `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`;
   };
 
   // Gestionnaires de drag pour le déplacement
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.target !== designRef.current) return;
+    if (!designRef.current || !containerRef.current) return;
+    
+    // Autoriser le drag même si on clique sur l'image
+    const target = e.target as HTMLElement;
+    if (target !== designRef.current && target.tagName !== 'IMG') return;
     
     e.preventDefault();
     setIsDragging(true);
     
-    const rect = containerRef.current!.getBoundingClientRect();
+    const rect = containerRef.current.getBoundingClientRect();
     dragStart.current = {
       x: e.clientX,
       y: e.clientY,
-      startX: transforms.positionX * rect.width,
-      startY: transforms.positionY * rect.height
+      startX: transforms.positionX,
+      startY: transforms.positionY
     };
   };
 
@@ -330,11 +313,11 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     if (!isDragging || !containerRef.current) return;
     
     const rect = containerRef.current.getBoundingClientRect();
-    const deltaX = e.clientX - dragStart.current.x;
-    const deltaY = e.clientY - dragStart.current.y;
+    const deltaX = (e.clientX - dragStart.current.x) / rect.width;
+    const deltaY = (e.clientY - dragStart.current.y) / rect.height;
     
-    const newX = (dragStart.current.startX + deltaX) / rect.width;
-    const newY = (dragStart.current.startY + deltaY) / rect.height;
+    const newX = dragStart.current.startX + deltaX;
+    const newY = dragStart.current.startY + deltaY;
     
     // Contraindre les valeurs entre 0 et 1
     const clampedX = Math.max(0, Math.min(1, newX));
@@ -370,8 +353,8 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
     if (!isResizing) return;
     
     const deltaX = e.clientX - resizeStart.current.startX;
-    const scaleDelta = deltaX / 100; // 100px = 1.0 de scale
-    const newScale = Math.max(0.1, Math.min(2, resizeStart.current.scale + scaleDelta));
+    const scaleDelta = deltaX / 200; // 200px = 1.0 de scale (plus fluide)
+    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, resizeStart.current.scale + scaleDelta));
     
     updateTransforms({
       ...transforms,
@@ -513,7 +496,7 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
               } select-none`}
               style={{
                 transform: getDesignTransform(),
-                transformOrigin: 'center',
+                transformOrigin: 'top left',
                 zIndex: 10
               }}
               onMouseDown={handleMouseDown}
@@ -521,9 +504,10 @@ export const InteractiveDesignPositioner: React.FC<InteractiveDesignPositionerPr
               <img
                 src={designUrl}
                 alt={designName}
-                className="block max-w-none pointer-events-none"
+                className="block max-w-none cursor-inherit"
                 style={{ width: '100px', height: 'auto' }}
                 draggable={false}
+                onMouseDown={handleMouseDown}
               />
               
               {/* Poignées de contrôle */}
