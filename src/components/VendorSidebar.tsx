@@ -27,7 +27,6 @@ import {
     Menu,
     X,
     Palette,
-    Trash2,
     Store,
     TrendingUp,
     Image,
@@ -405,15 +404,6 @@ export default function VendorSidebar() {
                             textColor=""
                         />
 
-                        <NavItem
-                            icon={<Trash2 size={20} />}
-                            label="Corbeille"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'deleted-products'}
-                            onClick={() => handleNavigation('deleted-products')}
-                            badge=""
-                            textColor=""
-                        />
                     </NavGroup>
 
                     <NavGroup
@@ -422,7 +412,7 @@ export default function VendorSidebar() {
                     >
                         <NavItem
                             icon={<TrendingUp size={20} />}
-                            label="Mes Ventes"
+                            label="Mes Commandes"
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'sales'}
                             onClick={() => handleNavigation('sales')}

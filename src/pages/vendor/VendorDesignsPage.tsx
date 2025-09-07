@@ -550,20 +550,6 @@ export const VendorDesignsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteDesign = async (designId: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce design ? Cette action supprimera également tous les produits associés à ce design et est irréversible.')) return;
-    
-    const { success, data } = await handleApiCall(() => 
-      vendorDesignService.deleteDesign(designId)
-    );
-    
-    if (success && data) {
-      // Le message peut venir soit de data.message, soit être un message par défaut
-      const message = data.message || 'Design supprimé avec succès !';
-      toast.success(message);
-      loadDesigns();
-    }
-  };
 
   // Helper pour obtenir le badge de statut
   const DesignCard: React.FC<{ design: Design }> = ({ design }) => {
@@ -597,7 +583,10 @@ export const VendorDesignsPage: React.FC = () => {
                     size="sm" 
                     variant="secondary" 
                     className="bg-white text-black hover:bg-gray-100"
-                    onClick={() => handleDeleteDesign(design.id)}
+                    onClick={() => {
+                      setDesignToDelete(design.id);
+                      setDeleteModalOpen(true);
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -638,7 +627,10 @@ export const VendorDesignsPage: React.FC = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     className="text-red-600 hover:bg-red-50"
-                    onClick={() => handleDeleteDesign(design.id)}
+                    onClick={() => {
+                      setDesignToDelete(design.id);
+                      setDeleteModalOpen(true);
+                    }}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Supprimer
@@ -793,7 +785,7 @@ export const VendorDesignsPage: React.FC = () => {
       // Le message peut venir soit de data.message, soit être un message par défaut
       const message = data.message || 'Design supprimé avec succès !';
       toast.success(message);
-      setDesigns(designs => designs.filter(d => d.id !== designToDelete));
+      loadDesigns(); // Recharger la liste complète des designs
     }
     setDeleteModalOpen(false);
     setDesignToDelete(null);
