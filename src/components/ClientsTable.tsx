@@ -324,7 +324,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                       <MiniCommissionSlider
                         vendeurId={client.id}
                         vendeurType={client.vendeur_type}
-                        initialValue={(client as any).commissionRate || 40} // Commission du backend ou 40% par défaut
+                        initialValue={(client as any).commissionRate ?? 40} // Utiliser 40% seulement si null/undefined
                         onSave={handleUpdateCommission}
                       />
                     ) : (
