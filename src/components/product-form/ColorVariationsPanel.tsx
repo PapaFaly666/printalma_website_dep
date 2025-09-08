@@ -16,6 +16,7 @@ interface ColorVariationsPanelProps {
   onAddImageToColor: (colorId: string, file: File, colorName: string) => string | Promise<string>;
   onUpdateImage: (colorId: string, imageId: string, updates: Partial<ProductImage>) => void;
   onReplaceImage?: (colorId: string, imageId: string, file: File) => Promise<void>;
+  onSuggestedPriceChange?: (price: number) => void;
 }
 
 const VIEW_OPTIONS = [
@@ -36,9 +37,11 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
   onAddImageToColor,
   onUpdateImage,
   onReplaceImage,
+  onSuggestedPriceChange,
 }) => {
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const replaceInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const [suggestedPrice, setSuggestedPrice] = useState<string>('');
 
   const handleImageUpload = async (colorId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -113,6 +116,28 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
           </Button>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Champ prix suggéré global pour ce produit (optionnel) */}
+          <div className="p-3 bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-200 whitespace-nowrap">
+              Prix suggéré (FCFA)
+            </label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              placeholder="Ex: 6500"
+              value={suggestedPrice}
+              onChange={(e) => {
+                setSuggestedPrice(e.target.value);
+                const num = parseInt(e.target.value || '0', 10);
+                if (onSuggestedPriceChange && !Number.isNaN(num)) {
+                  onSuggestedPriceChange(num);
+                }
+              }}
+              className="max-w-[160px]"
+            />
+            <span className="text-xs text-gray-500">Ce prix sera pré-rempli comme prix du produit</span>
+          </div>
+
           {colorVariations.map((color) => {
             const hasValidName = color.name && color.name.trim().length > 0;
             

@@ -65,6 +65,7 @@ const ColorVariationsStep: React.FC<{
   onAddImageToColor: (colorId: string, file: File, colorName?: string, colorCode?: string) => Promise<string>;
   onUpdateImage: (colorId: string, imageId: string, updates: Partial<any>) => void;
   onReplaceImage: (colorId: string, imageId: string, file: File) => Promise<void>;
+  onSuggestedPriceChange: (price: number) => void;
 }> = ({ 
   colorVariations, 
   onAddColorVariation, 
@@ -72,7 +73,8 @@ const ColorVariationsStep: React.FC<{
   onRemoveColorVariation, 
   onAddImageToColor, 
   onUpdateImage,
-  onReplaceImage
+  onReplaceImage,
+  onSuggestedPriceChange
 }) => {
   return (
     <Card>
@@ -91,6 +93,7 @@ const ColorVariationsStep: React.FC<{
           onAddImageToColor={onAddImageToColor}
           onUpdateImage={onUpdateImage}
           onReplaceImage={onReplaceImage}
+          onSuggestedPriceChange={onSuggestedPriceChange}
         />
       </CardContent>
     </Card>
@@ -1211,15 +1214,16 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         return <BasicInfoStep formData={formData} errors={errors} onUpdate={updateFormData} />;
       
       case 2:
-    return (
+        return (
           <ColorVariationsStep 
             colorVariations={formData.colorVariations}
             onAddColorVariation={addColorVariation}
             onUpdateColorVariation={updateColorVariation}
             onRemoveColorVariation={removeColorVariation}
-        onAddImageToColor={handleAddImageToColor}
+            onAddImageToColor={handleAddImageToColor}
             onUpdateImage={updateImage}
-        onReplaceImage={handleReplaceImage}
+            onReplaceImage={handleReplaceImage}
+            onSuggestedPriceChange={(price) => updateFormData('price', price)}
           />
         );
       
