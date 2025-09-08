@@ -67,6 +67,13 @@ class CommissionService {
     );
   }
 
+  private handleAuthError(): void {
+    // Redirection simple vers la page de connexion
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }
+
   /**
    * Gestion centralisée des erreurs API - CORRIGÉE avec authentification
    */
