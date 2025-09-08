@@ -51,17 +51,63 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             )}
           </div>
 
-          {/* Gestionnaire de Prix Avancé */}
-          <ProductPriceManager
-            initialPrice={formData.price}
-            initialSuggestedPrice={formData.suggestedPrice}
-            onChange={(priceData) => {
-              onUpdate('price', priceData.price);
-              onUpdate('suggestedPrice', priceData.suggestedPrice);
-            }}
-            showCalculator={true}
-            category={formData.categories?.[0] || ''}
-          />
+          {/* Prix suggéré (simple) */}
+          <div className="space-y-2">
+            <Label htmlFor="suggested-price" className="text-sm font-medium">
+              💡 Prix suggéré (FCFA) - Optionnel
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="suggested-price"
+                type="number"
+                value={formData.suggestedPrice || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? undefined : Number(e.target.value);
+                  onUpdate('suggestedPrice', value);
+                }}
+                placeholder="Prix de référence pour l'admin"
+                min="0"
+                step="100"
+                className="flex-1"
+              />
+              {formData.suggestedPrice && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (formData.suggestedPrice) {
+                      onUpdate('price', formData.suggestedPrice);
+                    }
+                  }}
+                  className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 whitespace-nowrap"
+                >
+                  Copier →
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              💾 Ce prix sera sauvegardé en base de données comme référence admin
+            </p>
+          </div>
+
+          {/* Prix de vente */}
+          <div className="space-y-2">
+            <Label htmlFor="price" className="text-sm font-medium">
+              💰 Prix de vente (FCFA) *
+            </Label>
+            <Input
+              id="price"
+              type="number"
+              value={formData.price}
+              onChange={(e) => onUpdate('price', parseFloat(e.target.value) || 0)}
+              placeholder="Prix final affiché aux clients"
+              min="0"
+              step="100"
+              className={`font-semibold ${errors.price ? 'border-red-500' : ''}`}
+            />
+            {errors.price && (
+              <p className="text-sm text-red-500">{errors.price}</p>
+            )}
+          </div>
           
           {/* Stock séparé */}
           <div className="space-y-2">

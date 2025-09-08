@@ -177,6 +177,7 @@ export const useProductForm = () => {
         name: formData.name,
         description: formData.description,
         price: formData.price,
+        suggestedPrice: formData.suggestedPrice, // ✅ AJOUTÉ: Champ prix suggéré
         stock: formData.stock,
         status: formData.status,
         categories: formData.categories, // Directement les noms (pas de conversion en IDs)
@@ -217,7 +218,8 @@ export const useProductForm = () => {
       });
       console.log('🔍 [DEBUG] Genre dans formData:', formData.genre);
       console.log('🔍 [DEBUG] Genre dans apiPayload:', apiPayload.genre);
-      console.log('🔍 [DEBUG] Genre sera envoyé:', formData.genre || 'UNISEXE');
+      console.log('🔍 [DEBUG] Prix suggéré:', formData.suggestedPrice);
+      console.log('🔍 [DEBUG] Prix suggéré sera envoyé:', apiPayload.suggestedPrice);
 
       // Appeler l'API avec le nouveau format
       const result = await ProductService.createProduct(apiPayload, files);
