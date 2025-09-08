@@ -50,6 +50,22 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             )}
           </div>
 
+          {/* Prix suggéré (pré-remplit le prix) */}
+          <div className="space-y-2">
+            <Label htmlFor="suggested-price" className="text-sm font-medium">
+              Prix suggéré (FCFA)
+            </Label>
+            <Input
+              id="suggested-price"
+              type="number"
+              placeholder="Ex: 6500"
+              min="0"
+              step="100"
+              onChange={(e) => onUpdate('price', parseFloat(e.target.value) || 0)}
+            />
+            <p className="text-xs text-gray-500">Ce champ remplit automatiquement le prix ci-dessous.</p>
+          </div>
+
           {/* Prix et Stock */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
