@@ -12,6 +12,8 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { UserPlus, Users, UserCheck, UserX, Activity, RefreshCw, Info, Shield, AlertTriangle, Clock } from 'lucide-react';
 import { commissionService } from '../services/commissionService';
+import { withAuth } from '../middleware/authMiddleware';
+import { RequireAuth } from '../components/auth/RequireAuth';
 
 const ClientManagement: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);

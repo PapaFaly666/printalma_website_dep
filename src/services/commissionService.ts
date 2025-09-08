@@ -45,14 +45,113 @@ class CommissionService {
   private baseUrl = `${API_CONFIG.BASE_URL}/admin`;
 
   /**
-   * Obtenir le token d'authentification
+   * Méthode CORRIGÉE pour récupérer le token - Compatible avec fixe.md
    */
   private getAuthToken(): string {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    // Option 1: Token dans localStorage (multiple variations)
+    let token = localStorage.getItem('adminToken') || 
+                localStorage.getItem('authToken') ||
+                localStorage.getItem('token') ||
+                localStorage.getItem('accessToken');
+    
+    // Option 2: Token dans sessionStorage  
     if (!token) {
+      token = sessionStorage.getItem('adminToken') || 
+              sessionStorage.getItem('authToken') ||
+              sessionStorage.getItem('token') ||
+              sessionStorage.getItem('accessToken');
+    }
+
+    // Option 3: Token dans un cookie (si vous utilisez des cookies)
+    if (!token) {
+      token = this.getCookieValue('adminToken') || 
+              this.getCookieValue('authToken') ||
+              this.getCookieValue('token') ||
+              this.getCookieValue('accessToken');
+    }
+
+    // Option 4: Token depuis un store global (Redux/Zustand/etc.)
+    if (!token && (window as any).store) {
+      const state = (window as any).store.getState();
+      token = state?.auth?.token || state?.user?.token || state?.auth?.accessToken;
+    }
+
+    // Option 5: Token depuis React Context (si accessible globalement)
+    if (!token && (window as any).authContext) {
+      token = (window as any).authContext.token;
+    }
+
+    if (!token) {
+      console.warn('🚨 Aucun token d\'authentification trouvé');
+      console.log('🔍 Recherche effectuée dans:', {
+        localStorage: Object.keys(localStorage).filter(key => key.includes('token') || key.includes('auth')),
+        sessionStorage: Object.keys(sessionStorage).filter(key => key.includes('token') || key.includes('auth')),
+        cookies: document.cookie
+      });
       throw new Error('Token d\'authentification requis');
     }
+
+    // Vérifier si le token n'est pas expiré (optionnel)
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        console.warn('🚨 Token expiré:', new Date(payload.exp * 1000));
+        throw new Error('Session expirée - Veuillez vous reconnecter');
+      }
+      
+      // Vérifier le rôle admin
+      if (payload.role && !['ADMIN', 'SUPERADMIN'].includes(payload.role)) {
+        console.warn('🚨 Permissions insuffisantes:', payload.role);
+        throw new Error('Permissions administrateur requises');
+      }
+
+      console.log('✅ Token valide trouvé pour:', payload.role || 'utilisateur');
+    } catch (e) {
+      if (e instanceof Error && (e.message.includes('Session expirée') || e.message.includes('Permissions'))) {
+        throw e; // Re-lancer les erreurs importantes
+      }
+      console.warn('⚠️ Impossible de valider le token JWT:', e);
+      // Continuer avec le token même si la validation échoue (token peut-être dans un autre format)
+    }
+
     return token;
+  }
+
+  /**
+   * Utilitaire pour lire les cookies
+   */
+  private getCookieValue(name: string): string | null {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      const cookieValue = parts.pop()?.split(';').shift();
+      return cookieValue || null;
+    }
+    return null;
+  }
+
+  /**
+   * Gestion des erreurs d'authentification
+   */
+  private handleAuthError(): void {
+    console.warn('🚨 Erreur d\'authentification - nettoyage et redirection');
+    
+    // Nettoyer tous les tokens potentiels
+    const tokenKeys = ['adminToken', 'authToken', 'token', 'accessToken'];
+    tokenKeys.forEach(key => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+    
+    // Nettoyer les cookies (si possible)
+    document.cookie = 'adminToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    
+    // Rediriger vers la page de login (seulement si pas déjà sur la page de login)
+    if (window.location.pathname !== '/login' && !window.location.pathname.includes('auth')) {
+      console.log('🔄 Redirection vers login...');
+      window.location.href = '/login';
+    }
   }
 
   /**
@@ -66,10 +165,22 @@ class CommissionService {
   }
 
   /**
-   * Gestion centralisée des erreurs API
+   * Gestion centralisée des erreurs API - CORRIGÉE avec authentification
    */
   private async handleApiError(response: Response): Promise<never> {
     let errorMessage = 'Erreur lors de la communication avec le serveur';
+    
+    // Gestion spéciale des erreurs d'authentification
+    if (response.status === 401) {
+      console.warn('🚨 Erreur 401 - Token invalide ou expiré');
+      this.handleAuthError();
+      throw new Error('Session expirée - Redirection vers login...');
+    }
+
+    if (response.status === 403) {
+      console.warn('🚨 Erreur 403 - Permissions insuffisantes');
+      errorMessage = 'Accès interdit - Permissions administrateur requises';
+    }
     
     try {
       const errorData = await response.json();
@@ -83,7 +194,8 @@ class CommissionService {
             errorMessage = 'Vendeur introuvable';
             break;
           case 'UNAUTHORIZED':
-            errorMessage = 'Accès non autorisé - Permissions administrateur requises';
+            this.handleAuthError();
+            errorMessage = 'Session expirée - Redirection vers login...';
             break;
           case 'FORBIDDEN':
             errorMessage = 'Accès interdit - Vous n\'avez pas les permissions nécessaires';
@@ -95,18 +207,15 @@ class CommissionService {
         errorMessage = errorData.message;
       }
     } catch {
-      // Si la réponse n'est pas du JSON, utiliser le message par défaut
-      if (response.status === 401) {
-        errorMessage = 'Session expirée - Veuillez vous reconnecter';
-      } else if (response.status === 403) {
-        errorMessage = 'Accès interdit - Permissions insuffisantes';
-      } else if (response.status === 404) {
+      // Si la réponse n'est pas du JSON, utiliser le message par défaut basé sur le status
+      if (response.status === 404) {
         errorMessage = 'Ressource introuvable';
       } else if (response.status >= 500) {
         errorMessage = 'Erreur serveur - Veuillez réessayer plus tard';
       }
     }
 
+    console.error(`❌ Erreur API ${response.status}:`, errorMessage);
     throw new Error(errorMessage);
   }
 
