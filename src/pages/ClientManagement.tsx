@@ -92,6 +92,23 @@ const ClientManagement: React.FC = () => {
     refreshStats();
   };
 
+  // 🆕 Gestionnaire pour la mise à jour des commissions
+  const handleUpdateCommission = async (vendeurId: number, commission: number) => {
+    try {
+      // TODO: Implémenter l'appel API pour sauvegarder la commission
+      // Pour l'instant, on simule avec un délai
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log(`Commission mise à jour: ${commission}% pour le vendeur #${vendeurId}`);
+      
+      // Optionnel: rafraîchir les données si nécessaire
+      // refreshClients();
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour de la commission:', error);
+      throw new Error(`Impossible de mettre à jour la commission: ${error.message}`);
+    }
+  };
+
   // 🆕 Calcul des statistiques de sécurité selon la documentation
   const securityStats = {
     lockedAccounts: clients.filter(client => 
@@ -350,6 +367,7 @@ const ClientManagement: React.FC = () => {
                 onToggleStatus={handleToggleStatus}
                 onResetPassword={handleResetPassword}
                 onUnlockClient={handleUnlockClient}
+                onUpdateCommission={handleUpdateCommission}
               />
               
               {/* Pagination */}

@@ -40,6 +40,7 @@ import {
 import { StatusConfirmModal } from './StatusConfirmModal';
 import { SuccessToast } from './SuccessToast';
 import { ResetPasswordModal } from './admin/ResetPasswordModal';
+import { MiniCommissionSlider } from './admin/MiniCommissionSlider';
 import { 
   ClientInfo, 
   getSellerTypeIcon, 
@@ -63,6 +64,7 @@ interface ClientsTableProps {
     };
     unlockedAt?: string;
   }>;
+  onUpdateCommission?: (vendeurId: number, commission: number) => Promise<void>;
 }
 
 export const ClientsTable: React.FC<ClientsTableProps> = ({
@@ -70,7 +72,8 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
   loading,
   onToggleStatus,
   onResetPassword,
-  onUnlockClient
+  onUnlockClient,
+  onUpdateCommission
 }) => {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -164,6 +167,20 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     }
   };
 
+  const handleUpdateCommission = async (vendeurId: number, commission: number) => {
+    if (!onUpdateCommission) {
+      throw new Error('Fonction de mise à jour des commissions non disponible');
+    }
+
+    try {
+      await onUpdateCommission(vendeurId, commission);
+      showSuccessToast(`Commission mise à jour: ${commission}% pour le vendeur #${vendeurId}`);
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour de la commission:', error);
+      throw error;
+    }
+  };
+
   const isClientLocked = (client: ClientInfo): boolean => {
     return client.locked_until ? new Date(client.locked_until) > new Date() : false;
   };
@@ -216,6 +233,9 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Créé le
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Commission
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -296,6 +316,22 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                       <Clock className="w-4 h-4 mr-1" />
                       {new Date(client.created_at).toLocaleDateString('fr-FR')}
                     </div>
+                  </td>
+
+                  {/* Commission Slider */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {onUpdateCommission ? (
+                      <MiniCommissionSlider
+                        vendeurId={client.id}
+                        vendeurType={client.vendeur_type}
+                        initialValue={40} // Valeur par défaut à 40% comme demandé
+                        onSave={handleUpdateCommission}
+                      />
+                    ) : (
+                      <Badge variant="outline" className="text-gray-500">
+                        Non disponible
+                      </Badge>
+                    )}
                   </td>
 
                   {/* Actions */}
