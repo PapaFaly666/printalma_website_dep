@@ -68,6 +68,7 @@ export interface CreateClientRequest {
   address?: string;
   shopName?: string;
   profilePhoto?: File | null;
+  commissionRate?: number;
 }
 
 export interface CreateClientResponse {
