@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Client } from '../types/client.types';
+import { ClientWithCommission } from '../hooks/useClientsWithCommissions';
 import { VendeurType, VENDEUR_TYPE_METADATA } from '../types/auth.types';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -49,7 +50,7 @@ import {
 } from '../types/auth.types';
 
 interface ClientsTableProps {
-  clients: ClientInfo[];
+  clients: ClientWithCommission[];
   loading: boolean;
   onToggleStatus: (clientId: number, currentStatus: boolean) => Promise<void>;
   onResetPassword?: (email: string) => Promise<{ message: string }>;
@@ -78,7 +79,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<ClientInfo | null>(null);
+  const [selectedClient, setSelectedClient] = useState<ClientWithCommission | null>(null);
   const [successToast, setSuccessToast] = useState<{ visible: boolean; message: string }>({
     visible: false,
     message: ''
@@ -92,7 +93,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     setSuccessToast({ visible: false, message: '' });
   };
 
-  const handleToggleStatusClick = (client: ClientInfo) => {
+  const handleToggleStatusClick = (client: ClientWithCommission) => {
     setSelectedClient(client);
     setStatusModalOpen(true);
   };
@@ -119,7 +120,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     }
   };
 
-  const handleResetPassword = async (client: ClientInfo) => {
+  const handleResetPassword = async (client: ClientWithCommission) => {
     setSelectedClient(client);
     setResetPasswordModalOpen(true);
   };
@@ -139,7 +140,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     }
   };
 
-  const handleUnlockClient = async (client: ClientInfo) => {
+  const handleUnlockClient = async (client: ClientWithCommission) => {
     if (!onUnlockClient) return;
 
     setActionLoading(client.id);
@@ -181,7 +182,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     }
   };
 
-  const isClientLocked = (client: ClientInfo): boolean => {
+  const isClientLocked = (client: ClientWithCommission): boolean => {
     return client.locked_until ? new Date(client.locked_until) > new Date() : false;
   };
 
@@ -321,12 +322,24 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                   {/* Commission Slider */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     {onUpdateCommission ? (
-                      <MiniCommissionSlider
-                        vendeurId={client.id}
-                        vendeurType={client.vendeur_type}
-                        initialValue={(client as any).commissionRate ?? 40} // Utiliser 40% seulement si null/undefined
-                        onSave={handleUpdateCommission}
-                      />
+                      <div className="space-y-1">
+                        <MiniCommissionSlider
+                          vendeurId={client.id}
+                          vendeurType={client.vendeur_type}
+                          initialValue={client.commissionRate} // Vraie valeur depuis le backend
+                          onSave={handleUpdateCommission}
+                        />
+                        {client.lastUpdated && (
+                          <div className="text-xs text-gray-500">
+                            Mise à jour: {new Date(client.lastUpdated).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <Badge variant="outline" className="text-gray-500">
                         Non disponible

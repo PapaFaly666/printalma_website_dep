@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useClients } from '../hooks/useClients';
+import { useClientsWithCommissions } from '../hooks/useClientsWithCommissions';
 import { useClientStats } from '../hooks/useClientStats';
 import CreateClientForm from '../components/auth/CreateClientForm';
 import { ClientsFilters } from '../components/ClientsFilters';
@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { UserPlus, Users, UserCheck, UserX, Activity, RefreshCw, Info, Shield, AlertTriangle, Clock } from 'lucide-react';
-import { commissionService } from '../services/commissionService';
 import { withAuth } from '../middleware/authMiddleware';
 import { RequireAuth } from '../components/auth/RequireAuth';
 
@@ -32,8 +31,9 @@ const ClientManagement: React.FC = () => {
     goToPage,
     resetFilters,
     refreshClients,
-    clearError
-  } = useClients({ page: 1, limit: 10 });
+    clearError,
+    updateCommission
+  } = useClientsWithCommissions({ page: 1, limit: 10 });
 
   const {
     stats,
@@ -98,13 +98,10 @@ const ClientManagement: React.FC = () => {
   // 🆕 Gestionnaire pour la mise à jour des commissions - Compatible NestJS Backend
   const handleUpdateCommission = async (vendeurId: number, commission: number) => {
     try {
-      // Appel API direct au backend NestJS
-      await commissionService.updateVendorCommission(vendeurId, commission);
+      // Utiliser la méthode du hook qui gère automatiquement la mise à jour locale
+      await updateCommission(vendeurId, commission);
       
       console.log(`✅ Commission mise à jour: ${commission}% pour le vendeur #${vendeurId}`);
-      
-      // Optionnel: rafraîchir les données des clients pour refléter les changements
-      // refreshClients();
     } catch (error: any) {
       console.error('❌ Erreur lors de la mise à jour de la commission:', error);
       throw new Error(`${error.message}`);
