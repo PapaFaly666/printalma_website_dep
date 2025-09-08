@@ -7,6 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ProductFormData, ProductFormErrors } from '../../types/product';
+import { ProductPriceManager } from '../admin/ProductPriceManager';
 
 interface ProductFormFieldsProps {
   formData: ProductFormData;
@@ -50,67 +51,35 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             )}
           </div>
 
-          {/* Prix suggéré (pré-remplit le prix) */}
+          {/* Gestionnaire de Prix Avancé */}
+          <ProductPriceManager
+            initialPrice={formData.price}
+            initialSuggestedPrice={formData.suggestedPrice}
+            onChange={(priceData) => {
+              onUpdate('price', priceData.price);
+              onUpdate('suggestedPrice', priceData.suggestedPrice);
+            }}
+            showCalculator={true}
+            category={formData.categories?.[0] || ''}
+          />
+          
+          {/* Stock séparé */}
           <div className="space-y-2">
-            <Label htmlFor="suggested-price" className="text-sm font-medium">
-              Prix suggéré (FCFA)
+            <Label htmlFor="stock" className="text-sm font-medium">
+              📦 Stock
             </Label>
             <Input
-              id="suggested-price"
+              id="stock"
               type="number"
-              placeholder="Ex: 6500"
+              value={formData.stock}
+              onChange={(e) => onUpdate('stock', parseInt(e.target.value) || 0)}
+              placeholder="0"
               min="0"
-              step="100"
-              value={formData.suggestedPrice ?? ''}
-              onChange={(e) => {
-                const v = e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0);
-                onUpdate('suggestedPrice', v as any);
-                if (v !== undefined && (!formData.price || formData.price === 0)) {
-                  onUpdate('price', v as any);
-                }
-              }}
+              className={errors.stock ? 'border-red-500' : ''}
             />
-            <p className="text-xs text-gray-500">Ce champ remplit automatiquement le prix ci-dessous.</p>
-          </div>
-
-          {/* Prix et Stock */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="price" className="text-sm font-medium">
-                Prix (FCFA) *
-              </Label>
-              <Input
-                id="price"
-                type="number"
-                value={formData.price}
-                onChange={(e) => onUpdate('price', parseFloat(e.target.value) || 0)}
-                placeholder="0"
-                min="0"
-                step="100"
-                className={errors.price ? 'border-red-500' : ''}
-              />
-              {errors.price && (
-                <p className="text-sm text-red-500">{errors.price}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="stock" className="text-sm font-medium">
-                Stock
-              </Label>
-              <Input
-                id="stock"
-                type="number"
-                value={formData.stock}
-                onChange={(e) => onUpdate('stock', parseInt(e.target.value) || 0)}
-                placeholder="0"
-                min="0"
-                className={errors.stock ? 'border-red-500' : ''}
-              />
-              {errors.stock && (
-                <p className="text-sm text-red-500">{errors.stock}</p>
-              )}
-            </div>
+            {errors.stock && (
+              <p className="text-sm text-red-500">{errors.stock}</p>
+            )}
           </div>
 
           {/* Statut */}
