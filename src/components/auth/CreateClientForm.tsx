@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Alert, AlertDescription } from '../ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { CommissionSlider } from '../admin/CommissionSlider';
 
 interface CreateClientFormProps {
   onSuccess?: () => void;
@@ -27,7 +28,8 @@ const CreateClientForm: React.FC<CreateClientFormProps> = ({ onSuccess, onCancel
     country: '',
     address: '',
     shopName: '',
-    profilePhoto: null as File | null
+    profilePhoto: null as File | null,
+    commissionRate: 10 // Valeur par défaut à 10%
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
@@ -138,6 +140,15 @@ const CreateClientForm: React.FC<CreateClientFormProps> = ({ onSuccess, onCancel
     }
   };
 
+  const handleCommissionChange = (value: number) => {
+    setFormData(prev => ({ ...prev, commissionRate: value }));
+    
+    // Effacer l'erreur globale
+    if (error) {
+      clearError();
+    }
+  };
+
   const handleSelectChange = (value: string, field: string = 'vendeur_type') => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
@@ -210,7 +221,8 @@ const CreateClientForm: React.FC<CreateClientFormProps> = ({ onSuccess, onCancel
         country: formData.country || undefined,
         address: formData.address.trim() || undefined,
         shopName: formData.shopName.trim(),
-        profilePhoto: formData.profilePhoto
+        profilePhoto: formData.profilePhoto,
+        commissionRate: formData.commissionRate
       });
       
       if (result.success && result.user) {
@@ -269,6 +281,12 @@ const CreateClientForm: React.FC<CreateClientFormProps> = ({ onSuccess, onCancel
                   <div className="flex justify-between">
                     <span className="text-gray-600">Email</span>
                     <span className="font-medium">{createdUser.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Commission</span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      💰 {formData.commissionRate}%
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Statut</span>
@@ -620,6 +638,18 @@ const CreateClientForm: React.FC<CreateClientFormProps> = ({ onSuccess, onCancel
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Commission Slider - Affiché seulement si un type de vendeur est sélectionné */}
+              {formData.vendeur_type && (
+                <div className="space-y-4">
+                  <CommissionSlider
+                    vendeurType={formData.vendeur_type as VendeurType}
+                    value={formData.commissionRate}
+                    onChange={handleCommissionChange}
+                    className="w-full"
+                  />
                 </div>
               )}
 
