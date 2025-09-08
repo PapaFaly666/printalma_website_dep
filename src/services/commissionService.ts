@@ -48,13 +48,20 @@ class CommissionService {
    * Méthode CORRIGÉE pour récupérer le token - Compatible avec fixe.md
    */
   private getAuthToken(): string {
-    // Option 1: Token dans localStorage (multiple variations)
+    // Option 1: Token direct dans localStorage (variations courantes)
     let token = localStorage.getItem('adminToken') || 
                 localStorage.getItem('authToken') ||
                 localStorage.getItem('token') ||
                 localStorage.getItem('accessToken');
+
+    // Option 1-bis: Session sérialisée (ex: auth_session)
+    if (!token) {
+      const authSession = localStorage.getItem('auth_session') || sessionStorage.getItem('auth_session');
+      const extracted = this.tryExtractTokenFromAuthSession(authSession);
+      if (extracted) token = extracted;
+    }
     
-    // Option 2: Token dans sessionStorage  
+    // Option 2: Token dans sessionStorage
     if (!token) {
       token = sessionStorage.getItem('adminToken') || 
               sessionStorage.getItem('authToken') ||
@@ -67,7 +74,18 @@ class CommissionService {
       token = this.getCookieValue('adminToken') || 
               this.getCookieValue('authToken') ||
               this.getCookieValue('token') ||
-              this.getCookieValue('accessToken');
+              this.getCookieValue('accessToken') ||
+              // Variations NextAuth / session custom
+              this.getCookieValue('auth_session') ||
+              this.getCookieValue('next-auth.session-token') ||
+              this.getCookieValue('__Secure-next-auth.session-token');
+
+      // Si cookie auth_session est JSON, tenter d'extraire
+      if (!token) {
+        const rawSession = this.getCookieValue('auth_session');
+        const extracted = this.tryExtractTokenFromAuthSession(rawSession);
+        if (extracted) token = extracted;
+      }
     }
 
     // Option 4: Token depuis un store global (Redux/Zustand/etc.)
@@ -115,6 +133,34 @@ class CommissionService {
     }
 
     return token;
+  }
+
+  /**
+   * Tente d'extraire un token utilisable à partir d'une session sérialisée
+   * ex: valeur de `auth_session` dans le storage/cookies.
+   */
+  private tryExtractTokenFromAuthSession(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    // Si la chaîne ressemble déjà à un JWT (xxx.yyy.zzz)
+    if (raw.split('.').length === 3) {
+      return raw;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      // Essayer différentes propriétés courantes
+      const direct = parsed?.token || parsed?.jwt || parsed?.accessToken || parsed?.authToken || parsed?.sessionToken;
+      if (typeof direct === 'string') return direct;
+      // Structures imbriquées fréquentes
+      const nested = parsed?.user?.token || parsed?.user?.accessToken || parsed?.data?.accessToken || parsed?.data?.token;
+      if (typeof nested === 'string') return nested;
+      // Certains stockent la session sous { value: '{"accessToken":"..."}' }
+      if (typeof parsed?.value === 'string') {
+        return this.tryExtractTokenFromAuthSession(parsed.value);
+      }
+    } catch {
+      // Non JSON, rien à faire
+    }
+    return null;
   }
 
   /**
