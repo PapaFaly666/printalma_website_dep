@@ -1,4 +1,6 @@
 import { Product as SchemaProduct } from '../schemas/product.schema';
+import { api } from './api';
+import { prepareProductPayload } from '../utils/productNormalization';
 
 // Extended Product interface for ModernProductList compatibility
 export interface Product extends Omit<SchemaProduct, 'colors' | 'sizes'> {
@@ -312,25 +314,26 @@ export class ProductService {
         throw new Error('Au moins une image est requise pour créer un produit');
       }
       
-      // Créer la structure productData EXACTE selon la documentation
+      // Construire la structure en passant par un payload nettoyé/normalisé
+      const cleaned = prepareProductPayload(productData as any);
       const backendProductData = {
-        name: productData.name.trim(),
-        description: productData.description || '',
-        price: Number(productData.price) || 0,
-        suggestedPrice: typeof productData.suggestedPrice === 'number' ? productData.suggestedPrice : undefined,
-        stock: Number(productData.stock) || 0,
-        status: productData.status || 'draft',
-        categories: productData.categories,
-        sizes: productData.sizes || [],
-        genre: productData.genre || 'UNISEXE', // ← NOUVEAU: Ajout du champ genre
-        isReadyProduct: productData.isReadyProduct ?? false, // ← NOUVEAU: Ajout du champ isReadyProduct
-        colorVariations: productData.colorVariations?.map((color, colorIndex) => ({
+        name: (cleaned.name || '').trim(),
+        description: cleaned.description || '',
+        price: Number(cleaned.price) || 0,
+        suggestedPrice: typeof cleaned.suggestedPrice === 'number' ? cleaned.suggestedPrice : undefined,
+        stock: Number(cleaned.stock) || 0,
+        status: cleaned.status || 'draft',
+        categories: cleaned.categories,
+        sizes: cleaned.sizes || [],
+        genre: cleaned.genre || 'UNISEXE',
+        isReadyProduct: cleaned.isReadyProduct ?? false,
+        colorVariations: (cleaned.colorVariations || []).map((color: any, colorIndex: number) => ({
           name: color.name || `Couleur ${colorIndex + 1}`,
           colorCode: color.colorCode || '#000000',
-          images: color.images?.map((image, imageIndex) => ({
+          images: (color.images || []).map((image: any, imageIndex: number) => ({
             fileId: image.fileId || `image_${colorIndex}_${imageIndex}`,
             view: image.view || 'Front',
-            delimitations: (image.delimitations || []).map(delim => ({
+            delimitations: (image.delimitations || []).map((delim: any) => ({
               x: Number(delim.x) || 0,
               y: Number(delim.y) || 0,
               width: Number(delim.width) || 0,
@@ -339,8 +342,8 @@ export class ProductService {
               name: delim.name || undefined,
               coordinateType: 'PERCENTAGE'
             }))
-          })) || []
-        })) || []
+          }))
+        }))
       };
       
       console.log('🔍 [DEBUG] Structure backendProductData:', JSON.stringify(backendProductData, null, 2));
@@ -379,17 +382,9 @@ export class ProductService {
       }
       
       // Appel API selon la documentation
-      const response = await fetch(`${API_BASE}/products`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
-      });
-      
+      const response = await fetch(`${API_BASE}/products`, { method: 'POST', credentials: 'include', body: formData });
       const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || `Erreur HTTP ${response.status}`);
-      }
+      if (!response.ok) throw new Error(data.message || `Erreur HTTP ${response.status}`);
       
       if (data.success && data.data) {
         console.log('✅ [ProductService] Produit créé avec succès');

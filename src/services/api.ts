@@ -1,5 +1,33 @@
+import axios from 'axios';
+import { normalizeProductFromApi } from '../utils/productNormalization';
+
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com',
+  withCredentials: true,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+api.interceptors.response.use((res) => {
+  const url = res.config?.url || '';
+  if (url.startsWith('/products')) {
+    if (Array.isArray(res.data?.data)) {
+      res.data.data = res.data.data.map(normalizeProductFromApi);
+    } else if (res.data && typeof res.data === 'object') {
+      res.data = normalizeProductFromApi(res.data);
+    }
+  }
+  return res;
+});
+
+api.interceptors.response.use((res) => res, (err) => {
+  if (err?.response?.status === 401) {
+    window.location.href = '/login';
+  }
+  return Promise.reject(err);
+});
+
 // src/api/apiService.ts
-import axios, { AxiosResponse } from 'axios';
+import type { AxiosResponse } from 'axios';
 import { ProductSchema, Product } from '../schemas/product.schema';
 import { CategorySchema, Category } from '../schemas/category.schema';
 
