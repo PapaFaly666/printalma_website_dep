@@ -1,0 +1,110 @@
+/* Styles pour des sliders fluides et précis */
+
+.smooth-slider {
+  /* Améliore la précision tactile sur mobile */
+  touch-action: pan-y;
+  
+  /* Transitions fluides pour toutes les propriétés */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Meilleure réactivité au survol */
+  cursor: pointer;
+}
+
+.smooth-slider:hover {
+  /* Légère élévation au survol pour améliorer le feedback */
+  transform: scaleY(1.2);
+}
+
+.smooth-slider:active {
+  /* Feedback instantané lors de l'interaction */
+  transform: scaleY(1.3);
+  transition: transform 0.1s ease-out;
+}
+
+/* Styles spéciaux pour webkit (Chrome, Safari) */
+.smooth-slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease-in-out;
+}
+
+.smooth-slider::-webkit-slider-thumb:hover {
+  background: #f9fafb;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+  transform: scale(1.1);
+}
+
+.smooth-slider::-webkit-slider-thumb:active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  transform: scale(1.15);
+}
+
+.smooth-slider::-webkit-slider-track {
+  height: 8px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  border: none;
+}
+
+/* Styles pour Firefox */
+.smooth-slider::-moz-range-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease-in-out;
+}
+
+.smooth-slider::-moz-range-thumb:hover {
+  background: #f9fafb;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+  transform: scale(1.1);
+}
+
+.smooth-slider::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  border: none;
+}
+
+/* Amélioration des performances */
+.smooth-slider * {
+  /* Active l'accélération matérielle pour des transitions plus fluides */
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Styles pour les conteneurs de slider */
+.slider-container {
+  /* Améliore les performances de rendu */
+  contain: layout style paint;
+}
+
+/* Responsive touch targets pour mobile */
+@media (hover: none) and (pointer: coarse) {
+  .smooth-slider::-webkit-slider-thumb {
+    height: 24px;
+    width: 24px;
+  }
+  
+  .smooth-slider::-moz-range-thumb {
+    height: 24px;
+    width: 24px;
+  }
+}

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import '../../styles/smooth-slider.css';
 import { 
   Percent, 
   TrendingUp, 
@@ -53,10 +54,10 @@ const COMMISSION_RECOMMENDATIONS = {
 
 // Presets de commission populaires
 const COMMISSION_PRESETS = [
-  { value: 20, label: '20%', description: 'Faible' },
-  { value: 40, label: '40%', description: 'Modéré' },
-  { value: 60, label: '60%', description: 'Élevé' },
-  { value: 80, label: '80%', description: 'Maximum' }
+  { value: 0, label: '0%', description: 'Gratuit' },
+  { value: 25, label: '25%', description: 'Faible' },
+  { value: 50, label: '50%', description: 'Modéré' },
+  { value: 75, label: '75%', description: 'Élevé' }
 ];
 
 export const CommissionSlider: React.FC<CommissionSliderProps> = ({
@@ -91,18 +92,21 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
 
   // Couleurs simplifiées basées sur la valeur
   const getSliderColor = (percentage: number) => {
+    if (percentage === 0) return 'from-gray-400 to-gray-500';    // Gratuit - Gris
     if (percentage <= 30) return 'from-blue-500 to-blue-600';    // Faible commission - Bleu
     if (percentage <= 70) return 'from-green-500 to-green-600';  // Commission modérée - Vert
     return 'from-orange-500 to-orange-600';                     // Forte commission - Orange
   };
 
   const getTextColor = (percentage: number) => {
+    if (percentage === 0) return 'text-gray-700';
     if (percentage <= 30) return 'text-blue-700';
     if (percentage <= 70) return 'text-green-700';
     return 'text-orange-700';
   };
 
   const getBadgeVariant = (percentage: number) => {
+    if (percentage === 0) return 'bg-gray-100 text-gray-800';
     if (percentage <= 30) return 'bg-blue-100 text-blue-800';
     if (percentage <= 70) return 'bg-green-100 text-green-800';
     return 'bg-orange-100 text-orange-800';
@@ -181,12 +185,12 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
               </div>
               
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${getBadgeVariant(localValue)} transition-all duration-300`}>
-                {localValue <= 30 ? '💎 Faible' : localValue <= 70 ? '⚡ Modéré' : '🔥 Élevé'}
+                {localValue === 0 ? '🎁 Gratuit' : localValue <= 30 ? '💎 Faible' : localValue <= 70 ? '⚡ Modéré' : '🔥 Élevé'}
               </div>
             </div>
 
             {/* Slider avec gradient progressif */}
-            <div className="relative">
+            <div className="relative slider-container">
               <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div 
                   className={`h-full bg-gradient-to-r ${getSliderColor(localValue)} transition-all duration-500 ease-out`}
@@ -196,19 +200,19 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
               
               <input
                 type="range"
-                min="1"
+                min="0"
                 max="100"
-                step="1"
+                step="0.1"
                 value={localValue}
                 onChange={handleSliderChange}
                 onMouseDown={() => setIsDragging(true)}
                 onMouseUp={() => setIsDragging(false)}
-                className={`absolute inset-0 w-full h-3 opacity-0 cursor-pointer transition-transform duration-150 ${isDragging ? 'scale-110' : 'hover:scale-105'}`}
+                className={`absolute inset-0 w-full h-3 opacity-0 cursor-pointer smooth-slider transition-transform duration-150 ${isDragging ? 'scale-110' : 'hover:scale-105'}`}
               />
               
               {/* Marqueurs de valeurs */}
               <div className="flex justify-between text-xs text-gray-400 mt-2">
-                <span>1%</span>
+                <span>0%</span>
                 <span>25%</span>
                 <span>50%</span>
                 <span>75%</span>

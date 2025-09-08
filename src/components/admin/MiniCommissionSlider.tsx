@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { VendeurType } from '../../types/auth.types';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import '../../styles/smooth-slider.css';
 import { 
   Percent, 
   Save, 
@@ -80,12 +81,14 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
 
   // Couleurs simplifiées pour une meilleure UX
   const getValueColor = (percentage: number) => {
+    if (percentage === 0) return 'text-gray-600';    // Gratuit - Gris
     if (percentage <= 30) return 'text-blue-600';    // Faible commission - Bleu
     if (percentage <= 70) return 'text-green-600';   // Commission modérée - Vert
     return 'text-orange-600';                        // Forte commission - Orange
   };
 
   const getSliderTrackColor = (percentage: number) => {
+    if (percentage === 0) return 'from-gray-300 to-gray-400';
     if (percentage <= 30) return 'from-blue-400 to-blue-500';
     if (percentage <= 70) return 'from-green-400 to-green-500';
     return 'from-orange-400 to-orange-500';
@@ -98,7 +101,7 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
         <div className="flex items-center gap-1">
           <Percent className="h-3 w-3 text-gray-500" />
           <span className={`text-sm font-semibold ${getValueColor(value)}`}>
-            {value}%
+            {value === 0 ? '0%' : `${Math.round(value * 10) / 10}%`}
           </span>
         </div>
         
@@ -117,7 +120,7 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
       </div>
 
       {/* Slider compact */}
-      <div className="relative">
+      <div className="relative slider-container">
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div 
             className={`h-full bg-gradient-to-r ${getSliderTrackColor(value)} transition-all duration-300`}
@@ -127,17 +130,17 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
         
         <input
           type="range"
-          min="1"
+          min="0"
           max="100"
-          step="1"
+          step="0.1"
           value={value}
           onChange={handleSliderChange}
-          className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
+          className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer smooth-slider"
         />
         
         {/* Marqueurs discrets */}
         <div className="flex justify-between text-xs text-gray-400 mt-1">
-          <span>1%</span>
+          <span>0%</span>
           <span>50%</span>
           <span>100%</span>
         </div>
@@ -151,20 +154,21 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleQuickSet(recommendedValue)}
-            className="h-6 px-2 text-xs text-blue-600 hover:bg-blue-50"
-            title={`Recommandé pour ${vendeurType}`}
+            onClick={() => handleQuickSet(0)}
+            className="h-6 px-2 text-xs text-gray-600 hover:bg-gray-100"
+            title="Gratuit"
           >
-            {recommendedValue}%
+            0%
           </Button>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleQuickSet(50)}
-            className="h-6 px-2 text-xs text-gray-600 hover:bg-gray-100"
+            onClick={() => handleQuickSet(recommendedValue)}
+            className="h-6 px-2 text-xs text-blue-600 hover:bg-blue-50"
+            title={`Recommandé pour ${vendeurType}`}
           >
-            50%
+            {recommendedValue}%
           </Button>
         </div>
 
