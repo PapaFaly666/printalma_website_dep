@@ -61,7 +61,14 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
               placeholder="Ex: 6500"
               min="0"
               step="100"
-              onChange={(e) => onUpdate('price', parseFloat(e.target.value) || 0)}
+              value={formData.suggestedPrice ?? ''}
+              onChange={(e) => {
+                const v = e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0);
+                onUpdate('suggestedPrice', v as any);
+                if (v !== undefined && (!formData.price || formData.price === 0)) {
+                  onUpdate('price', v as any);
+                }
+              }}
             />
             <p className="text-xs text-gray-500">Ce champ remplit automatiquement le prix ci-dessous.</p>
           </div>

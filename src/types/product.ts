@@ -2,6 +2,7 @@ export interface ProductFormData {
   id?: number;
   name: string;
   price: number;
+  suggestedPrice?: number;
   stock?: number;
   status: 'published' | 'draft';
   description: string;

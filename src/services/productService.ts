@@ -33,6 +33,7 @@ export interface CreateProductPayload {
   name: string;
   description?: string;
   price?: number;
+  suggestedPrice?: number;
   stock?: number; // Optionnel avec valeur par défaut 0
   status?: string;
   categories: string[]; // Array de noms de catégories (pas d'IDs)
@@ -316,6 +317,7 @@ export class ProductService {
         name: productData.name.trim(),
         description: productData.description || '',
         price: Number(productData.price) || 0,
+        suggestedPrice: typeof productData.suggestedPrice === 'number' ? productData.suggestedPrice : undefined,
         stock: Number(productData.stock) || 0,
         status: productData.status || 'draft',
         categories: productData.categories,

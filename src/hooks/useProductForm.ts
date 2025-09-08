@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 const initialFormData: ProductFormData = {
   name: '',
   price: 0,
+  suggestedPrice: undefined,
   stock: 0,
   status: 'draft',
   description: '',
