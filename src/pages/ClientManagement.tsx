@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { UserPlus, Users, UserCheck, UserX, Activity, RefreshCw, Info, Shield, AlertTriangle, Clock } from 'lucide-react';
+import { commissionService } from '../services/commissionService';
 
 const ClientManagement: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -92,20 +93,19 @@ const ClientManagement: React.FC = () => {
     refreshStats();
   };
 
-  // 🆕 Gestionnaire pour la mise à jour des commissions
+  // 🆕 Gestionnaire pour la mise à jour des commissions - Compatible NestJS Backend
   const handleUpdateCommission = async (vendeurId: number, commission: number) => {
     try {
-      // TODO: Implémenter l'appel API pour sauvegarder la commission
-      // Pour l'instant, on simule avec un délai
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Appel API direct au backend NestJS
+      await commissionService.updateVendorCommission(vendeurId, commission);
       
-      console.log(`Commission mise à jour: ${commission}% pour le vendeur #${vendeurId}`);
+      console.log(`✅ Commission mise à jour: ${commission}% pour le vendeur #${vendeurId}`);
       
-      // Optionnel: rafraîchir les données si nécessaire
+      // Optionnel: rafraîchir les données des clients pour refléter les changements
       // refreshClients();
     } catch (error: any) {
-      console.error('Erreur lors de la mise à jour de la commission:', error);
-      throw new Error(`Impossible de mettre à jour la commission: ${error.message}`);
+      console.error('❌ Erreur lors de la mise à jour de la commission:', error);
+      throw new Error(`${error.message}`);
     }
   };
 

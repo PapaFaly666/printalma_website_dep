@@ -38,6 +38,7 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isModified, setIsModified] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const recommendedValue = COMMISSION_DEFAULTS[vendeurType] || 25;
 
@@ -58,13 +59,17 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
     if (!isModified) return;
 
     setIsSaving(true);
+    setError(null);
+    
     try {
       await onSave(vendeurId, value);
       setIsModified(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la sauvegarde:', error);
+      setError(error.message || 'Erreur lors de la sauvegarde');
+      setTimeout(() => setError(null), 5000); // Effacer l'erreur après 5s
     } finally {
       setIsSaving(false);
     }
@@ -112,7 +117,14 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
           </Badge>
         )}
         
-        {isModified && !showSuccess && (
+        {error && (
+          <Badge className="bg-red-100 text-red-800 text-xs py-0 px-1">
+            <X className="h-3 w-3 mr-1" />
+            Erreur
+          </Badge>
+        )}
+        
+        {isModified && !showSuccess && !error && (
           <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs py-0 px-1">
             Modifié
           </Badge>
@@ -206,11 +218,20 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
         </div>
       </div>
 
+      {/* Message d'erreur détaillé */}
+      {error && (
+        <div className="text-xs text-red-600 text-center bg-red-50 border border-red-200 rounded px-2 py-1">
+          ⚠️ {error}
+        </div>
+      )}
+
       {/* Indicateur du revenu estimé */}
-      <div className="text-xs text-gray-500 text-center bg-white rounded px-2 py-1">
-        Pour 50,000 FCFA → Vendeur: <span className="font-medium text-green-600">{((100 - value) * 500).toLocaleString('fr-FR')} FCFA</span>
-        {' | '}Admin: <span className="font-medium text-blue-600">{(value * 500).toLocaleString('fr-FR')} FCFA</span>
-      </div>
+      {!error && (
+        <div className="text-xs text-gray-500 text-center bg-white rounded px-2 py-1">
+          Pour 50,000 FCFA → Vendeur: <span className="font-medium text-green-600">{((100 - value) * 500).toLocaleString('fr-FR')} FCFA</span>
+          {' | '}Admin: <span className="font-medium text-blue-600">{(value * 500).toLocaleString('fr-FR')} FCFA</span>
+        </div>
+      )}
     </div>
   );
 };
