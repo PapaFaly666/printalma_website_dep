@@ -26,25 +26,25 @@ interface CommissionSliderProps {
 // Configuration recommandée par type de vendeur
 const COMMISSION_RECOMMENDATIONS = {
   [VendeurType.DESIGNER]: {
-    min: 5,
-    recommended: 10,
-    max: 20,
+    min: 20,
+    recommended: 30,
+    max: 60,
     label: 'Designer',
     description: 'Frais de création et design personnalisé',
     color: 'purple'
   },
   [VendeurType.INFLUENCEUR]: {
-    min: 8,
-    recommended: 15,
-    max: 25,
+    min: 25,
+    recommended: 40,
+    max: 70,
     label: 'Influenceur',
     description: 'Commission sur promotion et marketing',
     color: 'pink'
   },
   [VendeurType.ARTISTE]: {
-    min: 5,
-    recommended: 12,
-    max: 22,
+    min: 20,
+    recommended: 35,
+    max: 65,
     label: 'Artiste',
     description: 'Droits d\'auteur et création artistique',
     color: 'amber'
@@ -53,10 +53,10 @@ const COMMISSION_RECOMMENDATIONS = {
 
 // Presets de commission populaires
 const COMMISSION_PRESETS = [
-  { value: 5, label: '5%', description: 'Commission minimale' },
-  { value: 10, label: '10%', description: 'Équilibré' },
-  { value: 15, label: '15%', description: 'Recommandé' },
-  { value: 20, label: '20%', description: 'Premium' }
+  { value: 20, label: '20%', description: 'Faible' },
+  { value: 40, label: '40%', description: 'Modéré' },
+  { value: 60, label: '60%', description: 'Élevé' },
+  { value: 80, label: '80%', description: 'Maximum' }
 ];
 
 export const CommissionSlider: React.FC<CommissionSliderProps> = ({
@@ -89,31 +89,28 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
     setTimeout(() => setShowTooltip(false), 1000);
   };
 
-  // Calcul des couleurs dynamiques basées sur la valeur
+  // Couleurs simplifiées basées sur la valeur
   const getSliderColor = (percentage: number) => {
-    if (percentage <= 10) return 'from-green-500 to-green-600';
-    if (percentage <= 15) return 'from-yellow-500 to-orange-500';
-    if (percentage <= 20) return 'from-orange-500 to-red-500';
-    return 'from-red-500 to-red-600';
+    if (percentage <= 30) return 'from-blue-500 to-blue-600';    // Faible commission - Bleu
+    if (percentage <= 70) return 'from-green-500 to-green-600';  // Commission modérée - Vert
+    return 'from-orange-500 to-orange-600';                     // Forte commission - Orange
   };
 
   const getTextColor = (percentage: number) => {
-    if (percentage <= 10) return 'text-green-700';
-    if (percentage <= 15) return 'text-yellow-700';
-    if (percentage <= 20) return 'text-orange-700';
-    return 'text-red-700';
+    if (percentage <= 30) return 'text-blue-700';
+    if (percentage <= 70) return 'text-green-700';
+    return 'text-orange-700';
   };
 
   const getBadgeVariant = (percentage: number) => {
-    if (percentage <= 10) return 'bg-green-100 text-green-800';
-    if (percentage <= 15) return 'bg-yellow-100 text-yellow-800';
-    if (percentage <= 20) return 'bg-orange-100 text-orange-800';
-    return 'bg-red-100 text-red-800';
+    if (percentage <= 30) return 'bg-blue-100 text-blue-800';
+    if (percentage <= 70) return 'bg-green-100 text-green-800';
+    return 'bg-orange-100 text-orange-800';
   };
 
-  // Simulation du calcul d'impact (exemple avec 100€ de vente)
+  // Simulation du calcul d'impact (exemple avec 50,000 FCFA de vente)
   const simulateImpact = (commission: number) => {
-    const saleAmount = 100;
+    const saleAmount = 50000;
     const commissionAmount = (saleAmount * commission) / 100;
     const vendorRevenue = saleAmount - commissionAmount;
     
@@ -184,7 +181,7 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
               </div>
               
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${getBadgeVariant(localValue)} transition-all duration-300`}>
-                {localValue <= 10 ? '✓ Équilibré' : localValue <= 15 ? '⚡ Modéré' : localValue <= 20 ? '🔥 Élevé' : '⚠️ Maximum'}
+                {localValue <= 30 ? '💎 Faible' : localValue <= 70 ? '⚡ Modéré' : '🔥 Élevé'}
               </div>
             </div>
 
@@ -193,14 +190,14 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
               <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div 
                   className={`h-full bg-gradient-to-r ${getSliderColor(localValue)} transition-all duration-500 ease-out`}
-                  style={{ width: `${(localValue / 30) * 100}%` }}
+                  style={{ width: `${localValue}%` }}
                 />
               </div>
               
               <input
                 type="range"
-                min="0"
-                max="30"
+                min="1"
+                max="100"
                 step="1"
                 value={localValue}
                 onChange={handleSliderChange}
@@ -211,10 +208,11 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
               
               {/* Marqueurs de valeurs */}
               <div className="flex justify-between text-xs text-gray-400 mt-2">
-                <span>0%</span>
-                <span>10%</span>
-                <span>20%</span>
-                <span>30%</span>
+                <span>1%</span>
+                <span>25%</span>
+                <span>50%</span>
+                <span>75%</span>
+                <span>100%</span>
               </div>
             </div>
 
@@ -270,7 +268,7 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
                 <span className="text-xs font-medium">Vendeur reçoit</span>
               </div>
               <div className="text-xl font-bold text-green-700">
-                {impact.vendorRevenue.toFixed(2)}€
+                {impact.vendorRevenue.toLocaleString('fr-FR')} FCFA
               </div>
               <div className="text-xs text-gray-500">
                 {(100 - localValue)}% du prix
@@ -284,7 +282,7 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
                 <span className="text-xs font-medium">Commission</span>
               </div>
               <div className="text-xl font-bold text-blue-700">
-                {impact.commissionAmount.toFixed(2)}€
+                {impact.commissionAmount.toLocaleString('fr-FR')} FCFA
               </div>
               <div className="text-xs text-gray-500">
                 {localValue}% du prix
@@ -298,7 +296,7 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
                 <span className="text-xs font-medium">Prix total</span>
               </div>
               <div className="text-xl font-bold text-gray-800">
-                {impact.saleAmount.toFixed(2)}€
+                {impact.saleAmount.toLocaleString('fr-FR')} FCFA
               </div>
               <div className="text-xs text-gray-500">
                 Prix de vente

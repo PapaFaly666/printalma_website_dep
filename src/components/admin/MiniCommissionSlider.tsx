@@ -21,9 +21,9 @@ interface MiniCommissionSliderProps {
 
 // Recommandations par type de vendeur (simplifiées pour le tableau)
 const COMMISSION_DEFAULTS = {
-  [VendeurType.DESIGNER]: 10,
-  [VendeurType.INFLUENCEUR]: 15,
-  [VendeurType.ARTISTE]: 12
+  [VendeurType.DESIGNER]: 25,
+  [VendeurType.INFLUENCEUR]: 35,
+  [VendeurType.ARTISTE]: 30
 };
 
 export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
@@ -38,7 +38,7 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
   const [isModified, setIsModified] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const recommendedValue = COMMISSION_DEFAULTS[vendeurType] || 10;
+  const recommendedValue = COMMISSION_DEFAULTS[vendeurType] || 25;
 
   useEffect(() => {
     setValue(initialValue);
@@ -78,19 +78,17 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
     setValue(quickValue);
   };
 
-  // Couleur basée sur la valeur
+  // Couleurs simplifiées pour une meilleure UX
   const getValueColor = (percentage: number) => {
-    if (percentage <= 10) return 'text-green-600';
-    if (percentage <= 20) return 'text-yellow-600';
-    if (percentage <= 30) return 'text-orange-600';
-    return 'text-red-600';
+    if (percentage <= 30) return 'text-blue-600';    // Faible commission - Bleu
+    if (percentage <= 70) return 'text-green-600';   // Commission modérée - Vert
+    return 'text-orange-600';                        // Forte commission - Orange
   };
 
   const getSliderTrackColor = (percentage: number) => {
-    if (percentage <= 10) return 'from-green-400 to-green-500';
-    if (percentage <= 20) return 'from-yellow-400 to-yellow-500';
-    if (percentage <= 30) return 'from-orange-400 to-orange-500';
-    return 'from-red-400 to-red-500';
+    if (percentage <= 30) return 'from-blue-400 to-blue-500';
+    if (percentage <= 70) return 'from-green-400 to-green-500';
+    return 'from-orange-400 to-orange-500';
   };
 
   return (
@@ -112,7 +110,7 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
         )}
         
         {isModified && !showSuccess && (
-          <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs py-0 px-1">
+          <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs py-0 px-1">
             Modifié
           </Badge>
         )}
@@ -123,14 +121,14 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div 
             className={`h-full bg-gradient-to-r ${getSliderTrackColor(value)} transition-all duration-300`}
-            style={{ width: `${(value / 50) * 100}%` }}
+            style={{ width: `${value}%` }}
           />
         </div>
         
         <input
           type="range"
-          min="0"
-          max="50"
+          min="1"
+          max="100"
           step="1"
           value={value}
           onChange={handleSliderChange}
@@ -139,9 +137,9 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
         
         {/* Marqueurs discrets */}
         <div className="flex justify-between text-xs text-gray-400 mt-1">
-          <span>0%</span>
-          <span>25%</span>
+          <span>1%</span>
           <span>50%</span>
+          <span>100%</span>
         </div>
       </div>
 
@@ -163,10 +161,10 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleQuickSet(20)}
+            onClick={() => handleQuickSet(50)}
             className="h-6 px-2 text-xs text-gray-600 hover:bg-gray-100"
           >
-            20%
+            50%
           </Button>
         </div>
 
@@ -206,8 +204,8 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
 
       {/* Indicateur du revenu estimé */}
       <div className="text-xs text-gray-500 text-center bg-white rounded px-2 py-1">
-        Pour 100€ → Vendeur: <span className="font-medium text-green-600">{100 - value}€</span>
-        {' | '}Admin: <span className="font-medium text-blue-600">{value}€</span>
+        Pour 50,000 FCFA → Vendeur: <span className="font-medium text-green-600">{((100 - value) * 500).toLocaleString('fr-FR')} FCFA</span>
+        {' | '}Admin: <span className="font-medium text-blue-600">{(value * 500).toLocaleString('fr-FR')} FCFA</span>
       </div>
     </div>
   );
