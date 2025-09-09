@@ -4732,60 +4732,129 @@ const SellDesignPage: React.FC = () => {
                                                   </div>
                                                 </motion.div>
 
-                                                {/* Statistiques rapides - Layout mobile optimisé */}
-                                                <div className="grid grid-cols-2 gap-3">
-                                                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 text-center border border-gray-200/50 dark:border-gray-700/50">
-                                                    <div className="flex items-center justify-center mb-1">
-                                                      <Percent className="h-4 w-4 text-blue-500 mr-1" />
-                                                      <span className="text-xs text-gray-600 dark:text-gray-400">Marge</span>
-                                                    </div>
-                                                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                                                      {profitPercentage}%
-                                                    </div>
+                                                {/* 💰 Aperçu financier moderne et immersif */}
+                                                <div className="space-y-4">
+                                                  {/* Commission & Revenus - Focus principal */}
+                                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    {/* Commission Platform */}
+                                                    <motion.div 
+                                                      whileHover={{ scale: 1.02 }}
+                                                      className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20 rounded-xl p-4 border border-amber-200/30 dark:border-amber-700/30"
+                                                    >
+                                                      <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                          <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                                                            <Coins className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                                          </div>
+                                                          <div>
+                                                            <p className="text-xs font-medium text-amber-700 dark:text-amber-300 uppercase tracking-wide">
+                                                              Commission
+                                                            </p>
+                                                            <p className="text-lg font-bold text-amber-900 dark:text-amber-100">
+                                                              {commissionLoading ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                              ) : (
+                                                                `${vendorCommission || 40}%`
+                                                              )}
+                                                            </p>
+                                                          </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                          <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Plateforme</p>
+                                                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                                                            {commissionService.formatCFA(
+                                                              (currentPrice * (vendorCommission || 40)) / 100
+                                                            )}
+                                                          </p>
+                                                        </div>
+                                                      </div>
+                                                      {/* Barre de progression visuelle */}
+                                                      <div className="mt-3 h-1.5 bg-amber-100 dark:bg-amber-900/40 rounded-full overflow-hidden">
+                                                        <motion.div
+                                                          initial={{ width: 0 }}
+                                                          animate={{ width: `${vendorCommission || 40}%` }}
+                                                          transition={{ duration: 1, ease: "easeOut" }}
+                                                          className="h-full bg-gradient-to-r from-amber-400 to-orange-500"
+                                                        />
+                                                      </div>
+                                                    </motion.div>
+
+                                                    {/* Revenus Vendeur */}
+                                                    <motion.div 
+                                                      whileHover={{ scale: 1.02 }}
+                                                      className="relative overflow-hidden bg-gradient-to-br from-emerald-500/10 to-green-500/10 dark:from-emerald-500/20 dark:to-green-500/20 rounded-xl p-4 border border-emerald-200/30 dark:border-emerald-700/30"
+                                                    >
+                                                      <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                                                            <PiggyBank className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                                          </div>
+                                                          <div>
+                                                            <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+                                                              Vos gains
+                                                            </p>
+                                                            <p className="text-lg font-bold text-emerald-900 dark:text-emerald-100">
+                                                              {100 - (vendorCommission || 40)}%
+                                                            </p>
+                                                          </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Net</p>
+                                                          <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                                                            {commissionLoading ? (
+                                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                              (() => {
+                                                                const commission = vendorCommission || 40;
+                                                                const platformFee = (currentPrice * commission) / 100;
+                                                                const vendorRevenue = currentPrice - platformFee;
+                                                                return commissionService.formatCFA(vendorRevenue);
+                                                              })()
+                                                            )}
+                                                          </p>
+                                                        </div>
+                                                      </div>
+                                                      {/* Barre de progression visuelle */}
+                                                      <div className="mt-3 h-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-full overflow-hidden">
+                                                        <motion.div
+                                                          initial={{ width: 0 }}
+                                                          animate={{ width: `${100 - (vendorCommission || 40)}%` }}
+                                                          transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+                                                          className="h-full bg-gradient-to-r from-emerald-400 to-green-500"
+                                                        />
+                                                      </div>
+                                                    </motion.div>
                                                   </div>
-                                                  
-                                                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 text-center border border-gray-200/50 dark:border-gray-700/50">
-                                                    <div className="flex items-center justify-center mb-1">
-                                                      <TrendingUp className="h-4 w-4 text-emerald-500 mr-1" />
-                                                      <span className="text-xs text-gray-600 dark:text-gray-400">Markup</span>
+
+                                                  {/* Métriques complémentaires - Plus discrètes */}
+                                                  <div className="grid grid-cols-2 gap-2">
+                                                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 text-center border border-slate-200/50 dark:border-slate-700/50">
+                                                      <div className="flex items-center justify-center gap-1 mb-1">
+                                                        <Percent className="h-3 w-3 text-slate-500" />
+                                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-wider">
+                                                          Marge
+                                                        </span>
+                                                      </div>
+                                                      <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                        {profitPercentage}%
+                                                      </div>
                                                     </div>
-                                                    <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                                                      {basePrice ? (((currentPrice / basePrice) - 1) * 100).toFixed(1) : '0'}%
-                                                    </div>
-                                                  </div>
-                                                  
-                                                  {/* 🆕 Commission du vendeur */}
-                                                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 text-center border border-gray-200/50 dark:border-gray-700/50">
-                                                    <div className="flex items-center justify-center mb-1">
-                                                      <Coins className="h-4 w-4 text-amber-500 mr-1" />
-                                                      <span className="text-xs text-gray-600 dark:text-gray-400">Commission</span>
-                                                    </div>
-                                                    <div className="text-xl font-bold text-amber-600 dark:text-amber-400">
-                                                      {commissionLoading ? (
-                                                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                                                      ) : (
-                                                        `${vendorCommission || 40}%`
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                  
-                                                  {/* 🆕 Revenus estimés vendeur */}
-                                                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 text-center border border-gray-200/50 dark:border-gray-700/50">
-                                                    <div className="flex items-center justify-center mb-1">
-                                                      <PiggyBank className="h-4 w-4 text-green-500 mr-1" />
-                                                      <span className="text-xs text-gray-600 dark:text-gray-400">Revenus</span>
-                                                    </div>
-                                                    <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                                                      {commissionLoading ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                                                      ) : (
-                                                        (() => {
-                                                          const commission = vendorCommission || 40;
-                                                          const platformFee = (currentPrice * commission) / 100;
-                                                          const vendorRevenue = currentPrice - platformFee;
-                                                          return commissionService.formatCFA(vendorRevenue);
-                                                        })()
-                                                      )}
+                                                    
+                                                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 text-center border border-slate-200/50 dark:border-slate-700/50">
+                                                      <div className="flex items-center justify-center gap-1 mb-1">
+                                                        <Calculator className="h-3 w-3 text-slate-500" />
+                                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-wider">
+                                                          Total
+                                                        </span>
+                                                      </div>
+                                                      <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                        {new Intl.NumberFormat('fr-FR', {
+                                                          style: 'currency',
+                                                          currency: 'XOF',
+                                                          maximumFractionDigits: 0,
+                                                          minimumFractionDigits: 0
+                                                        }).format(currentPrice)}
+                                                      </div>
                                                     </div>
                                                   </div>
                                                 </div>
