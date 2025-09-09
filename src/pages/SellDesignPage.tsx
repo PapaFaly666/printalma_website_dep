@@ -4557,133 +4557,15 @@ const SellDesignPage: React.FC = () => {
                                             className="border-t border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10"
                                           >
                                             <div className="p-4 sm:p-5 space-y-5">
-                                              {/* Header avec micro-animations */}
-                                              <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                  <motion.div
-                                                    initial={{ rotate: 0 }}
-                                                    animate={{ rotate: 360 }}
-                                                    transition={{ duration: 0.6, ease: "easeInOut" }}
-                                                  >
-                                                    <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                                  </motion.div>
-                                                  <h4 className="text-base font-semibold text-gray-900 dark:text-white">
-                                                    Calculateur intelligent
-                                                  </h4>
-                                                </div>
-                                                
-                                                {isEditing && (
-                                                  <motion.div
-                                                    initial={{ x: 20, opacity: 0 }}
-                                                    animate={{ x: 0, opacity: 1 }}
-                                                    className="flex gap-2"
-                                                  >
-                                                    <Button
-                                                      size="sm"
-                                                      variant="outline"
-                                                      onClick={() => handleResetPricing(product.id)}
-                                                      className="h-8 px-3 text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
-                                                    >
-                                                      <RotateCcw className="h-3 w-3 mr-1" />
-                                                      Reset
-                                                    </Button>
-                                                    <Button
-                                                      size="sm"
-                                                      onClick={() => handleSavePricing(product.id)}
-                                                      className="h-8 px-3 text-xs bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-sm"
-                                                    >
-                                                      <Save className="h-3 w-3 mr-1" />
-                                                      Sauver
-                                                    </Button>
-                                                  </motion.div>
-                                                )}
-                                              </div>
-
-                                              {/* Interface de calcul responsive */}
-                                              <div className="space-y-4">
-                                                {/* Prix de revient - Design épuré */}
-                                                <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
-                                                  <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                      <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                                                      <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                                                        Prix de revient
-                                                      </label>
-                                                    </div>
-                                                    <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full text-gray-500 dark:text-gray-400">
-                                                      Fixe
-                                                    </span>
-                                                  </div>
-                                                  <div className="text-xl font-bold text-gray-700 dark:text-gray-300">
-                                                    {new Intl.NumberFormat('fr-FR', {
-                                                      style: 'currency',
-                                                      currency: 'XOF',
-                                                      maximumFractionDigits: 0
-                                                    }).format(basePrice)}
-                                                  </div>
-                                                </div>
-
-                                                {/* Interface de bénéfice - Interactive et moderne */}
-                                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-200/50 dark:border-green-700/50">
-                                                  <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                      <motion.div
-                                                        animate={{ scale: isEditing ? 1.2 : 1 }}
-                                                        className="w-2 h-2 rounded-full bg-green-500"
-                                                      />
-                                                      <label className="text-sm font-medium text-green-700 dark:text-green-300">
-                                                        Votre bénéfice
-                                                      </label>
-                                                    </div>
-                                                    <span className="text-xs bg-green-100 dark:bg-green-800 px-2 py-1 rounded-full text-green-600 dark:text-green-300">
-                                                      Ajustable
-                                                    </span>
-                                                  </div>
-                                                  
-                                                  <div className="flex items-center gap-3">
-                                                    <div className="flex-1">
-                                                      <div className="relative">
-                                                        <input
-                                                          type="number"
-                                                          min="0"
-                                                          step="500"
-                                                          value={customProfit}
-                                                          onChange={(e) => handleProfitChange(product.id, Number(e.target.value))}
-                                                          onFocus={() => setEditingProfitIds(prev => ({ ...prev, [product.id]: true }))}
-                                                          className="w-full px-4 py-3 text-lg font-bold bg-white dark:bg-gray-800 border border-green-300 dark:border-green-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                                                          placeholder="0"
-                                                        />
-                                                        <div className="absolute inset-y-0 right-3 flex items-center">
-                                                          <Coins className="h-4 w-4 text-green-500" />
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                    
-                                                    {/* Boutons rapides pour ajustement */}
-                                                    <div className="flex flex-col gap-1">
-                                                      <button
-                                                        onClick={() => handleProfitChange(product.id, customProfit + 500)}
-                                                        className="w-8 h-6 rounded bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 transition-colors flex items-center justify-center"
-                                                      >
-                                                        <ChevronUp className="h-3 w-3 text-green-600 dark:text-green-300" />
-                                                      </button>
-                                                      <button
-                                                        onClick={() => handleProfitChange(product.id, Math.max(0, customProfit - 500))}
-                                                        className="w-8 h-6 rounded bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 transition-colors flex items-center justify-center"
-                                                      >
-                                                        <ChevronDown className="h-3 w-3 text-green-600 dark:text-green-300" />
-                                                      </button>
-                                                    </div>
-                                                  </div>
-                                                </div>
-
-                                                {/* Prix de vente simplifié */}
-                                                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                                              {/* 💰 Cards larges noir et blanc */}
+                                              <div className="max-w-lg mx-auto space-y-3">
+                                                {/* Prix de vente */}
+                                                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                                                   <div className="flex items-center justify-between">
                                                     <span className="text-xs text-gray-600 dark:text-gray-400">
                                                       Prix de vente
                                                     </span>
-                                                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
                                                       {new Intl.NumberFormat('fr-FR', {
                                                         style: 'currency',
                                                         currency: 'XOF',
@@ -4693,62 +4575,59 @@ const SellDesignPage: React.FC = () => {
                                                   </div>
                                                 </div>
 
-                                                {/* 💰 Cards noir et blanc */}
-                                                <div className="space-y-2">
-                                                  {/* Commission & Gains - Noir et blanc */}
-                                                  <div className="grid grid-cols-2 gap-2">
-                                                    {/* Commission */}
-                                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                                                      <div className="flex items-center gap-2 mb-1">
-                                                        <Coins className="h-3 w-3 text-gray-600 dark:text-gray-400" />
-                                                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                                                          Commission
-                                                        </span>
-                                                      </div>
-                                                      <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                                        {commissionLoading ? (
-                                                          <Loader2 className="h-3 w-3 animate-spin text-gray-500" />
-                                                        ) : (
-                                                          `${vendorCommission || 40}%`
-                                                        )}
-                                                      </div>
+                                                {/* Commission & Gains */}
+                                                <div className="grid grid-cols-2 gap-3">
+                                                  {/* Commission */}
+                                                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                      <Coins className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                                                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                                                        Commission
+                                                      </span>
                                                     </div>
-
-                                                    {/* Gains */}
-                                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                                                      <div className="flex items-center gap-2 mb-1">
-                                                        <PiggyBank className="h-3 w-3 text-gray-600 dark:text-gray-400" />
-                                                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                                                          Vos gains
-                                                        </span>
-                                                      </div>
-                                                      <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                                        {100 - (vendorCommission || 40)}%
-                                                      </div>
+                                                    <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                                      {commissionLoading ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin text-gray-500" />
+                                                      ) : (
+                                                        `${vendorCommission || 40}%`
+                                                      )}
                                                     </div>
                                                   </div>
 
-                                                  {/* Montants - Noir et blanc */}
-                                                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                                                    <div className="flex justify-between items-center text-xs">
-                                                      <span className="text-gray-600 dark:text-gray-400">Commission:</span>
-                                                      <span className="font-medium text-gray-900 dark:text-gray-100">
-                                                        {commissionService.formatCFA(
-                                                          (currentPrice * (vendorCommission || 40)) / 100
-                                                        )}
+                                                  {/* Gains */}
+                                                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                      <PiggyBank className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                                                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                                                        Vos gains
                                                       </span>
                                                     </div>
-                                                    <div className="flex justify-between items-center text-xs mt-1">
-                                                      <span className="text-gray-600 dark:text-gray-400">Vos revenus:</span>
-                                                      <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                                        {commissionLoading ? '...' : (() => {
-                                                          const commission = vendorCommission || 40;
-                                                          const platformFee = (currentPrice * commission) / 100;
-                                                          const vendorRevenue = currentPrice - platformFee;
-                                                          return commissionService.formatCFA(vendorRevenue);
-                                                        })()}
-                                                      </span>
+                                                    <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                                      {100 - (vendorCommission || 40)}%
                                                     </div>
+                                                  </div>
+                                                </div>
+
+                                                {/* Montants détaillés */}
+                                                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                                  <div className="flex justify-between items-center text-xs mb-2">
+                                                    <span className="text-gray-600 dark:text-gray-400">Commission:</span>
+                                                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                                                      {commissionService.formatCFA(
+                                                        (currentPrice * (vendorCommission || 40)) / 100
+                                                      )}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-gray-600 dark:text-gray-400">Vos revenus:</span>
+                                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                                      {commissionLoading ? '...' : (() => {
+                                                        const commission = vendorCommission || 40;
+                                                        const platformFee = (currentPrice * commission) / 100;
+                                                        const vendorRevenue = currentPrice - platformFee;
+                                                        return commissionService.formatCFA(vendorRevenue);
+                                                      })()}
+                                                    </span>
                                                   </div>
                                                 </div>
                                               </div>
