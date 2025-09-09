@@ -153,14 +153,15 @@ class CommissionService {
 
   /**
    * 🆕 NOUVEAU - Obtenir MA commission en tant que vendeur connecté
-   * GET /vendor/my-commission
+   * GET /vendors/my-commission
    */
   async getMyCommission(): Promise<any> {
     try {
-      const { data } = await this.api.get<CommissionResponse>(`/vendor/my-commission`);
+      const { data } = await this.api.get<CommissionResponse>(`/vendors/my-commission`);
       if (!data.success) {
         throw new Error(data.message || 'Erreur lors de la récupération de votre commission');
       }
+      console.log('✅ Commission récupérée depuis le backend:', data.data);
       return data.data;
     } catch (error: any) {
       if (error?.response) {

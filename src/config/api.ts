@@ -59,7 +59,7 @@ export const API_ENDPOINTS = {
   },
   VENDOR: {
     // 🆕 ENDPOINT POUR QUE LE VENDEUR VOIT SA PROPRE COMMISSION
-    MY_COMMISSION: '/vendor/my-commission'
+    MY_COMMISSION: '/vendors/my-commission'
   }
 };
 
