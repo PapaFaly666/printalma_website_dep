@@ -2622,14 +2622,22 @@ const SellDesignPage: React.FC = () => {
   // 🆕 Charger la commission du vendeur à l'initialisation
   useEffect(() => {
     const loadVendorCommission = async () => {
-      if (user?.id && isAuthenticated && user.role === 'VENDEUR') {
+      if (isAuthenticated && user?.role === 'VENDEUR') {
         setCommissionLoading(true);
         try {
-          const commission = await commissionService.getVendorCommission(user.id);
-          setVendorCommission(commission.commissionRate || 40); // 40% par défaut
+          // Utiliser le nouvel endpoint /vendor/my-commission
+          const commission = await commissionService.getMyCommission();
+          setVendorCommission(commission.commissionRate || 40);
+          
+          // Log pour débug
+          console.log('✅ Commission vendeur chargée:', commission);
+          
+          if (commission.isDefault) {
+            console.warn('⚠️ Utilisation de la commission par défaut (40%) - Endpoint backend manquant?');
+          }
         } catch (error) {
-          console.error('Erreur lors du chargement de la commission:', error);
-          setVendorCommission(40); // Valeur par défaut en cas d'erreur
+          console.error('❌ Erreur lors du chargement de la commission:', error);
+          setVendorCommission(40); // Valeur par défaut selon commission.md
         } finally {
           setCommissionLoading(false);
         }
@@ -2637,7 +2645,7 @@ const SellDesignPage: React.FC = () => {
     };
     
     loadVendorCommission();
-  }, [user?.id, isAuthenticated, user?.role]);
+  }, [isAuthenticated, user?.role]);
 
   // Pendant la vérification de l'auth, afficher un petit loader
   if (authLoading) {

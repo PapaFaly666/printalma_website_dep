@@ -56,6 +56,10 @@ export const API_ENDPOINTS = {
     VENDORS_COMMISSIONS: '/admin/vendors/commissions',
     COMMISSION_STATS: '/admin/commission-stats',
     VENDOR_COMMISSION_HISTORY: (id: number) => `/admin/vendors/${id}/commission/history`
+  },
+  VENDOR: {
+    // 🆕 ENDPOINT POUR QUE LE VENDEUR VOIT SA PROPRE COMMISSION
+    MY_COMMISSION: '/vendor/my-commission'
   }
 };
 

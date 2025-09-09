@@ -152,7 +152,29 @@ class CommissionService {
   }
 
   /**
-   * Obtenir la commission d'un vendeur spécifique
+   * 🆕 NOUVEAU - Obtenir MA commission en tant que vendeur connecté
+   * GET /vendor/my-commission
+   */
+  async getMyCommission(): Promise<any> {
+    try {
+      const { data } = await this.api.get<CommissionResponse>(`/vendor/my-commission`);
+      if (!data.success) {
+        throw new Error(data.message || 'Erreur lors de la récupération de votre commission');
+      }
+      return data.data;
+    } catch (error: any) {
+      if (error?.response) {
+        const resp: Response = error.response;
+        await this.handleApiErrorResponse(resp);
+      }
+      console.error('❌ Erreur getMyCommission:', error);
+      // Fallback: retourner commission par défaut de 40%
+      return { commissionRate: 40, isDefault: true };
+    }
+  }
+
+  /**
+   * Obtenir la commission d'un vendeur spécifique (ADMIN ONLY)
    * GET /admin/vendors/:id/commission
    */
   async getVendorCommission(vendorId: number): Promise<any> {
