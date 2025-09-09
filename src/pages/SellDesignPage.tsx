@@ -4732,129 +4732,61 @@ const SellDesignPage: React.FC = () => {
                                                   </div>
                                                 </motion.div>
 
-                                                {/* 💰 Aperçu financier moderne et immersif */}
-                                                <div className="space-y-4">
-                                                  {/* Commission & Revenus - Focus principal */}
-                                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    {/* Commission Platform */}
-                                                    <motion.div 
-                                                      whileHover={{ scale: 1.02 }}
-                                                      className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20 rounded-xl p-4 border border-amber-200/30 dark:border-amber-700/30"
-                                                    >
-                                                      <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2">
-                                                          <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                                                            <Coins className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                                          </div>
-                                                          <div>
-                                                            <p className="text-xs font-medium text-amber-700 dark:text-amber-300 uppercase tracking-wide">
-                                                              Commission
-                                                            </p>
-                                                            <p className="text-lg font-bold text-amber-900 dark:text-amber-100">
-                                                              {commissionLoading ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                              ) : (
-                                                                `${vendorCommission || 40}%`
-                                                              )}
-                                                            </p>
-                                                          </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                          <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">Plateforme</p>
-                                                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                                                            {commissionService.formatCFA(
-                                                              (currentPrice * (vendorCommission || 40)) / 100
-                                                            )}
-                                                          </p>
-                                                        </div>
-                                                      </div>
-                                                      {/* Barre de progression visuelle */}
-                                                      <div className="mt-3 h-1.5 bg-amber-100 dark:bg-amber-900/40 rounded-full overflow-hidden">
-                                                        <motion.div
-                                                          initial={{ width: 0 }}
-                                                          animate={{ width: `${vendorCommission || 40}%` }}
-                                                          transition={{ duration: 1, ease: "easeOut" }}
-                                                          className="h-full bg-gradient-to-r from-amber-400 to-orange-500"
-                                                        />
-                                                      </div>
-                                                    </motion.div>
-
-                                                    {/* Revenus Vendeur */}
-                                                    <motion.div 
-                                                      whileHover={{ scale: 1.02 }}
-                                                      className="relative overflow-hidden bg-gradient-to-br from-emerald-500/10 to-green-500/10 dark:from-emerald-500/20 dark:to-green-500/20 rounded-xl p-4 border border-emerald-200/30 dark:border-emerald-700/30"
-                                                    >
-                                                      <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2">
-                                                          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                                                            <PiggyBank className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                                          </div>
-                                                          <div>
-                                                            <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
-                                                              Vos gains
-                                                            </p>
-                                                            <p className="text-lg font-bold text-emerald-900 dark:text-emerald-100">
-                                                              {100 - (vendorCommission || 40)}%
-                                                            </p>
-                                                          </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Net</p>
-                                                          <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-                                                            {commissionLoading ? (
-                                                              <Loader2 className="h-4 w-4 animate-spin" />
-                                                            ) : (
-                                                              (() => {
-                                                                const commission = vendorCommission || 40;
-                                                                const platformFee = (currentPrice * commission) / 100;
-                                                                const vendorRevenue = currentPrice - platformFee;
-                                                                return commissionService.formatCFA(vendorRevenue);
-                                                              })()
-                                                            )}
-                                                          </p>
-                                                        </div>
-                                                      </div>
-                                                      {/* Barre de progression visuelle */}
-                                                      <div className="mt-3 h-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-full overflow-hidden">
-                                                        <motion.div
-                                                          initial={{ width: 0 }}
-                                                          animate={{ width: `${100 - (vendorCommission || 40)}%` }}
-                                                          transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-                                                          className="h-full bg-gradient-to-r from-emerald-400 to-green-500"
-                                                        />
-                                                      </div>
-                                                    </motion.div>
-                                                  </div>
-
-                                                  {/* Métriques complémentaires - Plus discrètes */}
+                                                {/* 💰 Cards simplifiées et minimalistes */}
+                                                <div className="space-y-3">
+                                                  {/* Commission & Gains - Version épurée */}
                                                   <div className="grid grid-cols-2 gap-2">
-                                                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 text-center border border-slate-200/50 dark:border-slate-700/50">
-                                                      <div className="flex items-center justify-center gap-1 mb-1">
-                                                        <Percent className="h-3 w-3 text-slate-500" />
-                                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-wider">
-                                                          Marge
+                                                    {/* Commission */}
+                                                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200/50 dark:border-amber-700/30">
+                                                      <div className="flex items-center gap-2 mb-2">
+                                                        <Coins className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                                                        <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                                                          Commission
                                                         </span>
                                                       </div>
-                                                      <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                                                        {profitPercentage}%
+                                                      <div className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                                                        {commissionLoading ? (
+                                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                                        ) : (
+                                                          `${vendorCommission || 40}%`
+                                                        )}
                                                       </div>
                                                     </div>
-                                                    
-                                                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 text-center border border-slate-200/50 dark:border-slate-700/50">
-                                                      <div className="flex items-center justify-center gap-1 mb-1">
-                                                        <Calculator className="h-3 w-3 text-slate-500" />
-                                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-wider">
-                                                          Total
+
+                                                    {/* Gains */}
+                                                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200/50 dark:border-green-700/30">
+                                                      <div className="flex items-center gap-2 mb-2">
+                                                        <PiggyBank className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                                        <span className="text-xs text-green-700 dark:text-green-300 font-medium">
+                                                          Vos gains
                                                         </span>
                                                       </div>
-                                                      <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                                                        {new Intl.NumberFormat('fr-FR', {
-                                                          style: 'currency',
-                                                          currency: 'XOF',
-                                                          maximumFractionDigits: 0,
-                                                          minimumFractionDigits: 0
-                                                        }).format(currentPrice)}
+                                                      <div className="text-sm font-bold text-green-900 dark:text-green-100">
+                                                        {100 - (vendorCommission || 40)}%
                                                       </div>
+                                                    </div>
+                                                  </div>
+
+                                                  {/* Montants en FCFA - Simple */}
+                                                  <div className="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3 border border-slate-200/50 dark:border-slate-700/30">
+                                                    <div className="flex justify-between items-center text-xs">
+                                                      <span className="text-slate-600 dark:text-slate-400">Commission:</span>
+                                                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                                                        {commissionService.formatCFA(
+                                                          (currentPrice * (vendorCommission || 40)) / 100
+                                                        )}
+                                                      </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-xs mt-1">
+                                                      <span className="text-slate-600 dark:text-slate-400">Vos revenus:</span>
+                                                      <span className="font-semibold text-green-700 dark:text-green-400">
+                                                        {commissionLoading ? '...' : (() => {
+                                                          const commission = vendorCommission || 40;
+                                                          const platformFee = (currentPrice * commission) / 100;
+                                                          const vendorRevenue = currentPrice - platformFee;
+                                                          return commissionService.formatCFA(vendorRevenue);
+                                                        })()}
+                                                      </span>
                                                     </div>
                                                   </div>
                                                 </div>
