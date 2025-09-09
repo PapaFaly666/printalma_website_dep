@@ -33,6 +33,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Toaster } from 'sonner';
 import { getVendorProductId } from '../utils/vendorProductHelpers';
+import commissionService from '../services/commissionService';
 
 // 🆕 Imports pour cascade validation
 import { PostValidationActionSelectorIntegrated } from '../components/cascade/PostValidationActionSelectorIntegrated';
@@ -2145,6 +2146,10 @@ const SellDesignPage: React.FC = () => {
   // Designs existants du vendeur
   const [loadingExistingDesigns, setLoadingExistingDesigns] = useState(false);
   const [showDesignPicker, setShowDesignPicker] = useState(false);
+  
+  // 🆕 États pour la commission du vendeur
+  const [vendorCommission, setVendorCommission] = useState<number | null>(null);
+  const [commissionLoading, setCommissionLoading] = useState(false);
 
   // Nouveaux états pour gérer le statut de validation du design
   const [designValidationStatus, setDesignValidationStatus] = useState<{
@@ -2613,6 +2618,26 @@ const SellDesignPage: React.FC = () => {
   // Auth & navigation helpers
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  
+  // 🆕 Charger la commission du vendeur à l'initialisation
+  useEffect(() => {
+    const loadVendorCommission = async () => {
+      if (user?.id && isAuthenticated && user.role === 'VENDEUR') {
+        setCommissionLoading(true);
+        try {
+          const commission = await commissionService.getVendorCommission(user.id);
+          setVendorCommission(commission.commissionRate || 40); // 40% par défaut
+        } catch (error) {
+          console.error('Erreur lors du chargement de la commission:', error);
+          setVendorCommission(40); // Valeur par défaut en cas d'erreur
+        } finally {
+          setCommissionLoading(false);
+        }
+      }
+    };
+    
+    loadVendorCommission();
+  }, [user?.id, isAuthenticated, user?.role]);
 
   // Pendant la vérification de l'auth, afficher un petit loader
   if (authLoading) {
@@ -3917,6 +3942,55 @@ const SellDesignPage: React.FC = () => {
           </div>
         </div>
 
+        {/* 🆕 Bannière de commission vendeur */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <div className="bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/30 dark:via-yellow-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-6 shadow-sm">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
+                  <Coins className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                    Votre commission vendeur
+                  </h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Taux de commission défini par l'administration
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                {commissionLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
+                    <span className="text-sm text-amber-600 dark:text-amber-400">Chargement...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-amber-900 dark:text-amber-100">
+                      {vendorCommission || 40}%
+                    </div>
+                    <div className="text-xs text-amber-600 dark:text-amber-400">
+                      de commission
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {/* Info supplémentaire */}
+            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  PrintAlma prélève <strong>{vendorCommission || 40}%</strong> sur chaque vente pour couvrir les frais de plateforme, payment et marketing. 
+                  Vous recevez <strong>{100 - (vendorCommission || 40)}%</strong> du prix de vente final.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Sélecteur d'options */}
         {!selectedMode && (
           <div className="max-w-4xl mx-auto mb-16">
@@ -4669,6 +4743,41 @@ const SellDesignPage: React.FC = () => {
                                                     </div>
                                                     <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
                                                       {basePrice ? (((currentPrice / basePrice) - 1) * 100).toFixed(1) : '0'}%
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  {/* 🆕 Commission du vendeur */}
+                                                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 text-center border border-gray-200/50 dark:border-gray-700/50">
+                                                    <div className="flex items-center justify-center mb-1">
+                                                      <Coins className="h-4 w-4 text-amber-500 mr-1" />
+                                                      <span className="text-xs text-gray-600 dark:text-gray-400">Commission</span>
+                                                    </div>
+                                                    <div className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                                                      {commissionLoading ? (
+                                                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                                                      ) : (
+                                                        `${vendorCommission || 40}%`
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  {/* 🆕 Revenus estimés vendeur */}
+                                                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 text-center border border-gray-200/50 dark:border-gray-700/50">
+                                                    <div className="flex items-center justify-center mb-1">
+                                                      <PiggyBank className="h-4 w-4 text-green-500 mr-1" />
+                                                      <span className="text-xs text-gray-600 dark:text-gray-400">Revenus</span>
+                                                    </div>
+                                                    <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                                                      {commissionLoading ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                                                      ) : (
+                                                        (() => {
+                                                          const commission = vendorCommission || 40;
+                                                          const platformFee = (currentPrice * commission) / 100;
+                                                          const vendorRevenue = currentPrice - platformFee;
+                                                          return commissionService.formatCFA(vendorRevenue);
+                                                        })()
+                                                      )}
                                                     </div>
                                                   </div>
                                                 </div>

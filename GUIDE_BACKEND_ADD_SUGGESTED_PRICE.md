@@ -144,3 +144,4 @@ curl -X PATCH https://api.exemple.com/products/123 \
 - Exposer un endpoint `GET /products/:id/pricing-suggestion` si la suggestion dépend de données dynamiques.
 
 
+

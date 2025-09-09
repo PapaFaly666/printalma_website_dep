@@ -50,7 +50,12 @@ export const API_ENDPOINTS = {
     // Nouveau endpoint admin pour nettoyage tokens
     CLEANUP_RESET_TOKENS: '/auth/admin/cleanup-reset-tokens',
     // 🆕 NOUVEAUX ENDPOINTS STATISTIQUES ÉTENDUES
-    VENDORS_STATS_BY_COUNTRY: '/auth/admin/vendors/stats-by-country'
+    VENDORS_STATS_BY_COUNTRY: '/auth/admin/vendors/stats-by-country',
+    // 🆕 ENDPOINTS COMMISSION VENDEURS
+    VENDOR_COMMISSION: (id: number) => `/admin/vendors/${id}/commission`,
+    VENDORS_COMMISSIONS: '/admin/vendors/commissions',
+    COMMISSION_STATS: '/admin/commission-stats',
+    VENDOR_COMMISSION_HISTORY: (id: number) => `/admin/vendors/${id}/commission/history`
   }
 };
 
