@@ -4,6 +4,7 @@ import SellDesignPage from '../pages/vendor/SellDesignPage';
 import VendorProductsPage from '../pages/vendor/VendorProductsPage';
 import VendorProductPreviewDemo from '../pages/vendor/VendorProductPreviewDemo';
 import VendorProductsPageWithPreview from '../pages/vendor/VendorProductsPageWithPreview';
+import AppelDeFondsPage from '../pages/AppelDeFondsPage';
 
 // Routes pour les pages vendeur
 export const VendorRoutes: React.FC = () => {
@@ -20,6 +21,9 @@ export const VendorRoutes: React.FC = () => {
       
       {/* Page de démonstration des composants d'aperçu */}
       <Route path="/vendeur/products/demo" element={<VendorProductPreviewDemo />} />
+      
+      {/* Page d'appel de fonds */}
+      <Route path="/vendeur/appel-de-fonds" element={<AppelDeFondsPage />} />
     </Routes>
   );
 };

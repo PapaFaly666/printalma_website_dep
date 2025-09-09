@@ -39,7 +39,8 @@ import {
     Camera,
     Store,
     FileText,
-    Wallet
+    Wallet,
+    Banknote
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -197,6 +198,8 @@ export default function Sidebar() {
             setActiveItem('vendor-earnings');
         } else if (location.pathname.includes('/vendeur/analytics')) {
             setActiveItem('vendor-analytics');
+        } else if (location.pathname.includes('/vendeur/appel-de-fonds')) {
+            setActiveItem('vendor-appel-de-fonds');
         }
     }, [location.pathname]);
 
@@ -683,6 +686,16 @@ export default function Sidebar() {
                                     collapsed={collapsed && !isMobile}
                                     active={activeItem === 'vendor-payment-requests'}
                                     onClick={() => handleNavigation('vendor-payment-requests')}
+                                    badge=""
+                                    textColor=""
+                                />
+
+                                <NavItem
+                                    icon={<Banknote size={18} />}
+                                    label="Appel de Fonds"
+                                    collapsed={collapsed && !isMobile}
+                                    active={activeItem === 'vendor-appel-de-fonds'}
+                                    onClick={() => handleNavigation('vendor-appel-de-fonds')}
                                     badge=""
                                     textColor=""
                                 />
