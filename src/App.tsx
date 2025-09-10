@@ -70,6 +70,12 @@ import AddProductPage from './pages/AddProductPage';
 // Page de compte vendeur
 import VendorAccountPage from './pages/vendor/VendorAccountPage';
 
+// Page d'appel de fonds
+import AppelDeFondsPage from './pages/AppelDeFondsPage';
+
+// Page de gestion des mockups
+import ProductMockupsPage from './pages/admin/ProductMockupsPage';
+
 // 🎨 Exemple de délimitation interactive
 import { DelimitationExample } from './components/examples/DelimitationExample';
 
@@ -248,6 +254,7 @@ function App() {
                   <Route path='add-product' element={<AddProductPage />} />
                   <Route path='product-form' element={<AddProductPage />} />
                   <Route path='products/:id/edit' element={<AdminEditProductPage />} />
+                  <Route path='products/:id/mockups' element={<ProductMockupsPage />} />
                   <Route path='products/:id' element={<VendorProductDetailPage />} />
                   <Route path="trash" element={<AdminTrashPage />} />
                   <Route path="themes" element={<ThemesPage />} />
@@ -272,6 +279,7 @@ function App() {
                   <Route path="sales" element={<VendorSales />} />
                   <Route path="sell-design" element={<SellDesignPage />} />
                   <Route path="account" element={<VendorAccountPage />} />
+                  <Route path="appel-de-fonds" element={<AppelDeFondsPage />} />
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 

@@ -28,7 +28,8 @@ import {
     Store,
     TrendingUp,
     Image,
-    User
+    User,
+    Banknote
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -166,10 +167,10 @@ export default function VendorSidebar() {
             setActiveItem('sell-design');
         } else if (location.pathname.includes('/vendeur/account')) {
             setActiveItem('account');
+        } else if (location.pathname.includes('/vendeur/appel-de-fonds')) {
+            setActiveItem('appel-de-fonds');
         } else if (location.pathname.includes('/vendeur/dashboard') || location.pathname === '/vendeur') {
             setActiveItem('dashboard');
-        } else if (location.pathname.includes('/vendeur/settings')) {
-            setActiveItem('settings');
         }
     }, [location.pathname]);
 
@@ -412,6 +413,21 @@ export default function VendorSidebar() {
                             textColor=""
                         />
                     </NavGroup>
+
+                    <NavGroup
+                        title="Finances"
+                        collapsed={collapsed && !isMobile}
+                    >
+                        <NavItem
+                            icon={<Banknote size={20} />}
+                            label="Appel de Fonds"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'appel-de-fonds'}
+                            onClick={() => handleNavigation('appel-de-fonds')}
+                            badge=""
+                            textColor=""
+                        />
+                    </NavGroup>
                 </nav>
 
                 {/* Footer */}
@@ -425,16 +441,6 @@ export default function VendorSidebar() {
                         badge=""
                         textColor=""
                     />
-                    <NavItem
-                        icon={<Settings size={20} />}
-                        label="Paramètres"
-                        collapsed={collapsed && !isMobile}
-                        active={activeItem === 'settings'}
-                        onClick={() => handleNavigation('settings')}
-                        badge=""
-                        textColor=""
-                    />
-
 
                     <NavItem
                         icon={<LogOut size={20} className="text-gray-500" />}

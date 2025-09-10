@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   ArrowRight
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -387,6 +388,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     resetForm
   } = useProductForm();
 
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { categories: allCategories } = useCategories();
   // Exemple de liste de tailles (à remplacer par la vraie source si dispo)
@@ -688,6 +690,8 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   }, [initialData]);
 
   const getUpdatePayload = (formData: any, initialData: any) => {
+  console.log('🔧 Début getUpdatePayload');
+  
   // Envoie tous les champs attendus, pas juste les modifiés
   const allowedFields = [
     'name', 'description', 'price', 'stock', 'status', 'categories', 'sizes', 'colorVariations'
@@ -697,54 +701,99 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     if (key in formData) payload[key] = formData[key];
   }
   
-  // Mapping catégories et tailles vers IDs numériques
-  if (payload.categories) {
-    payload.categories = mapLabelsToIds(payload.categories, allCategories as { id: number; name?: string; label?: string; sizeName?: string; }[]); // number only
+  console.log('🔧 Payload base:', Object.keys(payload));
+  
+  // Mapping catégories et tailles vers IDs numériques - AVEC PROTECTION
+  try {
+    if (payload.categories && Array.isArray(payload.categories)) {
+      const mappedCategories = mapLabelsToIds(payload.categories, allCategories as { id: number; name?: string; label?: string; sizeName?: string; }[]);
+      payload.categories = mappedCategories.length > 0 ? mappedCategories : payload.categories; // Fallback si pas de mapping
+      console.log('🔧 Categories mappées:', payload.categories);
+    }
+  } catch (error) {
+    console.error('❌ Erreur mapping categories:', error);
+    // Garder les catégories originales en cas d'erreur
   }
-  if (payload.sizes) {
-    payload.sizes = mapLabelsToIdsOrString(payload.sizes, allSizes); // number or string fallback
+  
+  try {
+    if (payload.sizes && Array.isArray(payload.sizes)) {
+      const mappedSizes = mapLabelsToIdsOrString(payload.sizes, allSizes);
+      payload.sizes = mappedSizes.length > 0 ? mappedSizes : payload.sizes; // Fallback si pas de mapping
+      console.log('🔧 Sizes mappées:', payload.sizes);
+    }
+  } catch (error) {
+    console.error('❌ Erreur mapping sizes:', error);
+    // Garder les tailles originales en cas d'erreur
   }
+  
   // Force status en MAJUSCULES
   if (payload.status && typeof payload.status === 'string') {
     payload.status = payload.status.toUpperCase();
   }
   
-  // Nettoyage des sous-objets pour correspondre au DTO backend
-  if (payload.colorVariations) {
-    payload.colorVariations = payload.colorVariations.map((cv: any) => {
-      // Nettoie les images de la couleur
-      const images = (cv.images || []).map((img: any) => {
-        if (img.id && typeof img.id === 'number' && img.id < 2000000000) {
-          // Image existante
-          return { ...img, id: img.id };
-        } else {
-          // Nouvelle image : PAS de champ id
-          const { id, ...rest } = img;
-          return rest;
+  // Nettoyage des sous-objets pour correspondre au DTO backend - VERSION SÉCURISÉE
+  if (payload.colorVariations && Array.isArray(payload.colorVariations)) {
+    try {
+      payload.colorVariations = payload.colorVariations.map((cv: any, cvIndex: number) => {
+        console.log(`🔧 Traitement couleur ${cvIndex}:`, { id: cv.id, name: cv.name });
+        
+        // Nettoie les images de la couleur - PROTECTION CONTRE LES PROPRIÉTÉS MANQUANTES
+        const images = (cv.images || []).map((img: any, imgIndex: number) => {
+          console.log(`🔧 Traitement image ${imgIndex} de couleur ${cvIndex}:`, { id: img.id, url: img.url?.substring(0, 50) });
+          
+          // Créer un objet d'image nettoyé
+          const cleanImage: any = {
+            url: img.url,
+            view: img.view || 'Front',
+            delimitations: img.delimitations || []
+          };
+          
+          // Ajouter l'ID seulement si c'est un ID valide de BD
+          if (img.id && typeof img.id === 'number' && img.id < 2000000000) {
+            cleanImage.id = img.id;
+          }
+          
+          // Ajouter publicId si présent
+          if (img.publicId) {
+            cleanImage.publicId = img.publicId;
+          }
+          
+          return cleanImage;
+        });
+        
+        // Créer un objet couleur nettoyé
+        const cleanColor: any = {
+          name: cv.name,
+          colorCode: cv.colorCode,
+          images: images
+        };
+        
+        // Ajouter l'ID seulement si c'est un ID valide de BD
+        if (cv.id && typeof cv.id === 'number' && cv.id < 2000000000) {
+          cleanColor.id = cv.id;
         }
+        
+        return cleanColor;
       });
-      if (cv.id && typeof cv.id === 'number' && cv.id < 2000000000) {
-        // Couleur existante
-        return { ...cv, id: cv.id, images };
-      } else {
-        // Nouvelle couleur : PAS de champ id
-        const { id, ...rest } = cv;
-        return { ...rest, images };
-      }
-    });
+    } catch (error) {
+      console.error('❌ Erreur traitement colorVariations:', error);
+      // En cas d'erreur, ne pas envoyer les colorVariations
+      delete payload.colorVariations;
+    }
   }
   
+  console.log('🔧 Payload final keys:', Object.keys(payload));
   return payload;
 };
 
   // Upload une image couleur locale sur le backend et retourne { url, publicId }
-  async function uploadColorImage(productId: string, colorId: number, file: File, token: string) {
+  async function uploadColorImage(productId: string, colorId: number, file: File) {
     const formData = new FormData();
     formData.append('image', file);
     const res = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}/colors/${colorId}/images`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
-        'Authorization': 'Bearer ' + token
         // Pas de Content-Type, géré par FormData
       },
       body: formData
@@ -754,7 +803,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   }
 
   // Prépare toutes les images pour le PATCH (upload les blobs, remplace dans le state)
-  async function prepareImagesForPatch(product: any, token: string) {
+  async function prepareImagesForPatch(product: any) {
     const productCopy = JSON.parse(JSON.stringify(product));
     for (const color of productCopy.colorVariations) {
       if (typeof color.id !== 'number') continue;
@@ -762,7 +811,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         // Gérer les images temporaires (mode création)
         if (image.isTemp && image.file) {
           console.log('🔄 Upload image temporaire pour couleur:', color.id);
-          const uploadResult = await uploadColorImage(productCopy.id, color.id, image.file, token);
+          const uploadResult = await uploadColorImage(productCopy.id, color.id, image.file);
           image.url = uploadResult.url;
           image.publicId = uploadResult.publicId;
           delete image.file;
@@ -771,7 +820,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         // Gérer les images blob existantes (mode édition)
         else if (image.url && image.url.startsWith('blob:') && image.file) {
           console.log('🔄 Upload image blob pour couleur:', color.id);
-          const uploadResult = await uploadColorImage(productCopy.id, color.id, image.file, token);
+          const uploadResult = await uploadColorImage(productCopy.id, color.id, image.file);
           image.url = uploadResult.url;
           image.publicId = uploadResult.publicId;
           delete image.file;
@@ -781,22 +830,239 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     return productCopy;
   }
 
-  // Remplace handleSubmit pour PATCH si mode === 'edit'
-  const handleSubmit = async () => {
+  // Fonction de debug locale pour vérifier le rôle utilisateur
+  const handleDebugRole = async () => {
+    console.log('🔍 [DEBUG LOCAL] Vérification du rôle utilisateur...');
+    
+    try {
+      // Récupération des tokens disponibles
+      const authToken = localStorage.getItem('authToken');
+      const adminToken = (window as any).adminToken;
+      const userString = localStorage.getItem('user');
+      
+      console.log('🔍 Informations de session:', {
+        authTokenPresent: !!authToken,
+        adminTokenPresent: !!adminToken,
+        userDataPresent: !!userString,
+        authTokenStart: authToken ? authToken.substring(0, 20) + '...' : 'N/A',
+        adminTokenStart: adminToken ? adminToken.substring(0, 20) + '...' : 'N/A'
+      });
+      
+      // Parse user data from localStorage
+      let userData = null;
+      if (userString) {
+        try {
+          userData = JSON.parse(userString);
+          console.log('📋 Données utilisateur localStorage:', {
+            id: userData.id,
+            email: userData.email,
+            role: userData.role,
+            firstName: userData.firstName,
+            lastName: userData.lastName
+          });
+        } catch (e) {
+          console.log('❌ Erreur parsing userData:', e);
+        }
+      }
+      
+      // Test avec un appel simple pour vérifier l'authentification
+      const token = authToken || adminToken || '';
+      if (token) {
+        console.log('🧪 Test de l\'authentification avec /products...');
+        
+        try {
+          const testResponse = await fetch('https://printalma-back-dep.onrender.com/products', {
+            method: 'GET',
+            headers: {
+              // 'Authorization': `Bearer ${token}`, // Removed: using cookies authentication
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log('📡 Résultat test GET /products:', {
+            status: testResponse.status,
+            ok: testResponse.ok,
+            statusText: testResponse.statusText
+          });
+          
+          if (testResponse.ok) {
+            console.log('✅ Authentification réussie');
+            
+            // Créer un objet de debug local
+            const debugResult = {
+              user: userData || {
+                id: 'unknown',
+                email: 'unknown',
+                role: userData?.role || 'USER',
+                firstName: 'Unknown',
+                lastName: 'User'
+              },
+              debug: {
+                isAdmin: ['ADMIN', 'SUPERADMIN'].includes(userData?.role),
+                isSuperAdmin: userData?.role === 'SUPERADMIN',
+                includesAdminCheck: ['ADMIN', 'SUPERADMIN'].includes(userData?.role),
+                tokenValid: true,
+                localTest: true
+              }
+            };
+            
+            toast.success(`✅ Rôle: ${debugResult.user.role}\nAutorisé: ${debugResult.debug.includesAdminCheck ? 'OUI' : 'NON'}`, {
+              duration: 5000
+            });
+            
+            return debugResult;
+          } else {
+            throw new Error(`Auth failed: ${testResponse.status}`);
+          }
+        } catch (authError) {
+          console.log('❌ Erreur authentification:', authError);
+          toast.error(`❌ Erreur auth: ${authError.message}`, { duration: 5000 });
+          return null;
+        }
+      } else {
+        console.log('❌ Aucun token disponible');
+        toast.error('❌ Aucun token d\'authentification trouvé');
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Erreur debug local:', error);
+      toast.error('Erreur lors de la vérification locale du rôle');
+      return null;
+    }
+  };
+
+  // Fonction de contournement d'urgence (temporaire)
+  const handleForceSubmit = async () => {
     if (mode === 'edit' && productId) {
+      console.log('🚨 CONTOURNEMENT D\'URGENCE - Force submission...');
+      
       try {
-        // 1. Upload toutes les images locales (blob) avant le PATCH
-        const token = (window as any).adminToken || '';
-        const productReady = await prepareImagesForPatch(formData, token);
-        // 2. Prépare le payload PATCH (mapping déjà en place)
+        const productReady = await prepareImagesForPatch(formData);
         const payload = getUpdatePayload(productReady, initialData);
-        console.log('PATCH payload:', payload); // Ajouté pour debug
+        
+        console.log('🚨 FORCE PATCH payload:', JSON.stringify(payload, null, 2));
+        
         const res = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}`, {
           method: 'PATCH',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
+            // 'Authorization': 'Bearer ' + token // Removed: using cookies authentication
+          },
+          body: JSON.stringify(payload),
+        });
+        
+        if (!res.ok) {
+          let error;
+          try {
+            error = await res.json();
+            console.error('🚨 FORCE - Erreur JSON backend:', error);
+          } catch {
+            error = await res.text();
+            console.error('🚨 FORCE - Erreur TEXT backend:', error);
+          }
+          console.error('📊 FORCE - Status:', res.status, 'StatusText:', res.statusText);
+          toast.error(`🚨 FORCE FAILED: ${error?.message || error || 'Erreur inconnue'}`);
+          return;
+        }
+        
+        // Succès
+        const getRes = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}`, { credentials: 'include' });
+        if (getRes.ok) {
+          const updatedProduct = await getRes.json();
+          if (onProductPatched) onProductPatched(updatedProduct);
+        }
+        toast.success('🚨 CONTOURNEMENT RÉUSSI - Produit modifié avec succès');
+        navigate('/admin/products');
+      } catch (e: any) {
+        console.error('🚨 FORCE - Erreur:', e);
+        toast.error(`🚨 FORCE ERROR: ${e.message}`);
+      }
+    } else {
+      toast.error('Mode de contournement disponible seulement en édition');
+    }
+  };
+
+  // Remplace handleSubmit pour PATCH si mode === 'edit'
+  const handleSubmit = async () => {
+    if (mode === 'edit' && productId) {
+      try {
+        // 0. Vérifier les autorisations avec AuthContext
+        console.log('🔐 Vérification des autorisations...');
+        
+        if (!isAuthenticated || !user) {
+          console.log('❌ Utilisateur non authentifié');
+          toast.error('❌ Vous devez être connecté pour effectuer cette action');
+          return;
+        }
+        
+        const allowedRoles = ['ADMIN', 'SUPERADMIN', 'VENDEUR'];
+        const hasValidRole = allowedRoles.includes(user.role);
+        
+        if (!hasValidRole) {
+          console.log('❌ Autorisation échouée:', { 
+            userRole: user.role, 
+            allowedRoles,
+            hasValidRole 
+          });
+          toast.error(`❌ Autorisations insuffisantes. Votre rôle: ${user.role}`);
+          return;
+        }
+        
+        console.log('✅ Autorisation réussie:', {
+          userId: user.id,
+          userRole: user.role,
+          userEmail: user.email,
+          isAuthenticated: true
+        });
+        
+        // ✅ VÉRIFICATION PRÉALABLE AVEC LE BACKEND
+        console.log('🔍 Vérification des permissions côté serveur...');
+        
+        const authResponse = await fetch('https://printalma-back-dep.onrender.com/auth/check', {
+          credentials: 'include'
+        });
+        
+        if (!authResponse.ok) {
+          console.error('❌ Backend ne reconnaît pas l\'utilisateur comme authentifié');
+          toast.error('Session expirée côté serveur. Veuillez vous reconnecter.');
+          return;
+        }
+        
+        const backendUserData = await authResponse.json();
+        console.log('🔍 STRUCTURE COMPLÈTE de la réponse /auth/check:', backendUserData);
+        console.log('🔍 Données utilisateur côté serveur:', {
+          role: backendUserData.role,
+          userRole: backendUserData.user?.role,
+          id: backendUserData.id,
+          userId: backendUserData.user?.id,
+          permissions: backendUserData.permissions
+        });
+        
+        const serverUserRole = backendUserData.user?.role;
+        
+        if (!['SUPERADMIN', 'ADMIN', 'VENDEUR'].includes(serverUserRole)) {
+          console.error('❌ Rôle insuffisant côté serveur:', serverUserRole);
+          toast.error(`Permissions insuffisantes. Rôle backend: ${serverUserRole || 'undefined'}`);
+          return;
+        }
+        
+        console.log('✅ Vérification serveur réussie pour rôle:', serverUserRole);
+        
+        // 1. Upload toutes les images locales (blob) avant le PATCH
+        console.log('🔍 Utilisation de l\'authentification par cookies...');
+        const productReady = await prepareImagesForPatch(formData);
+        // 2. Prépare le payload PATCH (mapping déjà en place)
+        console.log('🔍 FormData avant traitement:', JSON.stringify(productReady, null, 2));
+        console.log('🔍 InitialData:', JSON.stringify(initialData, null, 2));
+        const payload = getUpdatePayload(productReady, initialData);
+        console.log('🚀 PATCH payload final:', JSON.stringify(payload, null, 2));
+        const res = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            // 'Authorization': 'Bearer ' + token // Removed: using cookies authentication
           },
           body: JSON.stringify(payload),
         });
@@ -804,10 +1070,13 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
           let error;
           try {
             error = await res.json();
+            console.error('📋 Erreur JSON backend:', error);
           } catch {
             error = await res.text();
+            console.error('📋 Erreur TEXT backend:', error);
           }
-          console.error('Erreur backend:', error);
+          console.error('📊 Status:', res.status, 'StatusText:', res.statusText);
+          console.error('📤 Payload envoyé:', JSON.stringify(payload, null, 2));
           toast.error(error?.message || (typeof error === 'string' ? error : 'Erreur lors de la sauvegarde'));
           return;
         }
@@ -1298,14 +1567,33 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
               </p>
             </div>
 
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              className="border-gray-300 dark:border-gray-600"
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Réinitialiser
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleDebugRole}
+                className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+              >
+                🔍 Debug Rôle
+              </Button>
+              {mode === 'edit' && (
+                <Button
+                  variant="outline"
+                  onClick={handleForceSubmit}
+                  className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                  title="Contournement d'urgence - À utiliser seulement si le backend a des problèmes d'autorisation"
+                >
+                  🚨 Force Edit
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                className="border-gray-300 dark:border-gray-600"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Réinitialiser
+              </Button>
+            </div>
           </div>
         </motion.div>
 

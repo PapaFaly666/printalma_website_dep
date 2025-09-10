@@ -553,8 +553,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
               </Button>
             )}
             
-            {/* Masquer le bouton Modifier si le produit est déjà validé */}
-            {onEdit && !product.isValidated && (
+            {/* Bouton Modifier - accessible pour tous les produits */}
+            {onEdit && (
               <Button size="sm" variant="ghost" onClick={() => onEdit(product)}>
                 <Edit3 className="h-4 w-4" />
               </Button>

@@ -246,7 +246,7 @@ export default function Sidebar() {
             const vendorPath = path.replace('vendor-', '');
             navigate(`/vendeur/${vendorPath}`);
         } else {
-        navigate(`/admin/${path}`);
+            navigate(`/admin/${path}`);
         }
         if (isMobile) setIsMenuOpen(false);
     };
@@ -710,15 +710,18 @@ export default function Sidebar() {
 
                 {/* Footer */}
                 <div className="p-3 space-y-1">
-                    <NavItem
-                        icon={<Settings size={18} />}
-                        label="Paramètres"
-                        collapsed={collapsed && !isMobile}
-                        active={activeItem === 'settings'}
-                        onClick={() => handleNavigation('settings')}
-                        badge=""
-                        textColor=""
-                    />
+                    {/* Paramètres - seulement pour les admins */}
+                    {(isAdmin() || isSuperAdmin()) && (
+                        <NavItem
+                            icon={<Settings size={18} />}
+                            label="Paramètres"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'settings'}
+                            onClick={() => handleNavigation('settings')}
+                            badge=""
+                            textColor=""
+                        />
+                    )}
 
                     {/* Bouton de nettoyage des tokens (admin uniquement) */}
                     {(isAdmin() || isSuperAdmin()) && (

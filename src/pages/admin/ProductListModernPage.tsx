@@ -16,9 +16,9 @@ export const ProductListModernPage: React.FC = () => {
 
   const handleEditProduct = (product: any) => {
     console.log('✏️ Modifier le produit:', product);
-    // Redirection vers l'édition du produit
-    navigate(`/admin/products/${product.id}/edit`);
-    toast.info(`Redirection vers l'édition de "${product.name}"`);
+    // Redirection vers la page d'ajout avec les données du produit pour édition
+    navigate(`/admin/add-product?edit=${product.id}`, { state: { editProduct: product } });
+    toast.info(`Modification de "${product.name}"`);
   };
 
   const handleViewProduct = (product: any) => {
@@ -27,6 +27,7 @@ export const ProductListModernPage: React.FC = () => {
     navigate(`/admin/products/${product.id}`);
     toast.info(`Affichage des détails de "${product.name}"`);
   };
+
 
   const handleDeleteProduct = async (id: number) => {
     console.log('🗑️ Supprimer le produit ID:', id);

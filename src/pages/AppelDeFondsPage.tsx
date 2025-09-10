@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Wallet, 
   Plus, 
@@ -8,21 +7,15 @@ import {
   CheckCircle, 
   XCircle, 
   AlertCircle,
-  Banknote,
-  Smartphone,
-  Building2,
   Eye,
   EyeOff,
   Loader2,
-  CreditCard,
-  TrendingUp,
-  Calendar,
-  RefreshCw
+  RefreshCw,
+  History
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Separator } from '../components/ui/separator';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
@@ -38,16 +31,49 @@ import {
   PaymentMethod,
   PAYMENT_METHODS,
   WITHDRAWAL_STATUS_LABELS,
-  WITHDRAWAL_STATUS_COLORS,
   BankDetails,
   MobileMoneyDetails
 } from '../types/funds';
 
 const AppelDeFondsPage: React.FC = () => {
   // États principaux
-  const [balance, setBalance] = useState<VendorBalance | null>(null);
-  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [balance, setBalance] = useState<VendorBalance>({
+    availableBalance: 250000,
+    totalEarnings: 850000,
+    pendingWithdrawals: 75000,
+    lastUpdated: new Date()
+  });
+  
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([
+    {
+      id: 1,
+      amount: 100000,
+      method: 'WAVE',
+      status: 'COMPLETED',
+      requestedAt: new Date('2024-01-15'),
+      processedAt: new Date('2024-01-16'),
+      notes: 'Retrait mensuel'
+    },
+    {
+      id: 2,
+      amount: 75000,
+      method: 'ORANGE_MONEY',
+      status: 'PENDING',
+      requestedAt: new Date('2024-01-20'),
+      notes: 'Retrait urgente'
+    },
+    {
+      id: 3,
+      amount: 200000,
+      method: 'BANK_TRANSFER',
+      status: 'REJECTED',
+      requestedAt: new Date('2024-01-10'),
+      rejectedAt: new Date('2024-01-12'),
+      rejectionReason: 'Informations bancaires incorrectes'
+    }
+  ]);
+
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   
   // États pour la demande de retrait
@@ -72,35 +98,12 @@ const AppelDeFondsPage: React.FC = () => {
   
   // États UI
   const [showBalance, setShowBalance] = useState(true);
-  const [expandedRequest, setExpandedRequest] = useState<number | null>(null);
-  
+
   const { user } = useAuth();
-
-  // Charger les données initiales
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [balanceData, requestsData] = await Promise.all([
-        fundsService.getMyBalance(),
-        fundsService.getMyWithdrawalRequests()
-      ]);
-      setBalance(balanceData);
-      setWithdrawalRequests(requestsData);
-    } catch (error) {
-      console.error('Erreur lors du chargement:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    setTimeout(() => setRefreshing(false), 1000);
   };
 
   // Validation du formulaire
@@ -121,8 +124,6 @@ const AppelDeFondsPage: React.FC = () => {
     if (selectedMethod === 'WAVE' || selectedMethod === 'ORANGE_MONEY') {
       if (!mobileDetails.phoneNumber) {
         newErrors.phone = 'Numéro de téléphone requis';
-      } else if (!fundsService.validatePhoneNumber(mobileDetails.phoneNumber)) {
-        newErrors.phone = 'Format de numéro invalide';
       }
       if (!mobileDetails.accountHolder) {
         newErrors.accountHolder = 'Nom du titulaire requis';
@@ -139,9 +140,6 @@ const AppelDeFondsPage: React.FC = () => {
       if (!bankDetails.accountHolder) {
         newErrors.bankAccountHolder = 'Nom du titulaire requis';
       }
-      if (bankDetails.iban && !fundsService.validateIBAN(bankDetails.iban)) {
-        newErrors.iban = 'Format IBAN invalide';
-      }
     }
     
     setErrors(newErrors);
@@ -153,36 +151,27 @@ const AppelDeFondsPage: React.FC = () => {
     if (!validateForm()) return;
     
     setSubmitting(true);
-    try {
-      const withdrawalRequest: WithdrawalRequestCreate = {
+    setTimeout(() => {
+      const newRequest: WithdrawalRequest = {
+        id: Date.now(),
         amount: parseFloat(amount),
         method: selectedMethod as PaymentMethod,
+        status: 'PENDING',
+        requestedAt: new Date(),
         notes: notes.trim() || undefined
       };
       
-      if (selectedMethod === 'WAVE' || selectedMethod === 'ORANGE_MONEY') {
-        withdrawalRequest.mobileDetails = {
-          ...mobileDetails,
-          provider: selectedMethod
-        };
-      } else if (selectedMethod === 'BANK_TRANSFER') {
-        withdrawalRequest.bankDetails = bankDetails;
-      }
+      setWithdrawalRequests(prev => [newRequest, ...prev]);
+      setBalance(prev => ({
+        ...prev,
+        availableBalance: prev.availableBalance - parseFloat(amount),
+        pendingWithdrawals: prev.pendingWithdrawals + parseFloat(amount)
+      }));
       
-      await fundsService.createWithdrawalRequest(withdrawalRequest);
-      
-      // Rafraîchir les données
-      await loadData();
-      
-      // Fermer le dialog et reset le form
       setIsWithdrawalDialogOpen(false);
       resetForm();
-      
-    } catch (error: any) {
-      setErrors({ submit: error.message || 'Erreur lors de la soumission' });
-    } finally {
       setSubmitting(false);
-    }
+    }, 2000);
   };
 
   const resetForm = () => {
@@ -195,11 +184,32 @@ const AppelDeFondsPage: React.FC = () => {
   };
 
   const handleCancelRequest = async (requestId: number) => {
-    try {
-      await fundsService.cancelWithdrawalRequest(requestId);
-      await loadData();
-    } catch (error: any) {
-      console.error('Erreur lors de l\'annulation:', error);
+    const request = withdrawalRequests.find(r => r.id === requestId);
+    if (request && request.status === 'PENDING') {
+      setWithdrawalRequests(prev => prev.filter(r => r.id !== requestId));
+      setBalance(prev => ({
+        ...prev,
+        availableBalance: prev.availableBalance + request.amount,
+        pendingWithdrawals: prev.pendingWithdrawals - request.amount
+      }));
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'COMPLETED': return 'bg-gray-100 text-gray-800';
+      case 'PENDING': return 'bg-gray-200 text-gray-900';
+      case 'REJECTED': return 'bg-gray-300 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentIcon = (method: PaymentMethod) => {
+    switch (method) {
+      case 'WAVE': return '📱';
+      case 'ORANGE_MONEY': return '🍊';
+      case 'BANK_TRANSFER': return '🏦';
+      default: return '💳';
     }
   };
 
@@ -207,51 +217,52 @@ const AppelDeFondsPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2 text-lg">Chargement de vos données financières...</span>
+        <span className="ml-2 text-lg">Chargement...</span>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 space-y-6 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            💰 Appel de Fonds
+          <h1 className="text-2xl sm:text-3xl font-bold text-black">
+            Appel de Fonds
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-gray-600 text-sm mt-1">
             Gérez votre solde et vos demandes de retrait
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 flex-1 sm:flex-none"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Actualiser
+            <span className="hidden sm:inline">Actualiser</span>
           </Button>
           <Button
             onClick={() => setIsWithdrawalDialogOpen(true)}
             disabled={!balance || balance.availableBalance <= 0}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 flex-1 sm:flex-none bg-black text-white hover:bg-gray-800"
           >
             <Plus className="h-4 w-4" />
-            Demander un retrait
+            <span className="hidden sm:inline">Demander retrait</span>
+            <span className="sm:hidden">Retrait</span>
           </Button>
         </div>
       </div>
 
-      {/* Cards Solde */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Solde principal */}
-        <Card className="relative overflow-hidden">
+      {/* Cards Solde - Responsive */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Solde disponible */}
+        <Card className="border border-gray-200">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <CardTitle className="text-sm font-medium text-gray-600">
                 Solde disponible
               </CardTitle>
               <Button
@@ -265,144 +276,157 @@ const AppelDeFondsPage: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {showBalance 
-                ? fundsService.formatCFA(balance?.availableBalance || 0)
-                : '•••••••'
-              }
+            <div className="flex items-center gap-3">
+              <Wallet className="h-6 w-6 text-gray-600" />
+              <div>
+                <div className="text-xl font-bold text-black">
+                  {showBalance 
+                    ? fundsService.formatCFA(balance?.availableBalance || 0)
+                    : '•••••••'
+                  }
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Disponible pour retrait
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Disponible pour retrait
-            </p>
           </CardContent>
-          <div className="absolute top-0 right-0 w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-bl-full flex items-start justify-end p-3">
-            <Wallet className="h-6 w-6 text-green-600 dark:text-green-400" />
-          </div>
         </Card>
 
         {/* Gains totaux */}
-        <Card className="relative overflow-hidden">
+        <Card className="border border-gray-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <CardTitle className="text-sm font-medium text-gray-600">
               Gains totaux
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {showBalance 
-                ? fundsService.formatCFA(balance?.totalEarnings || 0)
-                : '•••••••'
-              }
+            <div className="flex items-center gap-3">
+              <ArrowUpRight className="h-6 w-6 text-gray-600" />
+              <div>
+                <div className="text-xl font-bold text-black">
+                  {showBalance 
+                    ? fundsService.formatCFA(balance?.totalEarnings || 0)
+                    : '•••••••'
+                  }
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Depuis le début
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Depuis le début
-            </p>
           </CardContent>
-          <div className="absolute top-0 right-0 w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-bl-full flex items-start justify-end p-3">
-            <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          </div>
         </Card>
 
         {/* Retraits en cours */}
-        <Card className="relative overflow-hidden">
+        <Card className="border border-gray-200 sm:col-span-2 lg:col-span-1">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <CardTitle className="text-sm font-medium text-gray-600">
               Retraits en cours
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-              {showBalance 
-                ? fundsService.formatCFA(balance?.pendingWithdrawals || 0)
-                : '•••••••'
-              }
+            <div className="flex items-center gap-3">
+              <Clock className="h-6 w-6 text-gray-600" />
+              <div>
+                <div className="text-xl font-bold text-black">
+                  {showBalance 
+                    ? fundsService.formatCFA(balance?.pendingWithdrawals || 0)
+                    : '•••••••'
+                  }
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  En attente de traitement
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              En attente de traitement
-            </p>
           </CardContent>
-          <div className="absolute top-0 right-0 w-20 h-20 bg-orange-100 dark:bg-orange-900/20 rounded-bl-full flex items-start justify-end p-3">
-            <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-          </div>
         </Card>
       </div>
 
-      {/* Liste des demandes de retrait */}
-      <Card>
+      {/* Table des demandes de retrait */}
+      <Card className="border border-gray-200">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Historique des demandes de retrait
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <History className="h-5 w-5" />
+            Historique des demandes
           </CardTitle>
-          <CardDescription>
-            Suivez l'état de vos demandes de retrait
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          {withdrawalRequests.length === 0 ? (
-            <div className="text-center py-12">
-              <ArrowUpRight className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">
-                Aucune demande de retrait pour le moment
-              </p>
-              <Button
-                onClick={() => setIsWithdrawalDialogOpen(true)}
-                className="mt-4"
-                disabled={!balance || balance.availableBalance <= 0}
-              >
-                Faire votre première demande
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {withdrawalRequests.map((request) => (
-                <motion.div
-                  key={request.id}
-                  layout
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 text-sm font-medium text-gray-600">Date</th>
+                  <th className="text-left py-3 text-sm font-medium text-gray-600">Méthode</th>
+                  <th className="text-right py-3 text-sm font-medium text-gray-600">Montant</th>
+                  <th className="text-center py-3 text-sm font-medium text-gray-600">Statut</th>
+                  <th className="text-left py-3 text-sm font-medium text-gray-600 hidden sm:table-cell">Notes</th>
+                  <th className="text-center py-3 text-sm font-medium text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {withdrawalRequests.map((request) => (
+                  <tr key={request.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 text-sm text-gray-900">
+                      {new Date(request.requestedAt).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit'
+                      })}
+                    </td>
+                    <td className="py-3 text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">
-                          {fundsService.getPaymentMethodInfo(request.method).icon}
+                        <span className="text-lg">{getPaymentIcon(request.method)}</span>
+                        <span className="text-gray-900">
+                          {fundsService.getPaymentMethodInfo(request.method).name}
                         </span>
-                        <div>
-                          <p className="font-medium">
-                            {fundsService.formatCFA(request.amount)}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {fundsService.getPaymentMethodInfo(request.method).name}
-                          </p>
-                        </div>
                       </div>
-                      <Badge className={WITHDRAWAL_STATUS_COLORS[request.status]}>
+                    </td>
+                    <td className="py-3 text-sm font-medium text-black text-right">
+                      {fundsService.formatCFA(request.amount)}
+                    </td>
+                    <td className="py-3 text-center">
+                      <Badge className={getStatusColor(request.status)}>
                         {WITHDRAWAL_STATUS_LABELS[request.status]}
                       </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(request.requestedAt).toLocaleDateString('fr-FR')}
-                      </p>
-                      {request.status === 'PENDING' && (
+                    </td>
+                    <td className="py-3 text-sm text-gray-600 hidden sm:table-cell max-w-32 truncate">
+                      {request.notes || '-'}
+                    </td>
+                    <td className="py-3 text-center">
+                      {request.status === 'PENDING' ? (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleCancelRequest(request.id)}
+                          className="text-xs px-2 py-1"
                         >
                           Annuler
                         </Button>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
                       )}
-                    </div>
-                  </div>
-                  
-                  {request.notes && (
-                    <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
-                      <strong>Notes:</strong> {request.notes}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {withdrawalRequests.length === 0 && (
+            <div className="text-center py-8">
+              <ArrowUpRight className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 mb-4">
+                Aucune demande de retrait pour le moment
+              </p>
+              <Button
+                onClick={() => setIsWithdrawalDialogOpen(true)}
+                className="bg-black text-white hover:bg-gray-800"
+                disabled={!balance || balance.availableBalance <= 0}
+              >
+                Faire votre première demande
+              </Button>
             </div>
           )}
         </CardContent>
@@ -410,7 +434,7 @@ const AppelDeFondsPage: React.FC = () => {
 
       {/* Dialog de demande de retrait */}
       <Dialog open={isWithdrawalDialogOpen} onOpenChange={setIsWithdrawalDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md mx-4">
           <DialogHeader>
             <DialogTitle>Nouvelle demande de retrait</DialogTitle>
             <DialogDescription>
@@ -542,22 +566,24 @@ const AppelDeFondsPage: React.FC = () => {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => {
                 setIsWithdrawalDialogOpen(false);
                 resetForm();
               }}
+              className="w-full sm:w-auto"
             >
               Annuler
             </Button>
             <Button
               onClick={handleSubmitWithdrawal}
               disabled={submitting || !selectedMethod || !amount}
+              className="w-full sm:w-auto bg-black text-white hover:bg-gray-800"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Soumettre la demande
+              {submitting ? 'Envoi...' : 'Soumettre'}
             </Button>
           </DialogFooter>
         </DialogContent>
