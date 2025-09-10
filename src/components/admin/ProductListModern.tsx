@@ -93,6 +93,7 @@ interface Product {
   id: number;
   name: string;
   price: number;
+  suggestedPrice?: number; // Added for suggested price
   stock: number;
   status: 'DRAFT' | 'PUBLISHED' | 'PENDING';
   description: string;
@@ -317,6 +318,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
   console.log('Product debug:', {
     id: product.id,
     name: product.name,
+    price: product.price,
+    suggestedPrice: product.suggestedPrice,
+    priceAligned: product.suggestedPrice === product.price,
     status: product.status,
     isValidated: isDesignValidated,
     readyToPublish,
@@ -575,8 +579,35 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
 
           <div className="flex items-center justify-between mb-3">
-            <div className="font-bold text-gray-900 dark:text-white">
-              {product.price.toLocaleString()} FCFA
+            <div className="space-y-1">
+              {/* Prix de base */}
+              <div className="font-bold text-gray-900 dark:text-white">
+                {product.price.toLocaleString()} FCFA
+              </div>
+              
+              {/* Prix suggéré si différent du prix de base */}
+              {product.suggestedPrice && product.suggestedPrice !== product.price && (
+                <div className="text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Prix suggéré: </span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    {product.suggestedPrice.toLocaleString()} FCFA
+                  </span>
+                  {/* Indication si le prix suggéré est plus élevé */}
+                  {product.suggestedPrice > product.price && (
+                    <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                      +{((product.suggestedPrice - product.price) / product.price * 100).toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              {/* Affichage spécial si prix suggéré identique */}
+              {product.suggestedPrice && product.suggestedPrice === product.price && (
+                <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <Target className="h-3 w-3" />
+                  Prix aligné
+                </div>
+              )}
             </div>
             <Badge variant={product.stock === 0 ? "destructive" : product.stock < 10 ? "secondary" : "outline"}>
               Stock: {product.stock}
@@ -767,7 +798,14 @@ const DeletedProductCard: React.FC<{ prod: any }> = ({ prod }) => {
       {/* Infos produit */}
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-gray-900 dark:text-white">{prod.name}</div>
-        <div className="text-sm text-gray-500 mb-1">{prod.price} FCFA</div>
+        <div className="text-sm text-gray-500 mb-1">
+          {prod.price.toLocaleString()} FCFA
+          {prod.suggestedPrice && prod.suggestedPrice !== prod.price && (
+            <span className="ml-2 text-blue-600 font-medium">
+              (suggéré: {prod.suggestedPrice.toLocaleString()})
+            </span>
+          )}
+        </div>
         {/* Navigation couleurs */}
         {prod.colorVariations.length > 1 && (
           <div className="flex items-center gap-2 mt-1">

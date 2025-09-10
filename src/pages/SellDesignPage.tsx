@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../services/productService';
-import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle } from 'lucide-react';
 import designService, { Design } from '../services/designService';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorPublish } from '../hooks/useVendorPublish';
@@ -2812,9 +2812,20 @@ const SellDesignPage: React.FC = () => {
       // Sauvegarder les prix de base lors du premier chargement
       const initialBasePrices: Record<number, number> = {};
         filteredProducts.forEach((product: any) => {
-        // Le prix de base est le prix original du produit (défini par l'admin)
-        // On utilise soit basePrice s'il existe, soit price comme fallback
-        initialBasePrices[product.id] = (product as any).basePrice || product.price;
+        // 🔄 NOUVEAU: Utiliser suggestedPrice en priorité, puis basePrice, puis price
+        // Le vendeur travaille maintenant sur le prix suggéré comme base
+        const suggestedPrice = product.suggestedPrice;
+        const basePrice = (product as any).basePrice || product.price;
+        
+        // Si suggestedPrice existe et est valide, l'utiliser comme nouvelle base
+        if (suggestedPrice && suggestedPrice > 0) {
+          initialBasePrices[product.id] = suggestedPrice;
+          console.log(`🎯 [SellDesignPage] Produit ${product.id}: Base = suggestedPrice (${suggestedPrice} FCFA)`);
+        } else {
+          // Sinon, utiliser l'ancien système
+          initialBasePrices[product.id] = basePrice;
+          console.log(`⚠️ [SellDesignPage] Produit ${product.id}: Base = basePrice/price (${basePrice} FCFA), pas de suggestedPrice`);
+        }
       });
       setBasePrices(initialBasePrices);
     } else {
@@ -3145,11 +3156,22 @@ const SellDesignPage: React.FC = () => {
     const updates = editStates[id] || {};
     const payload: Record<string, any> = {};
 
-    // Validation du prix : le vendeur ne peut pas fixer un prix inférieur au prix de base de l'admin
+    // 🔄 NOUVEAU: Validation du prix basée sur suggestedPrice ou prix minimum
     if (updates.price !== undefined) {
       const basePrice = basePrices[id] || product.price;
+      const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
+      
       if (updates.price < basePrice) {
-        const msg = `Le prix doit être supérieur ou égal à ${basePrice} FCFA (prix de base)`;
+        const priceType = hasSuggestedPrice ? "prix suggéré" : "prix minimum";
+        const msg = `Le prix doit être supérieur ou égal à ${basePrice} FCFA (${priceType})`;
+        
+        console.log(`❌ [SellDesignPage] Prix invalide pour produit ${id}:`, {
+          tentative: updates.price,
+          minimum: basePrice,
+          type: priceType,
+          hasSuggestedPrice
+        });
+        
         // Afficher toast
         toast({
           title: "Prix invalide",
@@ -4462,7 +4484,7 @@ const SellDesignPage: React.FC = () => {
                             />
                           </div>
                           
-                          {/* Système de pricing moderne et responsive */}
+                          {/* 🔄 NOUVEAU: Système de pricing basé sur suggestedPrice */}
                           <div className="space-y-3">
                             {(() => {
                               const basePrice = basePrices[product.id] || product.price;
@@ -4470,6 +4492,11 @@ const SellDesignPage: React.FC = () => {
                               const currentPrice = basePrice + customProfit;
                               const profitPercentage = basePrice ? ((customProfit / basePrice) * 100).toFixed(1) : '0';
                               const isExpanded = expandedPricingIds[product.id];
+                              
+                              // 🎯 NOUVEAU: Déterminer si on utilise suggestedPrice
+                              const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
+                              const originalPrice = product.price;
+                              const isUsingSuggestedPrice = hasSuggestedPrice && basePrice === product.suggestedPrice;
                               const isEditing = editingProfitIds[product.id];
 
                               return (
@@ -4502,15 +4529,21 @@ const SellDesignPage: React.FC = () => {
                                                 )}
                                               </div>
                                             </div>
-                                            <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                                              {new Intl.NumberFormat('fr-FR', {
-                                                style: 'currency',
-                                                currency: 'XOF',
-                                                maximumFractionDigits: 0
-                                              }).format(currentPrice)}
+                                            {/* 🔄 NOUVEAU: Prix final (lecture seule - calculé automatiquement) */}
+                                            <div className="mb-2">
+                                              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                                                {new Intl.NumberFormat('fr-FR', {
+                                                  style: 'currency',
+                                                  currency: 'XOF',
+                                                  maximumFractionDigits: 0
+                                                }).format(currentPrice)}
+                                              </div>
+                                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                Prix calculé automatiquement
+                                              </div>
                                             </div>
                                             
-                                            {/* Indicateur de bénéfice compact mobile */}
+                                            {/* 🔄 NOUVEAU: Indicateurs avec prix suggéré */}
                                             <div className="flex items-center gap-3 flex-wrap">
                                               <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
                                                 <PiggyBank className="h-3 w-3 text-green-600 dark:text-green-400" />
@@ -4528,6 +4561,16 @@ const SellDesignPage: React.FC = () => {
                                                   {profitPercentage}%
                                                 </span>
                                               </div>
+                                              
+                                              {/* 🎯 NOUVEAU: Indicateur prix suggéré */}
+                                              {isUsingSuggestedPrice && (
+                                                <div className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded-full">
+                                                  <Target className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                                                  <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
+                                                    Prix suggéré
+                                                  </span>
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                           
@@ -4557,6 +4600,169 @@ const SellDesignPage: React.FC = () => {
                                             className="border-t border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10"
                                           >
                                             <div className="p-4 sm:p-5 space-y-5">
+                                              {/* 🎯 NOUVEAU: Section prix suggéré vs original */}
+                                              {hasSuggestedPrice && (
+                                                <div className="max-w-lg mx-auto mb-5">
+                                                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                      <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                                      <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                                                        Système de prix suggéré activé
+                                                      </h4>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                                      <div className="bg-white/50 dark:bg-gray-800/50 rounded p-3 border border-purple-100 dark:border-purple-800">
+                                                        <div className="text-gray-600 dark:text-gray-400 mb-1">Prix original</div>
+                                                        <div className="font-semibold text-gray-800 dark:text-gray-200">
+                                                          {new Intl.NumberFormat('fr-FR', {
+                                                            style: 'currency',
+                                                            currency: 'XOF',
+                                                            maximumFractionDigits: 0
+                                                          }).format(originalPrice)}
+                                                        </div>
+                                                      </div>
+                                                      
+                                                      <div className="bg-purple-100/50 dark:bg-purple-900/50 rounded p-3 border border-purple-200 dark:border-purple-700">
+                                                        <div className="text-purple-600 dark:text-purple-300 mb-1">Prix suggéré (base)</div>
+                                                        <div className="font-bold text-purple-800 dark:text-purple-200">
+                                                          {new Intl.NumberFormat('fr-FR', {
+                                                            style: 'currency',
+                                                            currency: 'XOF',
+                                                            maximumFractionDigits: 0
+                                                          }).format(basePrice)}
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                    
+                                                    <div className="mt-3 text-xs text-purple-700 dark:text-purple-300 bg-purple-100/50 dark:bg-purple-900/30 rounded p-2">
+                                                      <span className="font-medium">💡 Info:</span> Vous travaillez maintenant avec le prix suggéré comme base minimum. Ajoutez votre bénéfice au-dessus de ce prix.
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              )}
+                                              
+                                              {/* 🔄 NOUVEAU: Interface de pricing pour vendeur */}
+                                              <div className="max-w-lg mx-auto mb-5">
+                                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                                                  <div className="flex items-center gap-2 mb-4">
+                                                    <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                    <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                                                      Configuration du prix
+                                                    </h4>
+                                                  </div>
+                                                  
+                                                  <div className="space-y-4">
+                                                    {/* 1. Prix suggéré (éditable avec min) */}
+                                                    <div className="space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                        <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                                                          Prix suggéré de base
+                                                        </label>
+                                                        <div className="text-xs text-blue-600 dark:text-blue-400">
+                                                          Min: {new Intl.NumberFormat('fr-FR', {
+                                                            style: 'currency',
+                                                            currency: 'XOF',
+                                                            maximumFractionDigits: 0
+                                                          }).format(product.suggestedPrice || product.price)}
+                                                        </div>
+                                                      </div>
+                                                      <div className="flex items-center gap-2">
+                                                        <input
+                                                          type="number"
+                                                          min={product.suggestedPrice || product.price}
+                                                          step="100"
+                                                          value={basePrice}
+                                                          onChange={(e) => {
+                                                            const newBasePrice = Math.max(
+                                                              product.suggestedPrice || product.price, 
+                                                              Number(e.target.value)
+                                                            );
+                                                            
+                                                            // Mettre à jour basePrices
+                                                            setBasePrices(prev => ({
+                                                              ...prev,
+                                                              [product.id]: newBasePrice
+                                                            }));
+                                                            
+                                                            // Recalculer le prix final
+                                                            const newFinalPrice = newBasePrice + customProfit;
+                                                            handleFieldChange(product.id, 'price', newFinalPrice);
+                                                          }}
+                                                          onBlur={() => handleSave(product.id)}
+                                                          className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                                                        />
+                                                        <span className="text-sm text-blue-600 dark:text-blue-400">FCFA</span>
+                                                      </div>
+                                                    </div>
+
+                                                    {/* 2. Bénéfice (éditable) */}
+                                                    <div className="space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                        <label className="text-sm font-medium text-green-700 dark:text-green-300">
+                                                          Votre bénéfice
+                                                        </label>
+                                                        <div className="text-xs text-green-600 dark:text-green-400">
+                                                          {profitPercentage}% de marge
+                                                        </div>
+                                                      </div>
+                                                      <div className="flex items-center gap-2">
+                                                        <input
+                                                          type="number"
+                                                          min="0"
+                                                          step="100"
+                                                          value={customProfit}
+                                                          onChange={(e) => {
+                                                            const newProfit = Math.max(0, Number(e.target.value));
+                                                            const newPrice = basePrice + newProfit;
+                                                            
+                                                            // Mettre à jour le profit personnalisé
+                                                            setCustomProfits(prev => ({
+                                                              ...prev,
+                                                              [product.id]: newProfit
+                                                            }));
+                                                            
+                                                            // Mettre à jour le prix dans editStates
+                                                            handleFieldChange(product.id, 'price', newPrice);
+                                                          }}
+                                                          onBlur={() => handleSave(product.id)}
+                                                          className="flex-1 px-3 py-2 text-sm border border-green-300 dark:border-green-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-green-500 focus:outline-none"
+                                                        />
+                                                        <span className="text-sm text-green-600 dark:text-green-400">FCFA</span>
+                                                        
+                                                        <Button
+                                                          size="sm"
+                                                          variant="outline"
+                                                          onClick={() => handleResetPricing(product.id)}
+                                                          className="text-xs border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-900/20"
+                                                        >
+                                                          Reset
+                                                        </Button>
+                                                      </div>
+                                                    </div>
+                                                    
+                                                    {/* 3. Prix final (calculé automatiquement) */}
+                                                    <div className="pt-3 border-t border-blue-200 dark:border-blue-700">
+                                                      <div className="flex items-center justify-between text-sm">
+                                                        <span className="font-medium text-blue-800 dark:text-blue-200">
+                                                          Prix final client
+                                                        </span>
+                                                        <span className="font-bold text-xl text-blue-900 dark:text-blue-100">
+                                                          {new Intl.NumberFormat('fr-FR', {
+                                                            style: 'currency',
+                                                            currency: 'XOF',
+                                                            maximumFractionDigits: 0
+                                                          }).format(currentPrice)}
+                                                        </span>
+                                                      </div>
+                                                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                                        = {basePrice.toLocaleString()} + {customProfit.toLocaleString()} FCFA
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              
                                               {/* 💰 Cards larges noir et blanc */}
                                               <div className="max-w-lg mx-auto space-y-3">
                                                 {/* Prix de vente */}
