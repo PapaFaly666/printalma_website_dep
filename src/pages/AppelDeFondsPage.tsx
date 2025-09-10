@@ -38,37 +38,42 @@ import {
 const AppelDeFondsPage: React.FC = () => {
   // États principaux
   const [balance, setBalance] = useState<VendorBalance>({
+    id: 1,
+    vendorId: 1,
     availableBalance: 250000,
     totalEarnings: 850000,
     pendingWithdrawals: 75000,
-    lastUpdated: new Date()
+    lastUpdated: new Date().toISOString()
   });
   
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([
     {
       id: 1,
+      vendorId: 1,
       amount: 100000,
       method: 'WAVE',
       status: 'COMPLETED',
-      requestedAt: new Date('2024-01-15'),
-      processedAt: new Date('2024-01-16'),
+      requestedAt: new Date('2024-01-15').toISOString(),
+      processedAt: new Date('2024-01-16').toISOString(),
       notes: 'Retrait mensuel'
     },
     {
       id: 2,
+      vendorId: 1,
       amount: 75000,
       method: 'ORANGE_MONEY',
       status: 'PENDING',
-      requestedAt: new Date('2024-01-20'),
+      requestedAt: new Date('2024-01-20').toISOString(),
       notes: 'Retrait urgente'
     },
     {
       id: 3,
+      vendorId: 1,
       amount: 200000,
       method: 'BANK_TRANSFER',
       status: 'REJECTED',
-      requestedAt: new Date('2024-01-10'),
-      rejectedAt: new Date('2024-01-12'),
+      requestedAt: new Date('2024-01-10').toISOString(),
+      rejectedAt: new Date('2024-01-12').toISOString(),
       rejectionReason: 'Informations bancaires incorrectes'
     }
   ]);
@@ -154,10 +159,11 @@ const AppelDeFondsPage: React.FC = () => {
     setTimeout(() => {
       const newRequest: WithdrawalRequest = {
         id: Date.now(),
+        vendorId: 1, // TODO: Récupérer l'ID du vendeur connecté
         amount: parseFloat(amount),
         method: selectedMethod as PaymentMethod,
         status: 'PENDING',
-        requestedAt: new Date(),
+        requestedAt: new Date().toISOString(),
         notes: notes.trim() || undefined
       };
       

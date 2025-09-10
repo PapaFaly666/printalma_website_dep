@@ -15,9 +15,9 @@ const AddProductPage: React.FC = () => {
   return (
     <>
       <ProductFormMain 
-        editMode={isEditMode}
-        initialProduct={editProduct}
-        editProductId={editProductId ? parseInt(editProductId) : undefined}
+        mode={isEditMode ? 'edit' : 'create'}
+        initialData={editProduct}
+        productId={editProductId || undefined}
       />
       <Toaster 
         position="top-right"

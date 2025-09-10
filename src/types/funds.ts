@@ -24,6 +24,8 @@ export interface WithdrawalRequest {
   mobileDetails?: MobileMoneyDetails;
   requestedAt: string;
   processedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
   notes?: string;
   vendor?: {
     firstName: string;
