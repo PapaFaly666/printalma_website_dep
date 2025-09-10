@@ -1249,7 +1249,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         link.download = `${formData.name || 'produit'}-${colorName}-rendu-final.png`;
         link.href = dataUrl;
         document.body.appendChild(link);
-        link.click();f
+        link.click();
         document.body.removeChild(link);
       }
     }

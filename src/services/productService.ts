@@ -5,6 +5,8 @@ import { prepareProductPayload, cleanProductPayload } from '../utils/productNorm
 // Extended Product interface for ModernProductList compatibility
 export interface Product extends Omit<SchemaProduct, 'colors' | 'sizes'> {
   id: number;
+  suggestedPrice?: number;
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE';
   colorVariations?: Array<{
     id: number;
     name: string;
@@ -570,6 +572,10 @@ export class ProductService {
       name: apiProduct.name,
       description: apiProduct.description || '',
       price: apiProduct.price || 0,
+      suggestedPrice: (apiProduct.suggestedPrice ?? apiProduct.suggested_price) != null
+        ? Number(apiProduct.suggestedPrice ?? apiProduct.suggested_price)
+        : undefined,
+      genre: apiProduct.genre,
       stock: apiProduct.stock || 0,
       status: apiProduct.status || 'DRAFT',
       featured: apiProduct.featured || false,
