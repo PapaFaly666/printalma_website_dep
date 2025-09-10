@@ -15,6 +15,8 @@ const Wrapper = ({ children }: WrapperProps) => {
 
   // Vérifier si on est sur une route de détail produit (/products/:id ou /admin/products/:id)
   const isProductDetailPage = /^\/(products|admin\/products)\/\d+$/.test(location.pathname);
+  // Vérifier si on est sur la page d'édition produit admin (/admin/products/:id/edit)
+  const isAdminProductEditPage = /^\/admin\/products\/\d+\/edit$/.test(location.pathname);
   
   // Vérifier si on est sur une route vendeur
   const isVendorRoute = location.pathname.startsWith('/vendeur');
@@ -23,7 +25,7 @@ const Wrapper = ({ children }: WrapperProps) => {
   const isThemeManagementRoute = location.pathname.startsWith('/admin/themes/') && location.pathname.includes('/products');
   
   // Cacher la navbar si la route est dans la liste, si c'est une page de détail produit, si c'est une route vendeur, ou si c'est une route de gestion des thèmes
-  const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname) || isProductDetailPage || isVendorRoute || isThemeManagementRoute;
+  const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname) || isProductDetailPage || isAdminProductEditPage || isVendorRoute || isThemeManagementRoute;
 
   return (
     <div>

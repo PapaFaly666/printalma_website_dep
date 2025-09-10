@@ -1,6 +1,6 @@
 import { Product as SchemaProduct } from '../schemas/product.schema';
 import { api } from './api';
-import { prepareProductPayload } from '../utils/productNormalization';
+import { prepareProductPayload, cleanProductPayload } from '../utils/productNormalization';
 
 // Extended Product interface for ModernProductList compatibility
 export interface Product extends Omit<SchemaProduct, 'colors' | 'sizes'> {
@@ -439,13 +439,18 @@ export class ProductService {
     }
   }
 
-  // METTRE À JOUR un produit (PUT /api/products/:id)
+  // METTRE À JOUR un produit (PUT /api/products/:id) - VERSION SÉCURISÉE
   static async updateProduct(id: number, data: Partial<Omit<Product, 'id'>>): Promise<ServiceResponse<Product>> {
     try {
       console.log(`🔄 [ProductService] Mise à jour du produit ${id}...`);
+      
+      // ✅ SOLUTION: Nettoyer le payload pour éviter les types mixtes
+      const cleanedData = cleanProductPayload(data as any);
+      console.log(`🧹 [ProductService] Payload nettoyé pour le produit ${id}:`, cleanedData);
+      
       const response = await safeApiCall(`/products/${id}`, {
         method: 'PUT',
-        body: JSON.stringify(data)
+        body: JSON.stringify(cleanedData)
       });
       
       if (response.success && response.data) {
@@ -460,6 +465,39 @@ export class ProductService {
       }
     } catch (error) {
       console.error(`❌ [ProductService] Erreur mise à jour produit ${id}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
+      };
+    }
+  }
+
+  // ✅ SOLUTION: PATCH sécurisé pour éviter les types mixtes (inspiré de SOLUTION_SIZES_MIXED_TYPES_FIX.md)
+  static async updateProductSafe(productId: number, rawPayload: any): Promise<ServiceResponse<Product>> {
+    try {
+      // Nettoyer le payload avant envoi
+      const cleanPayload = cleanProductPayload(rawPayload);
+      
+      console.log('🚀 [ProductService] PATCH payload nettoyé:', JSON.stringify(cleanPayload, null, 2));
+      
+      const response = await safeApiCall(`/products/${productId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(cleanPayload)
+      });
+      
+      if (response.success && response.data) {
+        console.log('✅ [ProductService] Modification réussie:', response);
+        return {
+          success: true,
+          data: this.transformProduct(response.data),
+          message: response.message || 'Produit modifié avec succès'
+        };
+      } else {
+        throw new Error(response.message || 'Erreur lors de la modification');
+      }
+      
+    } catch (error) {
+      console.error('❌ [ProductService] Erreur lors de la modification:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erreur inconnue'

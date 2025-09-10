@@ -16,8 +16,8 @@ export const ProductListModernPage: React.FC = () => {
 
   const handleEditProduct = (product: any) => {
     console.log('✏️ Modifier le produit:', product);
-    // Redirection vers la page d'ajout avec les données du produit pour édition
-    navigate(`/admin/add-product?edit=${product.id}`, { state: { editProduct: product } });
+    // Redirection vers la page d'édition dédiée
+    navigate(`/admin/products/${product.id}/edit`);
     toast.info(`Modification de "${product.name}"`);
   };
 

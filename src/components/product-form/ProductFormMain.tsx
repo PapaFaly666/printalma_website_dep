@@ -32,6 +32,65 @@ import { ProductImage, Delimitation } from '../../types/product';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../../contexts/CategoryContext';
+import { ProductService } from '../../services/productService';
+
+// 🔧 Configuration backend centralisée (basée sur per.md) - Compatible tous environnements
+const getBackendUrl = () => {
+  try {
+    // Essai Vite
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      return import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL;
+    }
+    // Essai Create React App (si applicable)
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL;
+    }
+    // Essai window global (si défini manuellement)
+    if (typeof window !== 'undefined' && (window as any).BACKEND_URL) {
+      return (window as any).BACKEND_URL;
+    }
+  } catch (e) {
+    console.log('⚠️ Erreur récupération variable environnement:', e);
+  }
+  // Fallback par défaut
+  return 'https://printalma-back-dep.onrender.com';
+};
+
+const BACKEND_URL = getBackendUrl();
+
+// 🔧 Log de vérification au chargement (per.md recommandé)
+console.log('🚀 [ProductFormMain] Backend URL configurée:', BACKEND_URL);
+
+// 🧪 Fonction de test de connexion backend (per.md recommandé)
+async function testBackendConnection() {
+  try {
+    console.log('🧪 Test de connexion backend...');
+    console.log('🔧 Backend URL configuré:', BACKEND_URL);
+    
+    // Test simple GET
+    const response = await fetch(`${BACKEND_URL}/products/1`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Backend connecté');
+      console.log('📖 Produit test:', {
+        id: data.id,
+        name: data.name,
+        suggestedPrice: data.suggestedPrice
+      });
+      return true;
+    } else {
+      console.log('❌ Erreur backend:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.log('💥 Erreur de connexion:', error.message);
+    return false;
+  }
+}
 
 // Composants d'étapes
 const BasicInfoStep: React.FC<{
@@ -689,12 +748,37 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     // eslint-disable-next-line
   }, [initialData]);
 
+  // 🧪 Test de connexion backend au chargement du composant (per.md recommandé)
+  useEffect(() => {
+    console.log('🚀 [ProductFormMain] Initialisation du composant');
+    console.log('🌐 Backend URL configurée:', BACKEND_URL);
+    
+    // Test de connexion différé pour ne pas bloquer le rendu
+    const timer = setTimeout(async () => {
+      const connected = await testBackendConnection();
+      if (connected) {
+        console.log('✅ [ProductFormMain] Backend disponible');
+      } else {
+        console.warn('⚠️ [ProductFormMain] Backend non disponible');
+        toast.warning('⚠️ Backend non disponible - Vérifiez la connexion', { duration: 3000 });
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const getUpdatePayload = (formData: any, initialData: any) => {
   console.log('🔧 Début getUpdatePayload');
+  console.log('🌐 URL backend configurée:', BACKEND_URL);
+  
+  // 🔍 Debug spécial pour suggestedPrice (recommandé per.md)
+  console.log('💰 [DEBUG suggestedPrice] Valeur dans formData:', formData.suggestedPrice);
+  console.log('💰 [DEBUG suggestedPrice] Type:', typeof formData.suggestedPrice);
+  console.log('💰 [DEBUG suggestedPrice] Est null/undefined:', formData.suggestedPrice === null || formData.suggestedPrice === undefined);
   
   // Envoie tous les champs attendus, pas juste les modifiés
   const allowedFields = [
-    'name', 'description', 'price', 'stock', 'status', 'categories', 'sizes', 'colorVariations'
+    'name', 'description', 'price', 'suggestedPrice', 'stock', 'status', 'categories', 'sizes', 'genre', 'colorVariations'
   ];
   const payload: any = {};
   for (const key of allowedFields) {
@@ -703,32 +787,64 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   
   console.log('🔧 Payload base:', Object.keys(payload));
   
-  // Mapping catégories et tailles vers IDs numériques - AVEC PROTECTION
+  // Normalisation catégories: envoyer des NOMS (strings) au backend
   try {
     if (payload.categories && Array.isArray(payload.categories)) {
-      const mappedCategories = mapLabelsToIds(payload.categories, allCategories as { id: number; name?: string; label?: string; sizeName?: string; }[]);
-      payload.categories = mappedCategories.length > 0 ? mappedCategories : payload.categories; // Fallback si pas de mapping
-      console.log('🔧 Categories mappées:', payload.categories);
+      const categoriesAsNames = (payload.categories as any[]).map((c) => {
+        if (typeof c === 'string') return c;
+        if (typeof c === 'number') {
+          const found = (allCategories as any[])?.find((opt) => opt.id === c);
+          return found?.name ?? String(c);
+        }
+        return String(c);
+      });
+      payload.categories = categoriesAsNames;
+      console.log('🔧 Categories normalisées (noms):', payload.categories);
     }
   } catch (error) {
-    console.error('❌ Erreur mapping categories:', error);
-    // Garder les catégories originales en cas d'erreur
+    console.error('❌ Erreur normalisation categories:', error);
   }
   
+  // ✅ Normalisation des tailles: toujours des strings, pas de mapping ID
   try {
     if (payload.sizes && Array.isArray(payload.sizes)) {
-      const mappedSizes = mapLabelsToIdsOrString(payload.sizes, allSizes);
-      payload.sizes = mappedSizes.length > 0 ? mappedSizes : payload.sizes; // Fallback si pas de mapping
-      console.log('🔧 Sizes mappées:', payload.sizes);
+      const sizesAsStrings = payload.sizes.map((size: any) => (typeof size === 'string' ? size : String(size)));
+      payload.sizes = sizesAsStrings;
+      console.log('🔧 [SIZES] Sizes normalisées (strings):', payload.sizes);
     }
   } catch (error) {
-    console.error('❌ Erreur mapping sizes:', error);
-    // Garder les tailles originales en cas d'erreur
+    console.error('❌ Erreur normalisation sizes:', error);
   }
   
   // Force status en MAJUSCULES
   if (payload.status && typeof payload.status === 'string') {
     payload.status = payload.status.toUpperCase();
+  }
+  
+  // ✅ Normaliser suggestedPrice avec logs détaillés (per.md recommandé)
+  console.log('💰 [DEBUG suggestedPrice] Traitement en cours...');
+  if (payload.suggestedPrice !== undefined && payload.suggestedPrice !== null) {
+    console.log('💰 [DEBUG suggestedPrice] Valeur présente:', payload.suggestedPrice);
+    const num = Number(payload.suggestedPrice);
+    console.log('💰 [DEBUG suggestedPrice] Après Number():', num);
+    console.log('💰 [DEBUG suggestedPrice] Number.isFinite():', Number.isFinite(num));
+    
+    if (Number.isFinite(num)) {
+      payload.suggestedPrice = num;
+      console.log('✅ [DEBUG suggestedPrice] Valeur normalisée:', payload.suggestedPrice);
+    } else {
+      console.log('⚠️ [DEBUG suggestedPrice] Valeur invalide, suppression du champ');
+      delete payload.suggestedPrice;
+    }
+  } else {
+    console.log('⚠️ [DEBUG suggestedPrice] Valeur null/undefined, pas de traitement');
+  }
+
+  // Normaliser genre et valeur par défaut
+  if (payload.genre && typeof payload.genre === 'string') {
+    const normalized = payload.genre.toUpperCase();
+    const allowed = ['HOMME', 'FEMME', 'BEBE', 'UNISEXE'];
+    payload.genre = allowed.includes(normalized) ? normalized : 'UNISEXE';
   }
   
   // Nettoyage des sous-objets pour correspondre au DTO backend - VERSION SÉCURISÉE
@@ -788,9 +904,11 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
 
   // Upload une image couleur locale sur le backend et retourne { url, publicId }
   async function uploadColorImage(productId: string, colorId: number, file: File) {
+    console.log('📤 [UPLOAD] URL backend utilisée:', `${BACKEND_URL}/products/${productId}/colors/${colorId}/images`);
+    
     const formData = new FormData();
     formData.append('image', file);
-    const res = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}/colors/${colorId}/images`, {
+    const res = await fetch(`${BACKEND_URL}/products/${productId}/colors/${colorId}/images`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -798,6 +916,8 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       },
       body: formData
     });
+    
+    console.log('📥 [UPLOAD] Response status:', res.status);
     if (!res.ok) throw new Error('Erreur upload image couleur');
     return await res.json(); // { url, publicId, ... }
   }
@@ -871,7 +991,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         console.log('🧪 Test de l\'authentification avec /products...');
         
         try {
-          const testResponse = await fetch('https://printalma-back-dep.onrender.com/products', {
+          const testResponse = await fetch(`${BACKEND_URL}/products`, {
             method: 'GET',
             headers: {
               // 'Authorization': `Bearer ${token}`, // Removed: using cookies authentication
@@ -931,49 +1051,38 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     }
   };
 
-  // Fonction de contournement d'urgence (temporaire)
+  // ✅ Fonction de contournement avec ProductService (per.md recommandé)
   const handleForceSubmit = async () => {
     if (mode === 'edit' && productId) {
       console.log('🚨 CONTOURNEMENT D\'URGENCE - Force submission...');
+      console.log('🌐 URL backend configurée:', BACKEND_URL);
+      
+      // Test de connexion backend préalable
+      const connectionOk = await testBackendConnection();
+      if (!connectionOk) {
+        toast.error('❌ Impossible de joindre le backend');
+        return;
+      }
       
       try {
         const productReady = await prepareImagesForPatch(formData);
         const payload = getUpdatePayload(productReady, initialData);
         
         console.log('🚨 FORCE PATCH payload:', JSON.stringify(payload, null, 2));
+        console.log('📤 [FORCE] URL utilisée:', `${BACKEND_URL}/products/${productId}`);
         
-        const res = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}`, {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            // 'Authorization': 'Bearer ' + token // Removed: using cookies authentication
-          },
-          body: JSON.stringify(payload),
-        });
+        // ✅ SOLUTION: Utiliser ProductService.updateProductSafe avec nettoyage automatique
+        console.log('🔄 [FORCE] Utilisation de ProductService.updateProductSafe...');
+        const result = await ProductService.updateProductSafe(parseInt(productId), payload);
         
-        if (!res.ok) {
-          let error;
-          try {
-            error = await res.json();
-            console.error('🚨 FORCE - Erreur JSON backend:', error);
-          } catch {
-            error = await res.text();
-            console.error('🚨 FORCE - Erreur TEXT backend:', error);
-          }
-          console.error('📊 FORCE - Status:', res.status, 'StatusText:', res.statusText);
-          toast.error(`🚨 FORCE FAILED: ${error?.message || error || 'Erreur inconnue'}`);
-          return;
+        if (result.success) {
+          console.log('✅ [FORCE] Succès ProductService:', result);
+          if (onProductPatched && result.data) onProductPatched(result.data);
+          toast.success('🚨 CONTOURNEMENT RÉUSSI - Produit modifié avec succès');
+          navigate('/admin/products');
+        } else {
+          throw new Error(result.error || 'Erreur ProductService');
         }
-        
-        // Succès
-        const getRes = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}`, { credentials: 'include' });
-        if (getRes.ok) {
-          const updatedProduct = await getRes.json();
-          if (onProductPatched) onProductPatched(updatedProduct);
-        }
-        toast.success('🚨 CONTOURNEMENT RÉUSSI - Produit modifié avec succès');
-        navigate('/admin/products');
       } catch (e: any) {
         console.error('🚨 FORCE - Erreur:', e);
         toast.error(`🚨 FORCE ERROR: ${e.message}`);
@@ -1018,8 +1127,9 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         
         // ✅ VÉRIFICATION PRÉALABLE AVEC LE BACKEND
         console.log('🔍 Vérification des permissions côté serveur...');
+        console.log('🌐 URL auth check:', `${BACKEND_URL}/auth/check`);
         
-        const authResponse = await fetch('https://printalma-back-dep.onrender.com/auth/check', {
+        const authResponse = await fetch(`${BACKEND_URL}/auth/check`, {
           credentials: 'include'
         });
         
@@ -1057,37 +1167,31 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         console.log('🔍 InitialData:', JSON.stringify(initialData, null, 2));
         const payload = getUpdatePayload(productReady, initialData);
         console.log('🚀 PATCH payload final:', JSON.stringify(payload, null, 2));
-        const res = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}`, {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            // 'Authorization': 'Bearer ' + token // Removed: using cookies authentication
-          },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          let error;
-          try {
-            error = await res.json();
-            console.error('📋 Erreur JSON backend:', error);
-          } catch {
-            error = await res.text();
-            console.error('📋 Erreur TEXT backend:', error);
-          }
-          console.error('📊 Status:', res.status, 'StatusText:', res.statusText);
-          console.error('📤 Payload envoyé:', JSON.stringify(payload, null, 2));
-          toast.error(error?.message || (typeof error === 'string' ? error : 'Erreur lors de la sauvegarde'));
+        
+        // ✅ SOLUTION: Utiliser ProductService.updateProductSafe (per.md + solution sizes mixtes)
+        console.log('🔄 Utilisation de ProductService.updateProductSafe...');
+        console.log('🌐 Backend URL:', BACKEND_URL);
+        
+        const result = await ProductService.updateProductSafe(parseInt(productId), payload);
+        
+        if (result.success) {
+          console.log('✅ Succès ProductService:', result);
+          if (onProductPatched && result.data) onProductPatched(result.data);
+          
+          // 🧪 Test final recommandé par per.md
+          console.log('🎉 Test final:');
+          console.log('   - suggestedPrice sauvegardé:', result.data.suggestedPrice);
+          console.log('   - genre sauvegardé:', result.data.genre);
+          console.log('   - status sauvegardé:', result.data.status);
+          console.log('   - sizes sauvegardées:', result.data.sizes);
+          
+          toast.success('Produit modifié avec succès');
+          navigate('/admin/products');
+        } else {
+          console.error('❌ Erreur ProductService:', result.error);
+          toast.error(result.error || 'Erreur lors de la sauvegarde');
           return;
         }
-        // Après PATCH, recharge le produit
-        const getRes = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}`, { credentials: 'include' });
-        if (getRes.ok) {
-          const updatedProduct = await getRes.json();
-          if (onProductPatched) onProductPatched(updatedProduct);
-        }
-        toast.success('Produit modifié avec succès');
-        navigate('/admin/products');
       } catch (e: any) {
         console.error(e);
         toast.error(e.message || 'Erreur lors de la sauvegarde');
@@ -1145,7 +1249,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         link.download = `${formData.name || 'produit'}-${colorName}-rendu-final.png`;
         link.href = dataUrl;
         document.body.appendChild(link);
-        link.click();
+        link.click();f
         document.body.removeChild(link);
       }
     }
@@ -1163,7 +1267,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       if (productIdForUpload !== '0') {
         // Mode édition avec productId valide
         try {
-          const productResponse = await fetch(`https://printalma-back-dep.onrender.com/products/${productIdForUpload}`, {
+          const productResponse = await fetch(`${BACKEND_URL}/products/${productIdForUpload}`, {
             credentials: 'include'
           });
           
@@ -1219,7 +1323,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
           
           console.log(`📤 Envoi vers: POST /products/upload-color-image/${productIdForUpload}/${colorIdForUpload}`);
           
-          const response = await fetch(`https://printalma-back-dep.onrender.com/products/upload-color-image/${productIdForUpload}/${colorIdForUpload}`, {
+          const response = await fetch(`${BACKEND_URL}/products/upload-color-image/${productIdForUpload}/${colorIdForUpload}`, {
             method: 'POST',
             credentials: 'include',
             body: formDataUpload,
@@ -1306,7 +1410,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     // 1. Upload la nouvelle image
     const formDataUpload = new FormData();
     formDataUpload.append('image', file);
-    const res = await fetch(`https://printalma-back-dep.onrender.com/products/${productId}/colors/${colorId}/images`, {
+    const res = await fetch(`${BACKEND_URL}/products/${productId}/colors/${colorId}/images`, {
       method: 'POST',
       credentials: 'include',
       body: formDataUpload,
@@ -1562,37 +1666,6 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
               <h1 className="display-title text-shimmer mb-2">
                 🎨 Ajouter un produit
               </h1>
-              <p className="text-readable">
-                Processus guidé pour créer un produit avec délimitations précises
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleDebugRole}
-                className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
-              >
-                🔍 Debug Rôle
-              </Button>
-              {mode === 'edit' && (
-                <Button
-                  variant="outline"
-                  onClick={handleForceSubmit}
-                  className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
-                  title="Contournement d'urgence - À utiliser seulement si le backend a des problèmes d'autorisation"
-                >
-                  🚨 Force Edit
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={handleReset}
-                className="border-gray-300 dark:border-gray-600"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Réinitialiser
-              </Button>
             </div>
           </div>
         </motion.div>

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint)",
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(npx ts-node:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "/mnt/c/Users/HP/Desktop/Pro",
+      "/return \\("
+    ]
+  }
+}

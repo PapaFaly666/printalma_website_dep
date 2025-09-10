@@ -3,6 +3,7 @@ import { ProductFormData, ProductFormErrors, ColorVariation, ProductImage, Image
 import { ProductService, CreateProductPayload, ProductFile } from '../services/productService';
 import { useCategories } from '../contexts/CategoryContext';
 import { toast } from 'sonner';
+import { normalizeSizes, validateSizes } from '../utils/productNormalization';
 
 const initialFormData: ProductFormData = {
   name: '',
@@ -181,7 +182,7 @@ export const useProductForm = () => {
         stock: formData.stock,
         status: formData.status,
         categories: formData.categories, // Directement les noms (pas de conversion en IDs)
-        sizes: formData.sizes || [], // Array de strings
+        sizes: normalizeSizes(formData.sizes || []), // Normalized array of strings
         genre: formData.genre || 'UNISEXE', // ← NOUVEAU: Ajout du champ genre
         isReadyProduct: false, // ← NOUVEAU: Force isReadyProduct: false pour les mockups
         colorVariations: formData.colorVariations.map(color => ({

@@ -14,8 +14,6 @@ import {
   Rocket,
   Search,
   Filter,
-  Grid,
-  List,
   Plus,
   ImageIcon,
   AlertCircle,
@@ -211,7 +209,7 @@ interface ProductCardProps {
   onEdit?: (product: Product) => void;
   onView?: (product: Product) => void;
   onPublish?: (id: number) => void;
-  viewMode: 'grid' | 'list';
+  viewMode?: 'grid';
   vendorDesigns?: any[];
   deleting?: boolean; // Added for soft delete
   trashMode?: boolean; // Ajouté pour la corbeille
@@ -228,6 +226,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   deleting = false,
   trashMode = false
 }) => {
+  const navigate = useNavigate();
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -272,6 +271,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
       setSelectedImageIndex((prev) => 
         prev === 0 ? currentColor.images.length - 1 : prev - 1
       );
+    }
+  };
+
+  const handleEditClick = () => {
+    if (onEdit) {
+      onEdit(product);
+    } else {
+      navigate(`/admin/products/${product.id}/edit`);
     }
   };
 
@@ -329,345 +336,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     } : null
   });
 
-  if (viewMode === 'list') {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-200"
-      >
-        <div className="flex items-center gap-6">
-          {/* Image principale */}
-          <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800 group">
-            {currentImage ? (
-              (() => {
-                // Vérifier si on a un design et des délimitations
-                const hasDesign = (product as any).designApplication?.designUrl;
-                const hasDelimitations = currentImage.delimitations && currentImage.delimitations.length > 0;
-                
-                if (hasDesign && hasDelimitations) {
-                  return (
-                    <ProductImageWithDesign
-                      productImage={{
-                        id: currentImage.id,
-                        url: currentImage.url,
-                        viewType: currentImage.view || 'Front',
-                        delimitations: currentImage.delimitations.map(d => ({
-                          x: d.x,
-                          y: d.y,
-                          width: d.width,
-                          height: d.height,
-                          coordinateType: (d.coordinateType === 'PERCENTAGE' ? 'PERCENTAGE' : 'ABSOLUTE') as 'PERCENTAGE' | 'ABSOLUTE'
-                        }))
-                      }}
-                      designUrl={(product as any).designApplication.designUrl}
-                      designConfig={{
-                        positioning: (product as any).designApplication?.positioning || 'CENTER',
-                        scale: (product as any).designApplication?.scale || 0.8
-                      }}
-                      showDelimitations={false}
-                      className="w-full h-full"
-                      vendorProductId={product.id}
-                      vendorDesigns={vendorDesigns}
-                    />
-                  );
-                } else {
-                  return (
-                    <ProductImageDisplay
-                      src={currentImage.url}
-                      alt={`${product.name} - ${currentColor.name}`}
-                      className="w-full h-full"
-                    />
-                  );
-                }
-              })()
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package className="w-8 h-8 text-gray-400" />
-              </div>
-            )}
-            
-            {/* Design Badge (si design présent) */}
-            {(product as any).designApplication?.designUrl && (
-              <div className="absolute top-1 left-1">
-                <Badge className="bg-purple-600 text-white hover:bg-purple-700 text-xs px-1 py-0.5">
-                  <Palette className="h-2 w-2 mr-0.5" />
-                  Design
-                </Badge>
-              </div>
-            )}
-
-            {/* Délimitations Badge */}
-            {currentImage?.delimitations?.length > 0 && (
-              <div className="absolute bottom-1 left-1">
-                <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-1 py-0.5">
-                  <Target className="h-2 w-2 mr-0.5" />
-                  {currentImage.delimitations.length}
-                </Badge>
-              </div>
-            )}
-            
-            {/* Navigation des images */}
-            {currentColor?.images.length > 1 && (
-              <>
-                <button
-                  onClick={prevImage}
-                  className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                >
-                  <ChevronLeft className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={nextImage}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                >
-                  <ChevronRight className="w-3 h-3" />
-                </button>
-              </>
-            )}
-            
-            {/* Badge de statut */}
-            {!trashMode && (
-            <div className="absolute -top-2 -right-2">
-              <StatusBadge 
-                status={product.status as any}
-                isValidated={isDesignValidated}
-              />
-            </div>
-            )}
-          </div>
-
-          {/* Navigation couleurs */}
-          {product.colorVariations.length > 1 && (
-            <div className="flex flex-col items-center gap-2 flex-shrink-0">
-              <button
-                onClick={prevColor}
-                className="w-6 h-6 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full flex items-center justify-center transition-all"
-              >
-                <ChevronLeft className="w-3 h-3" />
-              </button>
-              
-              <div className="flex flex-col gap-1">
-                {product.colorVariations.map((color, index) => (
-                  <button
-                    key={`color-list-${color.id}`}
-                    onClick={() => setSelectedColorIndex(index)}
-                    className={`w-4 h-4 rounded-full border-2 transition-all ${
-                      index === selectedColorIndex 
-                        ? 'border-gray-900 scale-110' 
-                        : 'border-gray-300 hover:border-gray-600'
-                    }`}
-                    style={{ backgroundColor: color.colorCode }}
-                    title={color.name}
-                  />
-                ))}
-              </div>
-              
-              <button
-                onClick={nextColor}
-                className="w-6 h-6 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full flex items-center justify-center transition-all"
-              >
-                <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-
-          {/* Informations principales */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate mb-1">
-                  {product.name}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {product.description}
-                </p>
-              </div>
-              
-              <div className="text-right ml-6 flex-shrink-0">
-                <div className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                  {product.price.toLocaleString()} FCFA
-                </div>
-                <Badge variant={product.stock === 0 ? "destructive" : product.stock < 10 ? "secondary" : "outline"}>
-                  Stock: {product.stock}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Métadonnées */}
-            <div className="flex items-center gap-4 mt-4">
-              {/* Couleur actuelle */}
-              {currentColor && (
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded-full border border-gray-300"
-                    style={{ backgroundColor: currentColor.colorCode }}
-                  />
-                  <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                    {currentColor.name}
-                  </span>
-                </div>
-              )}
-
-              {/* Catégories */}
-              <div className="flex items-center gap-1">
-                {(product.categories || []).slice(0, 2).map(category => (
-                  <Badge key={category.id} variant="secondary" className="text-xs">
-                    {category.name}
-                  </Badge>
-                ))}
-                {product.categories && product.categories.length > 2 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{(product.categories || []).length - 2}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Genre */}
-              {product.genre && (
-                <div className="flex items-center gap-1">
-                  <GenreBadge genre={product.genre} className="text-xs" />
-                </div>
-              )}
-
-              {/* Design */}
-              {product.hasDesign ? (
-                <Badge variant="outline" className="text-xs border-gray-900 text-gray-900">
-                  <Palette className="w-3 h-3 mr-1" />
-                  {designCount} design{designCount > 1 ? 's' : ''}
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-xs">
-                  <Package className="w-3 h-3 mr-1" />
-                  Vierge
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {onView && (
-              <Button size="sm" variant="ghost" onClick={() => onView(product)}>
-                <Eye className="h-4 w-4" />
-              </Button>
-            )}
-            
-            {/* Bouton Modifier - accessible pour tous les produits */}
-            {onEdit && (
-              <Button size="sm" variant="ghost" onClick={() => onEdit(product)}>
-                <Edit3 className="h-4 w-4" />
-              </Button>
-            )}
-            
-            <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(true)} disabled={deleting}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-
-            {onPublish && showPublishButton && (
-              <Button size="sm" onClick={() => onPublish(product.id)} className="bg-gray-900 hover:bg-gray-800 text-white">
-                <Check className="h-4 w-4 mr-1" />
-                {readyToPublish ? 'Publier maintenant' : 'Publier ce produit'}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* 🎯 Indicateur visuel pour produits prêts à publier */}
-        {readyToPublish && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2 text-green-800">
-              <Rocket className="w-4 h-4" />
-              <span className="text-sm font-medium">Ce produit est prêt à être publié !</span>
-            </div>
-            <p className="text-xs text-green-700 mt-1">
-              Design validé → Publication manuelle disponible
-            </p>
-          </div>
-        )}
-
-        {/* 🕐 Indicateur pour produits en attente de validation avec workflow AUTO */}
-        {product.status === 'PENDING' && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-2 text-blue-800">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                Workflow AUTO-PUBLISH activé
-              </span>
-            </div>
-            <p className="text-xs text-blue-700 mt-1">
-              ⚡ Dès validation admin → Publication automatique immédiate
-            </p>
-          </div>
-        )}
-
-        {/* 📝 Indicateur pour brouillons avec workflow MANUEL */}
-        {product.status === 'DRAFT' && !isDesignValidated && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center gap-2 text-yellow-800">
-              <Edit3 className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                Workflow MANUEL activé
-              </span>
-            </div>
-            <p className="text-xs text-yellow-700 mt-1">
-              📝 Après validation admin → Reste en brouillon pour publication manuelle
-            </p>
-          </div>
-        )}
-
-        {/* 🆕 Affichage du motif de rejet si le produit a été rejeté */}
-        {product.rejectionReason && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-800">
-              <X className="w-4 h-4" />
-              <span className="text-sm font-medium">Design rejeté</span>
-            </div>
-            <p className="text-xs text-red-700 mt-1">
-              <strong>Motif :</strong> {product.rejectionReason}
-            </p>
-          </div>
-        )}
-
-        {/* Debug info - temporaire */}
-        <div className="mt-2 p-2 bg-gray-50 border rounded text-xs text-gray-600">
-          Status: {product.status} | Validé: {isDesignValidated ? 'Oui' : 'Non'} | Bouton: {showPublishButton ? 'Visible' : 'Caché'}
-          {(product as any)._debug && (
-            <div className="mt-1 text-xs text-blue-600">
-              Backend Raw: status={String((product as any)._debug.rawStatus)} | 
-              forcedStatus={String((product as any)._debug.rawForcedStatus)} | 
-              isValidated={String((product as any)._debug.rawIsValidated)} | 
-              designValidationStatus={String((product as any)._debug.rawDesignValidationStatus)}
-            </div>
-          )}
-        </div>
-
-        {/* Modal de confirmation */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4"
-            >
-              <h4 className="text-lg font-semibold mb-2">Confirmer la suppression</h4>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Êtes-vous sûr de vouloir supprimer <span className="font-medium">"{product.name}"</span> ? Cette action est irréversible.
-              </p>
-              <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-                  Annuler
-                </Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                  Supprimer
-                </Button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </motion.div>
-    );
-  }
+  // List view removed; only grid view remains
 
   // Vue grille simplifiée
   return (
@@ -769,32 +438,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </div>
             )}
 
-            {/* Badge de design */}
-            {!trashMode && ((product as any).designApplication?.designUrl ? (
-              <div className="absolute top-3 right-3">
-                <Badge className="bg-purple-600 text-white hover:bg-purple-700 text-xs px-2 py-1">
-                  <Palette className="h-3 w-3 mr-1" />
-                  Design
-                </Badge>
-              </div>
-            ) : (
-              <div className="absolute top-3 right-3">
-                <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs px-2 py-1">
-                  <Package className="h-3 w-3 mr-1" />
-                  Vierge
-                </Badge>
-              </div>
-            ))}
-
-            {/* Délimitations Badge */}
-            {!trashMode && currentImage?.delimitations?.length > 0 && (
-              <div className="absolute bottom-3 left-3">
-                <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1">
-                  <Target className="h-3 w-3 mr-1" />
-                  {currentImage.delimitations.length}
-                </Badge>
-              </div>
-            )}
 
             {/* Menu d'actions */}
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
@@ -822,19 +465,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       </button>
                     )}
                     
-                    {/* Masquer Modifier dans le menu contextuel si validé */}
-                    {onEdit && !product.isValidated && (
+                    {/* Bouton Modifier toujours visible dans le menu contextuel */}
                       <button
                         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
                         onClick={() => {
-                          onEdit(product);
+                          handleEditClick();
                           setShowActions(false);
                         }}
                       >
                         <Edit3 className="h-4 w-4" />
                         Modifier
                       </button>
-                    )}
                     
                     <button
                       className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 text-red-600"
@@ -873,6 +514,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 title={readyToPublish ? 'Publier maintenant' : 'Test: Publier ce produit'}
               >
                 <Check className="h-4 w-4" />
+              </Button>
+            )}
+
+            {/* Bouton rapide Modifier (grid) */}
+            {!product.isValidated && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="absolute bottom-3 right-12 h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={handleEditClick}
+                title="Modifier"
+              >
+                <Edit3 className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -1041,18 +695,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </div>
       )}
 
-      {/* Debug info - temporaire */}
-      <div className="mt-2 p-2 bg-gray-50 border rounded text-xs text-gray-600">
-        Status: {product.status} | Validé: {isDesignValidated ? 'Oui' : 'Non'} | Bouton: {showPublishButton ? 'Visible' : 'Caché'}
-        {(product as any)._debug && (
-          <div className="mt-1 text-xs text-blue-600">
-            Backend Raw: status={String((product as any)._debug.rawStatus)} | 
-            forcedStatus={String((product as any)._debug.rawForcedStatus)} | 
-            isValidated={String((product as any)._debug.rawIsValidated)} | 
-            designValidationStatus={String((product as any)._debug.rawDesignValidationStatus)}
-          </div>
-        )}
-      </div>
+      
 
       {/* Modal de confirmation de suppression */}
       {showDeleteConfirm && (
@@ -1204,7 +847,8 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
   emptyStateButtonText = "Créer mon premier produit",
   vendorDesigns = []
 }) => {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  // Force grid only
+  const [viewMode] = useState<'grid'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT' | 'PENDING'>('ALL');
 
@@ -1380,25 +1024,7 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
             <option value="PENDING">En attente</option>
           </select>
 
-          {/* Mode d'affichage */}
-          <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-md overflow-hidden">
-            <Button
-              size="sm"
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              className="rounded-none border-0"
-              onClick={() => setViewMode('grid')}
-            >
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              className="rounded-none border-0"
-              onClick={() => setViewMode('list')}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
+          {/* Mode d'affichage supprimé: grid uniquement */}
         </div>
       </motion.div>
 
@@ -1463,11 +1089,7 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className={
-            viewMode === 'grid' 
-              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-              : 'space-y-4'
-          }
+          className={'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}
         >
           <AnimatePresence>
             {filteredProducts.map((product, index) => (
