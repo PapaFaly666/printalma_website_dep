@@ -2132,10 +2132,37 @@ const SellDesignPage: React.FC = () => {
 
   // 🆕 Valeurs brutes saisies dans l'input prix (permet champ vide)
   const [pricingInputValues, setPricingInputValues] = useState<Record<number, string>>({});
-  
+
+  // Déclarer d'abord les états nécessaires aux helpers
   // 🔒 NOUVEAU: État pour stocker les prix de revient mockup FIXES (ne changent jamais)
   const [prixDeRevientOriginaux, setPrixDeRevientOriginaux] = useState<Record<number, number>>({});
+  // 🆕 États pour la commission du vendeur
+  const [vendorCommission, setVendorCommission] = useState<number | null>(null);
+  const [commissionLoading, setCommissionLoading] = useState(false);
 
+  // 🧮 Helpers unifiés de calcul (source de vérité cohérente)
+  const getSalePrice = useCallback((p: Product): number => {
+    const editedPrice = editStates[p.id]?.price as number | undefined;
+    return editedPrice !== undefined && editedPrice > 0 ? editedPrice : p.price;
+  }, [editStates]);
+
+  const getCost = useCallback((p: Product): number => {
+    return prixDeRevientOriginaux[p.id] ?? p.price;
+  }, [prixDeRevientOriginaux]);
+
+  const getProfit = useCallback((p: Product): number => {
+    return Math.max(0, getSalePrice(p) - getCost(p));
+  }, [getSalePrice, getCost]);
+
+  const getCommissionAmount = useCallback((p: Product): number => {
+    const rate = (vendorCommission ?? 40);
+    return (getSalePrice(p) * rate) / 100;
+  }, [vendorCommission, getSalePrice]);
+
+  const getVendorRevenue = useCallback((p: Product): number => {
+    return Math.max(0, getSalePrice(p) - getCommissionAmount(p) - getCost(p));
+  }, [getSalePrice, getCommissionAmount, getCost]);
+  
   // Nouvel état pour gérer le mode sélectionné
   const [selectedMode, setSelectedMode] = useState<'design' | 'product' | null>(null);
 
@@ -2153,9 +2180,7 @@ const SellDesignPage: React.FC = () => {
   const [loadingExistingDesigns, setLoadingExistingDesigns] = useState(false);
   const [showDesignPicker, setShowDesignPicker] = useState(false);
   
-  // 🆕 États pour la commission du vendeur
-  const [vendorCommission, setVendorCommission] = useState<number | null>(null);
-  const [commissionLoading, setCommissionLoading] = useState(false);
+  // (déplacé plus haut avec les helpers)
 
   // Nouveaux états pour gérer le statut de validation du design
   const [designValidationStatus, setDesignValidationStatus] = useState<{
@@ -4975,26 +5000,13 @@ const SellDesignPage: React.FC = () => {
                                                   <div className="flex justify-between items-center text-xs mb-2">
                                                     <span className="text-gray-600 dark:text-gray-400">Commission:</span>
                                                     <span className="font-medium text-gray-900 dark:text-gray-100">
-                                                      {(() => {
-                                                        const commission = vendorCommission || 40;
-                                                        const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price;
-                                                        const salePrice = (editStates[product.id]?.price as number | undefined) ?? product.price;
-                                                        const commissionMontant = (salePrice * commission) / 100;
-                                                        return commissionService.formatCFA(commissionMontant);
-                                                      })()}
+                                                      {commissionService.formatCFA(getCommissionAmount(product))}
                                                     </span>
                                                   </div>
                                                   <div className="flex justify-between items-center text-xs">
                                                     <span className="text-gray-600 dark:text-gray-400">Vos revenus:</span>
                                                     <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                                      {commissionLoading ? '...' : (() => {
-                                                        const commission = vendorCommission || 40;
-                                                        const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price;
-                                                        const salePrice = (editStates[product.id]?.price as number | undefined) ?? product.price;
-                                                        const commissionMontant = (salePrice * commission) / 100;
-                                                        const gainVendeurFinal = salePrice - commissionMontant - prixDeRevientMockup;
-                                                        return commissionService.formatCFA(Math.max(0, gainVendeurFinal));
-                                                      })()}
+                                                      {commissionLoading ? '...' : commissionService.formatCFA(getVendorRevenue(product))}
                                                     </span>
                                                   </div>
                                                 </div>
