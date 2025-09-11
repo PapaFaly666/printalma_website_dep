@@ -4975,9 +4975,13 @@ const SellDesignPage: React.FC = () => {
                                                   <div className="flex justify-between items-center text-xs mb-2">
                                                     <span className="text-gray-600 dark:text-gray-400">Commission:</span>
                                                     <span className="font-medium text-gray-900 dark:text-gray-100">
-                                                      {commissionService.formatCFA(
-                                                        (product.price * (vendorCommission || 40)) / 100
-                                                      )}
+                                                      {(() => {
+                                                        const commission = vendorCommission || 40;
+                                                        const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price;
+                                                        const salePrice = (editStates[product.id]?.price as number | undefined) ?? product.price;
+                                                        const commissionMontant = (salePrice * commission) / 100;
+                                                        return commissionService.formatCFA(commissionMontant);
+                                                      })()}
                                                     </span>
                                                   </div>
                                                   <div className="flex justify-between items-center text-xs">
@@ -4985,10 +4989,10 @@ const SellDesignPage: React.FC = () => {
                                                     <span className="font-semibold text-gray-900 dark:text-gray-100">
                                                       {commissionLoading ? '...' : (() => {
                                                         const commission = vendorCommission || 40;
-                                                        // 🔄 LOGIQUE CORRECTE: Gain vendeur = Bénéfice - Commission sur prix de revient mockup
-                                                        const prixDeRevientMockup = product.price; // Prix de revient mockup FIXE
-                                                        const commissionMontant = (prixDeRevientMockup * commission) / 100;
-                                                        const gainVendeurFinal = customProfit - commissionMontant;
+                                                        const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price;
+                                                        const salePrice = (editStates[product.id]?.price as number | undefined) ?? product.price;
+                                                        const commissionMontant = (salePrice * commission) / 100;
+                                                        const gainVendeurFinal = salePrice - commissionMontant - prixDeRevientMockup;
                                                         return commissionService.formatCFA(Math.max(0, gainVendeurFinal));
                                                       })()}
                                                     </span>
