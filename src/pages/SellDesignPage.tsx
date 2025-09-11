@@ -4487,16 +4487,23 @@ const SellDesignPage: React.FC = () => {
                           {/* 🔄 NOUVEAU: Système de pricing basé sur suggestedPrice */}
                           <div className="space-y-3">
                             {(() => {
-                              const basePrice = basePrices[product.id] || product.price;
+                              // 🏭 Prix de revient (coût de production) - FIXE
+                              const prixDeRevientFixe = product.price; // Prix de revient mockup admin 
+                              // 💰 Prix de vente suggéré par l'admin (peut être différent du prix de revient)
+                              const prixVenteSuggereAdmin = product.suggestedPrice || product.price;
+                              // 📈 Bénéfice du vendeur
                               const customProfit = customProfits[product.id] || 0;
-                              const currentPrice = basePrice + customProfit;
-                              const profitPercentage = basePrice ? ((customProfit / basePrice) * 100).toFixed(1) : '0';
+                              // 🛒 Prix de vente final = Prix de vente suggéré + Bénéfice vendeur
+                              const currentPrice = prixVenteSuggereAdmin + customProfit;
+                              // 🔄 CALCUL LOGIQUE: Pourcentage de marge par rapport au prix de revient
+                              const profitPercentage = prixDeRevientFixe > 0 ? 
+                                Math.round((customProfit / prixDeRevientFixe) * 100) : 0;
                               const isExpanded = expandedPricingIds[product.id];
                               
                               // 🎯 NOUVEAU: Déterminer si on utilise suggestedPrice
                               const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
                               const originalPrice = product.price;
-                              const isUsingSuggestedPrice = hasSuggestedPrice && basePrice === product.suggestedPrice;
+                              const isUsingSuggestedPrice = hasSuggestedPrice && currentPrice >= (product.suggestedPrice || 0);
                               const isEditing = editingProfitIds[product.id];
 
                               return (
@@ -4514,7 +4521,7 @@ const SellDesignPage: React.FC = () => {
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-baseline gap-2 mb-1">
                                               <span className="text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">
-                                                Prix de vente
+                                                Prix de vente suggéré
                                               </span>
                                               <div className="flex items-center gap-1">
                                                 {isSaving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
@@ -4613,24 +4620,24 @@ const SellDesignPage: React.FC = () => {
                                                     
                                                     <div className="grid grid-cols-2 gap-3 text-xs">
                                                       <div className="bg-white/50 dark:bg-gray-800/50 rounded p-3 border border-purple-100 dark:border-purple-800">
-                                                        <div className="text-gray-600 dark:text-gray-400 mb-1">Prix original</div>
+                                                        <div className="text-gray-600 dark:text-gray-400 mb-1">Prix de revient</div>
                                                         <div className="font-semibold text-gray-800 dark:text-gray-200">
                                                           {new Intl.NumberFormat('fr-FR', {
                                                             style: 'currency',
                                                             currency: 'XOF',
                                                             maximumFractionDigits: 0
-                                                          }).format(originalPrice)}
+                                                          }).format(prixDeRevientFixe)}
                                                         </div>
                                                       </div>
                                                       
                                                       <div className="bg-purple-100/50 dark:bg-purple-900/50 rounded p-3 border border-purple-200 dark:border-purple-700">
-                                                        <div className="text-purple-600 dark:text-purple-300 mb-1">Prix suggéré (base)</div>
+                                                        <div className="text-purple-600 dark:text-purple-300 mb-1">Prix de vente suggéré</div>
                                                         <div className="font-bold text-purple-800 dark:text-purple-200">
                                                           {new Intl.NumberFormat('fr-FR', {
                                                             style: 'currency',
                                                             currency: 'XOF',
                                                             maximumFractionDigits: 0
-                                                          }).format(basePrice)}
+                                                          }).format(prixVenteSuggereAdmin)}
                                                         </div>
                                                       </div>
                                                     </div>
@@ -4657,7 +4664,7 @@ const SellDesignPage: React.FC = () => {
                                                     <div className="space-y-2">
                                                       <div className="flex items-center justify-between">
                                                         <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                                                          Prix suggéré de base
+                                                          Prix de vente suggéré
                                                         </label>
                                                         <div className="text-xs text-blue-600 dark:text-blue-400">
                                                           Min: {new Intl.NumberFormat('fr-FR', {
@@ -4672,22 +4679,25 @@ const SellDesignPage: React.FC = () => {
                                                           type="number"
                                                           min={product.suggestedPrice || product.price}
                                                           step="100"
-                                                          value={basePrice}
+                                                          value={currentPrice}
                                                           onChange={(e) => {
-                                                            const newBasePrice = Math.max(
+                                                            const nouveauPrixDeVente = Math.max(
                                                               product.suggestedPrice || product.price, 
                                                               Number(e.target.value)
                                                             );
                                                             
-                                                            // Mettre à jour basePrices
-                                                            setBasePrices(prev => ({
+                                                            // 🔄 LOGIQUE CORRECTE: Bénéfice = Nouveau prix de vente - Prix de vente suggéré admin
+                                                            const prixVenteSuggereAdmin = product.suggestedPrice || product.price;
+                                                            const nouveauBenefice = Math.max(0, nouveauPrixDeVente - prixVenteSuggereAdmin);
+                                                            
+                                                            // Mettre à jour le bénéfice calculé automatiquement
+                                                            setCustomProfits(prev => ({
                                                               ...prev,
-                                                              [product.id]: newBasePrice
+                                                              [product.id]: nouveauBenefice
                                                             }));
                                                             
-                                                            // Recalculer le prix final
-                                                            const newFinalPrice = newBasePrice + customProfit;
-                                                            handleFieldChange(product.id, 'price', newFinalPrice);
+                                                            // Mettre à jour le prix de vente final
+                                                            handleFieldChange(product.id, 'price', nouveauPrixDeVente);
                                                           }}
                                                           onBlur={() => handleSave(product.id)}
                                                           className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
@@ -4703,7 +4713,7 @@ const SellDesignPage: React.FC = () => {
                                                           Votre bénéfice
                                                         </label>
                                                         <div className="text-xs text-green-600 dark:text-green-400">
-                                                          {profitPercentage}% de marge
+                                                          {profitPercentage}% de marge sur prix de revient
                                                         </div>
                                                       </div>
                                                       <div className="flex items-center gap-2">
@@ -4714,7 +4724,10 @@ const SellDesignPage: React.FC = () => {
                                                           value={customProfit}
                                                           onChange={(e) => {
                                                             const newProfit = Math.max(0, Number(e.target.value));
-                                                            const newPrice = basePrice + newProfit;
+                                                            
+                                                            // 🔄 LOGIQUE CORRECTE: Prix de vente = Prix de vente suggéré admin + Bénéfice
+                                                            const prixVenteSuggereAdmin = product.suggestedPrice || product.price;
+                                                            const nouveauPrixDeVente = prixVenteSuggereAdmin + newProfit;
                                                             
                                                             // Mettre à jour le profit personnalisé
                                                             setCustomProfits(prev => ({
@@ -4722,8 +4735,8 @@ const SellDesignPage: React.FC = () => {
                                                               [product.id]: newProfit
                                                             }));
                                                             
-                                                            // Mettre à jour le prix dans editStates
-                                                            handleFieldChange(product.id, 'price', newPrice);
+                                                            // Mettre à jour le prix de vente final
+                                                            handleFieldChange(product.id, 'price', nouveauPrixDeVente);
                                                           }}
                                                           onBlur={() => handleSave(product.id)}
                                                           className="flex-1 px-3 py-2 text-sm border border-green-300 dark:border-green-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-green-500 focus:outline-none"
@@ -4756,7 +4769,10 @@ const SellDesignPage: React.FC = () => {
                                                         </span>
                                                       </div>
                                                       <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                                        = {basePrice.toLocaleString()} + {customProfit.toLocaleString()} FCFA
+                                                        {(() => {
+                                                          const prixVenteSuggereAdmin = product.suggestedPrice || product.price;
+                                                          return `= ${prixVenteSuggereAdmin.toLocaleString()} (prix suggéré admin) + ${customProfit.toLocaleString()} (bénéfice vendeur) FCFA`;
+                                                        })()}
                                                       </div>
                                                     </div>
                                                   </div>
@@ -4769,7 +4785,7 @@ const SellDesignPage: React.FC = () => {
                                                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                                                   <div className="flex items-center justify-between">
                                                     <span className="text-xs text-gray-600 dark:text-gray-400">
-                                                      Prix de vente
+                                                      Prix de vente suggéré
                                                     </span>
                                                     <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
                                                       {new Intl.NumberFormat('fr-FR', {
@@ -4820,7 +4836,7 @@ const SellDesignPage: React.FC = () => {
                                                     <span className="text-gray-600 dark:text-gray-400">Commission:</span>
                                                     <span className="font-medium text-gray-900 dark:text-gray-100">
                                                       {commissionService.formatCFA(
-                                                        (currentPrice * (vendorCommission || 40)) / 100
+                                                        (product.price * (vendorCommission || 40)) / 100
                                                       )}
                                                     </span>
                                                   </div>
@@ -4829,9 +4845,11 @@ const SellDesignPage: React.FC = () => {
                                                     <span className="font-semibold text-gray-900 dark:text-gray-100">
                                                       {commissionLoading ? '...' : (() => {
                                                         const commission = vendorCommission || 40;
-                                                        const platformFee = (currentPrice * commission) / 100;
-                                                        const vendorRevenue = currentPrice - platformFee;
-                                                        return commissionService.formatCFA(vendorRevenue);
+                                                        // 🔄 LOGIQUE CORRECTE: Gain vendeur = Bénéfice - Commission sur prix de revient
+                                                        const prixDeRevientFixe = product.price; // Prix fixe défini par admin
+                                                        const commissionMontant = (prixDeRevientFixe * commission) / 100;
+                                                        const gainVendeurFinal = customProfit - commissionMontant;
+                                                        return commissionService.formatCFA(Math.max(0, gainVendeurFinal));
                                                       })()}
                                                     </span>
                                                   </div>
@@ -5380,7 +5398,7 @@ const SellDesignPage: React.FC = () => {
             {/* Champ de saisie du prix */}
             <div className="space-y-2">
               <Label htmlFor="design-price" className="text-sm font-medium text-gray-900 dark:text-white">
-                Prix de vente (FCFA) *
+                Prix de vente suggéré (FCFA) *
               </Label>
               <div className="relative">
                 <Input

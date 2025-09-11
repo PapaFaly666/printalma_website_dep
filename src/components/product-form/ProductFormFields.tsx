@@ -51,10 +51,10 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             )}
           </div>
 
-          {/* Prix suggéré (simple) */}
+          {/* Produit de vente suggéré */}
           <div className="space-y-2">
             <Label htmlFor="suggested-price" className="text-sm font-medium">
-              💡 Prix suggéré (FCFA) - Optionnel
+              💡 Produit de vente suggéré *
             </Label>
             <div className="flex gap-2">
               <Input
@@ -65,10 +65,10 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
                   const value = e.target.value === '' ? undefined : Number(e.target.value);
                   onUpdate('suggestedPrice', value);
                 }}
-                placeholder="Prix de référence pour l'admin"
+                placeholder="Prix du produit de vente suggéré"
                 min="0"
                 step="100"
-                className="flex-1"
+                className={`flex-1 ${errors.suggestedPrice ? 'border-red-500' : ''}`}
               />
               {formData.suggestedPrice && (
                 <button
@@ -84,22 +84,25 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
                 </button>
               )}
             </div>
+            {errors.suggestedPrice && (
+              <p className="text-sm text-red-500">{errors.suggestedPrice}</p>
+            )}
             <p className="text-xs text-gray-500">
-              💾 Ce prix sera sauvegardé en base de données comme référence admin
+              💾 Ce prix du produit de vente suggéré est obligatoire
             </p>
           </div>
 
-          {/* Prix de vente */}
+          {/* Prix de revient */}
           <div className="space-y-2">
             <Label htmlFor="price" className="text-sm font-medium">
-              💰 Prix de vente (FCFA) *
+              💰 Prix de revient (FCFA) *
             </Label>
             <Input
               id="price"
               type="number"
               value={formData.price}
               onChange={(e) => onUpdate('price', parseFloat(e.target.value) || 0)}
-              placeholder="Prix final affiché aux clients"
+              placeholder="Prix de revient du produit"
               min="0"
               step="100"
               className={`font-semibold ${errors.price ? 'border-red-500' : ''}`}
