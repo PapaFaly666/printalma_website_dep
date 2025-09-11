@@ -125,6 +125,7 @@ export interface CanvasState {
 export interface ProductFormErrors {
   name?: string;
   price?: string;
+  suggestedPrice?: string;
   stock?: string;
   description?: string;
   colorVariations?: string;
