@@ -1969,7 +1969,7 @@ const VendorProductForm: React.FC = () => {
                 <input
                   type="number"
                   value={formData.price}
-                  onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
+                  onChange={(e) => setFormData({...formData, price: e.target.value === '' ? 0 : Number(e.target.value)})}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800"
                   placeholder="5000"
                 />
@@ -2129,6 +2129,12 @@ const SellDesignPage: React.FC = () => {
   
   // Nouvel état pour stocker les prix de base (admin) - ne change jamais côté vendeur
   const [basePrices, setBasePrices] = useState<Record<number, number>>({});
+
+  // 🆕 Valeurs brutes saisies dans l'input prix (permet champ vide)
+  const [pricingInputValues, setPricingInputValues] = useState<Record<number, string>>({});
+  
+  // 🔒 NOUVEAU: État pour stocker les prix de revient mockup FIXES (ne changent jamais)
+  const [prixDeRevientOriginaux, setPrixDeRevientOriginaux] = useState<Record<number, number>>({});
 
   // Nouvel état pour gérer le mode sélectionné
   const [selectedMode, setSelectedMode] = useState<'design' | 'product' | null>(null);
@@ -2828,6 +2834,14 @@ const SellDesignPage: React.FC = () => {
         }
       });
       setBasePrices(initialBasePrices);
+      
+      // 🔒 INITIALISER les prix de revient mockup originaux (ne changent JAMAIS)
+      const prixRevientOriginaux: Record<number, number> = {};
+      filteredProducts.forEach((product: any) => {
+        prixRevientOriginaux[product.id] = product.price; // Stocker le prix de revient original
+        console.log(`🔒 [FIXE] Prix de revient mockup ${product.id}: ${product.price} FCFA`);
+      });
+      setPrixDeRevientOriginaux(prixRevientOriginaux);
     } else {
         setError(result.message || 'Erreur lors du chargement des produits');
     }
@@ -3156,34 +3170,26 @@ const SellDesignPage: React.FC = () => {
     const updates = editStates[id] || {};
     const payload: Record<string, any> = {};
 
-    // 🔄 NOUVEAU: Validation du prix basée sur suggestedPrice ou prix minimum
+    // 🔄 NOUVEAU: Validation non-bloquante du prix basée sur suggestedPrice ou prix minimum
     if (updates.price !== undefined) {
       const basePrice = basePrices[id] || product.price;
       const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
       
       if (updates.price < basePrice) {
         const priceType = hasSuggestedPrice ? "prix suggéré" : "prix minimum";
-        const msg = `Le prix doit être supérieur ou égal à ${basePrice} FCFA (${priceType})`;
+        const msg = `⚠️ Prix inférieur au ${priceType} (${basePrice.toLocaleString()} FCFA)`;
         
-        console.log(`❌ [SellDesignPage] Prix invalide pour produit ${id}:`, {
+        console.log(`⚠️ [SellDesignPage] Prix inférieur au minimum pour produit ${id}:`, {
           tentative: updates.price,
           minimum: basePrice,
           type: priceType,
           hasSuggestedPrice
         });
         
-        // Afficher toast
-        toast({
-          title: "Prix invalide",
-          description: msg,
-          variant: "destructive",
-          duration: 4000,
-        });
-        // Mettre un message d'erreur inline
+        // Mettre un message d'avertissement inline (non bloquant)
         setPriceErrors(prev => ({ ...prev, [id]: msg }));
-        // Réinitialiser le champ avec le prix actuel (pas le prix de base)
-        setEditStates(prev => ({ ...prev, [id]: { ...prev[id], price: product.price } }));
-        return;
+        
+        // 🆕 NE PLUS BLOQUER : Continuer la sauvegarde même avec prix inférieur
       } else {
         // Clear error if any
         if (priceErrors[id]) {
@@ -3194,7 +3200,14 @@ const SellDesignPage: React.FC = () => {
 
     (['name', 'price', 'stock', 'description'] as (keyof Product)[]).forEach((field) => {
       if (updates[field] !== undefined && updates[field] !== product[field]) {
-        (payload as any)[field] = updates[field];
+        // 🔒 PROTECTION: Ne jamais modifier product.price (prix de revient mockup FIXE)
+        if (field === 'price') {
+          // Le price ici représente le prix de vente final du vendeur, pas le prix de revient
+          console.log('📝 Mise à jour du prix de vente vendeur:', updates[field]);
+          (payload as any)[field] = updates[field];
+        } else {
+          (payload as any)[field] = updates[field];
+        }
       }
     });
     if (Object.keys(payload).length === 0) return;
@@ -3259,11 +3272,16 @@ const SellDesignPage: React.FC = () => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    const basePrice = basePrices[productId] || product.price;
-    setCustomProfits(prev => ({
-      ...prev,
-      [productId]: product.price - basePrice
-    }));
+    // 🔒 CORRECTION: Utiliser prixDeRevientOriginaux (FIXE) pour calculer le reset
+    const prixDeRevientFixe = prixDeRevientOriginaux[productId];
+    const basePrice = basePrices[productId];
+    
+    if (prixDeRevientFixe !== undefined && basePrice !== undefined) {
+      setCustomProfits(prev => ({
+        ...prev,
+        [productId]: Math.max(0, product.price - prixDeRevientFixe)
+      }));
+    }
     setEditingProfitIds(prev => ({ ...prev, [productId]: false }));
   };
 
@@ -3311,15 +3329,24 @@ const SellDesignPage: React.FC = () => {
 
   // Initialiser les profits personnalisés au chargement des produits
   useEffect(() => {
-    if (products.length > 0) {
+    if (products.length > 0 && Object.keys(prixDeRevientOriginaux).length > 0) {
       const initialProfits: Record<number, number> = {};
       products.forEach(product => {
-        const basePrice = basePrices[product.id] || product.price;
-        initialProfits[product.id] = Math.max(0, product.price - basePrice);
+        // 🔒 CORRECTION: Utiliser prixDeRevientOriginaux (FIXE) au lieu de product.price (variable)
+        const prixDeRevientFixe = prixDeRevientOriginaux[product.id];
+        const basePrice = basePrices[product.id];
+        
+        if (prixDeRevientFixe !== undefined && basePrice !== undefined) {
+          // 🔄 NOUVEAU: Calculer le profit basé sur suggestedPrice si disponible, sinon product.price
+          const targetPrice = product.suggestedPrice && product.suggestedPrice > 0 
+            ? product.suggestedPrice 
+            : product.price;
+          initialProfits[product.id] = Math.max(0, targetPrice - prixDeRevientFixe);
+        }
       });
       setCustomProfits(initialProfits);
     }
-  }, [products, basePrices]);
+  }, [products, basePrices, prixDeRevientOriginaux]);
 
   // Initialiser la couleur sélectionnée (première couleur active ou première variation)
   useEffect(() => {
@@ -3610,6 +3637,44 @@ const SellDesignPage: React.FC = () => {
       // Laisser la modale ouverte pendant le traitement pour afficher la progression
       setCheckoutOpen(true);
 
+      // 🆕 VALIDATION FINALE DES PRIX : Vérification non-bloquante avec avertissement pour brouillon
+      const produitsAvecPrixInferieur: Array<{id: number, name: string, currentPrice: number, minimumPrice: number, type: string}> = [];
+      
+      selectedProductIds.forEach(idStr => {
+        const productId = Number(idStr);
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+        
+        const currentPrice = editStates[productId]?.price ?? product.price;
+        const basePrice = basePrices[productId] || product.price;
+        const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
+        
+        if (currentPrice < basePrice) {
+          const priceType = hasSuggestedPrice ? "prix suggéré" : "prix minimum";
+          produitsAvecPrixInferieur.push({
+            id: productId,
+            name: product.name,
+            currentPrice,
+            minimumPrice: basePrice,
+            type: priceType
+          });
+        }
+      });
+      
+      // 🆕 AFFICHER UN AVERTISSEMENT SI PRIX INFÉRIEURS (MAIS NE PAS BLOQUER LA SAUVEGARDE)
+      if (produitsAvecPrixInferieur.length > 0) {
+        const details = produitsAvecPrixInferieur.map(p => 
+          `• ${p.name}: ${p.currentPrice.toLocaleString()} FCFA (${p.type}: ${p.minimumPrice.toLocaleString()} FCFA)`
+        ).join('\n');
+        
+        toast({
+          title: `💡 Info: ${produitsAvecPrixInferieur.length} produit(s) avec prix inférieur sauvegardé(s)`,
+          description: `Les produits suivants ont un prix inférieur au minimum recommandé mais ont été sauvegardés en brouillon:\n${details}`,
+          variant: "default",
+          duration: 8000,
+        });
+      }
+
       // 🆕 IMPORTANT: Forcer TO_DRAFT pour la sauvegarde en brouillon
       const originalAction = postValidationAction;
       setPostValidationAction(PostValidationAction.TO_DRAFT);
@@ -3687,6 +3752,44 @@ const SellDesignPage: React.FC = () => {
 
   const handlePublishProducts = async () => {
     try {
+      // 🆕 VALIDATION FINALE DES PRIX : Vérification non-bloquante avec avertissement
+      const produitsAvecPrixInferieur: Array<{id: number, name: string, currentPrice: number, minimumPrice: number, type: string}> = [];
+      
+      selectedProductIds.forEach(idStr => {
+        const productId = Number(idStr);
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+        
+        const currentPrice = editStates[productId]?.price ?? product.price;
+        const basePrice = basePrices[productId] || product.price;
+        const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
+        
+        if (currentPrice < basePrice) {
+          const priceType = hasSuggestedPrice ? "prix suggéré" : "prix minimum";
+          produitsAvecPrixInferieur.push({
+            id: productId,
+            name: product.name,
+            currentPrice,
+            minimumPrice: basePrice,
+            type: priceType
+          });
+        }
+      });
+      
+      // 🆕 AFFICHER UN AVERTISSEMENT SI PRIX INFÉRIEURS (MAIS NE PAS BLOQUER)
+      if (produitsAvecPrixInferieur.length > 0) {
+        const details = produitsAvecPrixInferieur.map(p => 
+          `• ${p.name}: ${p.currentPrice.toLocaleString()} FCFA (${p.type}: ${p.minimumPrice.toLocaleString()} FCFA)`
+        ).join('\n');
+        
+        toast({
+          title: `⚠️ Attention: ${produitsAvecPrixInferieur.length} produit(s) avec prix inférieur`,
+          description: `Les produits suivants ont un prix inférieur au minimum recommandé mais seront tout de même publiés:\n${details}`,
+          variant: "default",
+          duration: 8000,
+        });
+      }
+      
       // 🆕 NOUVEAU WORKFLOW : Pas de blocage, création directe avec statut approprié
       const selectedDesign = existingDesignsWithValidation.find(d => d.imageUrl === designUrl || d.thumbnailUrl === designUrl);
       const validationStatus = await checkDesignValidationStatus(selectedDesign?.id as number);
@@ -3998,7 +4101,7 @@ const SellDesignPage: React.FC = () => {
                 ) : (
                   <>
                     <div className="text-3xl font-bold text-amber-900 dark:text-amber-100">
-                      {vendorCommission || 40}%
+                      {Math.round(vendorCommission || 40)}%
                     </div>
                     <div className="text-xs text-amber-600 dark:text-amber-400">
                       de commission
@@ -4013,8 +4116,8 @@ const SellDesignPage: React.FC = () => {
               <div className="flex items-start gap-2">
                 <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-amber-700 dark:text-amber-300">
-                  PrintAlma prélève <strong>{vendorCommission || 40}%</strong> sur chaque vente pour couvrir les frais de plateforme, payment et marketing. 
-                  Vous recevez <strong>{100 - (vendorCommission || 40)}%</strong> du prix de vente final.
+                  PrintAlma prélève <strong>{Math.round(vendorCommission || 40)}%</strong> sur chaque vente pour couvrir les frais de plateforme, payment et marketing. 
+                  Vous recevez <strong>{Math.round(100 - (vendorCommission || 40))}%</strong> du prix de vente final.
                 </p>
               </div>
             </div>
@@ -4487,17 +4590,15 @@ const SellDesignPage: React.FC = () => {
                           {/* 🔄 NOUVEAU: Système de pricing basé sur suggestedPrice */}
                           <div className="space-y-3">
                             {(() => {
-                              // 🏭 Prix de revient (coût de production) - FIXE
-                              const prixDeRevientFixe = product.price; // Prix de revient mockup admin 
-                              // 💰 Prix de vente suggéré par l'admin (peut être différent du prix de revient)
-                              const prixVenteSuggereAdmin = product.suggestedPrice || product.price;
+                              // 🏭 Prix de revient mockup (coût de production) - FIXE, NE CHANGE JAMAIS
+                              const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price; // Prix de revient original FIXE
                               // 📈 Bénéfice du vendeur
                               const customProfit = customProfits[product.id] || 0;
-                              // 🛒 Prix de vente final = Prix de vente suggéré + Bénéfice vendeur
-                              const currentPrice = prixVenteSuggereAdmin + customProfit;
+                              // 🛒 Prix de vente final = Prix de revient mockup + Bénéfice vendeur
+                              const currentPrice = prixDeRevientMockup + customProfit;
                               // 🔄 CALCUL LOGIQUE: Pourcentage de marge par rapport au prix de revient
-                              const profitPercentage = prixDeRevientFixe > 0 ? 
-                                Math.round((customProfit / prixDeRevientFixe) * 100) : 0;
+                              const profitPercentage = prixDeRevientMockup > 0 ? 
+                                Math.round((customProfit / prixDeRevientMockup) * 100) : 0;
                               const isExpanded = expandedPricingIds[product.id];
                               
                               // 🎯 NOUVEAU: Déterminer si on utilise suggestedPrice
@@ -4626,7 +4727,7 @@ const SellDesignPage: React.FC = () => {
                                                             style: 'currency',
                                                             currency: 'XOF',
                                                             maximumFractionDigits: 0
-                                                          }).format(prixDeRevientFixe)}
+                                                          }).format(prixDeRevientMockup)}
                                                         </div>
                                                       </div>
                                                       
@@ -4637,7 +4738,7 @@ const SellDesignPage: React.FC = () => {
                                                             style: 'currency',
                                                             currency: 'XOF',
                                                             maximumFractionDigits: 0
-                                                          }).format(prixVenteSuggereAdmin)}
+                                                          }).format((product.suggestedPrice ?? product.price) as number)}
                                                         </div>
                                                       </div>
                                                     </div>
@@ -4667,7 +4768,7 @@ const SellDesignPage: React.FC = () => {
                                                           Prix de vente suggéré
                                                         </label>
                                                         <div className="text-xs text-blue-600 dark:text-blue-400">
-                                                          Min: {new Intl.NumberFormat('fr-FR', {
+                                                          Recommandé: {new Intl.NumberFormat('fr-FR', {
                                                             style: 'currency',
                                                             currency: 'XOF',
                                                             maximumFractionDigits: 0
@@ -4675,35 +4776,74 @@ const SellDesignPage: React.FC = () => {
                                                         </div>
                                                       </div>
                                                       <div className="flex items-center gap-2">
-                                                        <input
-                                                          type="number"
-                                                          min={product.suggestedPrice || product.price}
-                                                          step="100"
-                                                          value={currentPrice}
-                                                          onChange={(e) => {
-                                                            const nouveauPrixDeVente = Math.max(
-                                                              product.suggestedPrice || product.price, 
-                                                              Number(e.target.value)
-                                                            );
+                                                        {(() => {
+                                                          const inputValue = pricingInputValues[product.id] !== undefined
+                                                            ? pricingInputValues[product.id]
+                                                            : String(currentPrice);
+                                                          const onChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+                                                            const raw = e.target.value;
+                                                            setPricingInputValues(prev => ({ ...prev, [product.id]: raw }));
                                                             
-                                                            // 🔄 LOGIQUE CORRECTE: Bénéfice = Nouveau prix de vente - Prix de vente suggéré admin
-                                                            const prixVenteSuggereAdmin = product.suggestedPrice || product.price;
-                                                            const nouveauBenefice = Math.max(0, nouveauPrixDeVente - prixVenteSuggereAdmin);
-                                                            
-                                                            // Mettre à jour le bénéfice calculé automatiquement
-                                                            setCustomProfits(prev => ({
-                                                              ...prev,
-                                                              [product.id]: nouveauBenefice
-                                                            }));
-                                                            
-                                                            // Mettre à jour le prix de vente final
+                                                            if (raw.trim() === '') {
+                                                              setPriceErrors(prev => ({
+                                                                ...prev,
+                                                                [product.id]: 'Veuillez entrer un prix valide'
+                                                              }));
+                                                              return; // ne pas calculer si vide
+                                                            }
+                                                            const nouveauPrixDeVente = Number(raw);
+                                                            if (!Number.isFinite(nouveauPrixDeVente) || nouveauPrixDeVente <= 0) {
+                                                              setPriceErrors(prev => ({
+                                                                ...prev,
+                                                                [product.id]: 'Prix invalide'
+                                                              }));
+                                                              return;
+                                                            }
+                                                            // Validation non bloquante vs minimum/suggéré
+                                                            const prixSuggereMinimum = product.suggestedPrice || product.price;
+                                                            const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
+                                                            if (nouveauPrixDeVente < prixSuggereMinimum) {
+                                                              const priceType = hasSuggestedPrice ? 'prix suggéré' : 'prix minimum';
+                                                              setPriceErrors(prev => ({
+                                                                ...prev,
+                                                                [product.id]: `💡 Prix inférieur au ${priceType} (${prixSuggereMinimum.toLocaleString()} FCFA). Vous pourrez tout de même sauvegarder.`
+                                                              }));
+                                                            } else {
+                                                              setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
+                                                            }
+                                                            const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price;
+                                                            const nouveauBenefice = Math.max(0, nouveauPrixDeVente - prixDeRevientMockup);
+                                                            setCustomProfits(prev => ({ ...prev, [product.id]: nouveauBenefice }));
                                                             handleFieldChange(product.id, 'price', nouveauPrixDeVente);
-                                                          }}
-                                                          onBlur={() => handleSave(product.id)}
-                                                          className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                                        />
-                                                        <span className="text-sm text-blue-600 dark:text-blue-400">FCFA</span>
+                                                          };
+                                                          const onBlurHandler = () => {
+                                                            const raw = pricingInputValues[product.id];
+                                                            const parsed = raw === undefined ? currentPrice : Number(raw);
+                                                            const invalid = raw === '' || !Number.isFinite(parsed) || parsed <= 0;
+                                                            if (invalid) {
+                                                              // Ne pas sauvegarder si invalide
+                                                              return;
+                                                            }
+                                                            handleSave(product.id);
+                                                          };
+                                                          return (
+                                                            <>
+                                                              <input
+                                                                type="number"
+                                                                step="100"
+                                                                value={inputValue}
+                                                                onChange={onChangeHandler}
+                                                                onBlur={onBlurHandler}
+                                                                className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                                                              />
+                                                              <span className="text-sm text-blue-600 dark:text-blue-400">FCFA</span>
+                                                            </>
+                                                          );
+                                                        })()}
                                                       </div>
+                                                      {priceErrors[product.id] && (
+                                                        <div className="mt-1 text-xs text-red-600 dark:text-red-400">{priceErrors[product.id]}</div>
+                                                      )}
                                                     </div>
 
                                                     {/* 2. Bénéfice (éditable) */}
@@ -4725,9 +4865,9 @@ const SellDesignPage: React.FC = () => {
                                                           onChange={(e) => {
                                                             const newProfit = Math.max(0, Number(e.target.value));
                                                             
-                                                            // 🔄 LOGIQUE CORRECTE: Prix de vente = Prix de vente suggéré admin + Bénéfice
-                                                            const prixVenteSuggereAdmin = product.suggestedPrice || product.price;
-                                                            const nouveauPrixDeVente = prixVenteSuggereAdmin + newProfit;
+                                                            // 🔄 LOGIQUE CORRECTE: Prix de vente = Prix de revient mockup FIXE + Bénéfice
+                                                            const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price; // FIXE, ne change jamais
+                                                            const nouveauPrixDeVente = prixDeRevientMockup + newProfit;
                                                             
                                                             // Mettre à jour le profit personnalisé
                                                             setCustomProfits(prev => ({
@@ -4770,8 +4910,8 @@ const SellDesignPage: React.FC = () => {
                                                       </div>
                                                       <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                                                         {(() => {
-                                                          const prixVenteSuggereAdmin = product.suggestedPrice || product.price;
-                                                          return `= ${prixVenteSuggereAdmin.toLocaleString()} (prix suggéré admin) + ${customProfit.toLocaleString()} (bénéfice vendeur) FCFA`;
+                                                          const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price; // FIXE
+                                                          return `= ${prixDeRevientMockup.toLocaleString()} (prix de revient mockup) + ${customProfit.toLocaleString()} (bénéfice vendeur) FCFA`;
                                                         })()}
                                                       </div>
                                                     </div>
@@ -4825,7 +4965,7 @@ const SellDesignPage: React.FC = () => {
                                                       </span>
                                                     </div>
                                                     <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                                      {100 - (vendorCommission || 40)}%
+                                                      {Math.round(100 - (vendorCommission || 40))}%
                                                     </div>
                                                   </div>
                                                 </div>
@@ -4845,9 +4985,9 @@ const SellDesignPage: React.FC = () => {
                                                     <span className="font-semibold text-gray-900 dark:text-gray-100">
                                                       {commissionLoading ? '...' : (() => {
                                                         const commission = vendorCommission || 40;
-                                                        // 🔄 LOGIQUE CORRECTE: Gain vendeur = Bénéfice - Commission sur prix de revient
-                                                        const prixDeRevientFixe = product.price; // Prix fixe défini par admin
-                                                        const commissionMontant = (prixDeRevientFixe * commission) / 100;
+                                                        // 🔄 LOGIQUE CORRECTE: Gain vendeur = Bénéfice - Commission sur prix de revient mockup
+                                                        const prixDeRevientMockup = product.price; // Prix de revient mockup FIXE
+                                                        const commissionMontant = (prixDeRevientMockup * commission) / 100;
                                                         const gainVendeurFinal = customProfit - commissionMontant;
                                                         return commissionService.formatCFA(Math.max(0, gainVendeurFinal));
                                                       })()}
@@ -4871,10 +5011,14 @@ const SellDesignPage: React.FC = () => {
                                     <motion.div
                                       initial={{ opacity: 0, y: -10 }}
                                       animate={{ opacity: 1, y: 0 }}
-                                      className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+                                      className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg"
                                     >
-                                      <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
-                                        <X className="h-4 w-4" />
+                                      <p className="text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                                        <div className="flex-shrink-0">
+                                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                          </svg>
+                                        </div>
                                         {priceErrors[product.id]}
                                       </p>
                                     </motion.div>
@@ -5404,14 +5548,13 @@ const SellDesignPage: React.FC = () => {
                 <Input
                   id="design-price"
                   type="number"
-                  min="100"
                   step="50"
                   value={designPrice || ''}
                   onChange={(e) => {
                     setDesignPrice(Number(e.target.value));
                     setDesignPriceError('');
                   }}
-                  placeholder="Prix minimum: 100"
+                  placeholder="Entrez votre prix de vente"
                   className={`w-full pr-12 ${designPriceError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:border-gray-900 dark:focus:border-white`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">

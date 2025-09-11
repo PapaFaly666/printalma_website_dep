@@ -412,7 +412,6 @@ const ValidationStep: React.FC<{
                   {!formData.name && <li>• Nom du produit</li>}
                   {formData.price <= 0 && <li>• Prix valide</li>}
                   {!formData.description && <li>• Description</li>}
-                  {(!formData.suggestedPrice || formData.suggestedPrice <= 0) && <li>• Produit de vente suggéré</li>}
                   {formData.colorVariations.length === 0 && <li>• Au moins une couleur</li>}
                   {formStats.totalImages === 0 && <li>• Au moins une image</li>}
                   {formStats.totalDelimitations === 0 && <li>• ⚠️ Au moins une zone de personnalisation (délimitation obligatoire)</li>}
@@ -644,9 +643,8 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     const hasColors = formData.colorVariations.length > 0;
     const hasImages = totalImages > 0;
     const hasDelimitations = totalDelimitations > 0; // Délimitations obligatoires
-    const hasSuggestedSellingProduct = formData.suggestedPrice > 0;
     
-    const isComplete = hasBasicInfo && hasColors && hasImages && hasDelimitations && hasSuggestedSellingProduct;
+    const isComplete = hasBasicInfo && hasColors && hasImages && hasDelimitations;
 
     return {
       totalImages,
@@ -654,13 +652,12 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       totalDelimitations,
       isComplete,
       completionPercentage: Math.round(
-        (((formData.name ? 1 : 0) + 
-          (formData.price > 0 ? 1 : 0) + 
-          (formData.description ? 1 : 0) + 
-          (formData.colorVariations.length > 0 ? 1 : 0) + 
-          (totalImages > 0 ? 1 : 0) +
-          (totalDelimitations > 0 ? 1 : 0) +
-          (formData.suggestedPrice > 0 ? 1 : 0)) / 7) * 100
+        ((formData.name ? 1 : 0) + 
+         (formData.price > 0 ? 1 : 0) + 
+         (formData.description ? 1 : 0) + 
+         (formData.colorVariations.length > 0 ? 1 : 0) + 
+         (totalImages > 0 ? 1 : 0) +
+         (totalDelimitations > 0 ? 1 : 0)) * 16.67 // 6 éléments = 100% / 6
       )
     };
   }, [formData]);
@@ -675,7 +672,6 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         if (!formData.description.trim()) errors.push('Description requise');
         if (formData.price <= 0) errors.push('Prix invalide');
         if (formData.stock < 0) errors.push('Stock invalide');
-        if (!formData.suggestedPrice || formData.suggestedPrice <= 0) errors.push('Produit de vente suggéré requis');
         break;
       
       case 2:
@@ -1600,7 +1596,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
             onAddImageToColor={handleAddImageToColor}
             onUpdateImage={updateImage}
             onReplaceImage={handleReplaceImage}
-            onSuggestedPriceChange={(price) => updateFormData('suggestedPrice', price)}
+            onSuggestedPriceChange={(price) => updateFormData('price', price)}
           />
         );
       
@@ -1668,7 +1664,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
           <div className="flex items-center justify-between">
             <div>
               <h1 className="display-title text-shimmer mb-2">
-                🎨 Ajouter un produits
+                🎨 Ajouter un produit
               </h1>
             </div>
           </div>
