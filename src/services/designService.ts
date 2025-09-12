@@ -6,6 +6,7 @@ import {
   DesignUploadOptions,
   ProductFormData 
 } from '../types/product';
+import { designCategoryService } from './designCategoryService';
 
 // Types pour la création de produits avec designs
 interface ProductCreationData {
@@ -99,6 +100,18 @@ class DesignService {
   private apiUrl: string;
   private readonly useMockBackend: boolean;
 
+  /** Convertir categoryId en nom de catégorie */
+  private async getCategoryNameById(categoryId: number): Promise<string> {
+    try {
+      const categories = await designCategoryService.getActiveCategories();
+      const category = categories.find(cat => cat.id === categoryId);
+      return category ? category.name : 'Other';
+    } catch (error) {
+      console.warn('Impossible de récupérer le nom de la catégorie, utilisation par défaut:', error);
+      return 'Other';
+    }
+  }
+
   // 🆕 Base des endpoints design côté vendeur
   // Selon VendorPublishController (@Controller('vendor'))
   // Tous les appels du front (création, listing, update, delete) doivent cibler /vendor/designs
@@ -116,14 +129,44 @@ class DesignService {
   }
 
   private getAuthToken(): string | null {
-    return localStorage.getItem('token');
+    // 🔍 Debug : vérifier tous les tokens disponibles
+    const jwtToken = localStorage.getItem('jwt_token');
+    const token = localStorage.getItem('token');
+    const authToken = localStorage.getItem('authToken');
+    const accessToken = localStorage.getItem('access_token');
+    
+    console.log('🔍 Tokens disponibles:');
+    console.log('  jwt_token:', jwtToken ? `${jwtToken.substring(0, 20)}...` : 'null');
+    console.log('  token:', token ? `${token.substring(0, 20)}...` : 'null');
+    console.log('  authToken:', authToken ? `${authToken.substring(0, 20)}...` : 'null');
+    console.log('  access_token:', accessToken ? `${accessToken.substring(0, 20)}...` : 'null');
+    
+    // Essayer plusieurs noms de tokens
+    const foundToken = jwtToken || 
+                      sessionStorage.getItem('jwt_token') ||
+                      token ||
+                      authToken ||
+                      accessToken ||
+                      null;
+                      
+    if (!foundToken) {
+      console.warn('⚠️ Aucun token JWT trouvé - utilisation de l\'authentification par cookies');
+      return null; // Ne pas lancer d'erreur, utiliser les cookies à la place
+    }
+    
+    console.log('✅ Token utilisé:', `${foundToken.substring(0, 20)}...`);
+    return foundToken;
   }
 
   private getAuthHeaders(extra: Record<string,string> = {}): Record<string, string> {
     const token = this.getAuthToken();
-    return token
-      ? { 'Authorization': `Bearer ${token}`, ...extra }
-      : { ...extra };
+    if (token) {
+      console.log('🔑 Utilisation du token JWT pour l\'authentification');
+      return { 'Authorization': `Bearer ${token}`, ...extra };
+    } else {
+      console.log('🍪 Utilisation des cookies pour l\'authentification');
+      return { ...extra };
+    }
   }
 
   /**
@@ -719,26 +762,18 @@ class DesignService {
    */
   async getDesigns(filters: DesignFilters = {}): Promise<DesignListResponse> {
     try {
-      // ✅ CORRECTION : Utiliser l'endpoint correct avec authentification
       const params = new URLSearchParams();
       if (filters.limit) params.append('limit', String(filters.limit));
       if (filters.page) params.append('offset', String(((filters.page - 1) * (filters.limit || 10))));
       if (filters.status && filters.status !== 'all') params.append('status', filters.status);
       if (filters.search) params.append('search', filters.search);
 
-      // ✅ CORRECTION : Endpoint correct avec authentification
-      const endpoint = `https://printalma-back-dep.onrender.com/api/designs${params.toString() ? `?${params.toString()}` : ''}`;
+      const endpoint = `${this.apiUrl}/api/designs${params.toString() ? `?${params.toString()}` : ''}`;
 
-      // ✅ CORRECTION : Utiliser soit les cookies soit le token JWT
-      const token = this.getAuthToken();
-      const headers: HeadersInit = {};
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const headers = this.getAuthHeaders();
 
       const res = await fetch(endpoint, {
-        credentials: token ? 'omit' : 'include',
+        credentials: 'include',
         headers
       });
 
@@ -827,25 +862,18 @@ class DesignService {
   // Méthode legacy pour compatibilité
   private async getDesignsLegacy(filters: DesignFilters = {}): Promise<DesignListResponse> {
     const qs = new URLSearchParams(filters as any).toString();
-    // ✅ CORRECTION : Utiliser les vrais endpoints avec authentification
     const candidateUrls = [
-      `https://printalma-back-dep.onrender.com/api/designs${qs ? `?${qs}` : ''}`,
-      `https://printalma-back-dep.onrender.com/api/designs/vendor/by-status?status=ALL${qs ? `&${qs}` : ''}`
+      `${this.apiUrl}/vendor/designs${qs ? `?${qs}` : ''}`,
+      `${this.apiUrl}/api/designs/vendor/by-status?status=ALL${qs ? `&${qs}` : ''}`
     ];
 
-    // ✅ CORRECTION : Utiliser soit les cookies soit le token JWT
-    const token = this.getAuthToken();
-    const headers: HeadersInit = {};
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const headers = this.getAuthHeaders();
 
     let res: Response | null = null;
     for (const url of candidateUrls) {
       try {
         res = await fetch(url, {
-          credentials: token ? 'omit' : 'include',
+          credentials: 'include',
           headers
         });
         if (res.ok) {
@@ -903,155 +931,234 @@ class DesignService {
     });
   }
 
-  /** Créer un design via la nouvelle API VendorDesignProduct */
+  /** Créer un design - essaie /api/designs puis fallback vers /vendor/designs */
   async createDesign(payload: {
     file: File;
     name: string;
     description?: string;
     price: number;
-    category: string;
+    categoryId: number;
     tags?: string;
   }): Promise<Design> {
     try {
-      console.log('🎨 Création du design via endpoint principal...');
+      console.log('🎨 Création du design avec prix:', payload.price);
+      console.log('🍪 Utilisation de l\'authentification par cookies');
       
-      // ✅ CORRECTION : Utiliser l'endpoint principal avec authentification
-      const formData = new FormData();
-      formData.append('file', payload.file);
-      formData.append('name', payload.name);
-      formData.append('description', payload.description || '');
-      formData.append('price', payload.price.toString());
-      formData.append('category', payload.category);
-      if (payload.tags) {
-        formData.append('tags', payload.tags);
-      }
-
-      // ✅ CORRECTION : Utiliser soit les cookies soit le token JWT, pas les deux
-      const token = this.getAuthToken();
-      const headers: HeadersInit = {};
+      // ✅ VALIDATION 
+      this.validateDesignData(payload);
       
-      if (token) {
-        // Si on a un token JWT, l'utiliser
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      // Sinon, utiliser credentials: 'include' pour les cookies
-
-      const response = await fetch('https://printalma-back-dep.onrender.com/api/designs', {
-        method: 'POST',
-        credentials: token ? 'omit' : 'include', // Omit si on utilise le token JWT
-        headers,
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+      // 🚀 TENTATIVE 1: Essayer /api/designs (selon designaide.md)
+      try {
+        return await this.createDesignViaApiDesigns(payload);
+      } catch (apiError: any) {
+        console.warn('⚠️ Échec /api/designs:', apiError.message);
+        console.log('🔄 Fallback vers /vendor/designs...');
       }
 
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log('✅ Design créé avec succès via /api/designs:', data.data);
-        
-        // Convertir la réponse au format Design
-        const design: Design = {
-          id: data.data.id || data.data.designId,
-          name: data.data.name || payload.name,
-          description: data.data.description || payload.description,
-          price: data.data.price || payload.price,
-          imageUrl: data.data.imageUrl || data.data.designUrl,
-          thumbnailUrl: data.data.thumbnailUrl || data.data.designUrl,
-          category: data.data.category || payload.category,
-          tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
-          isPublished: data.data.status === 'PUBLISHED',
-          isDraft: data.data.status === 'DRAFT',
-          isPending: data.data.status === 'PENDING',
-          createdAt: data.data.createdAt || new Date().toISOString(),
-          updatedAt: data.data.updatedAt || new Date().toISOString(),
-          usageCount: 0,
-          earnings: 0,
-          views: 0,
-          likes: 0
-        };
-        
-        return design;
-      } else {
-        throw new Error(data.message || 'Erreur création design');
-      }
+      // 🔄 FALLBACK: Utiliser /vendor/designs
+      return await this.createDesignViaVendorDesigns(payload);
       
     } catch (error: any) {
-      console.error('❌ Erreur création design via /api/designs:', error);
-
-      // 🆘 Fallback vers endpoint vendor publish
-      try {
-        console.log('🔄 Fallback: tentative POST /vendor/designs');
-
-        // Convertir le fichier en base64
-        const imageBase64 = await this.fileToDataUrl(payload.file);
-
-        // Construire le payload JSON
-        const fallbackPayload = {
-          name: payload.name,
-          description: payload.description,
-          category: payload.category?.toUpperCase() || 'LOGO',
-          imageBase64,
-          tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
-        };
-
-        // ✅ CORRECTION : Même logique d'authentification pour le fallback
-        const token = this.getAuthToken();
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-        };
-        
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const res = await fetch('https://printalma-back-dep.onrender.com/vendor/designs', {
-          method: 'POST',
-          credentials: token ? 'omit' : 'include',
-          headers,
-          body: JSON.stringify(fallbackPayload),
-        });
-
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => ({}));
-          throw new Error(errJson.message || `HTTP ${res.status}`);
-        }
-
-        const json = await res.json();
-        const data = json.data || json;
-
-        // Adapter la réponse au format Design
-        const design: Design = {
-          id: data.designId || data.id,
-          name: payload.name,
-          description: payload.description,
-          price: payload.price,
-          imageUrl: data.designUrl,
-          thumbnailUrl: data.designUrl,
-          category: payload.category,
-          tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
-          isPublished: true,
-          isDraft: false,
-          isPending: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          usageCount: 0,
-          earnings: 0,
-          views: 0,
-          likes: 0
-        };
-
-        console.log('✅ Design créé via fallback /vendor/designs');
-        return design;
-      } catch (fallbackError: any) {
-        console.error('❌ Fallback /vendor/designs échoué:', fallbackError);
-        throw new Error(fallbackError.message || 'Échec création design');
-      }
+      console.error('❌ Erreur création design (toutes méthodes échouées):', error);
+      throw error;
     }
   }
+
+  /** Méthode 1: Créer via /api/designs avec FormData */
+  private async createDesignViaApiDesigns(payload: {
+    file: File;
+    name: string;
+    description?: string;
+    price: number;
+    categoryId: number;
+    tags?: string;
+  }): Promise<Design> {
+    console.log('🔬 Tentative création via /api/designs avec FormData...');
+
+    // Convertir categoryId en nom de catégorie
+    const categoryName = await this.getCategoryNameById(payload.categoryId);
+    console.log(`🏷️ Conversion categoryId ${payload.categoryId} -> "${categoryName}"`);
+
+    const formData = new FormData();
+    formData.append('design', payload.file);
+    formData.append('name', payload.name);
+    formData.append('description', payload.description || '');
+    formData.append('price', payload.price.toString()); // 💰 PRIX EN STRING
+    formData.append('category', categoryName); // ✅ UTILISER LE NOM DE CATÉGORIE
+    
+    if (payload.tags) {
+      formData.append('tags', payload.tags);
+    }
+
+    console.log('📝 FormData préparée avec prix:', payload.price);
+
+    const res = await fetch(`${this.apiUrl}/api/designs`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData, // Pas de Content-Type header avec FormData
+    });
+
+    console.log('📡 Réponse /api/designs:', res.status, res.statusText);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error('❌ Erreur /api/designs:', errText);
+      throw new Error(`API designs error: ${res.status} - ${errText}`);
+    }
+
+    const json = await res.json();
+    console.log('📦 Réponse /api/designs:', json);
+
+    const data = json.data || json;
+    const design: Design = {
+      id: data.designId || data.id,
+      name: payload.name,
+      description: payload.description,
+      price: payload.price,
+      imageUrl: data.designUrl || data.imageUrl,
+      thumbnailUrl: data.designUrl || data.imageUrl,
+      categoryId: payload.categoryId,
+      tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
+      isPublished: true,
+      isDraft: false,
+      isPending: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      usageCount: 0,
+      earnings: 0,
+      views: 0,
+      likes: 0
+    };
+
+    console.log('✅ Design créé avec succès via /api/designs !');
+    console.log('💰 Prix du design:', design.price);
+    return design;
+  }
+
+  /** Méthode 2: Créer via /vendor/designs avec JSON */
+  private async createDesignViaVendorDesigns(payload: {
+    file: File;
+    name: string;
+    description?: string;
+    price: number;
+    categoryId: number;
+    tags?: string;
+  }): Promise<Design> {
+    console.log('🔬 Tentative création via /vendor/designs avec JSON...');
+
+    // Convertir le fichier en base64
+    const imageBase64 = await this.fileToDataUrl(payload.file);
+    
+    // Convertir categoryId en nom de catégorie
+    const categoryName = await this.getCategoryNameById(payload.categoryId);
+    console.log(`🏷️ Conversion categoryId ${payload.categoryId} -> "${categoryName}"`);
+
+    const designPayload = {
+      name: payload.name,
+      description: payload.description,
+      price: payload.price, // 🔧 PRIX INCLUS
+      category: categoryName, // ✅ UTILISER LE NOM DE CATÉGORIE 
+      imageBase64,
+      tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
+    };
+
+    console.log('📝 Payload JSON avec prix:', designPayload.price);
+
+    const res = await fetch(this.vendorDesignBase, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(designPayload),
+    });
+
+    console.log('📡 Réponse /vendor/designs:', res.status, res.statusText);
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      console.error('❌ Erreur /vendor/designs:', errJson);
+      throw new Error(errJson.message || `HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+    console.log('📦 Réponse /vendor/designs:', json);
+    const data = json.data || json;
+
+    const design: Design = {
+      id: data.designId || data.id,
+      name: payload.name,
+      description: payload.description,
+      price: payload.price, // Forcer le prix côté frontend
+      imageUrl: data.designUrl,
+      thumbnailUrl: data.designUrl,
+      categoryId: payload.categoryId,
+      tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
+      isPublished: true,
+      isDraft: false,
+      isPending: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      usageCount: 0,
+      earnings: 0,
+      views: 0,
+      likes: 0
+    };
+
+    console.log('✅ Design créé via /vendor/designs !');
+    console.log('💰 Prix préservé côté frontend:', design.price);
+    console.log('⚠️ Attention: Le backend peut avoir mis le prix à 0 en base');
+    return design;
+  }
+
+  // ✅ VALIDATION selon designaide.md
+  private validateDesignData(payload: {
+    file: File;
+    name: string;
+    description?: string;
+    price: number;
+    categoryId: number;
+    tags?: string;
+  }): void {
+    if (!payload.file) {
+      throw new Error('Fichier image requis');
+    }
+    
+    if (!payload.name || payload.name.trim().length < 3) {
+      throw new Error('Nom du design requis (min 3 caractères)');
+    }
+    
+    if (payload.name.trim().length > 255) {
+      throw new Error('Nom du design trop long (max 255 caractères)');
+    }
+    
+    if (!payload.price || payload.price < 100) {
+      throw new Error('Prix minimum: 100 FCFA');
+    }
+    
+    if (payload.price > 1000000) {
+      throw new Error('Prix maximum: 1,000,000 FCFA');
+    }
+    
+    if (!payload.categoryId || typeof payload.categoryId !== 'number' || payload.categoryId <= 0) {
+      throw new Error('ID de catégorie invalide');
+    }
+    
+    // Validation du fichier selon designaide.md
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
+    if (!allowedTypes.includes(payload.file.type)) {
+      throw new Error('Format de fichier non supporté');
+    }
+    
+    if (payload.file.size > 10 * 1024 * 1024) { // 10MB
+      throw new Error('Fichier trop volumineux (max 10MB)');
+    }
+
+    if (payload.description && payload.description.length > 1000) {
+      throw new Error('Description trop longue (max 1000 caractères)');
+    }
+  }
+
 
   /** Modifier un design via la nouvelle API VendorDesignProduct */
   async updateDesign(id: number | string, updates: Partial<Omit<Design, 'id'>>): Promise<Design> {

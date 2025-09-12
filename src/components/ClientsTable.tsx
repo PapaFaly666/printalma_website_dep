@@ -36,12 +36,13 @@ import {
   CheckCircle,
   XCircle,
   Key,
-  Mail
+  Mail,
+  Eye,
+  BarChart3
 } from 'lucide-react';
 import { StatusConfirmModal } from './StatusConfirmModal';
 import { SuccessToast } from './SuccessToast';
 import { ResetPasswordModal } from './admin/ResetPasswordModal';
-import { MiniCommissionSlider } from './admin/MiniCommissionSlider';
 import { 
   ClientInfo, 
   getSellerTypeIcon, 
@@ -66,6 +67,7 @@ interface ClientsTableProps {
     unlockedAt?: string;
   }>;
   onUpdateCommission?: (vendeurId: number, commission: number) => Promise<void>;
+  onViewDetails?: (client: ClientWithCommission) => void;
 }
 
 export const ClientsTable: React.FC<ClientsTableProps> = ({
@@ -74,7 +76,8 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
   onToggleStatus,
   onResetPassword,
   onUnlockClient,
-  onUpdateCommission
+  onUpdateCommission,
+  onViewDetails
 }) => {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -235,9 +238,6 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Créé le
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Commission
-                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -319,34 +319,6 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                     </div>
                   </td>
 
-                  {/* Commission Slider */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {onUpdateCommission ? (
-                      <div className="space-y-1">
-                        <MiniCommissionSlider
-                          vendeurId={client.id}
-                          vendeurType={client.vendeur_type}
-                          initialValue={client.commissionRate} // Vraie valeur depuis le backend
-                          onSave={handleUpdateCommission}
-                        />
-                        {client.lastUpdated && (
-                          <div className="text-xs text-gray-500">
-                            Mise à jour: {new Date(client.lastUpdated).toLocaleDateString('fr-FR', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <Badge variant="outline" className="text-gray-500">
-                        Non disponible
-                      </Badge>
-                    )}
-                  </td>
-
                   {/* Actions */}
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <DropdownMenu>
@@ -364,6 +336,32 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        
+                        {onViewDetails && (
+                          <DropdownMenuItem
+                            onClick={() => onViewDetails(client)}
+                            className="text-blue-600"
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Voir les détails
+                            <span className="ml-2 text-xs text-gray-500">
+                              • Commission & Dashboard
+                            </span>
+                          </DropdownMenuItem>
+                        )}
+                        {onViewDetails && (
+                          <DropdownMenuItem
+                            onClick={() => onViewDetails(client)}
+                            className="text-indigo-600"
+                          >
+                            ✏️ Éditer le vendeur
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {onViewDetails && <DropdownMenuSeparator />}
+                        
                         <DropdownMenuItem
                           onClick={() => handleToggleStatusClick(client)}
                           className={client.status ? "text-red-600" : "text-green-600"}

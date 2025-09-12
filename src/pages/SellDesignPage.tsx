@@ -39,6 +39,7 @@ import commissionService from '../services/commissionService';
 import { PostValidationActionSelectorIntegrated } from '../components/cascade/PostValidationActionSelectorIntegrated';
 import { useCascadeValidationIntegrated } from '../hooks/useCascadeValidationIntegrated';
 import { PostValidationAction } from '../types/cascadeValidation';
+import DesignCategorySelector from '../components/DesignCategorySelector';
 
 // 🆕 Import du nouveau composant Canvas
 // import ProductViewWithDesign from '../components/design/ProductViewWithDesign'; // Conflit avec le composant local
@@ -2129,7 +2130,7 @@ const SellDesignPage: React.FC = () => {
   
   // Nouvel état pour stocker les prix de base (admin) - ne change jamais côté vendeur
   const [basePrices, setBasePrices] = useState<Record<number, number>>({});
-
+  
   // 🆕 Valeurs brutes saisies dans l'input prix (permet champ vide)
   const [pricingInputValues, setPricingInputValues] = useState<Record<number, string>>({});
 
@@ -2143,10 +2144,12 @@ const SellDesignPage: React.FC = () => {
   // 🧮 Helpers unifiés de calcul (source de vérité cohérente)
   const getSalePrice = useCallback((p: Product): number => {
     const editedPrice = editStates[p.id]?.price as number | undefined;
-    return editedPrice !== undefined && editedPrice > 0 ? editedPrice : p.price;
+    // Utiliser le prix édité s'il existe, sinon le prix suggéré, sinon le prix de base
+    return editedPrice !== undefined && editedPrice > 0 ? editedPrice : (p.suggestedPrice ?? p.price);
   }, [editStates]);
 
   const getCost = useCallback((p: Product): number => {
+    // Utiliser prixDeRevientOriginaux s'il existe, sinon utiliser le prix du produit comme coût de base
     return prixDeRevientOriginaux[p.id] ?? p.price;
   }, [prixDeRevientOriginaux]);
 
@@ -2155,14 +2158,21 @@ const SellDesignPage: React.FC = () => {
   }, [getSalePrice, getCost]);
 
   const getCommissionAmount = useCallback((p: Product): number => {
-    const rate = (vendorCommission ?? 40);
-    return (getSalePrice(p) * rate) / 100;
-  }, [vendorCommission, getSalePrice]);
+    // Commission prélevée sur le BÉNÉFICE, pas sur le prix de vente total
+    const rawRate = (vendorCommission ?? 40);
+    const clampedRate = Math.max(1, Math.round(rawRate));
+    const profit = getProfit(p); // Bénéfice = Prix de vente - Prix de revient
+    return (profit * clampedRate) / 100;
+  }, [vendorCommission, getProfit]);
 
   const getVendorRevenue = useCallback((p: Product): number => {
-    return Math.max(0, getSalePrice(p) - getCommissionAmount(p) - getCost(p));
-  }, [getSalePrice, getCommissionAmount, getCost]);
-  
+    // Revenus vendeur = Bénéfice - Commission prélevée sur le bénéfice
+    // Ou bien : Prix de vente - Prix de revient - Commission
+    const profit = getProfit(p); // Bénéfice total
+    const commission = getCommissionAmount(p); // Commission sur le bénéfice
+    return Math.max(0, profit - commission);
+  }, [getProfit, getCommissionAmount]);
+
   // Nouvel état pour gérer le mode sélectionné
   const [selectedMode, setSelectedMode] = useState<'design' | 'product' | null>(null);
 
@@ -2175,6 +2185,8 @@ const SellDesignPage: React.FC = () => {
   const [tempDesignUrl, setTempDesignUrl] = useState<string>('');
   const [designPriceError, setDesignPriceError] = useState<string>('');
   const [designNameError, setDesignNameError] = useState<string>('');
+  const [designCategoryId, setDesignCategoryId] = useState<number | null>(null);
+  const [designCategoryError, setDesignCategoryError] = useState<string>('');
 
   // Designs existants du vendeur
   const [loadingExistingDesigns, setLoadingExistingDesigns] = useState(false);
@@ -3066,6 +3078,8 @@ const SellDesignPage: React.FC = () => {
     setDesignDescription('');
     setDesignPriceError('');
     setDesignNameError('');
+    setDesignCategoryId(null);
+    setDesignCategoryError('');
     setShowDesignPriceModal(true);
   };
 
@@ -3074,6 +3088,7 @@ const SellDesignPage: React.FC = () => {
     // Reset des erreurs
     setDesignPriceError('');
     setDesignNameError('');
+    setDesignCategoryError('');
 
     // Validation du nom
     if (!designName.trim()) {
@@ -3083,6 +3098,12 @@ const SellDesignPage: React.FC = () => {
 
     if (designName.trim().length < 3) {
       setDesignNameError('Le nom doit contenir au moins 3 caractères');
+      return;
+    }
+
+    // Validation de la catégorie
+    if (!designCategoryId) {
+      setDesignCategoryError('Veuillez sélectionner une catégorie pour votre design');
       return;
     }
 
@@ -3109,7 +3130,7 @@ const SellDesignPage: React.FC = () => {
           name: designName.trim(),
           description: designDescription,
           price: designPrice,
-          category: 'logo' // Catégorie par défaut ; pourra être éditée ensuite dans /vendeur/designs
+          categoryId: designCategoryId // Utilise la catégorie sélectionnée dynamiquement
         });
 
         // Ajouter immédiatement le design à la liste locale pour la sélection éventuelle
@@ -3174,6 +3195,8 @@ const SellDesignPage: React.FC = () => {
     setDesignDescription('');
     setDesignPriceError('');
     setDesignNameError('');
+    setDesignCategoryId(null);
+    setDesignCategoryError('');
     setShowDesignPriceModal(false);
   };
 
@@ -3352,26 +3375,22 @@ const SellDesignPage: React.FC = () => {
     }
   }, [products]);
 
-  // Initialiser les profits personnalisés au chargement des produits
+  // Initialiser les profits personnalisés au chargement des produits (sans écraser une saisie existante)
   useEffect(() => {
     if (products.length > 0 && Object.keys(prixDeRevientOriginaux).length > 0) {
-      const initialProfits: Record<number, number> = {};
+      setCustomProfits(prev => {
+        const next: Record<number, number> = { ...prev };
       products.forEach(product => {
-        // 🔒 CORRECTION: Utiliser prixDeRevientOriginaux (FIXE) au lieu de product.price (variable)
-        const prixDeRevientFixe = prixDeRevientOriginaux[product.id];
-        const basePrice = basePrices[product.id];
-        
-        if (prixDeRevientFixe !== undefined && basePrice !== undefined) {
-          // 🔄 NOUVEAU: Calculer le profit basé sur suggestedPrice si disponible, sinon product.price
-          const targetPrice = product.suggestedPrice && product.suggestedPrice > 0 
-            ? product.suggestedPrice 
-            : product.price;
-          initialProfits[product.id] = Math.max(0, targetPrice - prixDeRevientFixe);
-        }
+          if (next[product.id] === undefined) {
+            const cost = prixDeRevientOriginaux[product.id] ?? product.price;
+            const plannedSale = (editStates[product.id]?.price as number | undefined) ?? product.suggestedPrice ?? product.price;
+            next[product.id] = Math.max(0, plannedSale - cost);
+          }
+        });
+        return next;
       });
-      setCustomProfits(initialProfits);
     }
-  }, [products, basePrices, prixDeRevientOriginaux]);
+  }, [products, prixDeRevientOriginaux, editStates]);
 
   // Initialiser la couleur sélectionnée (première couleur active ou première variation)
   useEffect(() => {
@@ -4100,54 +4119,6 @@ const SellDesignPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 🆕 Bannière de commission vendeur */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <div className="bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/30 dark:via-yellow-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
-                  <Coins className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-100 mb-1">
-                    Votre commission vendeur
-                  </h3>
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
-                    Taux de commission défini par l'administration
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                {commissionLoading ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
-                    <span className="text-sm text-amber-600 dark:text-amber-400">Chargement...</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-3xl font-bold text-amber-900 dark:text-amber-100">
-                      {Math.round(vendorCommission || 40)}%
-                    </div>
-                    <div className="text-xs text-amber-600 dark:text-amber-400">
-                      de commission
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            {/* Info supplémentaire */}
-            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
-              <div className="flex items-start gap-2">
-                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  PrintAlma prélève <strong>{Math.round(vendorCommission || 40)}%</strong> sur chaque vente pour couvrir les frais de plateforme, payment et marketing. 
-                  Vous recevez <strong>{Math.round(100 - (vendorCommission || 40))}%</strong> du prix de vente final.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Sélecteur d'options */}
         {!selectedMode && (
@@ -4647,7 +4618,7 @@ const SellDesignPage: React.FC = () => {
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-baseline gap-2 mb-1">
                                               <span className="text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">
-                                                Prix de vente suggéré
+                                                Prix de vente
                                               </span>
                                               <div className="flex items-center gap-1">
                                                 {isSaving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
@@ -4671,40 +4642,9 @@ const SellDesignPage: React.FC = () => {
                                                   maximumFractionDigits: 0
                                                 }).format(currentPrice)}
                                               </div>
-                                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                Prix calculé automatiquement
-                                              </div>
+                                             
                                             </div>
                                             
-                                            {/* 🔄 NOUVEAU: Indicateurs avec prix suggéré */}
-                                            <div className="flex items-center gap-3 flex-wrap">
-                                              <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-                                                <PiggyBank className="h-3 w-3 text-green-600 dark:text-green-400" />
-                                                <span className="text-xs font-semibold text-green-700 dark:text-green-300">
-                                                  +{new Intl.NumberFormat('fr-FR', {
-                                                    style: 'currency',
-                                                    currency: 'XOF',
-                                                    maximumFractionDigits: 0
-                                                  }).format(customProfit)}
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full">
-                                                <BarChart3 className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                                                <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-                                                  {profitPercentage}%
-                                                </span>
-                                              </div>
-                                              
-                                              {/* 🎯 NOUVEAU: Indicateur prix suggéré */}
-                                              {isUsingSuggestedPrice && (
-                                                <div className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded-full">
-                                                  <Target className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-                                                  <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
-                                                    Prix suggéré
-                                                  </span>
-                                                </div>
-                                              )}
-                                            </div>
                                           </div>
                                           
                                           {/* Bouton simple flèche */}
@@ -4735,7 +4675,7 @@ const SellDesignPage: React.FC = () => {
                                             <div className="p-4 sm:p-5 space-y-5">
                                               {/* 🎯 NOUVEAU: Section prix suggéré vs original */}
                                               {hasSuggestedPrice && (
-                                                <div className="max-w-lg mx-auto mb-5">
+                                                <div className="max-w-lg mx-auto mb-5" onClick={(e) => e.stopPropagation()}>
                                                   <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
                                                     <div className="flex items-center gap-2 mb-3">
                                                       <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -4776,7 +4716,7 @@ const SellDesignPage: React.FC = () => {
                                               )}
                                               
                                               {/* 🔄 NOUVEAU: Interface de pricing pour vendeur */}
-                                              <div className="max-w-lg mx-auto mb-5">
+                                              <div className="max-w-lg mx-auto mb-5" onClick={(e) => e.stopPropagation()}>
                                                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
                                                   <div className="flex items-center gap-2 mb-4">
                                                     <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -4790,7 +4730,12 @@ const SellDesignPage: React.FC = () => {
                                                     <div className="space-y-2">
                                                       <div className="flex items-center justify-between">
                                                         <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                                                          Prix de vente suggéré
+                                                          {(() => {
+                                                            const currentValue = editStates[product.id]?.price ?? product.suggestedPrice ?? product.price;
+                                                            const suggestedPrice = product.suggestedPrice ?? product.price;
+                                                            const isModified = currentValue !== suggestedPrice;
+                                                            return isModified ? "Prix de vente personnalisé" : "Prix de vente suggéré";
+                                                          })()}
                                                         </label>
                                                         <div className="text-xs text-blue-600 dark:text-blue-400">
                                                           Recommandé: {new Intl.NumberFormat('fr-FR', {
@@ -4804,7 +4749,7 @@ const SellDesignPage: React.FC = () => {
                                                         {(() => {
                                                           const inputValue = pricingInputValues[product.id] !== undefined
                                                             ? pricingInputValues[product.id]
-                                                            : String(currentPrice);
+                                                            : String(editStates[product.id]?.price ?? product.suggestedPrice ?? product.price);
                                                           const onChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
                                                             const raw = e.target.value;
                                                             setPricingInputValues(prev => ({ ...prev, [product.id]: raw }));
@@ -4824,15 +4769,16 @@ const SellDesignPage: React.FC = () => {
                                                               }));
                                                               return;
                                                             }
-                                                            // Validation non bloquante vs minimum/suggéré
+                                                            // Validation bloquante vs minimum/suggéré
                                                             const prixSuggereMinimum = product.suggestedPrice || product.price;
                                                             const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
                                                             if (nouveauPrixDeVente < prixSuggereMinimum) {
                                                               const priceType = hasSuggestedPrice ? 'prix suggéré' : 'prix minimum';
                                                               setPriceErrors(prev => ({
                                                                 ...prev,
-                                                                [product.id]: `💡 Prix inférieur au ${priceType} (${prixSuggereMinimum.toLocaleString()} FCFA). Vous pourrez tout de même sauvegarder.`
+                                                                [product.id]: `❌ Le prix ne peut pas être inférieur au ${priceType} (${prixSuggereMinimum.toLocaleString()} FCFA)`
                                                               }));
+                                                              return; // Bloquer la mise à jour si prix trop bas
                                                             } else {
                                                               setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
                                                             }
@@ -4859,9 +4805,9 @@ const SellDesignPage: React.FC = () => {
                                                                 value={inputValue}
                                                                 onChange={onChangeHandler}
                                                                 onBlur={onBlurHandler}
-                                                                className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                                              />
-                                                              <span className="text-sm text-blue-600 dark:text-blue-400">FCFA</span>
+                                                          className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                                                        />
+                                                        <span className="text-sm text-blue-600 dark:text-blue-400">FCFA</span>
                                                             </>
                                                           );
                                                         })()}
@@ -4877,9 +4823,7 @@ const SellDesignPage: React.FC = () => {
                                                         <label className="text-sm font-medium text-green-700 dark:text-green-300">
                                                           Votre bénéfice
                                                         </label>
-                                                        <div className="text-xs text-green-600 dark:text-green-400">
-                                                          {profitPercentage}% de marge sur prix de revient
-                                                        </div>
+                                                        
                                                       </div>
                                                       <div className="flex items-center gap-2">
                                                         <input
@@ -4893,6 +4837,21 @@ const SellDesignPage: React.FC = () => {
                                                             // 🔄 LOGIQUE CORRECTE: Prix de vente = Prix de revient mockup FIXE + Bénéfice
                                                             const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price; // FIXE, ne change jamais
                                                             const nouveauPrixDeVente = prixDeRevientMockup + newProfit;
+                                                            
+                                                            // Validation vs prix suggéré minimum
+                                                            const prixSuggereMinimum = product.suggestedPrice || product.price;
+                                                            if (nouveauPrixDeVente < prixSuggereMinimum) {
+                                                              const minProfit = prixSuggereMinimum - prixDeRevientMockup;
+                                                              const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
+                                                              const priceType = hasSuggestedPrice ? 'prix suggéré' : 'prix minimum';
+                                                              setPriceErrors(prev => ({
+                                                                ...prev,
+                                                                [product.id]: `❌ Bénéfice minimum requis: ${minProfit.toLocaleString()} FCFA pour respecter le ${priceType}`
+                                                              }));
+                                                              return; // Bloquer la mise à jour
+                                                            } else {
+                                                              setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
+                                                            }
                                                             
                                                             // Mettre à jour le profit personnalisé
                                                             setCustomProfits(prev => ({
@@ -4908,106 +4867,33 @@ const SellDesignPage: React.FC = () => {
                                                         />
                                                         <span className="text-sm text-green-600 dark:text-green-400">FCFA</span>
                                                         
-                                                        <Button
-                                                          size="sm"
-                                                          variant="outline"
-                                                          onClick={() => handleResetPricing(product.id)}
-                                                          className="text-xs border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-900/20"
-                                                        >
-                                                          Reset
-                                                        </Button>
+                                                        
                                                       </div>
                                                     </div>
                                                     
-                                                    {/* 3. Prix final (calculé automatiquement) */}
-                                                    <div className="pt-3 border-t border-blue-200 dark:border-blue-700">
-                                                      <div className="flex items-center justify-between text-sm">
-                                                        <span className="font-medium text-blue-800 dark:text-blue-200">
-                                                          Prix final client
-                                                        </span>
-                                                        <span className="font-bold text-xl text-blue-900 dark:text-blue-100">
-                                                          {new Intl.NumberFormat('fr-FR', {
-                                                            style: 'currency',
-                                                            currency: 'XOF',
-                                                            maximumFractionDigits: 0
-                                                          }).format(currentPrice)}
-                                                        </span>
-                                                      </div>
-                                                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                                        {(() => {
-                                                          const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price; // FIXE
-                                                          return `= ${prixDeRevientMockup.toLocaleString()} (prix de revient mockup) + ${customProfit.toLocaleString()} (bénéfice vendeur) FCFA`;
-                                                        })()}
-                                                      </div>
-                                                    </div>
                                                   </div>
                                                 </div>
                                               </div>
                                               
                                               {/* 💰 Cards larges noir et blanc */}
                                               <div className="max-w-lg mx-auto space-y-3">
-                                                {/* Prix de vente */}
-                                                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                                                  <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                                                      Prix de vente suggéré
-                                                    </span>
-                                                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
-                                                      {new Intl.NumberFormat('fr-FR', {
-                                                        style: 'currency',
-                                                        currency: 'XOF',
-                                                        maximumFractionDigits: 0
-                                                      }).format(currentPrice)}
-                                                    </span>
-                                                  </div>
-                                                </div>
 
-                                                {/* Commission & Gains */}
-                                                <div className="grid grid-cols-2 gap-3">
-                                                  {/* Commission */}
-                                                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                      <Coins className="h-3 w-3 text-gray-600 dark:text-gray-400" />
-                                                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                                                        Commission
+                                                {/* Revenus vendeur simplifié */}
+                                                <div className="bg-green-50 dark:bg-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                                  <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                      <PiggyBank className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                      <span className="text-sm text-green-700 dark:text-green-300 font-medium">
+                                                        Vos revenus par vente
                                                       </span>
                                                     </div>
-                                                    <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                                    <div className="text-lg font-bold text-green-800 dark:text-green-200">
                                                       {commissionLoading ? (
-                                                        <Loader2 className="h-3 w-3 animate-spin text-gray-500" />
+                                                        <Loader2 className="h-4 w-4 animate-spin text-green-600" />
                                                       ) : (
-                                                        `${vendorCommission || 40}%`
+                                                        commissionService.formatCFA(getVendorRevenue(product))
                                                       )}
                                                     </div>
-                                                  </div>
-
-                                                  {/* Gains */}
-                                                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                      <PiggyBank className="h-3 w-3 text-gray-600 dark:text-gray-400" />
-                                                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                                                        Vos gains
-                                                      </span>
-                                                    </div>
-                                                    <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                                      {Math.round(100 - (vendorCommission || 40))}%
-                                                    </div>
-                                                  </div>
-                                                </div>
-
-                                                {/* Montants détaillés */}
-                                                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                                                  <div className="flex justify-between items-center text-xs mb-2">
-                                                    <span className="text-gray-600 dark:text-gray-400">Commission:</span>
-                                                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                                                      {commissionService.formatCFA(getCommissionAmount(product))}
-                                                    </span>
-                                                  </div>
-                                                  <div className="flex justify-between items-center text-xs">
-                                                    <span className="text-gray-600 dark:text-gray-400">Vos revenus:</span>
-                                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                                      {commissionLoading ? '...' : commissionService.formatCFA(getVendorRevenue(product))}
-                                                    </span>
                                                   </div>
                                                 </div>
                                               </div>
@@ -5291,9 +5177,9 @@ const SellDesignPage: React.FC = () => {
                     </p>
                   )}
                   {designPrice > 0 && (
-                    <div className="flex items-center text-sm text-blue-600 dark:text-blue-400 mt-1">
+                    <div className="flex items-center text-sm text-green-600 dark:text-green-400 mt-1">
                       <DollarSign className="w-4 h-4 mr-1" />
-                      <span>Commission: {designPrice} FCFA par vente</span>
+                      <span>Revenus: {designPrice} FCFA par vente</span>
                     </div>
                   )}
                 </div>
@@ -5540,6 +5426,26 @@ const SellDesignPage: React.FC = () => {
               )}
             </div>
 
+            {/* Sélecteur de catégorie */}
+            <div className="space-y-2">
+              <Label htmlFor="design-category" className="text-sm font-medium text-gray-900 dark:text-white">
+                Catégorie de design *
+              </Label>
+              <DesignCategorySelector
+                value={designCategoryId}
+                onChange={(categoryId) => {
+                  setDesignCategoryId(categoryId);
+                  setDesignCategoryError('');
+                }}
+                required
+                className={designCategoryError ? 'border-red-500' : ''}
+                placeholder="-- Choisir une catégorie --"
+              />
+              {designCategoryError && (
+                <p className="text-xs text-red-600">{designCategoryError}</p>
+              )}
+            </div>
+
             {/* Champ de description (optionnel) */}
             <div className="space-y-2">
               <Label htmlFor="design-description" className="text-sm font-medium text-gray-900 dark:text-white">
@@ -5581,7 +5487,7 @@ const SellDesignPage: React.FC = () => {
                 <p className="text-xs text-red-600">{designPriceError}</p>
               )}
               <p className="text-xs text-gray-500">
-                Minimum 100 FCFA. Commission par vente.
+                Minimum 100 FCFA. Revenus que vous recevrez par vente.
               </p>
             </div>
 
@@ -5865,7 +5771,7 @@ const SellDesignPage: React.FC = () => {
                     </p>
                     <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
                       <strong>Design :</strong> {designName || designFile?.name || 'Design personnalisé'} 
-                      {designPrice > 0 && ` • Commission: ${designPrice} FCFA par vente`}
+                      {designPrice > 0 && ` • Revenus: ${designPrice} FCFA par vente`}
                     </div>
                   </div>
                 </div>

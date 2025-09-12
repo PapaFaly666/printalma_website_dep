@@ -51,7 +51,7 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
   }, [value, initialValue]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = Number(e.target.value);
+    const newValue = Math.max(1, Math.round(Number(e.target.value)));
     setValue(newValue);
   };
 
@@ -106,7 +106,7 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
         <div className="flex items-center gap-1">
           <Percent className="h-3 w-3 text-gray-500" />
           <span className={`text-sm font-semibold ${getValueColor(value)}`}>
-            {value === 0 ? '0%' : `${Math.round(value * 10) / 10}%`}
+            {`${Math.max(1, Math.round(value))}%`}
           </span>
         </div>
         
@@ -142,9 +142,9 @@ export const MiniCommissionSlider: React.FC<MiniCommissionSliderProps> = ({
         
         <input
           type="range"
-          min="0"
+          min="1"
           max="100"
-          step="0.1"
+          step="1"
           value={value}
           onChange={handleSliderChange}
           className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer smooth-slider"

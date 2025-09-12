@@ -438,6 +438,15 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        <NavItem
+                            icon={<Palette size={18} />}
+                            label="Catégories Design"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'design-categories'}
+                            onClick={() => handleNavigation('design-categories')}
+                            badge=""
+                            textColor=""
+                        />
 
                         <NavItem
                             icon={<Users size={18} />}

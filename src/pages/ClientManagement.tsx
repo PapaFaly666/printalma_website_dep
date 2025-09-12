@@ -6,6 +6,7 @@ import CreateClientForm from '../components/auth/CreateClientForm';
 import { ClientsFilters } from '../components/ClientsFilters';
 import { ClientsTable } from '../components/ClientsTable';
 import { Pagination } from '../components/Pagination';
+import { ClientDetailsSheet } from '../components/admin/ClientDetailsSheet';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -16,6 +17,8 @@ import { RequireAuth } from '../components/auth/RequireAuth';
 
 const ClientManagement: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedClientForDetails, setSelectedClientForDetails] = useState(null);
+  const [showDetailsSheet, setShowDetailsSheet] = useState(false);
   const { isAdmin, isSuperAdmin } = useAuth();
   
   const {
@@ -106,6 +109,17 @@ const ClientManagement: React.FC = () => {
       console.error('❌ Erreur lors de la mise à jour de la commission:', error);
       throw new Error(`${error.message}`);
     }
+  };
+
+  // 🆕 Gestionnaire pour ouvrir les détails d'un client
+  const handleViewDetails = (client) => {
+    setSelectedClientForDetails(client);
+    setShowDetailsSheet(true);
+  };
+
+  const handleCloseDetails = () => {
+    setShowDetailsSheet(false);
+    setSelectedClientForDetails(null);
   };
 
   // 🆕 Calcul des statistiques de sécurité selon la documentation
@@ -367,6 +381,7 @@ const ClientManagement: React.FC = () => {
                 onResetPassword={handleResetPassword}
                 onUnlockClient={handleUnlockClient}
                 onUpdateCommission={handleUpdateCommission}
+                onViewDetails={handleViewDetails}
               />
               
               {/* Pagination */}
@@ -381,6 +396,14 @@ const ClientManagement: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Sheet de détails du client */}
+      <ClientDetailsSheet
+        client={selectedClientForDetails}
+        isOpen={showDetailsSheet}
+        onClose={handleCloseDetails}
+        onUpdateCommission={handleUpdateCommission}
+      />
     </div>
   );
 };

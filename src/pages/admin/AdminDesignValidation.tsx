@@ -94,6 +94,10 @@ export const AdminDesignValidation: React.FC = () => {
   
   // 🆕 NOUVEAU: Filtre par statut
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'VALIDATED' | 'REJECTED'>('PENDING');
+
+  // 🆕 Filtres supplémentaires: par vendeur et par nombre de designs
+  const [vendorFilter, setVendorFilter] = useState<string>('ALL');
+  const [minDesignsFilter, setMinDesignsFilter] = useState<number>(0);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -326,6 +330,30 @@ export const AdminDesignValidation: React.FC = () => {
   );
   }
 
+  // 🧮 Construire la liste des vendeurs et le nombre de designs (basé sur les données chargées)
+  const vendorCounts = designs.reduce<Record<string, number>>((acc, d) => {
+    const key = d.vendor ? String(d.vendor.id) : 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  const vendorOptions = Array.from(
+    new Map(
+      designs.map(d => [String(d.vendor ? d.vendor.id : 'unknown'), d.vendor])
+    ).entries()
+  ).map(([id, v]) => ({
+    id,
+    label: v ? `${v.firstName || ''} ${v.lastName || ''}`.trim() || v.email || `Vendeur ${id}` : `Vendeur ${id}`
+  }));
+
+  // 🧹 Appliquer les filtres locaux (vendeur et nombre de designs)
+  const filteredDesigns = designs.filter(d => {
+    const vendorId = String(d.vendor ? d.vendor.id : 'unknown');
+    const vendorMatch = vendorFilter === 'ALL' || vendorId === vendorFilter;
+    const countMatch = (vendorCounts[vendorId] || 0) >= (minDesignsFilter || 0);
+    return vendorMatch && countMatch;
+  });
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-8">
@@ -438,6 +466,38 @@ export const AdminDesignValidation: React.FC = () => {
               </select>
             </div>
           </div>
+
+          {/* Ligne de filtres avancés */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filtrer par vendeur</label>
+              <select
+                value={vendorFilter}
+                onChange={(e) => setVendorFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="ALL">Tous les vendeurs</option>
+                {vendorOptions.map(opt => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                    {vendorCounts[opt.id] !== undefined ? ` (${vendorCounts[opt.id]})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre minimum de designs (par vendeur)</label>
+              <input
+                type="number"
+                min={0}
+                value={minDesignsFilter}
+                onChange={(e) => setMinDesignsFilter(Number(e.target.value) || 0)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="0"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Contrôles d'auto-validation */}
@@ -459,7 +519,7 @@ export const AdminDesignValidation: React.FC = () => {
 
         {/* Liste des designs */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          {designs && designs.length > 0 ? (
+          {filteredDesigns && filteredDesigns.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -488,7 +548,7 @@ export const AdminDesignValidation: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {designs.map((design) => {
+                  {filteredDesigns.map((design) => {
                     const getDesignStatus = () => {
                       if ((design as any).validationStatus) {
                         return (design as any).validationStatus;

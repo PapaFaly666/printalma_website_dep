@@ -69,7 +69,7 @@ export const useProductForm = () => {
     const newColor: ColorVariation = {
       id: Date.now().toString(),
       name: '',
-      colorCode: '#000000',
+      colorCode: '#ffffff',
       images: []
     };
     updateFormData('colorVariations', [...formData.colorVariations, newColor]);

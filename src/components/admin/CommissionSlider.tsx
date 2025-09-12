@@ -77,7 +77,7 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
   }, [value]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = Number(e.target.value);
+    const newValue = Math.max(1, Math.round(Number(e.target.value)));
     setLocalValue(newValue);
     onChange(newValue);
   };
@@ -174,11 +174,11 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${getSliderColor(localValue)} flex items-center justify-center transition-all duration-300`}>
-                  <span className="text-white text-sm font-bold">{localValue}</span>
+                  <span className="text-white text-sm font-bold">{Math.max(1, Math.round(localValue))}</span>
                 </div>
                 <div>
                   <div className={`text-2xl font-bold ${getTextColor(localValue)} transition-colors duration-300`}>
-                    {localValue}%
+                    {Math.max(1, Math.round(localValue))}%
                   </div>
                   <div className="text-xs text-gray-500">Commission actuelle</div>
                 </div>
@@ -200,9 +200,9 @@ export const CommissionSlider: React.FC<CommissionSliderProps> = ({
               
               <input
                 type="range"
-                min="0"
+                min="1"
                 max="100"
-                step="0.1"
+                step="1"
                 value={localValue}
                 onChange={handleSliderChange}
                 onMouseDown={() => setIsDragging(true)}

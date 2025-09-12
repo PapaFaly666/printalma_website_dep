@@ -508,6 +508,30 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     { id: 4, title: 'Images et délimitations', icon: Layers },
     { id: 5, title: 'Validation', icon: CheckCircle }
   ];
+
+  // Ordre des couleurs: toujours commencer par le blanc
+  const isWhiteColor = (color: any) => {
+    const name = (color?.name || '').toString().trim().toLowerCase();
+    const code = (color?.colorCode || '').toString().trim().toLowerCase();
+    return (
+      name === 'blanc' ||
+      name === 'white' ||
+      code === '#ffffff' ||
+      code === '#fff' ||
+      code === 'rgb(255,255,255)'
+    );
+  };
+
+  const colorVariationsWhiteFirst = useMemo(() => {
+    const colors = Array.isArray(formData?.colorVariations) ? [...formData.colorVariations] : [];
+    return colors.sort((a, b) => {
+      const aWhite = isWhiteColor(a);
+      const bWhite = isWhiteColor(b);
+      if (aWhite && !bWhite) return -1;
+      if (!aWhite && bWhite) return 1;
+      return 0;
+    });
+  }, [formData?.colorVariations]);
   
   // Helper functions pour les designs
   const getDesignForImage = (imageId: string) => designsByImageId[imageId] || null;
@@ -1589,7 +1613,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       case 2:
         return (
           <ColorVariationsStep 
-            colorVariations={formData.colorVariations}
+            colorVariations={colorVariationsWhiteFirst}
             onAddColorVariation={addColorVariation}
             onUpdateColorVariation={updateColorVariation}
             onRemoveColorVariation={removeColorVariation}
@@ -1613,7 +1637,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       case 4:
         return (
           <DelimitationsStep
-            colorVariations={formData.colorVariations}
+            colorVariations={colorVariationsWhiteFirst}
             designsByImageId={designsByImageId}
             canvasRefs={canvasRefs}
             onDelimitationUpdate={(colorVariations) => updateFormData('colorVariations', colorVariations)}
@@ -1826,7 +1850,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
                   Variations avec zones de personnalisation
                 </h3>
                 
-                {formData.colorVariations.map((color) => (
+                {colorVariationsWhiteFirst.map((color) => (
                   <div key={color.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-gray-800">
                     <div className="flex items-center gap-3 mb-6">
                       <div 

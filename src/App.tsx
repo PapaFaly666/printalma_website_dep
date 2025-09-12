@@ -140,6 +140,7 @@ import CreateReadyProductPage from './pages/admin/CreateReadyProductPage';
 import ReadyProductDetailPage from './pages/admin/ReadyProductDetailPage';
 import EditReadyProductPage from './pages/admin/EditReadyProductPage';
 import DesignPositioningPage from './pages/admin/DesignPositioningPage';
+import AdminDesignCategories from './pages/admin/AdminDesignCategories';
 
 // 🎨 Gestion des thèmes - Admin
 import ThemesPage from './pages/admin/ThemesPage';
@@ -236,6 +237,7 @@ function App() {
                   <Route path="design-validation" element={<AdminDesignValidation />} />
                   <Route path="product-validation" element={<AdminProductValidation />} />
                   <Route path="auto-validation" element={<AutoValidationDashboard />} />
+                  <Route path="design-categories" element={<AdminDesignCategories />} />
                   <Route path="vendor-products-admin" element={<AdminVendorProductsPage />} />
                   <Route path="vendor-products" element={<AdminVendorProductsPage />} />
                   <Route path="vendor-products/create" element={<AdminCreateVendorProductPage />} />

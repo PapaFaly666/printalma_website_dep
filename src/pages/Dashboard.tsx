@@ -36,42 +36,37 @@ const Dashboard = () => {
     { name: 'Déc', value: 2000000 },
   ];
 
-  // Recent sales data
-  const recentSales = [
+  // Top vendors data (Meilleurs vendeurs)
+  const topVendors = [
     {
       id: 'KD',
       name: 'Konan Diomandé',
-      email: 'konan.d@email.com',
-      amount: '+35 000 FCFA',
-      product: 'T-shirt Original'
+      totalSales: 35000,
+      productCount: 42
     },
     {
       id: 'AT',
       name: 'Aminata Touré',
-      email: 'aminata.t@email.com',
-      amount: '+15 000 FCFA',
-      product: 'Mug Personnalisé'
+      totalSales: 15000,
+      productCount: 27
     },
     {
       id: 'MK',
       name: 'Mohamed Konaté',
-      email: 'mohamed.k@email.com',
-      amount: '+25 000 FCFA',
-      product: 'Pull Premium'
+      totalSales: 25000,
+      productCount: 31
     },
     {
       id: 'FL',
       name: 'Fatoumata Lô',
-      email: 'fatoumata.l@email.com',
-      amount: '+45 000 FCFA',
-      product: 'Pantalon Cargo'
+      totalSales: 45000,
+      productCount: 53
     },
     {
       id: 'OT',
       name: 'Ousmane Traoré',
-      email: 'ousmane.t@email.com',
-      amount: '+12 000 FCFA',
-      product: 'Casquette Urban'
+      totalSales: 12000,
+      productCount: 18
     }
   ];
 
@@ -197,25 +192,25 @@ const Dashboard = () => {
 
           <Card className="col-span-3">
             <CardHeader>
-              <CardTitle>Ventes Récentes</CardTitle>
+              <CardTitle>Meilleur Vendeur</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Vous avez réalisé 265 ventes ce mois-ci.
+                Classement des meilleurs vendeurs du mois.
               </p>
             </CardHeader>
             <CardContent>
               <div className="space-y-8">
-                {recentSales.map((sale) => (
-                  <div className="flex items-center" key={sale.id}>
+                {topVendors.map((vendor) => (
+                  <div className="flex items-center" key={vendor.id}>
                     <Avatar className="h-9 w-9 mr-3">
                       <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                        {sale.id}
+                        {vendor.id}
                       </div>
                     </Avatar>
                     <div className="space-y-1 flex-1">
-                      <p className="text-sm font-medium leading-none">{sale.name}</p>
-                      <p className="text-xs text-muted-foreground">{sale.product}</p>
+                      <p className="text-sm font-medium leading-none">{vendor.name}</p>
+                      <p className="text-xs text-muted-foreground">Produits vendus: {vendor.productCount}</p>
                     </div>
-                    <div className="font-medium">{sale.amount}</div>
+                    <div className="font-medium">{formatCurrency(vendor.totalSales)}</div>
                   </div>
                 ))}
               </div>

@@ -1,1315 +1,152 @@
-https://printalma-back-dep.onrender.com/products
+POST http://localhost:3004/vendor/designs 400 (Bad Request)
+createDesignViaVendorDesigns @ designService.ts:1067
+await in createDesignViaVendorDesigns
+createDesign @ designService.ts:959
+await in createDesign
+handleConfirmDesignPrice @ SellDesignPage.tsx:3128
+executeDispatch @ react-dom-client.development.js:16368
+runWithFiberInDEV @ react-dom-client.development.js:1519
+processDispatchQueue @ react-dom-client.development.js:16418
+(anonymous) @ react-dom-client.development.js:17016
+batchedUpdates$1 @ react-dom-client.development.js:3262
+dispatchEventForPluginEventSystem @ react-dom-client.development.js:16572
+dispatchEvent @ react-dom-client.development.js:20658
+dispatchDiscreteEvent @ react-dom-client.development.js:20626
+designService.ts:1076 📡 Réponse /vendor/designs: 400 Bad Request
+designService.ts:1080  ❌ Erreur /vendor/designs: {message: 'Erreur création design: \n\x1B[31mInvalid \x1B[1m`this.pr… Available options are listed in \x1B[32mgreen\x1B[39m.', error: 'Bad Request', statusCode: 400}error: "Bad Request"message: "Erreur création design: \n\u001b[31mInvalid \u001b[1m`this.prisma.design.create()`\u001b[22m invocation in\u001b[39m\n\u001b[4m/mnt/c/Users/HP/Desktop/printalma-perso/printalma-back-dep/src/vendor-product/vendor-publish.service.ts:1301:47\u001b[24m\n\n  \u001b[2m\u001b[90m1298\u001b[39m \u001b[36mthis\u001b[39m\u001b[34m.\u001b[39mlogger\u001b[34m.\u001b[39m\u001b[36mlog\u001b[39m\u001b[34m(\u001b[39m`✅ Design uploadé\u001b[34m:\u001b[39m $\u001b[34m{\u001b[39muploadResult\u001b[34m.\u001b[39msecure_url\u001b[34m}\u001b[39m`\u001b[34m)\u001b[39m\u001b[34m;\u001b[39m\u001b[22m\n  \u001b[2m\u001b[90m1299\u001b[39m \u001b[22m\n  \u001b[2m\u001b[90m1300\u001b[39m \u001b[90m// ✅ CRÉATION DU DESIGN EN BASE\u001b[39m\u001b[22m\n\u001b[1m\u001b[31m→\u001b[39m\u001b[22m \u001b[2m\u001b[90m1301\u001b[39m \u001b[36mconst\u001b[39m design = \u001b[36mawait\u001b[39m \u001b[36mthis\u001b[39m\u001b[34m.\u001b[39mprisma\u001b[34m.\u001b[39mdesign\u001b[34m.\u001b[39m\u001b[36mcreate\u001b[39m\u001b[34m(\u001b[39m\u001b[22m{\n         data: {\n           vendorId: 7,\n           name: \"test\",\n           description: \"ffffffffffff\",\n           price: 0,\n           \u001b[31mcategory\u001b[39m: \"Manga\",\n           \u001b[31m~~~~~~~~\u001b[39m\n           imageUrl: \"https://res.cloudinary.com/dsxab4qnu/image/upload/v1757692745/vendor-designs/vendor_7_design_1757692744243.jpg\",\n           thumbnailUrl: \"https://res.cloudinary.com/dsxab4qnu/image/upload/v1757692745/vendor-designs/vendor_7_design_1757692744243.jpg\",\n           cloudinaryPublicId: \"vendor-designs/vendor_7_design_1757692744243\",\n           fileSize: 38061,\n           originalFileName: \"design_1757692747554\",\n           dimensions: {\n             width: 1200,\n             height: 1200\n           },\n           format: \"jpg\",\n           tags: [],\n           isDraft: false,\n           isPublished: false,\n           isPending: true,\n           isValidated: false,\n       \u001b[32m?\u001b[39m   \u001b[32mid\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mInt\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mcategoryId\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mInt | Null\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mthumbnailPublicId\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mString | Null\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mcontentHash\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mString | Null\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32misDelete\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mBoolean\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mvalidatedAt\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mDateTime | Null\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mvalidatedBy\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mInt | Null\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mrejectionReason\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mString | Null\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32msubmittedForValidationAt\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mDateTime | Null\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mviews\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mInt\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mlikes\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mInt\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mearnings\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mFloat\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32musageCount\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mInt\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mcreatedAt\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mDateTime\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mupdatedAt\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mDateTime\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mpublishedAt\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mDateTime | Null\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mvendorProducts\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mVendorProductUncheckedCreateNestedManyWithoutDesignInput\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mdesignProductLinks\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mDesignProductLinkUncheckedCreateNestedManyWithoutDesignInput\u001b[39m,\n       \u001b[32m?\u001b[39m   \u001b[32mproductPositions\u001b[39m\u001b[32m?\u001b[39m\u001b[32m: \u001b[39m\u001b[32mProductDesignPositionUncheckedCreateNestedManyWithoutDesignInput\u001b[39m\n         }\n       }\u001b[2m)\u001b[22m\n\nUnknown argument `\u001b[31mcategory\u001b[39m`. Did you mean `\u001b[32mcategoryId\u001b[39m`? Available options are listed in \u001b[32mgreen\u001b[39m."statusCode: 400[[Prototype]]: Object
+createDesignViaVendorDesigns @ designService.ts:1080
+await in createDesignViaVendorDesigns
+createDesign @ designService.ts:959
+await in createDesign
+handleConfirmDesignPrice @ SellDesignPage.tsx:3128
+executeDispatch @ react-dom-client.development.js:16368
+runWithFiberInDEV @ react-dom-client.development.js:1519
+processDispatchQueue @ react-dom-client.development.js:16418
+(anonymous) @ react-dom-client.development.js:17016
+batchedUpdates$1 @ react-dom-client.development.js:3262
+dispatchEventForPluginEventSystem @ react-dom-client.development.js:16572
+dispatchEvent @ react-dom-client.development.js:20658
+dispatchDiscreteEvent @ react-dom-client.development.js:20626
+designService.ts:962  ❌ Erreur création design (toutes méthodes échouées): Error: Erreur création design: 
+[31mInvalid [1m`this.prisma.design.create()`[22m invocation in[39m
+[4m/mnt/c/Users/HP/Desktop/printalma-perso/printalma-back-dep/src/vendor-product/vendor-publish.service.ts:1301:47[24m
 
+  [2m[90m1298[39m [36mthis[39m[34m.[39mlogger[34m.[39m[36mlog[39m[34m([39m`✅ Design uploadé[34m:[39m $[34m{[39muploadResult[34m.[39msecure_url[34m}[39m`[34m)[39m[34m;[39m[22m
+  [2m[90m1299[39m [22m
+  [2m[90m1300[39m [90m// ✅ CRÉATION DU DESIGN EN BASE[39m[22m
+[1m[31m→[39m[22m [2m[90m1301[39m [36mconst[39m design = [36mawait[39m [36mthis[39m[34m.[39mprisma[34m.[39mdesign[34m.[39m[36mcreate[39m[34m([39m[22m{
+         data: {
+           vendorId: 7,
+           name: "test",
+           description: "ffffffffffff",
+           price: 0,
+           [31mcategory[39m: "Manga",
+           [31m~~~~~~~~[39m
+           imageUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757692745/vendor-designs/vendor_7_design_1757692744243.jpg",
+           thumbnailUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757692745/vendor-designs/vendor_7_design_1757692744243.jpg",
+           cloudinaryPublicId: "vendor-designs/vendor_7_design_1757692744243",
+           fileSize: 38061,
+           originalFileName: "design_1757692747554",
+           dimensions: {
+             width: 1200,
+             height: 1200
+           },
+           format: "jpg",
+           tags: [],
+           isDraft: false,
+           isPublished: false,
+           isPending: true,
+           isValidated: false,
+       [32m?[39m   [32mid[39m[32m?[39m[32m: [39m[32mInt[39m,
+       [32m?[39m   [32mcategoryId[39m[32m?[39m[32m: [39m[32mInt | Null[39m,
+       [32m?[39m   [32mthumbnailPublicId[39m[32m?[39m[32m: [39m[32mString | Null[39m,
+       [32m?[39m   [32mcontentHash[39m[32m?[39m[32m: [39m[32mString | Null[39m,
+       [32m?[39m   [32misDelete[39m[32m?[39m[32m: [39m[32mBoolean[39m,
+       [32m?[39m   [32mvalidatedAt[39m[32m?[39m[32m: [39m[32mDateTime | Null[39m,
+       [32m?[39m   [32mvalidatedBy[39m[32m?[39m[32m: [39m[32mInt | Null[39m,
+       [32m?[39m   [32mrejectionReason[39m[32m?[39m[32m: [39m[32mString | Null[39m,
+       [32m?[39m   [32msubmittedForValidationAt[39m[32m?[39m[32m: [39m[32mDateTime | Null[39m,
+       [32m?[39m   [32mviews[39m[32m?[39m[32m: [39m[32mInt[39m,
+       [32m?[39m   [32mlikes[39m[32m?[39m[32m: [39m[32mInt[39m,
+       [32m?[39m   [32mearnings[39m[32m?[39m[32m: [39m[32mFloat[39m,
+       [32m?[39m   [32musageCount[39m[32m?[39m[32m: [39m[32mInt[39m,
+       [32m?[39m   [32mcreatedAt[39m[32m?[39m[32m: [39m[32mDateTime[39m,
+       [32m?[39m   [32mupdatedAt[39m[32m?[39m[32m: [39m[32mDateTime[39m,
+       [32m?[39m   [32mpublishedAt[39m[32m?[39m[32m: [39m[32mDateTime | Null[39m,
+       [32m?[39m   [32mvendorProducts[39m[32m?[39m[32m: [39m[32mVendorProductUncheckedCreateNestedManyWithoutDesignInput[39m,
+       [32m?[39m   [32mdesignProductLinks[39m[32m?[39m[32m: [39m[32mDesignProductLinkUncheckedCreateNestedManyWithoutDesignInput[39m,
+       [32m?[39m   [32mproductPositions[39m[32m?[39m[32m: [39m[32mProductDesignPositionUncheckedCreateNestedManyWithoutDesignInput[39m
+         }
+       }[2m)[22m
 
-	
-Response body
-Download
-{
-  "success": true,
-  "data": [
-    {
-      "id": 30,
-      "name": "test modif fin",
-      "price": 1200888,
-      "suggestedPrice": 12345659,
-      "stock": 0,
-      "status": "PUBLISHED",
-      "description": "ddddddddddddddd",
-      "createdAt": "2025-09-10T14:43:49.760Z",
-      "updatedAt": "2025-09-10T15:17:18.082Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "FEMME",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 6,
-          "name": "Objets > Mugs",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 138,
-          "productId": 30,
-          "sizeName": "250ml"
-        },
-        {
-          "id": 139,
-          "productId": 30,
-          "sizeName": "300ml"
-        },
-        {
-          "id": 140,
-          "productId": 30,
-          "sizeName": "350ml"
-        },
-        {
-          "id": 141,
-          "productId": 30,
-          "sizeName": "400ml"
-        },
-        {
-          "id": 142,
-          "productId": 30,
-          "sizeName": "500ml"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 28,
-          "name": "dzdz",
-          "colorCode": "#000000",
-          "productId": 30,
-          "images": [
-            {
-              "id": 29,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757515427/printalma/1757515427201-Mockup_gourde_rouge.jpg",
-              "publicId": "printalma/1757515427201-Mockup_gourde_rouge",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 28,
-              "delimitations": [
-                {
-                  "id": 28,
-                  "x": 471.180419921875,
-                  "y": 413.0670817260426,
-                  "width": 226.6666666666667,
-                  "height": 333.3333079020201,
-                  "rotation": 0,
-                  "name": null,
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 29,
-                  "createdAt": "2025-09-10T14:43:50.802Z",
-                  "updatedAt": "2025-09-10T14:43:50.802Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    },
-    {
-      "id": 29,
-      "name": "fezfz",
-      "price": 12000,
-      "suggestedPrice": 666777888,
-      "stock": 0,
-      "status": "PUBLISHED",
-      "description": "eeeeeeeeeeeeeeeeeeee",
-      "createdAt": "2025-09-10T14:27:54.731Z",
-      "updatedAt": "2025-09-10T14:52:02.483Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "UNISEXE",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 2,
-          "name": "Vêtements > Polos",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 131,
-          "productId": 29,
-          "sizeName": "XS"
-        },
-        {
-          "id": 132,
-          "productId": 29,
-          "sizeName": "S"
-        },
-        {
-          "id": 133,
-          "productId": 29,
-          "sizeName": "M"
-        },
-        {
-          "id": 134,
-          "productId": 29,
-          "sizeName": "L"
-        },
-        {
-          "id": 135,
-          "productId": 29,
-          "sizeName": "XL"
-        },
-        {
-          "id": 136,
-          "productId": 29,
-          "sizeName": "XXL"
-        },
-        {
-          "id": 137,
-          "productId": 29,
-          "sizeName": "3XL"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 27,
-          "name": "xsx",
-          "colorCode": "#000000",
-          "productId": 29,
-          "images": [
-            {
-              "id": 28,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757514473/printalma/1757514472702-Mockup_gourde_bleu.jpg",
-              "publicId": "printalma/1757514472702-Mockup_gourde_bleu",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 27,
-              "delimitations": [
-                {
-                  "id": 27,
-                  "x": 480.9244791666667,
-                  "y": 457.1223958333334,
-                  "width": 226.6666666666667,
-                  "height": 406.6666666666667,
-                  "rotation": 0,
-                  "name": null,
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 28,
-                  "createdAt": "2025-09-10T14:27:55.771Z",
-                  "updatedAt": "2025-09-10T14:27:55.771Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    },
-    {
-      "id": 28,
-      "name": "TEST SUGGESTEDPRICE 1757513756090",
-      "price": 10000,
-      "suggestedPrice": 12000,
-      "stock": 5,
-      "status": "DRAFT",
-      "description": "Test pour vérifier suggestedPrice",
-      "createdAt": "2025-09-10T14:15:57.939Z",
-      "updatedAt": "2025-09-10T14:15:57.939Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "UNISEXE",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 5,
-          "name": "Test",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 129,
-          "productId": 28,
-          "sizeName": "M"
-        },
-        {
-          "id": 130,
-          "productId": 28,
-          "sizeName": "L"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 26,
-          "name": "Test Color",
-          "colorCode": "#FF0000",
-          "productId": 28,
-          "images": [
-            {
-              "id": 27,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/raw/upload/v1757513757/printalma/1757513756264-test",
-              "publicId": "printalma/1757513756264-test",
-              "naturalWidth": null,
-              "naturalHeight": null,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 26,
-              "delimitations": [],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": false
-    },
-    {
-      "id": 27,
-      "name": "vds test",
-      "price": 120000,
-      "suggestedPrice": null,
-      "stock": 0,
-      "status": "PUBLISHED",
-      "description": "ssssssssssssss",
-      "createdAt": "2025-09-10T12:14:04.514Z",
-      "updatedAt": "2025-09-10T12:14:04.514Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "HOMME",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 1,
-          "name": "Vêtements > T-shirts",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 116,
-          "productId": 27,
-          "sizeName": "XS"
-        },
-        {
-          "id": 117,
-          "productId": 27,
-          "sizeName": "S"
-        },
-        {
-          "id": 118,
-          "productId": 27,
-          "sizeName": "M"
-        },
-        {
-          "id": 119,
-          "productId": 27,
-          "sizeName": "L"
-        },
-        {
-          "id": 120,
-          "productId": 27,
-          "sizeName": "XL"
-        },
-        {
-          "id": 121,
-          "productId": 27,
-          "sizeName": "XXL"
-        },
-        {
-          "id": 122,
-          "productId": 27,
-          "sizeName": "3XL"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 25,
-          "name": "dds",
-          "colorCode": "#000000",
-          "productId": 27,
-          "images": [
-            {
-              "id": 26,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757506442/printalma/1757506440548-Mockup_gourde_rouge.jpg",
-              "publicId": "printalma/1757506440548-Mockup_gourde_rouge",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 25,
-              "delimitations": [
-                {
-                  "id": 26,
-                  "x": 435.0911458333334,
-                  "y": 437.1223958333334,
-                  "width": 300,
-                  "height": 466.6666666666667,
-                  "rotation": 0,
-                  "name": null,
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 26,
-                  "createdAt": "2025-09-10T12:14:05.520Z",
-                  "updatedAt": "2025-09-10T12:14:05.520Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    },
-    {
-      "id": 25,
-      "name": "ddzd",
-      "price": 12222,
-      "suggestedPrice": null,
-      "stock": 12,
-      "status": "PUBLISHED",
-      "description": "ddddddddddddddd",
-      "createdAt": "2025-09-10T11:50:38.243Z",
-      "updatedAt": "2025-09-10T11:50:38.243Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "BEBE",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 1,
-          "name": "Vêtements > T-shirts",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 108,
-          "productId": 25,
-          "sizeName": "XS"
-        },
-        {
-          "id": 109,
-          "productId": 25,
-          "sizeName": "S"
-        },
-        {
-          "id": 110,
-          "productId": 25,
-          "sizeName": "M"
-        },
-        {
-          "id": 111,
-          "productId": 25,
-          "sizeName": "L"
-        },
-        {
-          "id": 112,
-          "productId": 25,
-          "sizeName": "XL"
-        },
-        {
-          "id": 113,
-          "productId": 25,
-          "sizeName": "XXL"
-        },
-        {
-          "id": 114,
-          "productId": 25,
-          "sizeName": "3XL"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 23,
-          "name": "ddz",
-          "colorCode": "#000000",
-          "productId": 25,
-          "images": [
-            {
-              "id": 24,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757505036/printalma/1757505036148-Mockup_gourde_bleu.jpg",
-              "publicId": "printalma/1757505036148-Mockup_gourde_bleu",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 23,
-              "delimitations": [
-                {
-                  "id": 25,
-                  "x": 435.0911458333334,
-                  "y": 430.4557291666667,
-                  "width": 320,
-                  "height": 510,
-                  "rotation": 0,
-                  "name": null,
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 24,
-                  "createdAt": "2025-09-10T11:50:39.307Z",
-                  "updatedAt": "2025-09-10T11:50:39.307Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    },
-    {
-      "id": 24,
-      "name": "TESR",
-      "price": 20000,
-      "suggestedPrice": null,
-      "stock": 0,
-      "status": "PUBLISHED",
-      "description": "dddddddddddddddd",
-      "createdAt": "2025-09-10T11:47:20.402Z",
-      "updatedAt": "2025-09-10T12:16:42.529Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "HOMME",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 1,
-          "name": "Vêtements > T-shirts",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 101,
-          "productId": 24,
-          "sizeName": "XS"
-        },
-        {
-          "id": 102,
-          "productId": 24,
-          "sizeName": "S"
-        },
-        {
-          "id": 106,
-          "productId": 24,
-          "sizeName": "XXL"
-        },
-        {
-          "id": 126,
-          "productId": 24,
-          "sizeName": "3"
-        },
-        {
-          "id": 127,
-          "productId": 24,
-          "sizeName": "4"
-        },
-        {
-          "id": 128,
-          "productId": 24,
-          "sizeName": "5"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 22,
-          "name": "dde",
-          "colorCode": "#000000",
-          "productId": 24,
-          "images": [
-            {
-              "id": 23,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757504839/printalma/1757504838692-Mockup_gourde_bleu.jpg",
-              "publicId": "printalma/1757504838692-Mockup_gourde_bleu",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 22,
-              "delimitations": [
-                {
-                  "id": 24,
-                  "x": 439.6744791666667,
-                  "y": 437.1223958333334,
-                  "width": 300,
-                  "height": 483.3333333333334,
-                  "rotation": 0,
-                  "name": null,
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 23,
-                  "createdAt": "2025-09-10T11:47:20.927Z",
-                  "updatedAt": "2025-09-10T12:16:45.734Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    },
-    {
-      "id": 23,
-      "name": "Test0009",
-      "price": 120000,
-      "suggestedPrice": null,
-      "stock": 0,
-      "status": "PUBLISHED",
-      "description": "ddddddddddddd",
-      "createdAt": "2025-09-10T11:45:32.454Z",
-      "updatedAt": "2025-09-10T11:45:32.454Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "FEMME",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 4,
-          "name": "Vêtements > Hoodies",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 94,
-          "productId": 23,
-          "sizeName": "XS"
-        },
-        {
-          "id": 95,
-          "productId": 23,
-          "sizeName": "S"
-        },
-        {
-          "id": 96,
-          "productId": 23,
-          "sizeName": "M"
-        },
-        {
-          "id": 97,
-          "productId": 23,
-          "sizeName": "L"
-        },
-        {
-          "id": 98,
-          "productId": 23,
-          "sizeName": "XL"
-        },
-        {
-          "id": 99,
-          "productId": 23,
-          "sizeName": "XXL"
-        },
-        {
-          "id": 100,
-          "productId": 23,
-          "sizeName": "3XL"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 21,
-          "name": "dzd",
-          "colorCode": "#000000",
-          "productId": 23,
-          "images": [
-            {
-              "id": 22,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757504730/printalma/1757504730362-Mockup_gourde_rouge.jpg",
-              "publicId": "printalma/1757504730362-Mockup_gourde_rouge",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 21,
-              "delimitations": [
-                {
-                  "id": 23,
-                  "x": 466.3411458333334,
-                  "y": 463.7890625,
-                  "width": 233.3333333333333,
-                  "height": 383.3333333333334,
-                  "rotation": 0,
-                  "name": null,
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 22,
-                  "createdAt": "2025-09-10T11:45:33.542Z",
-                  "updatedAt": "2025-09-10T11:45:33.542Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    },
-    {
-      "id": 20,
-      "name": "Test001",
-      "price": 300000,
-      "suggestedPrice": 122,
-      "stock": 10,
-      "status": "PUBLISHED",
-      "description": "ddddddddddddddddddd",
-      "createdAt": "2025-09-10T11:28:14.641Z",
-      "updatedAt": "2025-09-10T14:38:24.418Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "FEMME",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 1,
-          "name": "Vêtements > T-shirts",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 87,
-          "productId": 20,
-          "sizeName": "XS"
-        },
-        {
-          "id": 88,
-          "productId": 20,
-          "sizeName": "S"
-        },
-        {
-          "id": 92,
-          "productId": 20,
-          "sizeName": "XXL"
-        },
-        {
-          "id": 93,
-          "productId": 20,
-          "sizeName": "3XL"
-        },
-        {
-          "id": 123,
-          "productId": 20,
-          "sizeName": "3"
-        },
-        {
-          "id": 124,
-          "productId": 20,
-          "sizeName": "4"
-        },
-        {
-          "id": 125,
-          "productId": 20,
-          "sizeName": "5"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 20,
-          "name": "dzd",
-          "colorCode": "#000000",
-          "productId": 20,
-          "images": [
-            {
-              "id": 21,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757503692/printalma/1757503692495-Mockup_gourde_bleu.jpg",
-              "publicId": "printalma/1757503692495-Mockup_gourde_bleu",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 20,
-              "delimitations": [
-                {
-                  "id": 22,
-                  "x": 439.6744791666667,
-                  "y": 417.1223958333334,
-                  "width": 290,
-                  "height": 413.3333333333334,
-                  "rotation": 0,
-                  "name": null,
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 21,
-                  "createdAt": "2025-09-10T11:28:15.680Z",
-                  "updatedAt": "2025-09-10T12:15:52.928Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    },
-    {
-      "id": 2,
-      "name": "T-shirt Premium modif",
-      "price": 5000,
-      "suggestedPrice": null,
-      "stock": 5002,
-      "status": "PUBLISHED",
-      "description": "C'est un t-shirt de qualité supérieure conçu pour sa fiabilité, son confort et sa durabilité.",
-      "createdAt": "2025-09-01T15:26:59.915Z",
-      "updatedAt": "2025-09-10T09:55:56.311Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "UNISEXE",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 1,
-          "name": "Vêtements > T-shirts",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 7,
-          "productId": 2,
-          "sizeName": "XS"
-        },
-        {
-          "id": 8,
-          "productId": 2,
-          "sizeName": "S"
-        },
-        {
-          "id": 62,
-          "productId": 2,
-          "sizeName": "M"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 3,
-          "name": "Blanc",
-          "colorCode": "#ffffff",
-          "productId": 2,
-          "images": [
-            {
-              "id": 3,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1756740411/printalma/1756740410557-Flux_Dev_Realistic_images_for_a_blank_mockup_for_an_ecommerce__1.jpg",
-              "publicId": "printalma/1756740410557-Flux_Dev_Realistic_images_for_a_blank_mockup_for_an_ecommerce__1",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 3,
-              "delimitations": [
-                {
-                  "id": 3,
-                  "x": 436.6666666666667,
-                  "y": 305,
-                  "width": 340,
-                  "height": 480,
-                  "rotation": 0,
-                  "name": "Zone 2",
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 3,
-                  "createdAt": "2025-09-01T15:27:01.039Z",
-                  "updatedAt": "2025-09-10T09:55:58.343Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        },
-        {
-          "id": 4,
-          "name": "Noir",
-          "colorCode": "#000000",
-          "productId": 2,
-          "images": [
-            {
-              "id": 4,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1756740412/printalma/1756740412160-GPT_Image_1_change_the_color_of_the_polo_to_black_dont_change_0%20%281%29.png",
-              "publicId": "printalma/1756740412160-GPT_Image_1_change_the_color_of_the_polo_to_black_dont_change_0 (1)",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 4,
-              "delimitations": [
-                {
-                  "id": 4,
-                  "x": 436.6666666666667,
-                  "y": 305,
-                  "width": 340,
-                  "height": 480,
-                  "rotation": 0,
-                  "name": "Zone 2",
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 4,
-                  "createdAt": "2025-09-01T15:27:01.316Z",
-                  "updatedAt": "2025-09-10T09:55:58.800Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        },
-        {
-          "id": 5,
-          "name": "Rouge",
-          "colorCode": "#d40202",
-          "productId": 2,
-          "images": [
-            {
-              "id": 5,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1756740414/printalma/1756740414200-GPT_Image_1_change_the_color_of_the_polo_to_red_dont_change_th_0%20%281%29.png",
-              "publicId": "printalma/1756740414200-GPT_Image_1_change_the_color_of_the_polo_to_red_dont_change_th_0 (1)",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 5,
-              "delimitations": [
-                {
-                  "id": 5,
-                  "x": 436.6666666666667,
-                  "y": 305,
-                  "width": 340,
-                  "height": 480,
-                  "rotation": 0,
-                  "name": "Zone 2",
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 5,
-                  "createdAt": "2025-09-01T15:27:01.512Z",
-                  "updatedAt": "2025-09-10T09:55:59.258Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        },
-        {
-          "id": 6,
-          "name": "Bleu",
-          "colorCode": "#1b57d0",
-          "productId": 2,
-          "images": [
-            {
-              "id": 6,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1756740416/printalma/1756740416147-GPT_Image_1_change_the_color_of_the_polo_to_blue_dont_change_t_0%20%281%29.png",
-              "publicId": "printalma/1756740416147-GPT_Image_1_change_the_color_of_the_polo_to_blue_dont_change_t_0 (1)",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 6,
-              "delimitations": [
-                {
-                  "id": 6,
-                  "x": 436.6666666666667,
-                  "y": 305,
-                  "width": 340,
-                  "height": 480,
-                  "rotation": 0,
-                  "name": "Zone 2",
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": 1200,
-                  "originalImageHeight": 1200,
-                  "productImageId": 6,
-                  "createdAt": "2025-09-01T15:27:01.705Z",
-                  "updatedAt": "2025-09-10T09:55:59.716Z",
-                  "referenceWidth": 1200,
-                  "referenceHeight": 1200
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    },
-    {
-      "id": 1,
-      "name": "Tshirt de luxe modif test2",
-      "price": 30000,
-      "suggestedPrice": 1000,
-      "stock": 12,
-      "status": "PUBLISHED",
-      "description": "Thirt prenium haute qualité",
-      "createdAt": "2025-09-01T01:54:06.980Z",
-      "updatedAt": "2025-09-10T14:39:19.835Z",
-      "isValidated": true,
-      "validatedAt": null,
-      "validatedBy": null,
-      "rejectionReason": null,
-      "submittedForValidationAt": null,
-      "isDelete": false,
-      "isReadyProduct": false,
-      "genre": "UNISEXE",
-      "hasCustomDesigns": false,
-      "designsMetadata": {
-        "totalDesigns": 0,
-        "lastUpdated": null
-      },
-      "categories": [
-        {
-          "id": 1,
-          "name": "Vêtements > T-shirts",
-          "description": null
-        }
-      ],
-      "sizes": [
-        {
-          "id": 1,
-          "productId": 1,
-          "sizeName": "XS"
-        },
-        {
-          "id": 2,
-          "productId": 1,
-          "sizeName": "S"
-        },
-        {
-          "id": 3,
-          "productId": 1,
-          "sizeName": "M"
-        }
-      ],
-      "colorVariations": [
-        {
-          "id": 1,
-          "name": "Noir",
-          "colorCode": "#000000",
-          "productId": 1,
-          "images": [
-            {
-              "id": 1,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1756691644/printalma/1756691643712-T-Shirt_Premium_Noir.jpg",
-              "publicId": "printalma/1756691643712-T-Shirt_Premium_Noir",
-              "naturalWidth": 1200,
-              "naturalHeight": 1200,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 1,
-              "delimitations": [
-                {
-                  "id": 15,
-                  "x": 406.5890975395007,
-                  "y": 465.2288062410336,
-                  "width": 376.2016726663775,
-                  "height": 572.2716453649954,
-                  "rotation": 0,
-                  "name": "Zone 3",
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": null,
-                  "originalImageHeight": null,
-                  "productImageId": 1,
-                  "createdAt": "2025-09-10T09:35:47.085Z",
-                  "updatedAt": "2025-09-10T10:57:28.996Z",
-                  "referenceWidth": 0,
-                  "referenceHeight": 0
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        },
-        {
-          "id": 14,
-          "name": "Rouge",
-          "colorCode": "#b81c1d",
-          "productId": 1,
-          "images": [
-            {
-              "id": 15,
-              "view": "Front",
-              "url": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757496795/printalma/1757496794888-T-shirt_Rouge.jpg",
-              "publicId": "printalma/1757496794888-T-shirt_Rouge",
-              "naturalWidth": null,
-              "naturalHeight": null,
-              "designUrl": null,
-              "designPublicId": null,
-              "designFileName": null,
-              "designUploadDate": null,
-              "designSize": null,
-              "designOriginalName": null,
-              "designDescription": null,
-              "isDesignActive": true,
-              "colorVariationId": 14,
-              "delimitations": [
-                {
-                  "id": 16,
-                  "x": 406.5890975395007,
-                  "y": 465.2288062410336,
-                  "width": 376.2016726663775,
-                  "height": 572.2716453649954,
-                  "rotation": 0,
-                  "name": "Zone 3",
-                  "coordinateType": "PERCENTAGE",
-                  "absoluteX": null,
-                  "absoluteY": null,
-                  "absoluteWidth": null,
-                  "absoluteHeight": null,
-                  "originalImageWidth": null,
-                  "originalImageHeight": null,
-                  "productImageId": 15,
-                  "createdAt": "2025-09-10T09:35:47.608Z",
-                  "updatedAt": "2025-09-10T10:57:29.518Z",
-                  "referenceWidth": 0,
-                  "referenceHeight": 0
-                }
-              ],
-              "customDesign": null
-            }
-          ]
-        }
-      ],
-      "hasDelimitations": true
-    }
-  ],
-  "pagination": {
-    "total": 10,
-    "limit": 10,
-    "offset": 0,
-    "hasMore": false
-  },
-  "filters": {
-    "applied": {},
-    "resultsCount": 10
-  }
-}
+Unknown argument `[31mcategory[39m`. Did you mean `[32mcategoryId[39m`? Available options are listed in [32mgreen[39m.
+    at DesignService.createDesignViaVendorDesigns (designService.ts:1081:13)
+    at async DesignService.createDesign (designService.ts:959:14)
+    at async handleConfirmDesignPrice (SellDesignPage.tsx:3128:31)
+createDesign @ designService.ts:962
+await in createDesign
+handleConfirmDesignPrice @ SellDesignPage.tsx:3128
+executeDispatch @ react-dom-client.development.js:16368
+runWithFiberInDEV @ react-dom-client.development.js:1519
+processDispatchQueue @ react-dom-client.development.js:16418
+(anonymous) @ react-dom-client.development.js:17016
+batchedUpdates$1 @ react-dom-client.development.js:3262
+dispatchEventForPluginEventSystem @ react-dom-client.development.js:16572
+dispatchEvent @ react-dom-client.development.js:20658
+dispatchDiscreteEvent @ react-dom-client.development.js:20626
+SellDesignPage.tsx:3172  ❌ Erreur création design: Error: Erreur création design: 
+[31mInvalid [1m`this.prisma.design.create()`[22m invocation in[39m
+[4m/mnt/c/Users/HP/Desktop/printalma-perso/printalma-back-dep/src/vendor-product/vendor-publish.service.ts:1301:47[24m
+
+  [2m[90m1298[39m [36mthis[39m[34m.[39mlogger[34m.[39m[36mlog[39m[34m([39m`✅ Design uploadé[34m:[39m $[34m{[39muploadResult[34m.[39msecure_url[34m}[39m`[34m)[39m[34m;[39m[22m
+  [2m[90m1299[39m [22m
+  [2m[90m1300[39m [90m// ✅ CRÉATION DU DESIGN EN BASE[39m[22m
+[1m[31m→[39m[22m [2m[90m1301[39m [36mconst[39m design = [36mawait[39m [36mthis[39m[34m.[39mprisma[34m.[39mdesign[34m.[39m[36mcreate[39m[34m([39m[22m{
+         data: {
+           vendorId: 7,
+           name: "test",
+           description: "ffffffffffff",
+           price: 0,
+           [31mcategory[39m: "Manga",
+           [31m~~~~~~~~[39m
+           imageUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757692745/vendor-designs/vendor_7_design_1757692744243.jpg",
+           thumbnailUrl: "https://res.cloudinary.com/dsxab4qnu/image/upload/v1757692745/vendor-designs/vendor_7_design_1757692744243.jpg",
+           cloudinaryPublicId: "vendor-designs/vendor_7_design_1757692744243",
+           fileSize: 38061,
+           originalFileName: "design_1757692747554",
+           dimensions: {
+             width: 1200,
+             height: 1200
+           },
+           format: "jpg",
+           tags: [],
+           isDraft: false,
+           isPublished: false,
+           isPending: true,
+           isValidated: false,
+       [32m?[39m   [32mid[39m[32m?[39m[32m: [39m[32mInt[39m,
+       [32m?[39m   [32mcategoryId[39m[32m?[39m[32m: [39m[32mInt | Null[39m,
+       [32m?[39m   [32mthumbnailPublicId[39m[32m?[39m[32m: [39m[32mString | Null[39m,
+       [32m?[39m   [32mcontentHash[39m[32m?[39m[32m: [39m[32mString | Null[39m,
+       [32m?[39m   [32misDelete[39m[32m?[39m[32m: [39m[32mBoolean[39m,
+       [32m?[39m   [32mvalidatedAt[39m[32m?[39m[32m: [39m[32mDateTime | Null[39m,
+       [32m?[39m   [32mvalidatedBy[39m[32m?[39m[32m: [39m[32mInt | Null[39m,
+       [32m?[39m   [32mrejectionReason[39m[32m?[39m[32m: [39m[32mString | Null[39m,
+       [32m?[39m   [32msubmittedForValidationAt[39m[32m?[39m[32m: [39m[32mDateTime | Null[39m,
+       [32m?[39m   [32mviews[39m[32m?[39m[32m: [39m[32mInt[39m,
+       [32m?[39m   [32mlikes[39m[32m?[39m[32m: [39m[32mInt[39m,
+       [32m?[39m   [32mearnings[39m[32m?[39m[32m: [39m[32mFloat[39m,
+       [32m?[39m   [32musageCount[39m[32m?[39m[32m: [39m[32mInt[39m,
+       [32m?[39m   [32mcreatedAt[39m[32m?[39m[32m: [39m[32mDateTime[39m,
+       [32m?[39m   [32mupdatedAt[39m[32m?[39m[32m: [39m[32mDateTime[39m,
+       [32m?[39m   [32mpublishedAt[39m[32m?[39m[32m: [39m[32mDateTime | Null[39m,
+       [32m?[39m   [32mvendorProducts[39m[32m?[39m[32m: [39m[32mVendorProductUncheckedCreateNestedManyWithoutDesignInput[39m,
+       [32m?[39m   [32mdesignProductLinks[39m[32m?[39m[32m: [39m[32mDesignProductLinkUncheckedCreateNestedManyWithoutDesignInput[39m,
+       [32m?[39m   [32mproductPositions[39m[32m?[39m[32m: [39m[32mProductDesignPositionUncheckedCreateNestedManyWithoutDesignInput[39m
+         }
+       }[2m)[22m
+
+Unknown argument `[31mcategory[39m`. Did you mean `[32mcategoryId[39m`? Available options are listed in [32mgreen[39m.
+    at DesignService.createDesignViaVendorDesigns (designService.ts:1081:13)
+    at async DesignService.createDesign (designService.ts:959:14)
+    at async handleConfirmDesignPrice (SellDesignPage.tsx:3128:31)

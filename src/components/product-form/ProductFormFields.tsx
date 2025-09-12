@@ -51,6 +51,26 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             )}
           </div>
 
+          {/* Prix de revient */}
+          <div className="space-y-2">
+            <Label htmlFor="price" className="text-sm font-medium">
+              💰 Prix de revient (FCFA) *
+            </Label>
+            <Input
+              id="price"
+              type="number"
+              value={formData.price}
+              onChange={(e) => onUpdate('price', parseFloat(e.target.value) || 0)}
+              placeholder="Prix de revient du produit"
+              min="0"
+              step="100"
+              className={`font-semibold ${errors.price ? 'border-red-500' : ''}`}
+            />
+            {errors.price && (
+              <p className="text-sm text-red-500">{errors.price}</p>
+            )}
+          </div>
+
           {/* Produit de vente suggéré */}
           <div className="space-y-2">
             <Label htmlFor="suggested-price" className="text-sm font-medium">
@@ -70,19 +90,6 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
                 step="100"
                 className={`flex-1 ${errors.suggestedPrice ? 'border-red-500' : ''}`}
               />
-              {formData.suggestedPrice && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (formData.suggestedPrice) {
-                      onUpdate('price', formData.suggestedPrice);
-                    }
-                  }}
-                  className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 whitespace-nowrap"
-                >
-                  Copier →
-                </button>
-              )}
             </div>
             {errors.suggestedPrice && (
               <p className="text-sm text-red-500">{errors.suggestedPrice}</p>
@@ -90,26 +97,6 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             <p className="text-xs text-gray-500">
               💾 Ce prix du produit de vente suggéré est obligatoire
             </p>
-          </div>
-
-          {/* Prix de revient */}
-          <div className="space-y-2">
-            <Label htmlFor="price" className="text-sm font-medium">
-              💰 Prix de revient (FCFA) *
-            </Label>
-            <Input
-              id="price"
-              type="number"
-              value={formData.price}
-              onChange={(e) => onUpdate('price', parseFloat(e.target.value) || 0)}
-              placeholder="Prix de revient du produit"
-              min="0"
-              step="100"
-              className={`font-semibold ${errors.price ? 'border-red-500' : ''}`}
-            />
-            {errors.price && (
-              <p className="text-sm text-red-500">{errors.price}</p>
-            )}
           </div>
           
           {/* Stock séparé */}
