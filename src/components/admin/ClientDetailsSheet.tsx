@@ -86,7 +86,7 @@ export const ClientDetailsSheet: React.FC<ClientDetailsSheetProps> = ({
     firstName: '',
     lastName: '',
     email: '',
-    vendeur_type: client?.vendeur_type || 'DESIGNER',
+    vendeur_type: (client?.vendeur_type || 'DESIGNER') as 'DESIGNER' | 'INFLUENCEUR' | 'ARTISTE',
     phone: '',
     country: '',
     address: '',

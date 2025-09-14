@@ -97,10 +97,36 @@ const API_BASE = 'https://printalma-back-dep.onrender.com';
 // Fonction utilitaire pour les appels API sécurisés
 async function safeApiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
     try {
+    // Préparer les headers avec authentification
+    const authHeaders: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    // Ajouter l'authentification via headers en plus des cookies
+    try {
+      const storedAuth = localStorage.getItem('auth_session');
+      if (storedAuth) {
+        const authData = JSON.parse(storedAuth);
+        const userToken = btoa(JSON.stringify({
+          userId: authData.user.id,
+          email: authData.user.email,
+          role: authData.user.role,
+          timestamp: authData.timestamp
+        }));
+
+        authHeaders['Authorization'] = `Bearer ${userToken}`;
+        authHeaders['X-User-ID'] = String(authData.user.id);
+        authHeaders['X-User-Email'] = authData.user.email;
+        authHeaders['X-User-Role'] = authData.user.role;
+      }
+    } catch (e) {
+      console.warn('⚠️ [safeApiCall] Headers auth non disponibles');
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
       credentials: 'include', // OBLIGATOIRE pour cookies HTTPS
       headers: {
-        'Content-Type': 'application/json',
+        ...authHeaders,
         ...options.headers
       },
       ...options
@@ -555,30 +581,39 @@ export class ProductService {
         console.log('🚀 [DIAGNOSTIC] Continuation malgré cookies manquants...');
       }
       
-      // Préparer les headers avec fallback d'authentification
+      // Préparer les headers avec authentification via Bearer token
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'User-Agent': 'PrintAlma-Frontend/1.0'
+        'Accept': 'application/json'
       };
-      
-      // Si les cookies ne marchent pas, essayer un header custom avec les données localStorage
-      if (!authWorking) {
-        try {
-          const storedAuth = localStorage.getItem('auth_session');
-          if (storedAuth) {
-            const authData = JSON.parse(storedAuth);
-            headers['X-User-Session'] = JSON.stringify({
-              userId: authData.user.id,
-              email: authData.user.email,
-              role: authData.user.role,
-              timestamp: authData.timestamp
-            });
-            console.log('🔧 [DIAGNOSTIC] Ajout header X-User-Session pour fallback auth');
-          }
-        } catch (e) {
-          console.warn('⚠️ [DIAGNOSTIC] Impossible de créer fallback header');
+
+      // Toujours ajouter l'authentification via header en plus des cookies
+      try {
+        const storedAuth = localStorage.getItem('auth_session');
+        if (storedAuth) {
+          const authData = JSON.parse(storedAuth);
+
+          // Créer un token simple avec les infos utilisateur
+          const userToken = btoa(JSON.stringify({
+            userId: authData.user.id,
+            email: authData.user.email,
+            role: authData.user.role,
+            timestamp: authData.timestamp
+          }));
+
+          headers['Authorization'] = `Bearer ${userToken}`;
+          headers['X-User-ID'] = String(authData.user.id);
+          headers['X-User-Email'] = authData.user.email;
+          headers['X-User-Role'] = authData.user.role;
+
+          console.log('🔧 [ProductService] Headers auth ajoutés:', {
+            userId: authData.user.id,
+            email: authData.user.email,
+            role: authData.user.role
+          });
         }
+      } catch (e) {
+        console.warn('⚠️ [ProductService] Impossible de créer headers auth:', e);
       }
       
       // Essayer d'abord PUT au lieu de PATCH (plus compatible)
@@ -614,10 +649,10 @@ export class ProductService {
         };
       }
       
-      // En cas d'erreur 500, essayer d'obtenir plus de détails
+      // En cas d'erreur 500, essayer différentes stratégies
       if (response.status === 500) {
-        console.log('⚠️ [ProductService] Erreur 500 détectée');
-        
+        console.log('⚠️ [ProductService] Erreur 500 détectée - Tentatives de récupération...');
+
         // Tenter de lire le body de l'erreur pour plus de détails
         try {
           const errorText = await response.text();
@@ -625,28 +660,67 @@ export class ProductService {
         } catch (e) {
           console.error('🔍 [DIAGNOSTIC] Impossible de lire le body de l\'erreur 500');
         }
-        
-        // Attendre un peu puis vérifier l'état actuel
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
+        // Stratégie 1: Essayer avec l'ancienne méthode updateProduct
+        console.log('🔄 [RECOVERY] Tentative méthode alternative...');
+        try {
+          const alternativeResult = await this.updateProduct(productId, rawPayload);
+          if (alternativeResult.success) {
+            console.log('✅ [RECOVERY] Succès avec méthode alternative');
+            return alternativeResult;
+          }
+        } catch (altError) {
+          console.warn('⚠️ [RECOVERY] Méthode alternative échouée:', altError);
+        }
+
+        // Stratégie 2: Vérifier si la modification a quand même été appliquée
+        console.log('🔄 [RECOVERY] Vérification de l\'état actuel...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         try {
           const verifyResponse = await fetch(`${API_BASE}/products/${productId}`, {
-            credentials: 'include'
+            credentials: 'include',
+            headers
           });
-          
+
           if (verifyResponse.ok) {
             const verifyData = await verifyResponse.json();
             const currentProduct = verifyData.data || verifyData;
-            
-            console.log('✅ [ProductService] Produit récupéré malgré erreur 500');
-            return {
-              success: true,
-              data: this.transformProduct(currentProduct),
-              message: 'Produit modifié (erreur 500 ignorée car données récupérées)'
-            };
+
+            // Vérifier si au moins une partie des modifications a été appliquée
+            const wasModified = cleanPayload.name ?
+              currentProduct.name === cleanPayload.name : true;
+
+            if (wasModified) {
+              console.log('✅ [RECOVERY] Modification appliquée malgré erreur 500');
+              return {
+                success: true,
+                data: this.transformProduct(currentProduct),
+                message: 'Produit modifié (récupéré après erreur 500)'
+              };
+            }
           }
         } catch (verifyError) {
-          console.warn('⚠️ [ProductService] Impossible de vérifier l\'état après erreur 500');
+          console.warn('⚠️ [RECOVERY] Impossible de vérifier l\'état après erreur 500');
+        }
+
+        // Stratégie 3: Si le produit existe toujours, considérer comme partiellement réussi
+        try {
+          const basicCheck = await fetch(`${API_BASE}/products/${productId}`, {
+            credentials: 'include'
+          });
+
+          if (basicCheck.ok) {
+            const basicData = await basicCheck.json();
+            console.log('⚠️ [RECOVERY] Produit accessible, erreur 500 peut être temporaire');
+            return {
+              success: false,
+              error: 'Erreur 500 temporaire - Produit toujours accessible',
+              data: this.transformProduct(basicData.data || basicData)
+            };
+          }
+        } catch (basicError) {
+          console.error('❌ [RECOVERY] Produit inaccessible après erreur 500');
         }
       }
       

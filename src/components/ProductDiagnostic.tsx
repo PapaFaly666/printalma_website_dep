@@ -25,44 +25,51 @@ export function ProductDiagnostic({ productId }: ProductDiagnosticProps) {
 
   const getRecommendations = (diagnostic: DiagnosticResult): string[] => {
     const recommendations = [];
-    
+
     const baseOk = diagnostic['Base Product']?.ok;
     const vendorOk = diagnostic['Vendor Product']?.ok;
     const adminOk = diagnostic['Admin Vendor']?.ok;
-    
+
     if (!baseOk && !vendorOk && !adminOk) {
       recommendations.push('Produit probablement inexistant en base de données');
       recommendations.push('Vérifier l\'ID du produit');
     }
-    
+
     if (!vendorOk && diagnostic['Vendor Product']?.status === 401) {
       recommendations.push('Problème d\'authentification - vérifier le token JWT');
     }
-    
+
     if (!vendorOk && diagnostic['Vendor Product']?.status === 403) {
       recommendations.push('Droits insuffisants - utiliser un compte vendeur/admin');
     }
-    
+
     if (baseOk && !vendorOk) {
       recommendations.push('Utiliser l\'endpoint /products/:id pour ce produit de base');
     }
-    
+
     if (!baseOk && vendorOk) {
       recommendations.push('Utiliser l\'endpoint /vendor/products/:id pour ce produit vendeur');
     }
-    
+
     if (adminOk && !vendorOk) {
       recommendations.push('Produit accessible uniquement par admin');
     }
-    
-    // Vérifier l'authentification
-    const auth = ProductService.checkAuthentication();
-    if (!auth.hasToken) {
-      recommendations.push('Aucun token d\'authentification trouvé');
-    } else if (!auth.isValid) {
-      recommendations.push('Token d\'authentification invalide ou expiré');
+
+    // Vérifier l'authentification localStorage
+    const storedAuth = localStorage.getItem('auth_session');
+    if (!storedAuth) {
+      recommendations.push('Aucune session d\'authentification trouvée');
+    } else {
+      try {
+        const authData = JSON.parse(storedAuth);
+        if (!authData.isAuthenticated) {
+          recommendations.push('Session marquée comme non authentifiée');
+        }
+      } catch (e) {
+        recommendations.push('Session d\'authentification corrompue');
+      }
     }
-    
+
     return recommendations;
   };
 
@@ -85,26 +92,44 @@ export function ProductDiagnostic({ productId }: ProductDiagnosticProps) {
       <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
         <h4 className="font-medium text-blue-800 mb-2">🔐 État de l'authentification :</h4>
         {(() => {
-          const auth = ProductService.checkAuthentication();
-          return (
-            <div className="text-sm text-blue-700">
-              <div>Token présent: {auth.hasToken ? '✅ Oui' : '❌ Non'}</div>
-              {auth.hasToken && (
-                <>
-                  <div>Token valide: {auth.isValid ? '✅ Oui' : '❌ Non'}</div>
-                  {auth.tokenInfo && (
-                    <div className="mt-2">
-                      <div>Rôle: {auth.tokenInfo.role || 'Non défini'}</div>
-                      <div>Expire: {auth.tokenInfo.expiresAt?.toLocaleString() || 'Inconnu'}</div>
-                      {auth.tokenInfo.isExpired && (
-                        <div className="text-red-600 font-medium">⚠️ Token expiré</div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          );
+          const storedAuth = localStorage.getItem('auth_session');
+          if (!storedAuth) {
+            return (
+              <div className="text-sm text-red-700">
+                <div>Session: ❌ Aucune session trouvée</div>
+              </div>
+            );
+          }
+
+          try {
+            const authData = JSON.parse(storedAuth);
+            const isAuthenticated = authData.isAuthenticated;
+            const user = authData.user;
+            const timestamp = authData.timestamp;
+            const ageInSeconds = Math.floor((Date.now() - timestamp) / 1000);
+
+            return (
+              <div className="text-sm text-blue-700">
+                <div>Session: {isAuthenticated ? '✅ Connecté' : '❌ Non connecté'}</div>
+                {isAuthenticated && user && (
+                  <>
+                    <div>Utilisateur: {user.firstName} {user.lastName} ({user.email})</div>
+                    <div>Rôle: {user.role || 'Non défini'}</div>
+                    <div>Âge session: {ageInSeconds}s</div>
+                    {ageInSeconds > 604800 && (
+                      <div className="text-red-600 font-medium">⚠️ Session expirée (&gt;7 jours)</div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          } catch (e) {
+            return (
+              <div className="text-sm text-red-700">
+                <div>Session: ❌ Données corrompues</div>
+              </div>
+            );
+          }
         })()}
       </div>
 

@@ -661,7 +661,7 @@ export const ensureDesignId = async (payload: VendorPublishPayload): Promise<num
     file: fileObj,
     name: payload.designName || payload.vendorName || 'Design Vendeur',
     price: Number(payload.designPrice ?? payload.vendorPrice ?? 0),
-    category: 'logo',
+    categoryId: 1, // ID pour catégorie 'logo'
     description: payload.vendorDescription || ''
   }).catch(err => {
     console.error('⚠️ Impossible de créer le design automatiquement:', err.message);

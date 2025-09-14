@@ -984,7 +984,7 @@ class DesignService {
       price: payload.price,
       imageUrl: data.designUrl || data.imageUrl,
       thumbnailUrl: data.designUrl || data.imageUrl,
-      categoryId: payload.categoryId,
+      category: await this.getCategoryNameById(payload.categoryId), // Convertir ID en nom
       tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
       isPublished: true,
       isDraft: false,
@@ -1077,7 +1077,7 @@ class DesignService {
       price: payload.price, // Forcer le prix côté frontend
       imageUrl: data.designUrl,
       thumbnailUrl: data.designUrl,
-      categoryId: payload.categoryId,
+      category: await this.getCategoryNameById(payload.categoryId), // Convertir ID en nom
       tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
       isPublished: true,
       isDraft: false,
