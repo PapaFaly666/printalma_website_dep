@@ -581,13 +581,25 @@ export class ProductService {
         }
       }
       
-      // Essayer la méthode PATCH avec headers étendus pour diagnostic
-      const response = await fetch(`${API_BASE}/products/${productId}`, {
-        method: 'PATCH',
+      // Essayer d'abord PUT au lieu de PATCH (plus compatible)
+      console.log('🚀 [DIAGNOSTIC] Tentative PUT au lieu de PATCH...');
+      let response = await fetch(`${API_BASE}/products/${productId}`, {
+        method: 'PUT',
         credentials: 'include',
         headers,
         body: JSON.stringify(cleanPayload)
       });
+
+      // Si PUT échoue, essayer PATCH en fallback
+      if (!response.ok && response.status === 404) {
+        console.log('🔄 [DIAGNOSTIC] PUT échoué, tentative PATCH...');
+        response = await fetch(`${API_BASE}/products/${productId}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers,
+          body: JSON.stringify(cleanPayload)
+        });
+      }
       
       console.log('📡 [ProductService] PATCH Status:', response.status);
       console.log('📡 [ProductService] Response headers:', Object.fromEntries(response.headers.entries()));

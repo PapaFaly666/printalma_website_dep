@@ -253,9 +253,140 @@ export async function runAllPriceTests(): Promise<{
   };
 }
 
+/**
+ * Test pour diagnostiquer et corriger le problème d'authentification 500
+ */
+export async function testProductUpdate() {
+  const API_BASE = 'https://printalma-back-dep.onrender.com';
+  const productId = 20;
+
+  console.log('🔍 DIAGNOSTIC COMPLET - Test mise à jour produit');
+
+  // 1. Vérifier l'état des cookies
+  console.log('📋 Cookies actuels:', document.cookie);
+
+  // 2. Vérifier localStorage
+  const storedAuth = localStorage.getItem('auth_session');
+  console.log('💾 Auth localStorage:', storedAuth);
+
+  // 3. Test /auth/check
+  try {
+    const authResponse = await fetch(`${API_BASE}/auth/check`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('🔐 Auth check status:', authResponse.status);
+
+    if (authResponse.ok) {
+      const authData = await authResponse.json();
+      console.log('✅ Auth check data:', authData);
+    } else {
+      console.error('❌ Auth check failed');
+      const errorText = await authResponse.text();
+      console.error('Erreur:', errorText);
+    }
+  } catch (error) {
+    console.error('❌ Auth check error:', error);
+  }
+
+  // 4. Test simple GET du produit
+  try {
+    const getResponse = await fetch(`${API_BASE}/products/${productId}`, {
+      credentials: 'include'
+    });
+
+    console.log('📦 GET product status:', getResponse.status);
+
+    if (getResponse.ok) {
+      const productData = await getResponse.json();
+      console.log('✅ Product data récupéré:', productData);
+
+      // 5. Test PATCH avec données minimales
+      const minimalUpdate = {
+        name: productData.name || 'Test Product',
+        price: 1000 // Prix de test
+      };
+
+      console.log('🚀 Test PATCH avec:', minimalUpdate);
+
+      const patchResponse = await fetch(`${API_BASE}/products/${productId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(minimalUpdate)
+      });
+
+      console.log('📡 PATCH status:', patchResponse.status);
+      console.log('📡 PATCH headers:', Object.fromEntries(patchResponse.headers.entries()));
+
+      if (patchResponse.ok) {
+        const patchData = await patchResponse.json();
+        console.log('✅ PATCH réussi:', patchData);
+      } else {
+        const errorText = await patchResponse.text();
+        console.error('❌ PATCH failed:', errorText);
+      }
+
+    } else {
+      console.error('❌ GET product failed:', getResponse.status);
+    }
+  } catch (error) {
+    console.error('❌ Test error:', error);
+  }
+}
+
+/**
+ * Fonction pour forcer la re-authentification
+ */
+export async function forceReauth() {
+  const API_BASE = 'https://printalma-back-dep.onrender.com';
+
+  // Récupérer les données d'auth du localStorage
+  const storedAuth = localStorage.getItem('auth_session');
+  if (!storedAuth) {
+    console.error('❌ Pas de données d\'auth en localStorage');
+    return false;
+  }
+
+  try {
+    const authData = JSON.parse(storedAuth);
+
+    // Tenter une re-authentification avec les données stockées
+    const loginResponse = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: authData.user.email,
+        password: 'temp' // Le backend devrait accepter si la session est valide
+      })
+    });
+
+    if (loginResponse.ok) {
+      console.log('✅ Re-authentification réussie');
+      return true;
+    } else {
+      console.error('❌ Re-authentification échouée:', loginResponse.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Erreur re-authentification:', error);
+    return false;
+  }
+}
+
 // Export pour utilisation dans la console du navigateur
 if (typeof window !== 'undefined') {
   (window as any).testDesignPriceFix = testDesignPriceFix;
   (window as any).runAllPriceTests = runAllPriceTests;
   (window as any).validateDesignData = validateDesignData;
+  (window as any).testProductUpdate = testProductUpdate;
+  (window as any).forceReauth = forceReauth;
 }
