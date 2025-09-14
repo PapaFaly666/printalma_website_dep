@@ -244,57 +244,21 @@ export interface VendorStatsResponse {
   };
 }
 
-// 🆕 UTILITAIRE : Récupération du token d'authentification
-function getAuthToken(): string | null {
-  // 🔑 Chercher le token dans localStorage, sessionStorage ou cookies
-  const tokenFromStorage = localStorage.getItem('jwt_token') || 
-                          localStorage.getItem('authToken') || 
-                          sessionStorage.getItem('jwt_token') ||
-                          sessionStorage.getItem('authToken');
-  
-  if (tokenFromStorage) {
-    console.log('🔑 Token JWT trouvé dans le storage');
-    return tokenFromStorage;
-  }
-  
-  // Fallback: chercher dans les cookies (format: token=value)
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'jwt_token' || name === 'authToken' || name === 'token' || name === 'jwt') {
-      console.log('🔑 Token JWT trouvé dans les cookies');
-      return value;
-    }
-  }
-  
-  console.log('🔑 Aucun token JWT trouvé');
-  return null;
-}
+// Supprimé - Authentification par cookies uniquement
 
-// 🆕 HEADERS STANDARDISÉS : Authentification par token + cookies en fallback
+// Headers pour authentification par cookies uniquement
 function getRequestHeaders(): HeadersInit {
-  const headers: HeadersInit = {
+  return {
     'Content-Type': 'application/json',
   };
-  
-  // 🔑 Priorité au token JWT dans le header Authorization
-  const token = getAuthToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-    console.log('🔑 Authentification par token JWT');
-  } else {
-    console.log('🔑 Fallback vers authentification par cookies');
-  }
-  
-  return headers;
 }
 
-// 🆕 OPTIONS DE REQUÊTE : Token + cookies en fallback
+// Options de requête avec authentification par cookies
 function getRequestOptions(method: string = 'GET', body?: any): RequestInit {
   const options: RequestInit = {
     method,
     headers: getRequestHeaders(),
-    credentials: 'include', // Maintenir les cookies en fallback
+    credentials: 'include',
   };
   
   if (body) {

@@ -8,9 +8,7 @@ import {
 
 class FundsService {
   private getAuthHeader() {
-    const token = localStorage.getItem('token');
     return {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     };
   }
@@ -22,6 +20,7 @@ class FundsService {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/vendor/balance`, {
         method: 'GET',
+        credentials: 'include',
         headers: this.getAuthHeader()
       });
 
@@ -52,6 +51,7 @@ class FundsService {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/vendor/withdrawal-requests`, {
         method: 'POST',
+        credentials: 'include',
         headers: this.getAuthHeader(),
         body: JSON.stringify(request)
       });
@@ -76,6 +76,7 @@ class FundsService {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/vendor/withdrawal-requests`, {
         method: 'GET',
+        credentials: 'include',
         headers: this.getAuthHeader()
       });
 
@@ -98,6 +99,7 @@ class FundsService {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/vendor/withdrawal-requests/${requestId}/cancel`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: this.getAuthHeader()
       });
 
@@ -121,6 +123,7 @@ class FundsService {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/admin/withdrawal-requests`, {
         method: 'GET',
+        credentials: 'include',
         headers: this.getAuthHeader()
       });
 
@@ -143,6 +146,7 @@ class FundsService {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/admin/withdrawal-requests/${requestId}/approve`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: this.getAuthHeader(),
         body: JSON.stringify({ notes })
       });
@@ -167,6 +171,7 @@ class FundsService {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/admin/withdrawal-requests/${requestId}/reject`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: this.getAuthHeader(),
         body: JSON.stringify({ notes })
       });

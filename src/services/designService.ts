@@ -128,45 +128,11 @@ class DesignService {
     this.vendorDesignBase = `${this.apiUrl}/vendor/designs`;
   }
 
-  private getAuthToken(): string | null {
-    // 🔍 Debug : vérifier tous les tokens disponibles
-    const jwtToken = localStorage.getItem('jwt_token');
-    const token = localStorage.getItem('token');
-    const authToken = localStorage.getItem('authToken');
-    const accessToken = localStorage.getItem('access_token');
-    
-    console.log('🔍 Tokens disponibles:');
-    console.log('  jwt_token:', jwtToken ? `${jwtToken.substring(0, 20)}...` : 'null');
-    console.log('  token:', token ? `${token.substring(0, 20)}...` : 'null');
-    console.log('  authToken:', authToken ? `${authToken.substring(0, 20)}...` : 'null');
-    console.log('  access_token:', accessToken ? `${accessToken.substring(0, 20)}...` : 'null');
-    
-    // Essayer plusieurs noms de tokens
-    const foundToken = jwtToken || 
-                      sessionStorage.getItem('jwt_token') ||
-                      token ||
-                      authToken ||
-                      accessToken ||
-                      null;
-                      
-    if (!foundToken) {
-      console.warn('⚠️ Aucun token JWT trouvé - utilisation de l\'authentification par cookies');
-      return null; // Ne pas lancer d'erreur, utiliser les cookies à la place
-    }
-    
-    console.log('✅ Token utilisé:', `${foundToken.substring(0, 20)}...`);
-    return foundToken;
-  }
+  // Supprimé - Utilise uniquement l'authentification par cookies
 
   private getAuthHeaders(extra: Record<string,string> = {}): Record<string, string> {
-    const token = this.getAuthToken();
-    if (token) {
-      console.log('🔑 Utilisation du token JWT pour l\'authentification');
-      return { 'Authorization': `Bearer ${token}`, ...extra };
-    } else {
-      console.log('🍪 Utilisation des cookies pour l\'authentification');
-      return { ...extra };
-    }
+    console.log('🍪 Utilisation de l\'authentification par cookies');
+    return { ...extra };
   }
 
   /**
@@ -975,27 +941,28 @@ class DesignService {
   }): Promise<Design> {
     console.log('🔬 Tentative création via /api/designs avec FormData...');
 
-    // Convertir categoryId en nom de catégorie
-    const categoryName = await this.getCategoryNameById(payload.categoryId);
-    console.log(`🏷️ Conversion categoryId ${payload.categoryId} -> "${categoryName}"`);
-
     const formData = new FormData();
-    formData.append('design', payload.file);
+    formData.append('file', payload.file);  // ✅ CORRECTION: Champ renommé pour correspondre au backend
     formData.append('name', payload.name);
     formData.append('description', payload.description || '');
     formData.append('price', payload.price.toString()); // 💰 PRIX EN STRING
-    formData.append('category', categoryName); // ✅ UTILISER LE NOM DE CATÉGORIE
+    formData.append('categoryId', payload.categoryId.toString()); // ✅ UTILISER L'ID DE CATÉGORIE NUMÉRIQUE
     
     if (payload.tags) {
       formData.append('tags', payload.tags);
     }
 
-    console.log('📝 FormData préparée avec prix:', payload.price);
+    console.log('📝 FormData préparée:');
+    console.log('  - file:', payload.file.name);
+    console.log('  - name:', payload.name);
+    console.log('  - price:', payload.price);
+    console.log('  - categoryId:', payload.categoryId);
+    console.log('  - tags:', payload.tags || 'aucun');
 
     const res = await fetch(`${this.apiUrl}/api/designs`, {
       method: 'POST',
       credentials: 'include',
-      body: formData, // Pas de Content-Type header avec FormData
+      body: formData  // Pas de Content-Type header avec FormData
     });
 
     console.log('📡 Réponse /api/designs:', res.status, res.statusText);
@@ -1046,9 +1013,18 @@ class DesignService {
   }): Promise<Design> {
     console.log('🔬 Tentative création via /vendor/designs avec JSON...');
 
+    // 📤 LOGS DEBUG PRIX (selon designprice.md)
+    console.log('📤 Données envoyées au backend:', {
+      name: payload.name,
+      price: payload.price,
+      category: payload.categoryId,
+      typePrice: typeof payload.price,
+      isValidPrice: payload.price >= 100 && payload.price <= 1000000
+    });
+
     // Convertir le fichier en base64
     const imageBase64 = await this.fileToDataUrl(payload.file);
-    
+
     // Convertir categoryId en nom de catégorie
     const categoryName = await this.getCategoryNameById(payload.categoryId);
     console.log(`🏷️ Conversion categoryId ${payload.categoryId} -> "${categoryName}"`);
@@ -1057,12 +1033,21 @@ class DesignService {
       name: payload.name,
       description: payload.description,
       price: payload.price, // 🔧 PRIX INCLUS
-      category: categoryName, // ✅ UTILISER LE NOM DE CATÉGORIE 
+      category: categoryName, // ✅ UTILISER LE NOM DE CATÉGORIE
       imageBase64,
       tags: payload.tags ? payload.tags.split(',').map(t => t.trim()) : [],
     };
 
-    console.log('📝 Payload JSON avec prix:', designPayload.price);
+    // 📤 LOGS DÉTAILLÉS PAYLOAD (selon designprice.md)
+    console.log('📤 Payload complet envoyé:', {
+      name: designPayload.name,
+      price: designPayload.price,
+      priceType: typeof designPayload.price,
+      category: designPayload.category,
+      hasImageBase64: !!designPayload.imageBase64,
+      imageBase64Size: designPayload.imageBase64.length,
+      tags: designPayload.tags
+    });
 
     const res = await fetch(this.vendorDesignBase, {
       method: 'POST',
@@ -1082,7 +1067,7 @@ class DesignService {
     }
 
     const json = await res.json();
-    console.log('📦 Réponse /vendor/designs:', json);
+    console.log('📥 Réponse backend:', json);
     const data = json.data || json;
 
     const design: Design = {
@@ -1107,11 +1092,44 @@ class DesignService {
 
     console.log('✅ Design créé via /vendor/designs !');
     console.log('💰 Prix préservé côté frontend:', design.price);
+
+    // 🔍 VÉRIFICATION EN BASE (selon designprice.md)
+    if (data.designId) {
+      try {
+        const verification = await fetch(`${this.apiUrl}/api/designs/${data.designId}`, {
+          headers: { ...this.getAuthHeaders() },
+          credentials: 'include'
+        });
+
+        if (verification.ok) {
+          const designEnBase = await verification.json();
+          console.log('🔍 Design en base:', {
+            id: designEnBase.id || designEnBase.designId,
+            price: designEnBase.price,
+            prixOk: designEnBase.price === payload.price,
+            prixEnvoye: payload.price,
+            prixSauve: designEnBase.price
+          });
+
+          if (designEnBase.price !== payload.price) {
+            console.error('❌ FAIL: Prix incorrect en base:', {
+              envoyé: payload.price,
+              sauvé: designEnBase.price
+            });
+          } else {
+            console.log('🎉 SUCCESS: Prix correctement sauvé en base !');
+          }
+        }
+      } catch (verifyError) {
+        console.warn('⚠️ Impossible de vérifier le prix en base:', verifyError);
+      }
+    }
+
     console.log('⚠️ Attention: Le backend peut avoir mis le prix à 0 en base');
     return design;
   }
 
-  // ✅ VALIDATION selon designaide.md
+  // ✅ VALIDATION selon designprice.md + designaide.md
   private validateDesignData(payload: {
     file: File;
     name: string;
@@ -1120,42 +1138,69 @@ class DesignService {
     categoryId: number;
     tags?: string;
   }): void {
+    const errors: string[] = [];
+
+    // Validation du fichier
     if (!payload.file) {
-      throw new Error('Fichier image requis');
-    }
-    
-    if (!payload.name || payload.name.trim().length < 3) {
-      throw new Error('Nom du design requis (min 3 caractères)');
-    }
-    
-    if (payload.name.trim().length > 255) {
-      throw new Error('Nom du design trop long (max 255 caractères)');
-    }
-    
-    if (!payload.price || payload.price < 100) {
-      throw new Error('Prix minimum: 100 FCFA');
-    }
-    
-    if (payload.price > 1000000) {
-      throw new Error('Prix maximum: 1,000,000 FCFA');
-    }
-    
-    if (!payload.categoryId || typeof payload.categoryId !== 'number' || payload.categoryId <= 0) {
-      throw new Error('ID de catégorie invalide');
-    }
-    
-    // Validation du fichier selon designaide.md
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
-    if (!allowedTypes.includes(payload.file.type)) {
-      throw new Error('Format de fichier non supporté');
-    }
-    
-    if (payload.file.size > 10 * 1024 * 1024) { // 10MB
-      throw new Error('Fichier trop volumineux (max 10MB)');
+      errors.push('Fichier image requis');
+    } else {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
+      if (!allowedTypes.includes(payload.file.type)) {
+        errors.push('Format de fichier non supporté');
+      }
+
+      if (payload.file.size > 10 * 1024 * 1024) { // 10MB
+        errors.push('Fichier trop volumineux (max 10MB)');
+      }
     }
 
+    // Validation du nom
+    if (!payload.name || payload.name.trim().length < 3) {
+      errors.push('Nom du design requis (min 3 caractères)');
+    }
+
+    if (payload.name.trim().length > 255) {
+      errors.push('Nom du design trop long (max 255 caractères)');
+    }
+
+    // 💰 VALIDATION PRIX CRITIQUE (selon designprice.md)
+    if (!payload.price || payload.price <= 0) {
+      errors.push('Le prix doit être supérieur à 0');
+    }
+
+    if (payload.price < 100) {
+      errors.push('Prix minimum : 100 FCFA');
+    }
+
+    if (payload.price > 1000000) {
+      errors.push('Prix maximum : 1,000,000 FCFA');
+    }
+
+    // Validation des formats de prix supportés
+    if (typeof payload.price !== 'number' || isNaN(payload.price)) {
+      errors.push('Le prix doit être un nombre valide');
+    }
+
+    // Validation catégorie
+    if (!payload.categoryId || typeof payload.categoryId !== 'number' || payload.categoryId <= 0) {
+      errors.push('ID de catégorie invalide');
+    }
+
+    // Validation description
     if (payload.description && payload.description.length > 1000) {
-      throw new Error('Description trop longue (max 1000 caractères)');
+      errors.push('Description trop longue (max 1000 caractères)');
+    }
+
+    // 📤 LOG VALIDATION PRIX (selon designprice.md)
+    console.log('💰 Validation prix design:', {
+      prixEnvoyé: payload.price,
+      typePrice: typeof payload.price,
+      isValid: payload.price >= 100 && payload.price <= 1000000
+    });
+
+    if (errors.length > 0) {
+      console.error('❌ Erreurs validation:', errors);
+      throw new Error(errors.join(', '));
     }
   }
 

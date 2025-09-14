@@ -61,7 +61,10 @@ export function cleanProductPayload(payload: AnyProduct): AnyProduct {
   }
   
   // S'assurer que les champs numériques sont bien des nombres
-  if (cleaned.price) cleaned.price = Number(cleaned.price);
+  // Attention : if(cleaned.price) exclurait price=0, donc on vérifie explicitement null/undefined
+  if (cleaned.price !== null && cleaned.price !== undefined) {
+    cleaned.price = Number(cleaned.price);
+  }
   if (cleaned.suggestedPrice !== null && cleaned.suggestedPrice !== undefined) {
     cleaned.suggestedPrice = Number(cleaned.suggestedPrice);
   }
@@ -93,12 +96,24 @@ export function prepareProductPayload(formValues: AnyProduct) {
 
   Object.keys(payload).forEach((k) => {
     const v = payload[k];
-    if (v === null || v === undefined || v === '') delete payload[k];
+    // Ne pas supprimer les champs numériques qui valent 0 (prix, stock, etc.)
+    if (v === null || v === undefined || (v === '' && typeof v !== 'number')) {
+      // Exception pour les champs numériques importants
+      if (k === 'price' || k === 'suggestedPrice' || k === 'stock') {
+        // Garder ces champs même s'ils valent 0
+        if (typeof v === 'number' || !isNaN(Number(v))) {
+          return; // Ne pas supprimer
+        }
+      }
+      delete payload[k];
+    }
   });
 
   // Appliquer le nettoyage final
   return cleanProductPayload(payload);
 }
+
+
 
 
 
