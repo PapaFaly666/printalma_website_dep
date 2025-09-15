@@ -1,29 +1,33 @@
-#15 25.83 src/pages/SellDesignPage.tsx(3958,13): error TS2353: Object literal may only specify known properties, and 'bypassValidation' does not exist in type '{ designUrl: string; designFile?: File; designId?: number; designName?: string; designPrice?: number; postValidationAction?: string; }'.
-#15 26.14 npm notice
-#15 26.14 npm notice New major version of npm available! 10.8.2 -> 11.6.0
-#15 26.14 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.0
-#15 26.14 npm notice To update run: npm install -g npm@11.6.0
-#15 26.14 npm notice
-#15 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
-------
- > [builder 6/6] RUN npm run build:
-0.458 
-0.458 > printalma_website@0.0.0 build
-0.458 > tsc -b && vite build
-0.458 
-25.83 src/pages/SellDesignPage.tsx(3958,13): error TS2353: Object literal may only specify known properties, and 'bypassValidation' does not exist in type '{ designUrl: string; designFile?: File; designId?: number; designName?: string; designPrice?: number; postValidationAction?: string; }'.
-26.14 npm notice
-26.14 npm notice New major version of npm available! 10.8.2 -> 11.6.0
-26.14 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.0
-26.14 npm notice To update run: npm install -g npm@11.6.0
-26.14 npm notice
-------
-Dockerfile:17
---------------------
-  15 |     
-  16 |     # Build the application
-  17 | >>> RUN npm run build
-  18 |     
-  19 |     # Production stage
---------------------
-error: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
+Quand on clique sur la flèche, un panneau latéral glisse depuis la droite ou la gauche.
+
+Cela garde ta card minimaliste tout en affichant toutes les infos (commission, stats, historique) dans un espace dédié.
+
+Astuce moderne :
+
+Utilise une ombre douce et arrondis XL.
+
+Ajoute une animation Framer Motion pour un effet fluide.
+
+Laisse un léger « backdrop » transparent derrière pour concentrer l’attention sur le panneau.
+
+🔹 2. Popover contextuel avec micro-interactions
+
+Une popover flottante apparaît près de la flèche (comme un tooltip évolué), avec un design glassmorphism (fond flou et semi-transparent).
+
+Idéal pour des infos rapides ou des actions immédiates.
+
+Ajouter un petit indicateur de fermeture « X » en haut à droite.
+
+🔹 3. Bottom sheet (inspiré du mobile)
+
+Un drawer en bas de l’écran qui se soulève quand on clique sur la flèche.
+
+Très utilisé sur les applis mobiles modernes (Material Design 3, iOS).
+
+Convient si tu veux afficher une liste de détails ou d’actions secondaires.
+
+🔹 4. Modal plein écran minimaliste
+
+Pour une approche plus immersive : un modal plein écran avec un en-tête simplifié et du contenu bien espacé.
+
+Utile si les infos commission incluent des graphiques ou des actions complexes.

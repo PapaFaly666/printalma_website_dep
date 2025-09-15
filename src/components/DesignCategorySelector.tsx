@@ -95,7 +95,7 @@ export const DesignCategorySelector: React.FC<DesignCategorySelectorProps> = ({
         <option value="">{placeholder}</option>
         {categories.map(category => (
           <option key={category.id} value={category.id}>
-            {category.icon} {category.name} ({category.designCount})
+            {category.icon} {category.name}
           </option>
         ))}
       </select>
@@ -162,7 +162,6 @@ export const DesignCategorySelector: React.FC<DesignCategorySelectorProps> = ({
               )}
               <div className="flex-1">
                 <div className="font-medium">{category.name}</div>
-                <div className="text-sm text-gray-500">{category.designCount} designs</div>
               </div>
               {category.id === value && (
                 <Check className="h-4 w-4 text-blue-500" />

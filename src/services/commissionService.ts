@@ -260,11 +260,12 @@ class CommissionService {
 
   /**
    * Calculer la répartition des revenus pour preview
-   * Calcul côté frontend basé sur la logique backend
+   * ✅ CORRIGÉ: commissionRate = % pour le VENDEUR (pas l'admin)
+   * Si commissionRate = 74%, le vendeur gagne 74% et l'admin 26%
    */
   calculateRevenueSplit(totalAmount: number, commissionRate: number) {
-    const commission = Math.round((totalAmount * commissionRate) / 100);
-    const vendorRevenue = totalAmount - commission;
+    const vendorRevenue = Math.round((totalAmount * commissionRate) / 100);
+    const commission = totalAmount - vendorRevenue;
     
     return {
       totalAmount,

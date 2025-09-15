@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../services/productService';
-import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle } from 'lucide-react';
 import designService, { Design } from '../services/designService';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorPublish } from '../hooks/useVendorPublish';
@@ -2145,9 +2145,22 @@ const SellDesignPage: React.FC = () => {
   // 🧮 Helpers unifiés de calcul (source de vérité cohérente)
   const getSalePrice = useCallback((p: Product): number => {
     const editedPrice = editStates[p.id]?.price as number | undefined;
-    // Utiliser le prix édité s'il existe, sinon le prix suggéré, sinon le prix de base
-    return editedPrice !== undefined && editedPrice > 0 ? editedPrice : (p.suggestedPrice ?? p.price);
-  }, [editStates]);
+
+    // ✅ CORRIGÉ: Si on a un prix édité, l'utiliser
+    if (editedPrice !== undefined && editedPrice > 0) {
+      return editedPrice;
+    }
+
+    // ✅ NOUVEAU: Si on a un bénéfice personnalisé, calculer le prix de vente
+    const customProfit = customProfits[p.id];
+    if (customProfit !== undefined && customProfit >= 0) {
+      const costPrice = prixDeRevientOriginaux[p.id] ?? p.price;
+      return costPrice + customProfit;
+    }
+
+    // Sinon, utiliser le prix suggéré ou le prix de base
+    return p.suggestedPrice ?? p.price;
+  }, [editStates, customProfits, prixDeRevientOriginaux]);
 
   const getCost = useCallback((p: Product): number => {
     // Utiliser prixDeRevientOriginaux s'il existe, sinon utiliser le prix du produit comme coût de base
@@ -2155,24 +2168,41 @@ const SellDesignPage: React.FC = () => {
   }, [prixDeRevientOriginaux]);
 
   const getProfit = useCallback((p: Product): number => {
-    return Math.max(0, getSalePrice(p) - getCost(p));
+    const salePrice = getSalePrice(p);
+    const costPrice = getCost(p);
+
+    // ✅ NOUVEAU: Validation - éviter les calculs invalides
+    if (!Number.isFinite(salePrice) || !Number.isFinite(costPrice) || salePrice < 0 || costPrice < 0) {
+      return 0;
+    }
+
+    return Math.max(0, salePrice - costPrice);
   }, [getSalePrice, getCost]);
 
   const getCommissionAmount = useCallback((p: Product): number => {
-    // Commission prélevée sur le BÉNÉFICE, pas sur le prix de vente total
+    // ✅ CORRIGÉ: Commission = ce que l'ADMIN gagne (le reste après la part vendeur)
     const rawRate = (vendorCommission ?? 40);
     const clampedRate = Math.max(1, Math.round(rawRate));
-    const profit = getProfit(p); // Bénéfice = Prix de vente - Prix de revient
-    return (profit * clampedRate) / 100;
+    const profit = getProfit(p); // Bénéfice total = Prix de vente - Prix de revient
+    const vendorShare = (profit * clampedRate) / 100; // Part du vendeur
+    return Math.max(0, profit - vendorShare); // Commission admin = Bénéfice - Part vendeur
   }, [vendorCommission, getProfit]);
 
   const getVendorRevenue = useCallback((p: Product): number => {
-    // Revenus vendeur = Bénéfice - Commission prélevée sur le bénéfice
-    // Ou bien : Prix de vente - Prix de revient - Commission
+    // ✅ CORRIGÉ: Revenus vendeur = sa part directe du bénéfice
+    // Si commission = 74%, vendeur prend 74% du bénéfice, admin prend 26%
+    const rawRate = (vendorCommission ?? 40);
+    const clampedRate = Math.max(1, Math.round(rawRate));
     const profit = getProfit(p); // Bénéfice total
-    const commission = getCommissionAmount(p); // Commission sur le bénéfice
-    return Math.max(0, profit - commission);
-  }, [getProfit, getCommissionAmount]);
+
+    // ✅ NOUVEAU: Validation - ne pas afficher si les données sont invalides
+    if (!Number.isFinite(profit) || profit < 0 || !Number.isFinite(clampedRate)) {
+      return 0;
+    }
+
+    const vendorRevenue = (profit * clampedRate) / 100;
+    return Math.max(0, vendorRevenue); // Part directe du vendeur
+  }, [vendorCommission, getProfit]);
 
   // Nouvel état pour gérer le mode sélectionné
   const [selectedMode, setSelectedMode] = useState<'design' | 'product' | null>(null);
@@ -3262,7 +3292,12 @@ const SellDesignPage: React.FC = () => {
       setProducts((prev) => prev.map((p) => p.id === id ? { ...p, ...payload } : p));
       setSavedProductIds((prev) => [...prev, id]);
       setTimeout(() => setSavedProductIds((prev) => prev.filter((pid) => pid !== id)), 1200);
-      setEditStates((prev) => ({ ...prev, [id]: {} }));
+
+      // ✅ CORRIGÉ: Réinitialiser editStates seulement après que products soit mis à jour
+      // Utiliser un setTimeout pour s'assurer que la mise à jour de products est terminée
+      setTimeout(() => {
+        setEditStates((prev) => ({ ...prev, [id]: {} }));
+      }, 0);
 
       // Afficher le toast de succès
       toast({
@@ -4449,44 +4484,7 @@ const SellDesignPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Filtre couleur moderne */}
-            {designUrl && colorFilterOptions.length > 1 && (
-              <div className="max-w-xl mx-auto">
-                <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-black dark:text-white">Filtrer par couleur</h3>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {colorFilterOptions.length} couleurs disponibles
-                    </span>
-                  </div>
-                  <Select value={filterColorName} onValueChange={setFilterColorName}>
-                    <SelectTrigger className="w-full border-gray-300 dark:border-gray-600 rounded-xl">
-                      <SelectValue placeholder="Toutes les couleurs" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_COLORS}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500" />
-                          Toutes les couleurs
-                        </div>
-                      </SelectItem>
-                      {colorFilterOptions.map((opt) => (
-                        <SelectItem key={opt.name} value={opt.name}>
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-4 h-4 rounded-full border border-gray-300" 
-                              style={{ backgroundColor: opt.colorCode }} 
-                            />
-                            {opt.name}
-                            <span className="text-xs text-gray-500">({opt.count})</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
+           
 
             {error && (
               <div className="max-w-2xl mx-auto">
@@ -4774,260 +4772,16 @@ const SellDesignPage: React.FC = () => {
                                             
                                           </div>
                                           
-                                          {/* Bouton simple flèche */}
+                                          {/* Bouton flèche pour panneau latéral moderne */}
                                           <button
                                             onClick={() => togglePricingExpansion(product.id)}
-                                            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors group"
                                           >
-                                            <ChevronDown className={`h-4 w-4 text-gray-600 dark:text-gray-400 transition-transform ${
-                                              isExpanded ? 'rotate-180' : ''
-                                            }`} />
+                                            <ChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-400 transition-transform group-hover:translate-x-0.5" />
                                           </button>
                                         </div>
                                       </div>
 
-                                      {/* Panel expansible avec design moderne */}
-                                      <AnimatePresence mode="wait">
-                                        {isExpanded && (
-                                          <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ 
-                                              height: { duration: 0.4, ease: "easeInOut" },
-                                              opacity: { duration: 0.3, delay: 0.1 }
-                                            }}
-                                            className="border-t border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-900/10 dark:to-purple-900/10"
-                                          >
-                                            <div className="p-4 sm:p-5 space-y-5">
-                                              {/* 🎯 NOUVEAU: Section prix suggéré vs original */}
-                                              {hasSuggestedPrice && (
-                                                <div className="max-w-lg mx-auto mb-5" onClick={(e) => e.stopPropagation()}>
-                                                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                      <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                                      <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
-                                                        Système de prix suggéré activé
-                                                      </h4>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-2 gap-3 text-xs">
-                                                      <div className="bg-white/50 dark:bg-gray-800/50 rounded p-3 border border-purple-100 dark:border-purple-800">
-                                                        <div className="text-gray-600 dark:text-gray-400 mb-1">Prix de revient</div>
-                                                        <div className="font-semibold text-gray-800 dark:text-gray-200">
-                                                          {new Intl.NumberFormat('fr-FR', {
-                                                            style: 'currency',
-                                                            currency: 'XOF',
-                                                            maximumFractionDigits: 0
-                                                          }).format(prixDeRevientMockup)}
-                                                        </div>
-                                                      </div>
-                                                      
-                                                      <div className="bg-purple-100/50 dark:bg-purple-900/50 rounded p-3 border border-purple-200 dark:border-purple-700">
-                                                        <div className="text-purple-600 dark:text-purple-300 mb-1">Prix de vente suggéré</div>
-                                                        <div className="font-bold text-purple-800 dark:text-purple-200">
-                                                          {new Intl.NumberFormat('fr-FR', {
-                                                            style: 'currency',
-                                                            currency: 'XOF',
-                                                            maximumFractionDigits: 0
-                                                          }).format((product.suggestedPrice ?? product.price) as number)}
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                    
-                                                    <div className="mt-3 text-xs text-purple-700 dark:text-purple-300 bg-purple-100/50 dark:bg-purple-900/30 rounded p-2">
-                                                      <span className="font-medium">💡 Info:</span> Vous travaillez maintenant avec le prix suggéré comme base minimum. Ajoutez votre bénéfice au-dessus de ce prix.
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              )}
-                                              
-                                              {/* 🔄 NOUVEAU: Interface de pricing pour vendeur */}
-                                              <div className="max-w-lg mx-auto mb-5" onClick={(e) => e.stopPropagation()}>
-                                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-                                                  <div className="flex items-center gap-2 mb-4">
-                                                    <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                                    <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                                                      Configuration du prix
-                                                    </h4>
-                                                  </div>
-                                                  
-                                                  <div className="space-y-4">
-                                                    {/* 1. Prix suggéré (éditable avec min) */}
-                                                    <div className="space-y-2">
-                                                      <div className="flex items-center justify-between">
-                                                        <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                                                          {(() => {
-                                                            const currentValue = editStates[product.id]?.price ?? product.suggestedPrice ?? product.price;
-                                                            const suggestedPrice = product.suggestedPrice ?? product.price;
-                                                            const isModified = currentValue !== suggestedPrice;
-                                                            return isModified ? "Prix de vente personnalisé" : "Prix de vente suggéré";
-                                                          })()}
-                                                        </label>
-                                                        <div className="text-xs text-blue-600 dark:text-blue-400">
-                                                          Recommandé: {new Intl.NumberFormat('fr-FR', {
-                                                            style: 'currency',
-                                                            currency: 'XOF',
-                                                            maximumFractionDigits: 0
-                                                          }).format(product.suggestedPrice || product.price)}
-                                                        </div>
-                                                      </div>
-                                                      <div className="flex items-center gap-2">
-                                                        {(() => {
-                                                          const inputValue = pricingInputValues[product.id] !== undefined
-                                                            ? pricingInputValues[product.id]
-                                                            : String(editStates[product.id]?.price ?? product.suggestedPrice ?? product.price);
-                                                          const onChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
-                                                            const raw = e.target.value;
-                                                            setPricingInputValues(prev => ({ ...prev, [product.id]: raw }));
-                                                            
-                                                            if (raw.trim() === '') {
-                                                              setPriceErrors(prev => ({
-                                                                ...prev,
-                                                                [product.id]: 'Veuillez entrer un prix valide'
-                                                              }));
-                                                              return; // ne pas calculer si vide
-                                                            }
-                                                            const nouveauPrixDeVente = Number(raw);
-                                                            if (!Number.isFinite(nouveauPrixDeVente) || nouveauPrixDeVente <= 0) {
-                                                              setPriceErrors(prev => ({
-                                                                ...prev,
-                                                                [product.id]: 'Prix invalide'
-                                                              }));
-                                                              return;
-                                                            }
-                                                            // Validation bloquante vs minimum/suggéré
-                                                            const prixSuggereMinimum = product.suggestedPrice || product.price;
-                                                            const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
-                                                            if (nouveauPrixDeVente < prixSuggereMinimum) {
-                                                              const priceType = hasSuggestedPrice ? 'prix suggéré' : 'prix minimum';
-                                                              setPriceErrors(prev => ({
-                                                                ...prev,
-                                                                [product.id]: `❌ Le prix ne peut pas être inférieur au ${priceType} (${prixSuggereMinimum.toLocaleString()} FCFA)`
-                                                              }));
-                                                              return; // Bloquer la mise à jour si prix trop bas
-                                                            } else {
-                                                              setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
-                                                            }
-                                                            const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price;
-                                                            const nouveauBenefice = Math.max(0, nouveauPrixDeVente - prixDeRevientMockup);
-                                                            setCustomProfits(prev => ({ ...prev, [product.id]: nouveauBenefice }));
-                                                            handleFieldChange(product.id, 'price', nouveauPrixDeVente);
-                                                          };
-                                                          const onBlurHandler = () => {
-                                                            const raw = pricingInputValues[product.id];
-                                                            const parsed = raw === undefined ? currentPrice : Number(raw);
-                                                            const invalid = raw === '' || !Number.isFinite(parsed) || parsed <= 0;
-                                                            if (invalid) {
-                                                              // Ne pas sauvegarder si invalide
-                                                              return;
-                                                            }
-                                                            handleSave(product.id);
-                                                          };
-                                                          return (
-                                                            <>
-                                                              <input
-                                                                type="number"
-                                                                step="100"
-                                                                value={inputValue}
-                                                                onChange={onChangeHandler}
-                                                                onBlur={onBlurHandler}
-                                                          className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                                        />
-                                                        <span className="text-sm text-blue-600 dark:text-blue-400">FCFA</span>
-                                                            </>
-                                                          );
-                                                        })()}
-                                                      </div>
-                                                      {priceErrors[product.id] && (
-                                                        <div className="mt-1 text-xs text-red-600 dark:text-red-400">{priceErrors[product.id]}</div>
-                                                      )}
-                                                    </div>
-
-                                                    {/* 2. Bénéfice (éditable) */}
-                                                    <div className="space-y-2">
-                                                      <div className="flex items-center justify-between">
-                                                        <label className="text-sm font-medium text-green-700 dark:text-green-300">
-                                                          Votre bénéfice
-                                                        </label>
-                                                        
-                                                      </div>
-                                                      <div className="flex items-center gap-2">
-                                                        <input
-                                                          type="number"
-                                                          min="0"
-                                                          step="100"
-                                                          value={customProfit}
-                                                          onChange={(e) => {
-                                                            const newProfit = Math.max(0, Number(e.target.value));
-                                                            
-                                                            // 🔄 LOGIQUE CORRECTE: Prix de vente = Prix de revient mockup FIXE + Bénéfice
-                                                            const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price; // FIXE, ne change jamais
-                                                            const nouveauPrixDeVente = prixDeRevientMockup + newProfit;
-                                                            
-                                                            // Validation vs prix suggéré minimum
-                                                            const prixSuggereMinimum = product.suggestedPrice || product.price;
-                                                            if (nouveauPrixDeVente < prixSuggereMinimum) {
-                                                              const minProfit = prixSuggereMinimum - prixDeRevientMockup;
-                                                              const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
-                                                              const priceType = hasSuggestedPrice ? 'prix suggéré' : 'prix minimum';
-                                                              setPriceErrors(prev => ({
-                                                                ...prev,
-                                                                [product.id]: `❌ Bénéfice minimum requis: ${minProfit.toLocaleString()} FCFA pour respecter le ${priceType}`
-                                                              }));
-                                                              return; // Bloquer la mise à jour
-                                                            } else {
-                                                              setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
-                                                            }
-                                                            
-                                                            // Mettre à jour le profit personnalisé
-                                                            setCustomProfits(prev => ({
-                                                              ...prev,
-                                                              [product.id]: newProfit
-                                                            }));
-                                                            
-                                                            // Mettre à jour le prix de vente final
-                                                            handleFieldChange(product.id, 'price', nouveauPrixDeVente);
-                                                          }}
-                                                          onBlur={() => handleSave(product.id)}
-                                                          className="flex-1 px-3 py-2 text-sm border border-green-300 dark:border-green-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-green-500 focus:outline-none"
-                                                        />
-                                                        <span className="text-sm text-green-600 dark:text-green-400">FCFA</span>
-                                                        
-                                                        
-                                                      </div>
-                                                    </div>
-                                                    
-                                                  </div>
-                                                </div>
-                                              </div>
-                                              
-                                              {/* 💰 Cards larges noir et blanc */}
-                                              <div className="max-w-lg mx-auto space-y-3">
-
-                                                {/* Revenus vendeur simplifié */}
-                                                <div className="bg-green-50 dark:bg-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
-                                                  <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                      <PiggyBank className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                                      <span className="text-sm text-green-700 dark:text-green-300 font-medium">
-                                                        Vos revenus par vente
-                                                      </span>
-                                                    </div>
-                                                    <div className="text-lg font-bold text-green-800 dark:text-green-200">
-                                                      {commissionLoading ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin text-green-600" />
-                                                      ) : (
-                                                        commissionService.formatCFA(getVendorRevenue(product))
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </motion.div>
-                                        )}
-                                      </AnimatePresence>
                                     </div>
                                     
                                     {/* Effet de lueur pour état actif */}
@@ -5187,21 +4941,12 @@ const SellDesignPage: React.FC = () => {
                 })}
               </div>
 
-                {/* CTA de publication */}
+                {/* Compteur de produits sélectionnés */}
                 {selectedProductIds.length > 0 && (
-                  <div className="text-center pt-8">
-                    <div className="space-y-3">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {selectedProductIds.length} produit{selectedProductIds.length > 1 ? 's' : ''} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
-                      </p>
-                      <Button
-                        onClick={() => setCheckoutOpen(true)}
-                        size="lg"
-                        className="px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded"
-                      >
-                        Prévisualiser et publier
-                      </Button>
-                    </div>
+                  <div className="text-center pt-8 pb-8">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedProductIds.length} produit{selectedProductIds.length > 1 ? 's' : ''} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
+                    </p>
                   </div>
                 )}
               </div>
@@ -5232,23 +4977,344 @@ const SellDesignPage: React.FC = () => {
         )}
       </div>
       
+      {/* Panneau latéral moderne pour la configuration des prix */}
+      <AnimatePresence>
+        {Object.keys(expandedPricingIds).some(id => expandedPricingIds[Number(id)]) && (
+          <>
+            {/* Backdrop avec transparence */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+              onClick={() => setExpandedPricingIds({})}
+            />
+
+            {/* Panneau latéral */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 40
+              }}
+              className="fixed top-0 right-0 h-full w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl z-50 overflow-y-auto"
+            >
+              <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-6 z-10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Configuration des prix
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Ajustez vos prix et bénéfices
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setExpandedPricingIds({})}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {products.filter(product => expandedPricingIds[product.id]).map(product => {
+                  const prixDeRevientMockup = prixDeRevientOriginaux[product.id] || product.price;
+                  const customProfit = customProfits[product.id] || 0;
+                  const currentPrice = prixDeRevientMockup + customProfit;
+                  const profitPercentage = prixDeRevientMockup > 0 ?
+                    Math.round((customProfit / prixDeRevientMockup) * 100) : 0;
+                  const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
+
+                  return (
+                    <motion.div
+                      key={product.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="border border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-gray-50 dark:bg-gray-800/50"
+                    >
+                      {/* En-tête produit */}
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                          <Package className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">
+                            {product.name}
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Prix actuel: {new Intl.NumberFormat('fr-FR', {
+                              style: 'currency',
+                              currency: 'XOF',
+                              maximumFractionDigits: 0
+                            }).format(currentPrice)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Section prix suggéré */}
+                      {hasSuggestedPrice && (
+                        <div className="mb-6">
+                          <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                              <h5 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                                Système de prix suggéré activé
+                              </h5>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div className="bg-white/50 dark:bg-gray-800/50 rounded p-3 border border-purple-100 dark:border-purple-800">
+                                <div className="text-gray-600 dark:text-gray-400 mb-1">Prix de revient</div>
+                                <div className="font-semibold text-gray-800 dark:text-gray-200">
+                                  {new Intl.NumberFormat('fr-FR', {
+                                    style: 'currency',
+                                    currency: 'XOF',
+                                    maximumFractionDigits: 0
+                                  }).format(prixDeRevientMockup)}
+                                </div>
+                              </div>
+
+                              <div className="bg-purple-100/50 dark:bg-purple-900/50 rounded p-3 border border-purple-200 dark:border-purple-700">
+                                <div className="text-purple-600 dark:text-purple-300 mb-1">Prix suggéré</div>
+                                <div className="font-bold text-purple-800 dark:text-purple-200">
+                                  {new Intl.NumberFormat('fr-FR', {
+                                    style: 'currency',
+                                    currency: 'XOF',
+                                    maximumFractionDigits: 0
+                                  }).format(product.suggestedPrice)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 text-xs text-purple-700 dark:text-purple-300 bg-purple-100/50 dark:bg-purple-900/30 rounded p-2">
+                              <span className="font-medium">💡 Info:</span> Ajoutez votre bénéfice au-dessus de ce prix suggéré.
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Configuration du prix */}
+                      <div className="space-y-4">
+                        {/* Info sur la marge maximale */}
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                          <div className="text-xs text-blue-700 dark:text-blue-300">
+                            <span className="font-medium">💡 MARGE RECOMMANDÉE:</span> Il est conseillé de vendre au minimum à prix de revient + 10%
+                            <br />
+                            <span className="text-blue-600 dark:text-blue-400">
+                              Prix de revient 6000 FCFA → Prix recommandé: 6600 FCFA (vous pouvez vendre moins ou plus)
+                            </span>
+                          </div>
+                        </div>
+                        {/* Prix de vente */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                            {(() => {
+                              const currentValue = pricingInputValues[product.id] !== undefined
+                                ? Number(pricingInputValues[product.id])
+                                : currentPrice;
+                              const suggestedPrice = product.suggestedPrice ?? product.price;
+                              const isUsingSuggestedPrice = currentValue === suggestedPrice;
+                              return isUsingSuggestedPrice ? "Prix de vente suggéré" : "Prix de vente personnalisé";
+                            })()}
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              step="100"
+                              value={pricingInputValues[product.id] !== undefined
+                                ? pricingInputValues[product.id]
+                                : String(product.suggestedPrice ?? product.price)}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                setPricingInputValues(prev => ({ ...prev, [product.id]: raw }));
+
+                                const nouveauPrixDeVente = Number(raw);
+                                if (Number.isFinite(nouveauPrixDeVente) && nouveauPrixDeVente > 0) {
+                                  // ✅ NOUVEAU: Pas de blocage - juste avertissement
+                                  const prixMinimumAvecMarge = prixDeRevientMockup * 1.10; // Prix recommandé avec 10% de marge
+                                  const nouveauBenefice = Math.max(0, nouveauPrixDeVente - prixDeRevientMockup);
+
+                                  // Toujours mettre à jour les valeurs
+                                  setCustomProfits(prev => ({ ...prev, [product.id]: nouveauBenefice }));
+                                  handleFieldChange(product.id, 'price', nouveauPrixDeVente);
+
+                                  // Avertissement si en dessous du minimum recommandé
+                                  if (nouveauPrixDeVente < prixMinimumAvecMarge) {
+                                    setPriceErrors(prev => ({
+                                      ...prev,
+                                      [product.id]: `⚠️ Prix recommandé minimum: ${Math.round(prixMinimumAvecMarge).toLocaleString()} FCFA (prix de revient + 10% de marge)`
+                                    }));
+                                  } else {
+                                    // Prix correct - pas d'erreur
+                                    setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
+                                  }
+                                }
+                              }}
+                              onBlur={(e) => {
+                                // ✅ CORRIGÉ: Ne sauvegarder que si on quitte vraiment le champ, pas lors de la fermeture du panneau
+                                setTimeout(() => {
+                                  if (expandedPricingIds[product.id]) {
+                                    handleSave(product.id);
+                                  }
+                                }, 100);
+                              }}
+                              className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                            />
+                            <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">FCFA</span>
+                          </div>
+                          {priceErrors[product.id] && (
+                            <div className="text-xs text-red-600 dark:text-red-400">{priceErrors[product.id]}</div>
+                          )}
+                        </div>
+
+                        {/* Bénéfice */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-green-700 dark:text-green-300">
+                            Votre bénéfice
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              step="100"
+                              value={customProfit}
+                              onChange={(e) => {
+                                const newProfit = Math.max(0, Number(e.target.value));
+                                const nouveauPrixDeVente = prixDeRevientMockup + newProfit;
+
+                                // ✅ NOUVEAU: Pas de blocage - juste avertissement
+                                const beneficeMinimumRecommande = prixDeRevientMockup * 0.10; // 10% de marge recommandée
+
+                                // Toujours mettre à jour les valeurs
+                                setCustomProfits(prev => ({ ...prev, [product.id]: newProfit }));
+                                handleFieldChange(product.id, 'price', nouveauPrixDeVente);
+
+                                // ✅ NOUVEAU: Synchroniser le champ prix de vente pour qu'il s'affiche
+                                setPricingInputValues(prev => ({ ...prev, [product.id]: String(nouveauPrixDeVente) }));
+
+                                // Avertissement si bénéfice trop faible
+                                if (newProfit < beneficeMinimumRecommande) {
+                                  setPriceErrors(prev => ({
+                                    ...prev,
+                                    [product.id]: `⚠️ Bénéfice recommandé minimum: ${Math.round(beneficeMinimumRecommande).toLocaleString()} FCFA (10% de marge)`
+                                  }));
+                                } else {
+                                  // Bénéfice correct - pas d'erreur
+                                  setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
+                                }
+                              }}
+                              onBlur={(e) => {
+                                // ✅ CORRIGÉ: Ne sauvegarder que si on quitte vraiment le champ, pas lors de la fermeture du panneau
+                                setTimeout(() => {
+                                  if (expandedPricingIds[product.id]) {
+                                    handleSave(product.id);
+                                  }
+                                }, 100);
+                              }}
+                              className="flex-1 px-3 py-2 text-sm border border-green-300 dark:border-green-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-green-500 focus:outline-none"
+                            />
+                            <span className="text-sm text-green-600 dark:text-green-400 font-medium">FCFA</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Résumé des revenus - Affiché seulement si valeurs valides */}
+                      {(() => {
+                        const revenue = getVendorRevenue(product);
+                        const isValidRevenue = Number.isFinite(revenue) && revenue >= 0;
+
+                        if (!isValidRevenue && !commissionLoading) {
+                          return null; // Ne pas afficher si invalide
+                        }
+
+                        return (
+                          <div className="mt-6 bg-green-50 dark:bg-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <PiggyBank className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <span className="text-sm text-green-700 dark:text-green-300 font-medium">
+                                  Vos revenus par vente
+                                </span>
+                              </div>
+                              <div className="text-lg font-bold text-green-800 dark:text-green-200">
+                                {commissionLoading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+                                ) : (
+                                  commissionService.formatCFA(revenue)
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Bouton flottant qui suit le scroll */}
+      <AnimatePresence>
+        {selectedProductIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 30
+            }}
+            className="fixed bottom-6 right-6 z-50"
+          >
+            <Button
+              onClick={() => {
+                console.log('🔥 Bouton flottant cliqué, ouverture modal...', { selectedProductIds });
+                setCheckoutOpen(true);
+              }}
+              size="lg"
+              className="px-6 py-4 bg-black text-white hover:bg-gray-800 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 font-semibold flex items-center gap-3"
+            >
+              <Eye className="h-5 w-5" />
+              <span className="hidden sm:inline">Prévisualiser et publier</span>
+              <span className="sm:hidden">Publier</span>
+              <div className="flex items-center justify-center w-6 h-6 bg-white/20 rounded-full text-xs font-bold">
+                {selectedProductIds.length}
+              </div>
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Toaster pour les notifications */}
-      <Toaster 
+      <Toaster
         position="top-right"
         expand={true}
         richColors
         closeButton
       />
 
-      {/* Modal de prévisualisation avant publication */}
-      <Sheet open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-        <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Rocket className="h-5 w-5" />
-              Confirmer la publication
+      {/* Modal de prévisualisation avant publication - Dialog simple */}
+      <Sheet open={checkoutOpen} onOpenChange={(open) => {
+        console.log('🔥 Modal state change:', { open, checkoutOpen });
+        setCheckoutOpen(open);
+      }}>
+        <SheetContent className="w-3/4 sm:max-w-2xl lg:max-w-4xl h-full overflow-y-auto p-4 sm:p-6" side="right">
+          <SheetHeader className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
+            <SheetTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold">
+              <Rocket className="h-5 w-5 sm:h-6 sm:w-6" />
+              Prévisualiser et publier
             </SheetTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Vérifiez vos produits avant de les publier sur la plateforme
             </p>
           </SheetHeader>
@@ -5269,14 +5335,16 @@ const SellDesignPage: React.FC = () => {
                     
           <div className="mt-6 space-y-6">
             {/* Résumé de la sélection */}
-            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <div>
-                  <h3 className="font-medium text-blue-900 dark:text-blue-100">
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-800/50 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 text-base sm:text-lg">
                     {selectedProductIds.length} produit{selectedProductIds.length > 1 ? 's' : ''} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
                   </h3>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <p className="text-sm sm:text-base text-blue-700 dark:text-blue-300 mt-1">
                     Votre design sera appliqué sur ces produits et mis en vente
                   </p>
                 </div>
@@ -5284,29 +5352,29 @@ const SellDesignPage: React.FC = () => {
             </div>
 
             {/* Aperçu du design */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-              <h3 className="font-medium text-gray-900 dark:text-white mb-3">Votre design</h3>
-              <div className="flex items-center gap-3">
-                <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                  <img 
-                    src={designUrl} 
-                    alt="Votre design" 
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 sm:p-6">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-base sm:text-lg">Votre design</h3>
+              <div className="flex flex-col sm:flex-row items-start gap-4">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 mx-auto sm:mx-0 flex-shrink-0">
+                  <img
+                    src={designUrl}
+                    alt="Votre design"
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900 dark:text-white">
+                <div className="flex-1 text-center sm:text-left">
+                  <h4 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">
                     {designName || designFile?.name || 'Design personnalisé'}
                   </h4>
                   {designDescription && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2 line-clamp-3">
                       {designDescription}
                     </p>
                   )}
                   {designPrice > 0 && (
-                    <div className="flex items-center text-sm text-green-600 dark:text-green-400 mt-1">
+                    <div className="flex items-center justify-center sm:justify-start text-sm sm:text-base text-green-600 dark:text-green-400 mt-3 bg-green-50 dark:bg-green-900/30 px-3 py-2 rounded-lg">
                       <DollarSign className="w-4 h-4 mr-1" />
-                      <span>Revenus: {designPrice} FCFA par vente</span>
+                      <span className="font-medium">Revenus: {designPrice} FCFA par vente</span>
                     </div>
                   )}
                 </div>
@@ -5315,8 +5383,8 @@ const SellDesignPage: React.FC = () => {
 
             {/* Liste des produits sélectionnés */}
             <div className="space-y-4">
-              <h3 className="font-medium text-gray-900 dark:text-white">Produits à publier</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-h-96 overflow-y-auto">
+              <h3 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">Produits à publier</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
                 {selectedProductIds.map((idStr) => {
                   const product = products.find(p => p.id === Number(idStr));
                   if (!product) return null;
@@ -5326,12 +5394,12 @@ const SellDesignPage: React.FC = () => {
                                 const view = getPreviewView(product);
 
                   return (
-                    <div key={product.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                      <div className="flex gap-3">
+                    <div key={product.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 sm:p-5 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                         {/* Miniature cliquable */}
                         <button
                           onClick={() => openDetailedPreview(product)}
-                          className="w-16 h-16 rounded-lg overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex-shrink-0 hover:border-blue-400 transition-colors relative group"
+                          className="w-16 h-16 sm:w-18 sm:h-18 rounded-lg overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex-shrink-0 hover:border-blue-400 transition-colors relative group mx-auto sm:mx-0"
                         >
                           {view ? (
                             <ProductViewWithDesign 
@@ -5353,13 +5421,13 @@ const SellDesignPage: React.FC = () => {
                         </button>
                             
                         {/* Détails */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0 text-center sm:text-left">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                              <h4 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
                                 {editStates[product.id]?.name || product.name}
                               </h4>
-                              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              <p className="text-sm sm:text-base font-bold text-gray-700 dark:text-gray-300 mt-1">
                                 {editStates[product.id]?.price || product.price} FCFA
                               </p>
                             </div>
@@ -5420,12 +5488,13 @@ const SellDesignPage: React.FC = () => {
             </div>
                     </div>
 
-          <SheetFooter className="mt-6 flex flex-col gap-3">
-            <SheetClose asChild>
-              <Button variant="outline" className="w-full" disabled={isPublishing}>
-                Modifier la sélection
-              </Button>
-            </SheetClose>
+          <SheetFooter className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="flex flex-col gap-4 w-full">
+              <SheetClose asChild>
+                <Button variant="outline" className="w-full py-3 text-sm sm:text-base" disabled={isPublishing}>
+                  Modifier la sélection
+                </Button>
+              </SheetClose>
             
             {/* 🆕 Sélecteur d'action post-validation */}
             <div className="mb-4">
@@ -5437,74 +5506,81 @@ const SellDesignPage: React.FC = () => {
               />
             </div>
             
-            <div className="grid grid-cols-3 sm:grid-cols-3 gap-4">
-              <Button
-                onClick={handleSaveAsDraft}
-                disabled={isPublishing}
-                variant="outline"
-                className="flex-1"
-              >
-                {isPublishing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Sauvegarde...
-                  </>
-                ) : (
-                  <>
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Mettre en brouillon
-                  </>
-                )}
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={handleSaveAsDraft}
+                  disabled={isPublishing}
+                  variant="outline"
+                  className="flex-1 py-3"
+                >
+                  {isPublishing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <span className="hidden sm:inline">Sauvegarde...</span>
+                      <span className="sm:hidden">...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">Mettre en brouillon</span>
+                      <span className="sm:hidden">Brouillon</span>
+                    </>
+                  )}
+                </Button>
 
-              <Button
-                onClick={handlePublishFromDraft}
-                disabled={isPublishing}
-                variant="secondary"
-                className="flex-1"
-              >
-                {isPublishing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Publication...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Publier depuis brouillon
-                  </>
-                )}
-              </Button>
+                <Button
+                  onClick={handlePublishFromDraft}
+                  disabled={isPublishing}
+                  variant="secondary"
+                  className="flex-1 py-3"
+                >
+                  {isPublishing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <span className="hidden sm:inline">Publication...</span>
+                      <span className="sm:hidden">...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">Publier depuis brouillon</span>
+                      <span className="sm:hidden">Publier</span>
+                    </>
+                  )}
+                </Button>
 
-              <Button
-                onClick={handlePublishProducts}
-                disabled={isPublishing}
-                className="flex-1 bg-gray-900 hover:bg-gray-800 text-white"
-              >
-                {isPublishing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {currentStep || 'Publication en cours...'}
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="h-4 w-4 mr-2" />
-                    Publier directement
-                  </>
-                )}
-              </Button>
-            </div>
+                <Button
+                  onClick={handlePublishProducts}
+                  disabled={isPublishing}
+                  className="flex-1 py-3 bg-black hover:bg-gray-800 text-white font-semibold"
+                >
+                  {isPublishing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <span className="hidden sm:inline">{currentStep || 'Publication en cours...'}</span>
+                      <span className="sm:hidden">...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">Publier directement</span>
+                      <span className="sm:hidden">Publier</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             
-            {/* 🆕 Textes explicatifs mis à jour */}
-            <div className="grid grid-cols-3 sm:grid-cols-3 gap-4 text-xs text-gray-500 dark:text-gray-400 mt-2">
-              <div className="text-center">
-                <p>Créer en brouillon pour publication manuelle plus tard</p>
-              </div>
-              <div className="text-center">
-                <p>Publier des designs sauvegardés en brouillon</p>
-              </div>
-              <div className="text-center">
-                <p>Publication immédiate disponible à la vente</p>
+              {/* Textes explicatifs pour desktop uniquement */}
+              <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 mt-3 px-2">
+                <div className="flex-1 text-center">
+                  <p>Créer en brouillon pour publication manuelle plus tard</p>
+                </div>
+                <div className="flex-1 text-center">
+                  <p>Publier des designs sauvegardés en brouillon</p>
+                </div>
+                <div className="flex-1 text-center">
+                  <p>Publication immédiate disponible à la vente</p>
+                </div>
               </div>
             </div>
           </SheetFooter>
