@@ -107,13 +107,13 @@ const AdminDesignCategories: React.FC = () => {
         
         await designCategoryService.updateCategory(editingCategory.id, updateData);
         toast({
-          title: '✅ Catégorie modifiée',
+          title: '✅ Thème modifié',
           description: `"${formData.name}" a été modifiée avec succès`
         });
       } else {
         await designCategoryService.createCategory(formData);
         toast({
-          title: '✅ Catégorie créée',
+          title: '✅ Thème créé',
           description: `"${formData.name}" a été créée avec succès`
         });
       }
@@ -133,14 +133,14 @@ const AdminDesignCategories: React.FC = () => {
   };
 
   const handleDelete = async (category: DesignCategory) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer la catégorie "${category.name}" ?\n\nCette action est irréversible.`)) {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le thème "${category.name}" ?\n\nCette action est irréversible.`)) {
       return;
     }
 
     try {
       await designCategoryService.deleteCategory(category.id);
       toast({
-        title: '✅ Catégorie supprimée',
+        title: '✅ Thème supprimé',
         description: `"${category.name}" a été supprimée avec succès`
       });
       loadCategories();
@@ -169,15 +169,15 @@ const AdminDesignCategories: React.FC = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            🎨 Catégories de Design
+            🎨 Thèmes
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Gérez les catégories utilisées par les vendeurs pour classer leurs designs
+            Gérez les thèmes utilisés par les vendeurs pour classer leurs designs
           </p>
         </div>
         <Button onClick={openCreateForm} className="gap-2">
           <Plus className="h-4 w-4" />
-          Nouvelle Catégorie
+          Nouveau Thème
         </Button>
       </div>
 
@@ -188,7 +188,7 @@ const AdminDesignCategories: React.FC = () => {
             <div className="text-2xl font-bold text-blue-600">
               {categories.length}
             </div>
-            <p className="text-sm text-gray-600">Catégories totales</p>
+            <p className="text-sm text-gray-600">Thèmes totaux</p>
           </CardContent>
         </Card>
         <Card>
@@ -196,7 +196,7 @@ const AdminDesignCategories: React.FC = () => {
             <div className="text-2xl font-bold text-green-600">
               {categories.filter(cat => cat.isActive).length}
             </div>
-            <p className="text-sm text-gray-600">Catégories actives</p>
+            <p className="text-sm text-gray-600">Thèmes actifs</p>
           </CardContent>
         </Card>
         <Card>
@@ -215,14 +215,14 @@ const AdminDesignCategories: React.FC = () => {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Aucune catégorie
+              Aucun thème
             </h3>
             <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
-              Créez votre première catégorie de design pour permettre aux vendeurs de classer leurs créations.
+              Créez votre premier thème de design pour permettre aux vendeurs de classer leurs créations.
             </p>
             <Button onClick={openCreateForm} className="gap-2">
               <Plus className="h-4 w-4" />
-              Créer une catégorie
+              Créer un thème
             </Button>
           </CardContent>
         </Card>
@@ -309,7 +309,7 @@ const AdminDesignCategories: React.FC = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie'}
+              {editingCategory ? 'Modifier le thème' : 'Nouveau thème'}
             </DialogTitle>
           </DialogHeader>
 

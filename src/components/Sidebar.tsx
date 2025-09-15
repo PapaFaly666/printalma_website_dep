@@ -409,25 +409,7 @@ export default function Sidebar() {
                             textColor=""
                         />
 
-                        <NavItem
-                            icon={<Package size={18} />}
-                            label="Produits Prêts"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'ready-products'}
-                            onClick={() => handleNavigation('ready-products')}
-                            badge=""
-                            textColor=""
-                        />
 
-                        <NavItem
-                            icon={<Palette size={18} />}
-                            label="Thèmes"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'themes'}
-                            onClick={() => handleNavigation('themes')}
-                            badge=""
-                            textColor=""
-                        />
 
                         <NavItem
                             icon={<Tag size={18} />}
@@ -440,7 +422,7 @@ export default function Sidebar() {
                         />
                         <NavItem
                             icon={<Palette size={18} />}
-                            label="Catégories Design"
+                            label="Thèmes"
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'design-categories'}
                             onClick={() => handleNavigation('design-categories')}

@@ -1834,7 +1834,7 @@ const VendorProductForm: React.FC = () => {
   const steps = [
     { id: 1, title: 'Informations de base', icon: Package },
     { id: 2, title: 'Variations de couleur', icon: Palette },
-    { id: 3, title: 'Catégories et tailles', icon: Store },
+    { id: 3, title: 'Thèmes et tailles', icon: Store },
     { id: 4, title: 'Validation finale', icon: Check }
   ];
 
@@ -2016,9 +2016,9 @@ const VendorProductForm: React.FC = () => {
 
         {currentStep === 3 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Catégories et tailles</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Thèmes et tailles</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Cette étape sera développée prochainement. Votre produit sera classé dans une catégorie par défaut.
+              Cette étape sera développée prochainement. Votre produit sera classé dans un thème par défaut.
             </p>
           </div>
         )}
@@ -3101,20 +3101,15 @@ const SellDesignPage: React.FC = () => {
       return;
     }
 
-    // Validation de la catégorie
+    // Validation du thème
     if (!designCategoryId) {
-      setDesignCategoryError('Veuillez sélectionner une catégorie pour votre design');
+      setDesignCategoryError('Veuillez sélectionner un thème pour votre design');
       return;
     }
 
     // Validation du prix
-    if (!designPrice || designPrice <= 0) {
+    if (!designPrice || designPrice < 0) {
       setDesignPriceError('Veuillez entrer un prix valide pour votre design');
-      return;
-    }
-
-    if (designPrice < 100) {
-      setDesignPriceError('Le prix minimum pour un design est de 100 FCFA');
       return;
     }
 
@@ -5429,7 +5424,7 @@ const SellDesignPage: React.FC = () => {
             {/* Sélecteur de catégorie */}
             <div className="space-y-2">
               <Label htmlFor="design-category" className="text-sm font-medium text-gray-900 dark:text-white">
-                Catégorie de design *
+                Thème de design *
               </Label>
               <DesignCategorySelector
                 value={designCategoryId}
@@ -5439,7 +5434,7 @@ const SellDesignPage: React.FC = () => {
                 }}
                 required
                 className={designCategoryError ? 'border-red-500' : ''}
-                placeholder="-- Choisir une catégorie --"
+                placeholder="-- Choisir un thème --"
               />
               {designCategoryError && (
                 <p className="text-xs text-red-600">{designCategoryError}</p>
@@ -5464,13 +5459,14 @@ const SellDesignPage: React.FC = () => {
             {/* Champ de saisie du prix */}
             <div className="space-y-2">
               <Label htmlFor="design-price" className="text-sm font-medium text-gray-900 dark:text-white">
-                Prix de vente suggéré (FCFA) *
+                Prix design (FCFA) *
               </Label>
               <div className="relative">
                 <Input
                   id="design-price"
                   type="number"
                   step="50"
+                  min="0"
                   value={designPrice || ''}
                   onChange={(e) => {
                     setDesignPrice(Number(e.target.value));
@@ -5487,7 +5483,7 @@ const SellDesignPage: React.FC = () => {
                 <p className="text-xs text-red-600">{designPriceError}</p>
               )}
               <p className="text-xs text-gray-500">
-                Minimum 100 FCFA. Revenus que vous recevrez par vente.
+                Minimum 0 FCFA. Revenus que vous recevrez par vente.
               </p>
             </div>
 

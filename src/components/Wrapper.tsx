@@ -11,7 +11,7 @@ const Wrapper = ({ children }: WrapperProps) => {
   const location = useLocation();
 
   // Liste des routes où le NavBar ne doit PAS apparaître
-  const hideNavbarRoutes = ["/admin/products","/admin/dashboard","/admin/payment-requests","/login","/admin/product-form","/admin/categories","/admin/clients","/forgot-password","admin/orders","/admin/orders","/admin/add-product","/admin/design-validation","/admin/product-validation","/admin/vendor-products-admin","/admin/vendor-products/create","/admin/vendor-products","/admin/trash"];
+  const hideNavbarRoutes = ["/admin/products","/admin/dashboard","/admin/payment-requests","/login","/admin/product-form","/admin/categories","/admin/clients","/forgot-password","admin/orders","/admin/orders","/admin/add-product","/admin/design-validation","/admin/product-validation","/admin/vendor-products-admin","/admin/vendor-products/create","/admin/vendor-products","/admin/trash","/admin/design-categories"];
 
   // Vérifier si on est sur une route de détail produit (/products/:id ou /admin/products/:id)
   const isProductDetailPage = /^\/(products|admin\/products)\/\d+$/.test(location.pathname);
