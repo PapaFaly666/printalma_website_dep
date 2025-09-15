@@ -3954,8 +3954,7 @@ const SellDesignPage: React.FC = () => {
             ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
             designName: designName || selectedDesign?.name,
             designPrice: designPrice || selectedDesign?.price,
-            postValidationAction,
-            bypassValidation: true // Flag pour publication immédiate
+            postValidationAction
           },
           getPreviewView,
           'DRAFT' // Créer en DRAFT puis publier via service externe

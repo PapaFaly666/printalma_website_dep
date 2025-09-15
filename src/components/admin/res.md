@@ -1,29 +1,29 @@
-pfdev@PC:/mnt/c/Users/HP/Desktop/printalma-perso/printalma_website_dep$ npm run build
-
-> printalma_website@0.0.0 build
-> tsc -b && vite build
-
-src/services/designService.ts:987:7 - error TS2322: Type 'number' is not assignable to type 'string'.
-
-987       category: payload.categoryId, // Utilise category au lieu de categoryId
-          ~~~~~~~~
-
-  src/services/designService.ts:47:3
-    47   category?: string;
-         ~~~~~~~~
-    The expected type comes from property 'category' which is declared here on type 'Design'       
-
-src/services/designService.ts:1080:7 - error TS2322: Type 'number' is not assignable to type 'string'.
-
-1080       category: payload.categoryId, // Utilise category au lieu de categoryId
-           ~~~~~~~~
-
-  src/services/designService.ts:47:3
-    47   category?: string;
-         ~~~~~~~~
-    The expected type comes from property 'category' which is declared here on type 'Design'       
-
-
-Found 2 errors.
-
-pfdev@PC:/mnt/c/Users/HP/Desktop/printalma-perso/printalma_website_dep$
+#15 25.83 src/pages/SellDesignPage.tsx(3958,13): error TS2353: Object literal may only specify known properties, and 'bypassValidation' does not exist in type '{ designUrl: string; designFile?: File; designId?: number; designName?: string; designPrice?: number; postValidationAction?: string; }'.
+#15 26.14 npm notice
+#15 26.14 npm notice New major version of npm available! 10.8.2 -> 11.6.0
+#15 26.14 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.0
+#15 26.14 npm notice To update run: npm install -g npm@11.6.0
+#15 26.14 npm notice
+#15 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
+------
+ > [builder 6/6] RUN npm run build:
+0.458 
+0.458 > printalma_website@0.0.0 build
+0.458 > tsc -b && vite build
+0.458 
+25.83 src/pages/SellDesignPage.tsx(3958,13): error TS2353: Object literal may only specify known properties, and 'bypassValidation' does not exist in type '{ designUrl: string; designFile?: File; designId?: number; designName?: string; designPrice?: number; postValidationAction?: string; }'.
+26.14 npm notice
+26.14 npm notice New major version of npm available! 10.8.2 -> 11.6.0
+26.14 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.0
+26.14 npm notice To update run: npm install -g npm@11.6.0
+26.14 npm notice
+------
+Dockerfile:17
+--------------------
+  15 |     
+  16 |     # Build the application
+  17 | >>> RUN npm run build
+  18 |     
+  19 |     # Production stage
+--------------------
+error: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
