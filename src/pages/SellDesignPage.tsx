@@ -34,6 +34,7 @@ import { Label } from '../components/ui/label';
 import { Toaster } from 'sonner';
 import { getVendorProductId } from '../utils/vendorProductHelpers';
 import commissionService from '../services/commissionService';
+import { vendorProductService } from '../services/vendorProductService';
 
 // 🆕 Imports pour cascade validation
 import { PostValidationActionSelectorIntegrated } from '../components/cascade/PostValidationActionSelectorIntegrated';
@@ -3789,6 +3790,70 @@ const SellDesignPage: React.FC = () => {
     }
   };
 
+  // 🆕 Nouvelle fonction pour publier des brouillons existants
+  const handlePublishFromDraft = async () => {
+    try {
+      setLoading(true);
+
+      // Récupérer le design sélectionné
+      const selectedDesign = existingDesignsWithValidation.find(d => d.imageUrl === designUrl || d.thumbnailUrl === designUrl);
+      if (!selectedDesign) {
+        toast({
+          title: 'Erreur',
+          description: 'Design introuvable pour la publication',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Utiliser le service pour publier les produits en brouillon
+      const results = await publishProducts(
+        selectedProductIds,
+        products,
+        productColors,
+        productSizes,
+        editStates,
+        basePrices,
+        {
+          designUrl,
+          designFile,
+          designId: Number(selectedDesign.id),
+          designName: designName || selectedDesign.name,
+          designPrice: designPrice || selectedDesign.price,
+          postValidationAction: PostValidationAction.AUTO_PUBLISH
+        },
+        getPreviewView,
+        'DRAFT' // Publié par service externe car design validé
+      );
+
+      const successful = (results || []).filter(r => r.success);
+
+      toast({
+        title: `${successful.length} produit(s) publié(s) depuis le brouillon !`,
+        description: 'Vos produits sont maintenant disponibles à la vente.',
+        variant: 'success',
+        duration: 6000
+      });
+
+      // Fermer la modale et rediriger
+      setCheckoutOpen(false);
+      setTimeout(() => {
+        navigate('/vendeur/products');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Erreur lors de la publication depuis brouillon:', error);
+      toast({
+        title: 'Erreur lors de la publication',
+        description: 'Une erreur est survenue. Veuillez réessayer.',
+        variant: 'destructive',
+        duration: 6000
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePublishProducts = async () => {
     try {
       // 🆕 VALIDATION FINALE DES PRIX : Vérification non-bloquante avec avertissement
@@ -3835,53 +3900,121 @@ const SellDesignPage: React.FC = () => {
 
       setDesignValidationStatus(validationStatus);
 
-      // 🚀 Détermination du statut initial forcé selon la validation du design
-      const forcedStatus: 'PENDING' = 'PENDING';
+      // 🚀 Détermination du workflow selon la validation du design ET l'action choisie
+      if (!validationStatus.isValidated) {
+        // Design non validé - créer en PENDING peu importe l'action
+        console.log('🚀 Design non validé - création en PENDING avec postValidationAction:', postValidationAction);
 
-      console.log('🚀 Publication avec:', {
-        forcedStatus,
-        postValidationAction,
-        designValidationStatus: validationStatus
-      });
+        const results = await publishProducts(
+          selectedProductIds,
+          products,
+          productColors,
+          productSizes,
+          editStates,
+          basePrices,
+          {
+            designUrl,
+            designFile,
+            ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
+            designName: designName || selectedDesign?.name,
+            designPrice: designPrice || selectedDesign?.price,
+            postValidationAction
+          },
+          getPreviewView,
+          'PENDING'
+        );
 
-      const results = await publishProducts(
-        selectedProductIds,
-        products,
-        productColors,
-        productSizes,
-        editStates,
-        basePrices,
-        { 
-          designUrl, 
-          designFile,
-          ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
-          designName: designName || selectedDesign?.name,
-          designPrice: designPrice || selectedDesign?.price,
-          // 🆕 Ajouter l'action post-validation sélectionnée
-          postValidationAction
-        },
-        getPreviewView,
-        forcedStatus
-      );
+        const successful = (results || []).filter(r => r.success);
+        const actionText = postValidationAction === PostValidationAction.AUTO_PUBLISH
+          ? 'automatiquement publiés après validation'
+          : 'mis en brouillon après validation';
 
-      const successful = (results || []).filter(r => r.success);
-      
-      if (validationStatus.needsValidation) {
-        // Design non validé - les produits seront en PENDING automatiquement
-        const actionText = postValidationAction === PostValidationAction.AUTO_PUBLISH 
-          ? 'automatiquement publiés' 
-          : 'mis en brouillon';
         toast({
-          title: `${successful.length} produit(s) créé(s) avec succès !`,
-          description: `Vos produits sont en attente de validation. Dès que l'admin validera votre design, ils seront ${actionText}.`,
+          title: `${successful.length} produit(s) en attente de validation`,
+          description: `⏳ Votre design doit être validé par l'administrateur. Vos produits seront ${actionText}.`,
           variant: 'default',
           duration: 8000
         });
-      } else {
-        // Design validé - publication directe en PUBLISHED
+
+      } else if (postValidationAction === PostValidationAction.AUTO_PUBLISH) {
+        // Design validé + Publication directe = PUBLIER IMMÉDIATEMENT
+        console.log('🚀 Design validé + Publication directe - Publication immédiate');
+
+        // Utiliser le service de publication immédiate pour designs validés
+        const results = await publishProducts(
+          selectedProductIds,
+          products,
+          productColors,
+          productSizes,
+          editStates,
+          basePrices,
+          {
+            designUrl,
+            designFile,
+            ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
+            designName: designName || selectedDesign?.name,
+            designPrice: designPrice || selectedDesign?.price,
+            postValidationAction,
+            bypassValidation: true // Flag pour publication immédiate
+          },
+          getPreviewView,
+          'DRAFT' // Créer en DRAFT puis publier via service externe
+        );
+
+        // 🚀 PUBLICATION IMMÉDIATE des produits créés (design validé)
+        const successful = (results || []).filter(r => r.success);
+
+        if (successful.length > 0) {
+          console.log('🚀 Publication immédiate des produits créés...');
+
+          // Publier chaque produit créé immédiatement
+          for (const result of successful) {
+            if (result.productId) {
+              try {
+                await vendorProductService.publishProduct(result.productId);
+                console.log(`✅ Produit ${result.productId} publié immédiatement`);
+              } catch (error) {
+                console.error(`❌ Erreur publication immédiate produit ${result.productId}:`, error);
+              }
+            }
+          }
+        }
+
         toast({
-          title: `${successful.length} produit(s) publié(s) avec succès !`,
-          description: `Votre design est validé, vos produits sont directement disponibles à la vente.`,
+          title: `${successful.length} produit(s) publié(s) immédiatement !`,
+          description: `🚀 Votre design est validé, vos produits sont maintenant visibles par tous les clients.`,
+          variant: 'success',
+          duration: 6000
+        });
+
+      } else {
+        // Design validé + Sauvegarde en brouillon
+        console.log('🚀 Design validé + Brouillon - Création en DRAFT');
+
+        const results = await publishProducts(
+          selectedProductIds,
+          products,
+          productColors,
+          productSizes,
+          editStates,
+          basePrices,
+          {
+            designUrl,
+            designFile,
+            ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
+            designName: designName || selectedDesign?.name,
+            designPrice: designPrice || selectedDesign?.price,
+            postValidationAction
+          },
+          getPreviewView,
+          'DRAFT'
+        );
+
+        const successful = (results || []).filter(r => r.success);
+
+        toast({
+          title: `${successful.length} produit(s) sauvé(s) en brouillon`,
+          description: `💾 Votre produit est prêt. Vous pouvez le publier à tout moment.`,
           variant: 'success',
           duration: 6000
         });
@@ -5301,6 +5434,7 @@ const SellDesignPage: React.FC = () => {
                 currentAction={postValidationAction}
                 onActionChange={setPostValidationAction}
                 disabled={isPublishing}
+                designValidationStatus={designValidationStatus}
               />
             </div>
             
@@ -5323,7 +5457,26 @@ const SellDesignPage: React.FC = () => {
                   </>
                 )}
               </Button>
-              
+
+              <Button
+                onClick={handlePublishFromDraft}
+                disabled={isPublishing}
+                variant="secondary"
+                className="flex-1"
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Publication...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Publier depuis brouillon
+                  </>
+                )}
+              </Button>
+
               <Button
                 onClick={handlePublishProducts}
                 disabled={isPublishing}
@@ -5337,10 +5490,7 @@ const SellDesignPage: React.FC = () => {
                 ) : (
                   <>
                     <Rocket className="h-4 w-4 mr-2" />
-                    {designValidationStatus.isValidated 
-                      ? 'Publier directement' 
-                      : 'Créer en attente'
-                    }
+                    Publier directement
                   </>
                 )}
               </Button>
@@ -5352,14 +5502,10 @@ const SellDesignPage: React.FC = () => {
                 <p>Créer en brouillon pour publication manuelle plus tard</p>
               </div>
               <div className="text-center">
-                <p>
-                  {designValidationStatus.isValidated 
-                    ? 'Publication immédiate (design validé)' 
-                    : postValidationAction === PostValidationAction.AUTO_PUBLISH
-                      ? 'Publication automatique après validation'
-                      : 'Mise en brouillon après validation'
-                  }
-                </p>
+                <p>Publier des designs sauvegardés en brouillon</p>
+              </div>
+              <div className="text-center">
+                <p>Publication immédiate disponible à la vente</p>
               </div>
             </div>
           </SheetFooter>
