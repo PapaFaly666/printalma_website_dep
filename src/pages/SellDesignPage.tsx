@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../services/productService';
-import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle, Clock } from 'lucide-react';
 import designService, { Design } from '../services/designService';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorPublish } from '../hooks/useVendorPublish';
@@ -35,6 +35,7 @@ import { Toaster } from 'sonner';
 import { getVendorProductId } from '../utils/vendorProductHelpers';
 import commissionService from '../services/commissionService';
 import { vendorProductService } from '../services/vendorProductService';
+import { vendorProductValidationService } from '../services/vendorProductValidationService';
 
 // 🆕 Imports pour cascade validation
 import { PostValidationActionSelectorIntegrated } from '../components/cascade/PostValidationActionSelectorIntegrated';
@@ -3766,12 +3767,12 @@ const SellDesignPage: React.FC = () => {
       // Statut forcé = DRAFT pour le workflow MANUAL-PUBLISH
       const forcedStatus: 'DRAFT' = 'DRAFT';
 
-      console.log('💾 Sauvegarde en brouillon avec:', {
-        forcedStatus,
-        postValidationAction: PostValidationAction.TO_DRAFT,
-        designValidationStatus: validationStatus
+      console.log('💾 Sauvegarde en brouillon avec nouveau système:', {
+        designId: selectedDesign?.id,
+        postValidationAction: PostValidationAction.TO_DRAFT
       });
 
+      // 🆕 PREMIÈRE CRÉATION DES PRODUITS (toujours forcé en DRAFT)
       const results = await publishProducts(
         selectedProductIds,
         products,
@@ -3785,23 +3786,47 @@ const SellDesignPage: React.FC = () => {
           ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
           designName: designName || selectedDesign?.name,
           designPrice: designPrice || selectedDesign?.price,
-          // 🆕 Ajouter l'action post-validation
           postValidationAction: PostValidationAction.TO_DRAFT
         },
         getPreviewView,
-        forcedStatus
+        'DRAFT' // Force DRAFT
       );
 
       const successful = (results || []).filter(r => r.success);
-      
-      toast({
-        title: `${successful.length} produit(s) créé(s) en brouillon !`,
-        description: validationStatus.isValidated
-          ? 'Vos produits restent en brouillon. Vous pourrez les publier manuellement à tout moment.'
-          : 'Vos produits resteront en brouillon même après validation du design. Vous devrez les publier manuellement.',
-        variant: 'success',
-        duration: 8000
-      });
+
+      if (successful.length > 0) {
+        // 🆕 NOUVEAU SYSTÈME : Utiliser le service de validation pour chaque produit créé
+        const statusPromises = successful.map(async (result) => {
+          if (result.productId) {
+            try {
+              return await vendorProductValidationService.setProductStatus(result.productId, true); // true = isDraft
+            } catch (error) {
+              console.error(`Erreur lors de la mise en brouillon du produit ${result.productId}:`, error);
+              return null;
+            }
+          }
+          return null;
+        });
+
+        const statusResults = await Promise.all(statusPromises);
+        const validatedDrafts = statusResults.filter(r => r && r.success);
+
+        toast({
+          title: `${validatedDrafts.length} produit(s) créé(s) en brouillon !`,
+          description: validatedDrafts.some(r => r?.isValidated)
+            ? 'Certains designs sont validés - vous pourrez les publier immédiatement.'
+            : 'Vos produits sont en brouillon et seront publiables après validation des designs.',
+          variant: 'success',
+          duration: 8000
+        });
+      } else {
+        toast({
+          title: `${successful.length} produit(s) créé(s) en brouillon !`,
+          description: 'Vos produits sont en brouillon et seront publiables après validation des designs.',
+          variant: 'success',
+          duration: 8000
+        });
+      }
 
       // Fermer la modale après succès
       setCheckoutOpen(false);
@@ -3825,7 +3850,7 @@ const SellDesignPage: React.FC = () => {
     }
   };
 
-  // 🆕 Nouvelle fonction pour publier des brouillons existants
+  // 🆕 Nouvelle fonction pour publier des brouillons existants selon pub.md
   const handlePublishFromDraft = async () => {
     try {
       setLoading(true);
@@ -3841,7 +3866,7 @@ const SellDesignPage: React.FC = () => {
         return;
       }
 
-      // Utiliser le service pour publier les produits en brouillon
+      // 🆕 CRÉATION AVEC INTENTION DE PUBLICATION DIRECTE
       const results = await publishProducts(
         selectedProductIds,
         products,
@@ -3858,17 +3883,50 @@ const SellDesignPage: React.FC = () => {
           postValidationAction: PostValidationAction.AUTO_PUBLISH
         },
         getPreviewView,
-        'DRAFT' // Publié par service externe car design validé
+        'DRAFT' // Créé en draft puis publié via service
       );
 
       const successful = (results || []).filter(r => r.success);
 
-      toast({
-        title: `${successful.length} produit(s) publié(s) depuis le brouillon !`,
-        description: 'Vos produits sont maintenant disponibles à la vente.',
-        variant: 'success',
-        duration: 6000
-      });
+      if (successful.length > 0) {
+        // 🆕 NOUVEAU SYSTÈME : Utiliser le service de validation pour publication directe
+        const publishPromises = successful.map(async (result) => {
+          if (result.productId) {
+            try {
+              return await vendorProductValidationService.setProductStatus(result.productId, false); // false = publication directe
+            } catch (error) {
+              console.error(`Erreur lors de la publication du produit ${result.productId}:`, error);
+              return null;
+            }
+          }
+          return null;
+        });
+
+        const publishResults = await Promise.all(publishPromises);
+        const publishedProducts = publishResults.filter(r => r && r.success);
+
+        if (publishedProducts.length > 0) {
+          const publishedCount = publishedProducts.filter(r => r?.status === 'PUBLISHED').length;
+          const pendingCount = publishedProducts.filter(r => r?.status === 'PENDING').length;
+
+          let description = '';
+          if (publishedCount > 0) {
+            description += `${publishedCount} produit(s) publié(s) immédiatement (design validé). `;
+          }
+          if (pendingCount > 0) {
+            description += `${pendingCount} produit(s) en attente de validation design.`;
+          }
+
+          toast({
+            title: `${publishedProducts.length} produit(s) traité(s) !`,
+            description: description.trim(),
+            variant: 'success',
+            duration: 6000
+          });
+        } else {
+          throw new Error('Aucun produit n\'a pu être publié');
+        }
+      }
 
       // Fermer la modale et rediriger
       setCheckoutOpen(false);
@@ -3972,54 +4030,108 @@ const SellDesignPage: React.FC = () => {
         });
 
       } else if (postValidationAction === PostValidationAction.AUTO_PUBLISH) {
-        // Design validé + Publication directe = PUBLIER IMMÉDIATEMENT
-        console.log('🚀 Design validé + Publication directe - Publication immédiate');
+        // Design validé + Publication directe = PUBLIER IMMÉDIATEMENT SELON pub.md
+        console.log('🚀 Design validé + Publication directe - Utilisation directe du service de validation');
 
-        // Utiliser le service de publication immédiate pour designs validés
-        const results = await publishProducts(
-          selectedProductIds,
-          products,
-          productColors,
-          productSizes,
-          editStates,
-          basePrices,
-          {
-            designUrl,
-            designFile,
-            ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
-            designName: designName || selectedDesign?.name,
-            designPrice: designPrice || selectedDesign?.price,
-            postValidationAction
-          },
-          getPreviewView,
-          'DRAFT' // Créer en DRAFT puis publier via service externe
-        );
+        // 🆕 NOUVEAU : Publication directe selon pub.md - pas d'étape intermédiaire
+        const publishPromises = selectedProductIds.map(async (productIdStr) => {
+          try {
+            const productId = Number(productIdStr);
+            const product = products.find(p => p.id === productId);
+            if (!product) throw new Error(`Produit ${productId} introuvable`);
 
-        // 🚀 PUBLICATION IMMÉDIATE des produits créés (design validé)
-        const successful = (results || []).filter(r => r.success);
+            // Créer le produit avec les données configurées
+            const productData = {
+              productId,
+              name: editStates[productId]?.name || product.name,
+              price: editStates[productId]?.price ?? product.price,
+              // Autres données du produit...
+              designUrl,
+              designFile,
+              ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
+              designName: designName || selectedDesign?.name,
+              designPrice: designPrice || selectedDesign?.price,
+            };
 
-        if (successful.length > 0) {
-          console.log('🚀 Publication immédiate des produits créés...');
+            // Créer le produit via publishProducts mais en mode temporaire pour récupérer l'ID
+            const [createResult] = await publishProducts(
+              [productIdStr],
+              products,
+              productColors,
+              productSizes,
+              editStates,
+              basePrices,
+              {
+                designUrl,
+                designFile,
+                ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
+                designName: designName || selectedDesign?.name,
+                designPrice: designPrice || selectedDesign?.price,
+                postValidationAction
+              },
+              getPreviewView,
+              'DRAFT' // Créé temporairement en draft pour récupérer l'ID
+            );
 
-          // Publier chaque produit créé immédiatement
-          for (const result of successful) {
-            if (result.productId) {
-              try {
-                await vendorProductService.publishProduct(result.productId);
-                console.log(`✅ Produit ${result.productId} publié immédiatement`);
-              } catch (error) {
-                console.error(`❌ Erreur publication immédiate produit ${result.productId}:`, error);
-              }
+            if (!createResult?.success || !createResult.productId) {
+              throw new Error('Erreur lors de la création du produit');
             }
-          }
-        }
 
-        toast({
-          title: `${successful.length} produit(s) publié(s) immédiatement !`,
-          description: `🚀 Votre design est validé, vos produits sont maintenant visibles par tous les clients.`,
-          variant: 'success',
-          duration: 6000
+            // 🆕 Utiliser directement le service de publication selon pub.md
+            const publishResult = await vendorProductValidationService.setProductStatus(
+              createResult.productId,
+              false // false = publication directe selon pub.md
+            );
+
+            console.log(`✅ Produit ${createResult.productId} traité directement:`, publishResult.status);
+            return {
+              ...publishResult,
+              productId: createResult.productId,
+              productName: product.name
+            };
+          } catch (error) {
+            console.error(`❌ Erreur publication directe produit ${productIdStr}:`, error);
+            return {
+              success: false,
+              error: error.message,
+              productId: Number(productIdStr)
+            };
+          }
         });
+
+        const publishResults = await Promise.all(publishPromises);
+        const successful = publishResults.filter(r => r.success);
+        const actuallyPublished = publishResults.filter(r => r.success && 'status' in r && r.status === 'PUBLISHED').length;
+        const stillPending = publishResults.filter(r => r.success && 'status' in r && r.status === 'PENDING').length;
+        const errors = publishResults.filter(r => !r.success).length;
+
+        console.log(`📊 Résultat publication directe: ${actuallyPublished} publiés, ${stillPending} en attente, ${errors} erreurs`);
+
+        // Message selon le résultat
+        if (actuallyPublished > 0) {
+          toast({
+            title: `🎉 ${actuallyPublished} produit(s) publié(s) immédiatement !`,
+            description: stillPending > 0
+              ? `${stillPending} produit(s) en attente de validation admin.`
+              : '🚀 Vos produits sont maintenant visibles par tous les clients.',
+            variant: 'success',
+            duration: 6000
+          });
+        } else if (stillPending > 0) {
+          toast({
+            title: `⏳ ${stillPending} produit(s) en attente de validation`,
+            description: 'Vos designs doivent être validés par l\'admin avant publication.',
+            variant: 'default',
+            duration: 6000
+          });
+        } else if (errors > 0) {
+          toast({
+            title: `❌ Erreur lors de la publication`,
+            description: `${errors} produit(s) n'ont pas pu être traités.`,
+            variant: 'destructive',
+            duration: 6000
+          });
+        }
 
       } else {
         // Design validé + Sauvegarde en brouillon
@@ -5551,14 +5663,24 @@ const SellDesignPage: React.FC = () => {
 
                 <Button
                   onClick={handlePublishProducts}
-                  disabled={isPublishing}
-                  className="flex-1 py-3 bg-black hover:bg-gray-800 text-white font-semibold"
+                  disabled={isPublishing || (!designValidationStatus.isValidated && postValidationAction === PostValidationAction.AUTO_PUBLISH)}
+                  className={`flex-1 py-3 font-semibold ${
+                    (!designValidationStatus.isValidated && postValidationAction === PostValidationAction.AUTO_PUBLISH)
+                      ? 'bg-gray-400 hover:bg-gray-400 text-gray-600 cursor-not-allowed'
+                      : 'bg-black hover:bg-gray-800 text-white'
+                  }`}
                 >
                   {isPublishing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       <span className="hidden sm:inline">{currentStep || 'Publication en cours...'}</span>
                       <span className="sm:hidden">...</span>
+                    </>
+                  ) : (!designValidationStatus.isValidated && postValidationAction === PostValidationAction.AUTO_PUBLISH) ? (
+                    <>
+                      <Clock className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">En attente de validation</span>
+                      <span className="sm:hidden">Attente</span>
                     </>
                   ) : (
                     <>
@@ -5579,7 +5701,12 @@ const SellDesignPage: React.FC = () => {
                   <p>Publier des designs sauvegardés en brouillon</p>
                 </div>
                 <div className="flex-1 text-center">
-                  <p>Publication immédiate disponible à la vente</p>
+                  <p>
+                    {(!designValidationStatus.isValidated && postValidationAction === PostValidationAction.AUTO_PUBLISH)
+                      ? 'Design en attente de validation admin'
+                      : 'Publication immédiate disponible à la vente'
+                    }
+                  </p>
                 </div>
               </div>
             </div>

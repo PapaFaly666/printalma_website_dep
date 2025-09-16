@@ -5,20 +5,18 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
-import { 
-  RefreshCw, 
-  Package, 
-  Clock, 
-  CheckCircle, 
-  Eye, 
-  Edit3,
+import {
+  RefreshCw,
+  Package,
+  Clock,
+  CheckCircle,
+  Eye,
   Trash2,
   Plus,
   Settings,
   Search,
-  Grid,
-  List,
-  X
+  X,
+  Save
 } from 'lucide-react';
 import {
   Dialog,
@@ -32,6 +30,7 @@ import { SimpleProductPreview } from '../../components/vendor/SimpleProductPrevi
 
 // Services et hooks
 import { vendorProductService } from '../../services/vendorProductService';
+import { vendorProductValidationService } from '../../services/vendorProductValidationService';
 
 // 🆕 Interface basée sur la structure de /public/best-sellers et compatible avec SimpleProductPreview
 interface VendorProductFromAPI {
@@ -79,6 +78,8 @@ interface VendorProductFromAPI {
     positioning: string; // JSON string avec {x, y, scale, rotation}
     scale: number;
     mode: string;
+    isValidated?: boolean; // 🆕 Statut de validation du design
+    validationStatus?: 'validated' | 'pending' | 'rejected'; // 🆕 Statut détaillé
   };
   
   designPositions: Array<{
@@ -156,16 +157,130 @@ export const VendorProductsPage: React.FC = () => {
   const [filteredProducts, setFilteredProducts] = useState<VendorProductFromAPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [validationStatuses, setValidationStatuses] = useState<Record<number, {
+    isValidated: boolean;
+    validationStatus: 'validated' | 'pending' | 'rejected';
+  }>>({});
   
   // États pour les filtres et la vue
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
   
+  // 🆕 Vérifier le statut de validation des designs
+  const checkDesignValidationStatuses = async (productList: VendorProductFromAPI[]) => {
+    try {
+      console.log('🔍 Vérification des statuts de validation des designs...');
+
+      const statusMap: Record<number, { isValidated: boolean; validationStatus: 'validated' | 'pending' | 'rejected' }> = {};
+      const productsNeedingValidation: VendorProductFromAPI[] = [];
+
+      // D'abord, utiliser les données déjà présentes dans les produits
+      productList.forEach((product) => {
+        if (product.designApplication.hasDesign) {
+          // Si les données de validation sont déjà présentes dans les produits transformés
+          if (product.designApplication.isValidated !== undefined && product.designApplication.validationStatus) {
+            statusMap[product.id] = {
+              isValidated: product.designApplication.isValidated,
+              validationStatus: product.designApplication.validationStatus as 'validated' | 'pending' | 'rejected'
+            };
+            console.log(`✅ Utilisation données extraites pour produit ${product.id}:`, statusMap[product.id]);
+          } else if (product.designId) {
+            // Si pas de données de validation, ajouter à la liste pour appel API
+            productsNeedingValidation.push(product);
+          }
+        }
+      });
+
+      console.log(`📊 Résumé validation: ${Object.keys(statusMap).length} avec données existantes, ${productsNeedingValidation.length} nécessitent un appel API`);
+
+      // Faire les appels API seulement pour les produits sans données de validation
+      if (productsNeedingValidation.length > 0) {
+        console.log(`📡 Récupération via API pour ${productsNeedingValidation.length} produits...`);
+
+        const validationPromises = productsNeedingValidation.map(async (product) => {
+          try {
+            const validationResult = await vendorProductValidationService.checkDesignValidation(product.designId!);
+            return {
+              productId: product.id,
+              ...validationResult
+            };
+          } catch (error) {
+            console.error(`Erreur vérification design ${product.designId}:`, error);
+            return {
+              productId: product.id,
+              isValidated: false,
+              status: 'pending' as const,
+              message: 'Erreur de vérification'
+            };
+          }
+        });
+
+        const validationResults = await Promise.all(validationPromises);
+
+        validationResults.forEach((result) => {
+          if (result) {
+            statusMap[result.productId] = {
+              isValidated: result.isValidated,
+              validationStatus: result.status
+            };
+          }
+        });
+      }
+
+      setValidationStatuses(statusMap);
+      console.log('✅ Statuts de validation finaux:', statusMap);
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification des validations:', error);
+    }
+  };
+
+  // 🆕 Helper pour extraire le statut de validation depuis les données du produit
+  const extractDesignValidationStatus = (product: any) => {
+    // Essayer différentes structures possibles
+    const sources = [
+      product.designValidation,
+      product.design?.validation,
+      product.design?.validationStatus,
+      product.designApplication?.validation,
+      product.designApplication?.validationStatus,
+      product.design // Le design lui-même pourrait contenir les infos de validation
+    ];
+
+    for (const source of sources) {
+      if (source && typeof source === 'object') {
+        // Chercher les propriétés isValidated/validated et status
+        const isValidated = source.isValidated || source.validated || source.isApproved;
+        const status = source.status || source.validationStatus || source.approvalStatus;
+
+        if (isValidated !== undefined || status !== undefined) {
+          return {
+            isValidated: Boolean(isValidated),
+            validationStatus: status || (isValidated ? 'validated' : 'pending')
+          };
+        }
+      }
+    }
+
+    // Si on a un design mais pas d'info de validation explicite,
+    // regarder le statut du produit ou des indices dans les noms de champs
+    if (product.design || product.designApplication?.hasDesign) {
+      if (product.status === 'PUBLISHED') {
+        // Si le produit est publié, on peut supposer que le design est validé
+        return { isValidated: true, validationStatus: 'validated' };
+      } else if (product.status === 'REJECTED') {
+        return { isValidated: false, validationStatus: 'rejected' };
+      } else {
+        return { isValidated: false, validationStatus: 'pending' };
+      }
+    }
+
+    return null;
+  };
+
   // 🆕 Charger les produits selon la documentation
   const loadProducts = async () => {
     setLoading(true);
@@ -248,17 +363,13 @@ export const VendorProductsPage: React.FC = () => {
       }
       
       console.log('✅ Produits vendeur chargés avec mockups:', apiProducts.length);
-      
+
+
       // ✅ TRANSFORMATION : Adapter les données pour l'affichage avec mockups
       const transformedProducts = apiProducts.map((product: any, index: number) => {
-        console.log(`🔍 Produit ${index + 1}:`, {
-          id: product.id,
-          vendorName: product.vendorName || product.name,
-          hasDesign: product.designApplication?.hasDesign,
-          designUrl: product.designApplication?.designUrl,
-          colorVariations: product.adminProduct?.colorVariations?.length || 0,
-          designPositions: product.designPositions?.length || 0
-        });
+        // 🔍 Extraire le statut de validation avec la fonction helper
+        const designValidationStatus = extractDesignValidationStatus(product);
+
         
         return {
           id: product.id,
@@ -285,7 +396,10 @@ export const VendorProductsPage: React.FC = () => {
             designUrl: product.designApplication?.designUrl || product.designUrl || '',
             positioning: product.designApplication?.positioning || 'CENTER',
             scale: product.designApplication?.scale || 0.6,
-            mode: product.designApplication?.mode || 'PRESERVED'
+            mode: product.designApplication?.mode || 'PRESERVED',
+            // 🆕 Inclure les données de validation extraites par la fonction helper
+            isValidated: designValidationStatus?.isValidated || false,
+            validationStatus: designValidationStatus?.validationStatus || 'pending'
           },
           
           designPositions: product.designPositions || [{
@@ -339,24 +453,16 @@ export const VendorProductsPage: React.FC = () => {
         };
       });
       
-      console.log('✅ Produits transformés avec mockups:', transformedProducts.length);
-      
-      // 🔍 DEBUG : Vérifier les données transformées
-      transformedProducts.forEach((product: VendorProductFromAPI, index: number) => {
-        console.log(`🎨 Produit transformé ${index + 1}:`, {
-          id: product.id,
-          vendorName: product.vendorName,
-          hasDesign: product.designApplication.hasDesign,
-          designUrl: product.designApplication.designUrl,
-          colorVariations: product.adminProduct.colorVariations.length,
-          designPositions: product.designPositions.length,
-          designTransforms: product.designTransforms.length
-        });
-      });
       
       setProducts(transformedProducts);
       setFilteredProducts(transformedProducts);
-      
+
+      // 🆕 Vérifier les statuts de validation des designs
+      if (transformedProducts.length > 0) {
+        await checkDesignValidationStatuses(transformedProducts);
+      }
+
+
     } catch (err) {
       setError('Erreur lors du chargement des produits');
       console.error('❌ Erreur:', err);
@@ -410,9 +516,6 @@ export const VendorProductsPage: React.FC = () => {
     setIsPreviewOpen(true);
   };
 
-  const handleEdit = (product: VendorProductFromAPI) => {
-    navigate(`/vendeur/products/${product.id}/edit`);
-  };
 
   const handleDeleteClick = (productId: number) => {
     setProductToDelete(productId);
@@ -433,30 +536,34 @@ export const VendorProductsPage: React.FC = () => {
     }
   };
 
+  // 🆕 Nouvelle fonction de publication basée sur pub.md
   const handlePublish = async (productId: number) => {
     if (!confirm('Êtes-vous sûr de vouloir publier ce produit ?')) {
       return;
     }
 
     try {
-      // Appel API pour publier le produit
-      const response = await fetch(`https://printalma-back-dep.onrender.com/vendor/products/${productId}/publish`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken') || sessionStorage.getItem('authToken')}`
-        }
-      });
+      console.log('🚀 Publication du produit:', productId);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // 🆕 Utiliser le nouveau service de validation
+      const result = await vendorProductValidationService.setProductStatus(productId, false); // false = publication directe
 
-      const result = await response.json();
-      
       if (result.success) {
-        toast.success('Produit publié avec succès');
+        if (result.status === 'PUBLISHED') {
+          toast.success('✅ Produit publié avec succès !');
+        } else if (result.status === 'PENDING') {
+          toast.info('📝 Produit en attente - Design non validé par l\'admin');
+        } else if (result.status === 'DRAFT') {
+          toast.info('📄 Produit mis en brouillon - Prêt à publier');
+        }
+
+        // Afficher les détails du statut
+        if (result.message) {
+          setTimeout(() => {
+            toast.info(result.message);
+          }, 1000);
+        }
+
         loadProducts(); // Recharger la liste
       } else {
         throw new Error(result.message || 'Erreur lors de la publication');
@@ -464,6 +571,99 @@ export const VendorProductsPage: React.FC = () => {
     } catch (error) {
       console.error('Erreur lors de la publication:', error);
       toast.error('Erreur lors de la publication du produit');
+    }
+  };
+
+  // 🆕 Fonction pour publier directement (remplace l'ancien publishDraft)
+  const handlePublishNow = async (productId: number) => {
+    try {
+      console.log('🚀 Publication directe du produit:', productId);
+
+      // Utiliser la publication directe pour les designs validés
+      const result = await vendorProductValidationService.setProductStatus(productId, false); // false = publication directe
+
+      if (result.success) {
+        if (result.status === 'PUBLISHED') {
+          toast.success('🎉 Produit publié immédiatement !');
+        } else if (result.status === 'PENDING') {
+          toast.info('📝 Produit en attente - Design non validé par l\'admin');
+        }
+        loadProducts(); // Recharger la liste
+      } else {
+        throw new Error(result.message || 'Erreur lors de la publication');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la publication directe:', error);
+      toast.error('Erreur lors de la publication');
+    }
+  };
+
+  // 🆕 Fonction pour mettre en brouillon
+  const handleSetToDraft = async (productId: number) => {
+    try {
+      console.log('📝 Mise en brouillon du produit:', productId);
+
+      const result = await vendorProductValidationService.setProductStatus(productId, true); // true = brouillon
+
+      if (result.success) {
+        toast.success('📝 Produit mis en brouillon !');
+        loadProducts(); // Recharger la liste
+      } else {
+        throw new Error(result.message || 'Erreur lors de la mise en brouillon');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise en brouillon:', error);
+      toast.error('Erreur lors de la mise en brouillon');
+    }
+  };
+
+  // 🆕 Helper pour déterminer si un produit peut être publié directement
+  const canPublishNow = (product: VendorProductFromAPI): boolean => {
+    // Un produit peut être publié directement si :
+    // 1. Il a un design ET
+    // 2. Le design est validé
+    if (!product.designApplication.hasDesign) {
+      return false;
+    }
+
+    const validationStatus = validationStatuses[product.id];
+    return validationStatus?.isValidated === true && validationStatus?.validationStatus === 'validated';
+  };
+
+  // 🆕 Helper pour déterminer si un produit PENDING peut être republié
+  const canRepublishPendingProduct = (product: VendorProductFromAPI): boolean => {
+    // Pour les produits PENDING (publiés directement mais design non validé),
+    // le bouton Publier doit être désactivé jusqu'à validation admin
+    if (product.status === 'PENDING' && product.designApplication.hasDesign) {
+      const validationStatus = validationStatuses[product.id];
+      // Seulement si le design est maintenant validé
+      return validationStatus?.isValidated === true && validationStatus?.validationStatus === 'validated';
+    }
+
+    // Pour les autres cas (produits sans design), on peut publier
+    return !product.designApplication.hasDesign;
+  };
+
+  // 🆕 Obtenir le message d'info pour un produit selon son statut de validation
+  const getPublishMessage = (product: VendorProductFromAPI): string => {
+    if (!product.designApplication.hasDesign) {
+      return 'Ce produit n\'a pas de design';
+    }
+
+    const validationStatus = validationStatuses[product.id];
+    if (!validationStatus) {
+      return 'Vérification du design en cours...';
+    }
+
+    switch (validationStatus.validationStatus) {
+      case 'validated':
+        return 'Design validé - Publier maintenant';
+      case 'pending':
+        return 'Design en attente de validation par l\'admin';
+      case 'rejected':
+        return 'Design rejeté par l\'admin';
+      default:
+        return 'Statut de validation inconnu';
     }
   };
 
@@ -535,7 +735,7 @@ export const VendorProductsPage: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Mes Produits</h1>
             <p className="text-gray-600 mt-1">
-              Gérez vos produits personnalisés avec designs appliqués
+              Gérez vos produits avec designs appliqués
             </p>
           </div>
           <Button onClick={() => navigate('/vendeur/sell-design')}>
@@ -637,20 +837,6 @@ export const VendorProductsPage: React.FC = () => {
               
               <div className="flex items-center gap-2">
                 <Button
-                  variant={viewMode === 'grid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                >
-                  <Grid className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button
                   variant="outline"
                   size="sm"
                   onClick={loadProducts}
@@ -673,7 +859,7 @@ export const VendorProductsPage: React.FC = () => {
               <p className="text-gray-600 mb-4">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'Aucun produit ne correspond à vos critères de recherche'
-                  : 'Vous n\'avez pas encore créé de produit personnalisé'
+                  : 'Vous n\'avez pas encore créé de produit'
                 }
               </p>
               <Button onClick={() => navigate('/vendeur/sell-design')}>
@@ -683,10 +869,7 @@ export const VendorProductsPage: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className={viewMode === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-            : 'space-y-4'
-          }>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleProducts.map((product) => {
               console.log('🎨 Rendu produit:', product.id, product.vendorName, product.designApplication);
               return (
@@ -694,7 +877,7 @@ export const VendorProductsPage: React.FC = () => {
                 <CardContent className="p-0">
                   {/* Aperçu du produit avec design */}
                     <div className="relative">
-                    <div className={viewMode === 'grid' ? 'aspect-square' : 'h-48'}>
+                    <div className="aspect-square">
                         <SimpleProductPreview
                           product={product}
                           showColorSlider={true}
@@ -722,10 +905,10 @@ export const VendorProductsPage: React.FC = () => {
                           {product.vendorName}
                         </h3>
                         <p className="text-sm text-gray-500 mb-3 font-medium">
-                          Basé sur: {product.adminProduct.name}
+                          Catégorie: {product.adminProduct.categories?.[0]?.name || 'Non définie'}
                         </p>
                         <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed">
-                          Produit personnalisé basé sur {product.adminProduct.name}
+                          {product.adminProduct.name}
                         </p>
                       </div>
                       
@@ -745,51 +928,114 @@ export const VendorProductsPage: React.FC = () => {
                               Positionné
                             </Badge>
                           )}
+                          {/* 🆕 Badge de validation du design */}
+                          {product.designApplication.hasDesign && validationStatuses[product.id] && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                validationStatuses[product.id].validationStatus === 'validated'
+                                  ? 'border-green-400 text-green-700 bg-green-50'
+                                  : validationStatuses[product.id].validationStatus === 'rejected'
+                                  ? 'border-red-400 text-red-700 bg-red-50'
+                                  : 'border-amber-400 text-amber-700 bg-amber-50'
+                              }`}
+                            >
+                              {validationStatuses[product.id].validationStatus === 'validated' && '✅ Validé'}
+                              {validationStatuses[product.id].validationStatus === 'pending' && '⏳ En attente'}
+                              {validationStatuses[product.id].validationStatus === 'rejected' && '❌ Rejeté'}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       
-                      {/* Boutons d'action */}
+                      {/* Boutons d'action selon le nouveau système pub.md */}
                       <div className="flex items-center gap-2 pt-4 border-t border-gray-100">
-                        {/* Bouton Publier pour les produits avec design */}
-                        {product.designApplication.hasDesign && (
+                        {/* Actions spécifiques selon le statut */}
+                        {product.status === 'DRAFT' && product.designApplication.hasDesign && (
+                          <div className="flex-1 flex flex-col gap-1">
+                            <Button
+                              size="sm"
+                              onClick={() => handlePublishNow(product.id)}
+                              disabled={!canPublishNow(product)}
+                              className={`w-full font-medium ${
+                                canPublishNow(product)
+                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              {canPublishNow(product) ? 'Publier maintenant' : 'En attente validation'}
+                            </Button>
+                            <span className={`text-xs text-center px-2 ${
+                              canPublishNow(product) ? 'text-green-600' : 'text-amber-600'
+                            }`}>
+                              {getPublishMessage(product)}
+                            </span>
+                          </div>
+                        )}
+
+                        {product.status === 'PUBLISHED' && (
                           <Button
                             size="sm"
-                            onClick={() => handlePublish(product.id)}
-                            className="flex-1 bg-gray-900 hover:bg-gray-800 text-white font-medium"
+                            onClick={() => handleSetToDraft(product.id)}
+                            variant="outline"
+                            className="flex-1 border-gray-400 text-gray-700 hover:bg-gray-50 font-medium"
                           >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Publier
+                            <Save className="w-4 h-4 mr-2" />
+                            Mettre en brouillon
                           </Button>
                         )}
-                        
+
+                        {(product.status === 'PENDING' || (!product.designApplication.hasDesign)) && (
+                          <div className="flex-1 flex flex-col gap-1">
+                            <Button
+                              size="sm"
+                              onClick={() => handlePublish(product.id)}
+                              disabled={product.status === 'PENDING' && !canRepublishPendingProduct(product)}
+                              className={`w-full font-medium ${
+                                product.status === 'PENDING' && !canRepublishPendingProduct(product)
+                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  : 'bg-gray-900 hover:bg-gray-800 text-white'
+                              }`}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              {product.status === 'PENDING' && !canRepublishPendingProduct(product)
+                                ? 'En attente de validation'
+                                : (product.designApplication.hasDesign ? 'Publier' : 'Publier (sans design)')
+                              }
+                            </Button>
+                            {product.status === 'PENDING' && product.designApplication.hasDesign && (
+                              <span className={`text-xs text-center px-2 ${
+                                canRepublishPendingProduct(product) ? 'text-green-600' : 'text-amber-600'
+                              }`}>
+                                {canRepublishPendingProduct(product)
+                                  ? 'Design validé - Peut republier'
+                                  : 'Design en attente de validation admin'
+                                }
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                         {/* Boutons standards */}
-                      <Button
-                        size="sm"
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => handlePreview(product.id)}
-                          className={`${product.designApplication.hasDesign ? 'flex-1' : 'flex-1'} border-gray-300 text-gray-700 hover:bg-gray-50 font-medium`}
-                      >
+                          className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+                        >
                           <Eye className="w-4 h-4 mr-2" />
                           Aperçu
-                      </Button>
-                      <Button
-                        size="sm"
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="outline"
-                        onClick={() => handleEdit(product)}
-                          className={`${product.designApplication.hasDesign ? 'flex-1' : 'flex-1'} border-gray-300 text-gray-700 hover:bg-gray-50 font-medium`}
-                      >
-                          <Edit3 className="w-4 h-4 mr-2" />
-                          Modifier
-                      </Button>
-                      <Button
-                        size="sm"
-                          variant="outline"
-                        onClick={() => handleDeleteClick(product.id)}
+                          onClick={() => handleDeleteClick(product.id)}
                           className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                   </div>
                 </CardContent>
               </Card>
@@ -825,7 +1071,7 @@ export const VendorProductsPage: React.FC = () => {
                       {products.find(p => p.id === selectedProductId)?.vendorName}
                     </h3>
                     <p className="text-gray-600 mb-6 leading-relaxed">
-                      Produit personnalisé basé sur {products.find(p => p.id === selectedProductId)?.adminProduct.name}
+                      {products.find(p => p.id === selectedProductId)?.adminProduct.name}
                     </p>
                     
                     <div className="grid grid-cols-2 gap-6 text-sm">
@@ -882,35 +1128,109 @@ export const VendorProductsPage: React.FC = () => {
                     <div className="text-sm text-gray-600 space-y-2">
                       <p><strong>Design présent:</strong> {products.find(p => p.id === selectedProductId)?.designApplication.hasDesign ? 'Oui' : 'Non'}</p>
                       <p><strong>Échelle:</strong> {products.find(p => p.id === selectedProductId)?.designApplication.scale.toFixed(2)}x</p>
+                      {/* 🆕 Informations de validation */}
+                      {selectedProductId && products.find(p => p.id === selectedProductId)?.designApplication.hasDesign && validationStatuses[selectedProductId] && (
+                        <div className="mt-3 p-3 rounded-lg border bg-gray-50">
+                          <p className="font-medium text-sm text-gray-900 mb-1">Statut de validation:</p>
+                          <div className={`flex items-center gap-2 text-sm ${
+                            validationStatuses[selectedProductId].validationStatus === 'validated'
+                              ? 'text-green-700'
+                              : validationStatuses[selectedProductId].validationStatus === 'rejected'
+                              ? 'text-red-700'
+                              : 'text-amber-700'
+                          }`}>
+                            {validationStatuses[selectedProductId].validationStatus === 'validated' && '✅ Design validé par l\'admin'}
+                            {validationStatuses[selectedProductId].validationStatus === 'pending' && '⏳ En attente de validation admin'}
+                            {validationStatuses[selectedProductId].validationStatus === 'rejected' && '❌ Design rejeté par l\'admin'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
                   <div className="flex gap-3 pt-6 border-t border-gray-200">
-                    {/* Bouton Publier pour les produits avec design */}
-                    {products.find(p => p.id === selectedProductId)?.designApplication.hasDesign && (
-                      <Button
-                        onClick={() => {
-                          handlePublish(selectedProductId);
-                          setIsPreviewOpen(false);
-                        }}
-                        className="bg-gray-900 hover:bg-gray-800 text-white font-medium"
-                      >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Publier
-                      </Button>
-                    )}
-                    
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const product = products.find(p => p.id === selectedProductId);
-                        if (product) handleEdit(product);
-                      }}
-                      className="border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
-                    >
-                      <Edit3 className="w-4 h-4 mr-2" />
-                      Modifier
-                    </Button>
+                    {/* Actions spécifiques selon le statut dans la modal */}
+                    {selectedProductId && (() => {
+                      const product = products.find(p => p.id === selectedProductId);
+                      if (!product) return null;
+
+                      return (
+                        <>
+                          {product.status === 'DRAFT' && product.designApplication.hasDesign && (
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                onClick={() => {
+                                  handlePublishNow(selectedProductId);
+                                  setIsPreviewOpen(false);
+                                }}
+                                disabled={!canPublishNow(product)}
+                                className={`font-medium ${
+                                  canPublishNow(product)
+                                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                {canPublishNow(product) ? 'Publier maintenant' : 'En attente validation'}
+                              </Button>
+                              <span className={`text-xs text-center px-2 ${
+                                canPublishNow(product) ? 'text-green-600' : 'text-amber-600'
+                              }`}>
+                                {getPublishMessage(product)}
+                              </span>
+                            </div>
+                          )}
+
+                          {product.status === 'PUBLISHED' && (
+                            <Button
+                              onClick={() => {
+                                handleSetToDraft(selectedProductId);
+                                setIsPreviewOpen(false);
+                              }}
+                              variant="outline"
+                              className="border-gray-400 text-gray-700 hover:bg-gray-50 font-medium"
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Mettre en brouillon
+                            </Button>
+                          )}
+
+                          {(product.status === 'PENDING' || (!product.designApplication.hasDesign)) && (
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                onClick={() => {
+                                  handlePublish(selectedProductId);
+                                  setIsPreviewOpen(false);
+                                }}
+                                disabled={product.status === 'PENDING' && !canRepublishPendingProduct(product)}
+                                className={`font-medium ${
+                                  product.status === 'PENDING' && !canRepublishPendingProduct(product)
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : 'bg-gray-900 hover:bg-gray-800 text-white'
+                                }`}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                {product.status === 'PENDING' && !canRepublishPendingProduct(product)
+                                  ? 'En attente de validation'
+                                  : (product.designApplication.hasDesign ? 'Publier' : 'Publier (sans design)')
+                                }
+                              </Button>
+                              {product.status === 'PENDING' && product.designApplication.hasDesign && (
+                                <span className={`text-xs text-center px-2 ${
+                                  canRepublishPendingProduct(product) ? 'text-green-600' : 'text-amber-600'
+                                }`}>
+                                  {canRepublishPendingProduct(product)
+                                    ? 'Design validé - Peut republier'
+                                    : 'Design en attente de validation admin'
+                                  }
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -918,9 +1238,9 @@ export const VendorProductsPage: React.FC = () => {
                         setIsPreviewOpen(false);
                       }}
                       className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300 font-medium"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Supprimer
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Supprimer
                     </Button>
                   </div>
                 </div>
