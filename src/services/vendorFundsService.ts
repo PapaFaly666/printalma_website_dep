@@ -158,10 +158,13 @@ export class VendorFundsService {
    */
   async getVendorEarnings(): Promise<VendorEarnings> {
     try {
+      console.log('🔍 Tentative d\'appel API /vendor/earnings vers:', this.baseURL);
       const response = await this.apiCall<VendorEarnings>('/vendor/earnings');
+      console.log('✅ Réponse API reçue:', response.data);
       return response.data;
     } catch (error) {
-      console.warn('⚠️ Erreur API: Utilisation des gains mock en fallback');
+      console.warn('⚠️ Erreur API /vendor/earnings:', error);
+      console.log('🔧 Utilisation des gains mock en fallback avec nouvelles valeurs');
       return this.getMockEarnings();
     }
   }
@@ -205,9 +208,15 @@ export class VendorFundsService {
    */
   async createFundsRequest(request: CreateFundsRequest): Promise<FundsRequest> {
     try {
+      // Ajouter une description automatique pour le backend
+      const requestData = {
+        ...request,
+        description: `Demande de retrait de ${this.formatCurrency(request.amount)}`
+      };
+
       const response = await this.apiCall<FundsRequest>('/vendor/funds-requests', {
         method: 'POST',
-        body: JSON.stringify(request)
+        body: JSON.stringify(requestData)
       });
 
       return response.data;
@@ -339,15 +348,16 @@ export class VendorFundsService {
   // ==========================================
 
   private getMockEarnings(): VendorEarnings {
+    // 💰 VALEURS DE TEST - Modifiez ces valeurs selon vos besoins
     return {
-      totalEarnings: 182500,
-      pendingAmount: 23500,
-      availableAmount: 159000,
-      thisMonthEarnings: 182500,
-      lastMonthEarnings: 156000,
-      commissionPaid: 18250,
-      totalCommission: 20075,
-      averageCommissionRate: 0.10
+      totalEarnings: 450000,        // Total des gains du vendeur
+      pendingAmount: 75000,         // Montant en attente de traitement
+      availableAmount: 375000,      // Montant disponible pour retrait
+      thisMonthEarnings: 125000,    // Gains de ce mois
+      lastMonthEarnings: 98000,     // Gains du mois dernier
+      commissionPaid: 45000,        // Commissions déjà payées
+      totalCommission: 50000,       // Total des commissions
+      averageCommissionRate: 0.12   // Taux de commission moyen (12%)
     };
   }
 
