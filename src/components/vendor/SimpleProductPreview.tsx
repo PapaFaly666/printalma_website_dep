@@ -771,13 +771,6 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
         </div>
       )}
 
-      {/* Indicateur de source des données */}
-      {product.designApplication.hasDesign && (
-        <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
-          {designPosition.source === 'designPositions' ? 'DB Positions' : 
-           designPosition.source === 'designTransforms' ? 'DB Transforms' : 'Default Scale'}
-        </div>
-      )}
 
       {/* Informations de debug */}
       {showDelimitations && imageMetrics && (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../services/productService';
-import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle, Clock } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle } from 'lucide-react';
 import designService, { Design } from '../services/designService';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorPublish } from '../hooks/useVendorPublish';
@@ -3793,7 +3793,7 @@ const SellDesignPage: React.FC = () => {
       );
 
       const successful = (results || []).filter(r => r.success);
-
+      
       if (successful.length > 0) {
         // 🆕 NOUVEAU SYSTÈME : Utiliser le service de validation pour chaque produit créé
         const statusPromises = successful.map(async (result) => {
@@ -3820,12 +3820,12 @@ const SellDesignPage: React.FC = () => {
           duration: 8000
         });
       } else {
-        toast({
-          title: `${successful.length} produit(s) créé(s) en brouillon !`,
+      toast({
+        title: `${successful.length} produit(s) créé(s) en brouillon !`,
           description: 'Vos produits sont en brouillon et seront publiables après validation des designs.',
-          variant: 'success',
-          duration: 8000
-        });
+        variant: 'success',
+        duration: 8000
+      });
       }
 
       // Fermer la modale après succès
@@ -3917,12 +3917,12 @@ const SellDesignPage: React.FC = () => {
             description += `${pendingCount} produit(s) en attente de validation design.`;
           }
 
-          toast({
+      toast({
             title: `${publishedProducts.length} produit(s) traité(s) !`,
             description: description.trim(),
-            variant: 'success',
-            duration: 6000
-          });
+        variant: 'success',
+        duration: 6000
+      });
         } else {
           throw new Error('Aucun produit n\'a pu être publié');
         }
@@ -4030,105 +4030,75 @@ const SellDesignPage: React.FC = () => {
         });
 
       } else if (postValidationAction === PostValidationAction.AUTO_PUBLISH) {
-        // Design validé + Publication directe = PUBLIER IMMÉDIATEMENT SELON pub.md
-        console.log('🚀 Design validé + Publication directe - Utilisation directe du service de validation');
+        // Design validé + Publication directe = PUBLIER IMMÉDIATEMENT
+        console.log('🚀 Design validé + Publication directe - Publication immédiate');
 
-        // 🆕 NOUVEAU : Publication directe selon pub.md - pas d'étape intermédiaire
-        const publishPromises = selectedProductIds.map(async (productIdStr) => {
-          try {
-            const productId = Number(productIdStr);
-            const product = products.find(p => p.id === productId);
-            if (!product) throw new Error(`Produit ${productId} introuvable`);
+        // Utiliser le service de publication immédiate pour designs validés
+        const results = await publishProducts(
+          selectedProductIds,
+          products,
+          productColors,
+          productSizes,
+          editStates,
+          basePrices,
+          {
+            designUrl,
+            designFile,
+            ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
+            designName: designName || selectedDesign?.name,
+            designPrice: designPrice || selectedDesign?.price,
+            postValidationAction
+          },
+          getPreviewView,
+          'DRAFT' // Créer en DRAFT puis publier via service externe
+        );
 
-            // Créer le produit avec les données configurées
-            const productData = {
-              productId,
-              name: editStates[productId]?.name || product.name,
-              price: editStates[productId]?.price ?? product.price,
-              // Autres données du produit...
-              designUrl,
-              designFile,
-              ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
-              designName: designName || selectedDesign?.name,
-              designPrice: designPrice || selectedDesign?.price,
-            };
+        // 🚀 PUBLICATION IMMÉDIATE des produits créés (design validé)
+        const successful = (results || []).filter(r => r.success);
+        let publishResults: any[] = [];
 
-            // Créer le produit via publishProducts mais en mode temporaire pour récupérer l'ID
-            const [createResult] = await publishProducts(
-              [productIdStr],
-              products,
-              productColors,
-              productSizes,
-              editStates,
-              basePrices,
-              {
-                designUrl,
-                designFile,
-                ...(selectedDesign?.id && { designId: Number(selectedDesign.id) }),
-                designName: designName || selectedDesign?.name,
-                designPrice: designPrice || selectedDesign?.price,
-                postValidationAction
-              },
-              getPreviewView,
-              'DRAFT' // Créé temporairement en draft pour récupérer l'ID
-            );
+        if (successful.length > 0) {
+          console.log('🚀 Publication immédiate des produits créés...');
 
-            if (!createResult?.success || !createResult.productId) {
-              throw new Error('Erreur lors de la création du produit');
+          // 🆕 Publier chaque produit créé immédiatement avec le nouveau service
+          const publishPromises = successful.map(async (result) => {
+            if (result.productId) {
+              try {
+                const publishResult = await vendorProductValidationService.setProductStatus(result.productId, false); // false = publication directe
+                console.log(`✅ Produit ${result.productId} publié immédiatement:`, publishResult.status);
+                return publishResult;
+              } catch (error) {
+                console.error(`❌ Erreur publication immédiate produit ${result.productId}:`, error);
+                return null;
+              }
             }
+            return null;
+          });
 
-            // 🆕 Utiliser directement le service de publication selon pub.md
-            const publishResult = await vendorProductValidationService.setProductStatus(
-              createResult.productId,
-              false // false = publication directe selon pub.md
-            );
+          publishResults = await Promise.all(publishPromises);
+          const actuallyPublished = publishResults.filter(r => r && r.status === 'PUBLISHED').length;
 
-            console.log(`✅ Produit ${createResult.productId} traité directement:`, publishResult.status);
-            return {
-              ...publishResult,
-              productId: createResult.productId,
-              productName: product.name
-            };
-          } catch (error) {
-            console.error(`❌ Erreur publication directe produit ${productIdStr}:`, error);
-            return {
-              success: false,
-              error: error.message,
-              productId: Number(productIdStr)
-            };
-          }
-        });
+          console.log(`📊 Résultat publication: ${actuallyPublished}/${successful.length} produits effectivement publiés`);
+        }
 
-        const publishResults = await Promise.all(publishPromises);
-        const successful = publishResults.filter(r => r.success);
-        const actuallyPublished = publishResults.filter(r => r.success && 'status' in r && r.status === 'PUBLISHED').length;
-        const stillPending = publishResults.filter(r => r.success && 'status' in r && r.status === 'PENDING').length;
-        const errors = publishResults.filter(r => !r.success).length;
+        // Mise à jour du toast avec les vraies données
+        const actuallyPublished = publishResults.filter(r => r && r.status === 'PUBLISHED').length;
+        const stillPending = publishResults.filter(r => r && r.status === 'PENDING').length;
 
-        console.log(`📊 Résultat publication directe: ${actuallyPublished} publiés, ${stillPending} en attente, ${errors} erreurs`);
-
-        // Message selon le résultat
         if (actuallyPublished > 0) {
-          toast({
+        toast({
             title: `🎉 ${actuallyPublished} produit(s) publié(s) immédiatement !`,
             description: stillPending > 0
-              ? `${stillPending} produit(s) en attente de validation admin.`
+              ? `${stillPending} produit(s) restent en attente de validation admin.`
               : '🚀 Vos produits sont maintenant visibles par tous les clients.',
-            variant: 'success',
-            duration: 6000
-          });
+          variant: 'success',
+          duration: 6000
+        });
         } else if (stillPending > 0) {
           toast({
-            title: `⏳ ${stillPending} produit(s) en attente de validation`,
-            description: 'Vos designs doivent être validés par l\'admin avant publication.',
+            title: `⏳ ${stillPending} produit(s) en attente`,
+            description: 'Les designs doivent être validés par l\'admin avant publication.',
             variant: 'default',
-            duration: 6000
-          });
-        } else if (errors > 0) {
-          toast({
-            title: `❌ Erreur lors de la publication`,
-            description: `${errors} produit(s) n'ont pas pu être traités.`,
-            variant: 'destructive',
             duration: 6000
           });
         }
@@ -5056,9 +5026,9 @@ const SellDesignPage: React.FC = () => {
                 {/* Compteur de produits sélectionnés */}
                 {selectedProductIds.length > 0 && (
                   <div className="text-center pt-8 pb-8">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {selectedProductIds.length} produit{selectedProductIds.length > 1 ? 's' : ''} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
-                    </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {selectedProductIds.length} produit{selectedProductIds.length > 1 ? 's' : ''} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
+                      </p>
                   </div>
                 )}
               </div>
@@ -5450,7 +5420,7 @@ const SellDesignPage: React.FC = () => {
             <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-800/50 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-blue-900 dark:text-blue-100 text-base sm:text-lg">
@@ -5468,9 +5438,9 @@ const SellDesignPage: React.FC = () => {
               <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-base sm:text-lg">Votre design</h3>
               <div className="flex flex-col sm:flex-row items-start gap-4">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 mx-auto sm:mx-0 flex-shrink-0">
-                  <img
-                    src={designUrl}
-                    alt="Votre design"
+                  <img 
+                    src={designUrl} 
+                    alt="Votre design" 
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -5535,7 +5505,7 @@ const SellDesignPage: React.FC = () => {
                         {/* Détails */}
                         <div className="flex-1 min-w-0 text-center sm:text-left">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                            <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
                                 {editStates[product.id]?.name || product.name}
                               </h4>
@@ -5602,11 +5572,11 @@ const SellDesignPage: React.FC = () => {
 
           <SheetFooter className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
             <div className="flex flex-col gap-4 w-full">
-              <SheetClose asChild>
+            <SheetClose asChild>
                 <Button variant="outline" className="w-full py-3 text-sm sm:text-base" disabled={isPublishing}>
-                  Modifier la sélection
-                </Button>
-              </SheetClose>
+                Modifier la sélection
+              </Button>
+            </SheetClose>
             
             {/* 🆕 Sélecteur d'action post-validation */}
             <div className="mb-4">
@@ -5619,96 +5589,81 @@ const SellDesignPage: React.FC = () => {
             </div>
             
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  onClick={handleSaveAsDraft}
-                  disabled={isPublishing}
-                  variant="outline"
+              <Button
+                onClick={handleSaveAsDraft}
+                disabled={isPublishing}
+                variant="outline"
                   className="flex-1 py-3"
-                >
-                  {isPublishing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       <span className="hidden sm:inline">Sauvegarde...</span>
                       <span className="sm:hidden">...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Edit3 className="h-4 w-4 mr-2" />
+                  </>
+                ) : (
+                  <>
+                    <Edit3 className="h-4 w-4 mr-2" />
                       <span className="hidden sm:inline">Mettre en brouillon</span>
                       <span className="sm:hidden">Brouillon</span>
-                    </>
-                  )}
-                </Button>
+                  </>
+                )}
+              </Button>
 
-                <Button
-                  onClick={handlePublishFromDraft}
-                  disabled={isPublishing}
-                  variant="secondary"
+              <Button
+                onClick={handlePublishFromDraft}
+                disabled={isPublishing}
+                variant="secondary"
                   className="flex-1 py-3"
-                >
-                  {isPublishing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       <span className="hidden sm:inline">Publication...</span>
                       <span className="sm:hidden">...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
                       <span className="hidden sm:inline">Publier depuis brouillon</span>
                       <span className="sm:hidden">Publier</span>
-                    </>
-                  )}
-                </Button>
+                  </>
+                )}
+              </Button>
 
-                <Button
-                  onClick={handlePublishProducts}
-                  disabled={isPublishing || (!designValidationStatus.isValidated && postValidationAction === PostValidationAction.AUTO_PUBLISH)}
-                  className={`flex-1 py-3 font-semibold ${
-                    (!designValidationStatus.isValidated && postValidationAction === PostValidationAction.AUTO_PUBLISH)
-                      ? 'bg-gray-400 hover:bg-gray-400 text-gray-600 cursor-not-allowed'
-                      : 'bg-black hover:bg-gray-800 text-white'
-                  }`}
-                >
-                  {isPublishing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Button
+                onClick={handlePublishProducts}
+                disabled={isPublishing}
+                  className="flex-1 py-3 bg-black hover:bg-gray-800 text-white font-semibold"
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       <span className="hidden sm:inline">{currentStep || 'Publication en cours...'}</span>
                       <span className="sm:hidden">...</span>
-                    </>
-                  ) : (!designValidationStatus.isValidated && postValidationAction === PostValidationAction.AUTO_PUBLISH) ? (
-                    <>
-                      <Clock className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">En attente de validation</span>
-                      <span className="sm:hidden">Attente</span>
-                    </>
-                  ) : (
-                    <>
-                      <Rocket className="h-4 w-4 mr-2" />
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="h-4 w-4 mr-2" />
                       <span className="hidden sm:inline">Publier directement</span>
                       <span className="sm:hidden">Publier</span>
-                    </>
-                  )}
-                </Button>
-              </div>
+                  </>
+                )}
+              </Button>
+            </div>
             
               {/* Textes explicatifs pour desktop uniquement */}
               <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 mt-3 px-2">
                 <div className="flex-1 text-center">
-                  <p>Créer en brouillon pour publication manuelle plus tard</p>
-                </div>
-                <div className="flex-1 text-center">
-                  <p>Publier des designs sauvegardés en brouillon</p>
-                </div>
-                <div className="flex-1 text-center">
-                  <p>
-                    {(!designValidationStatus.isValidated && postValidationAction === PostValidationAction.AUTO_PUBLISH)
-                      ? 'Design en attente de validation admin'
-                      : 'Publication immédiate disponible à la vente'
-                    }
-                  </p>
-                </div>
+                <p>Créer en brouillon pour publication manuelle plus tard</p>
               </div>
+                <div className="flex-1 text-center">
+                <p>Publier des designs sauvegardés en brouillon</p>
+              </div>
+                <div className="flex-1 text-center">
+                <p>Publication immédiate disponible à la vente</p>
+              </div>
+            </div>
             </div>
           </SheetFooter>
         </SheetContent>

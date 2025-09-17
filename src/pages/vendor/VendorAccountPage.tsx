@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Eye, EyeOff, User, AlertCircle, Camera, X, Upload, Edit3, Save, Trash2, Shield, Settings, Mail, Phone, MapPin, Store, Key, AlertTriangle, Info } from 'lucide-react';
+import { Eye, EyeOff, User, AlertCircle, Camera, X, Upload, Edit3, Save, Trash2, Shield, Settings, Mail, Phone, MapPin, Store, Key, AlertTriangle, Info, Move, RotateCw, ZoomIn, ZoomOut, Crop } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
@@ -12,6 +12,7 @@ import { API_CONFIG, API_ENDPOINTS } from '../../config/api';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { Badge } from '../../components/ui/badge';
+import { Slider } from '../../components/ui/slider';
 
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -20,6 +21,21 @@ interface EditableField {
   isEditing: boolean;
   error: string;
   isChecking: boolean;
+}
+
+interface ImageEditor {
+  scale: number;
+  rotation: number;
+  x: number;
+  y: number;
+  isDragging: boolean;
+}
+
+interface CropArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 const VendorAccountPage: React.FC = () => {
@@ -43,6 +59,25 @@ const VendorAccountPage: React.FC = () => {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // États pour l'éditeur d'image style WhatsApp
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  const [imageEditor, setImageEditor] = useState<ImageEditor>({
+    scale: 1,
+    rotation: 0,
+    x: 0,
+    y: 0,
+    isDragging: false
+  });
+  const [cropArea, setCropArea] = useState<CropArea>({
+    x: 50,
+    y: 50,
+    width: 200,
+    height: 200
+  });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // États pour le changement de mot de passe
   const [currentPassword, setCurrentPassword] = useState('');
@@ -246,9 +281,153 @@ const VendorAccountPage: React.FC = () => {
         toast.error('Le fichier est trop volumineux. Taille maximum : 5MB.');
         return;
       }
-      setProfilePhoto(file);
+
+      // Ouvrir l'éditeur d'image style WhatsApp
       const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      setOriginalImageUrl(url);
+      setProfilePhoto(file);
+      setShowImageEditor(true);
+
+      // Réinitialiser les paramètres d'édition
+      setImageEditor({
+        scale: 1,
+        rotation: 0,
+        x: 0,
+        y: 0,
+        isDragging: false
+      });
+    }
+  };
+
+  // Fonctions pour l'éditeur d'image
+  const handleImageMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setImageEditor(prev => ({ ...prev, isDragging: true }));
+  }, []);
+
+  const handleImageMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!imageEditor.isDragging) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setImageEditor(prev => ({
+      ...prev,
+      x: x - rect.width / 2,
+      y: y - rect.height / 2
+    }));
+  }, [imageEditor.isDragging]);
+
+  const handleImageMouseUp = useCallback(() => {
+    setImageEditor(prev => ({ ...prev, isDragging: false }));
+  }, []);
+
+  const handleScaleChange = (value: number[]) => {
+    setImageEditor(prev => ({ ...prev, scale: value[0] }));
+  };
+
+  const handleRotationChange = () => {
+    setImageEditor(prev => ({ ...prev, rotation: (prev.rotation + 90) % 360 }));
+  };
+
+  const generateCroppedImage = useCallback(async (): Promise<Blob | null> => {
+    if (!originalImageUrl || !canvasRef.current) return null;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        // Taille du canvas de sortie (carré pour photo de profil)
+        const outputSize = 400;
+        canvas.width = outputSize;
+        canvas.height = outputSize;
+
+        // Nettoyer le canvas
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, outputSize, outputSize);
+
+        // Sauvegarder le contexte
+        ctx.save();
+
+        // Centre du canvas
+        const centerX = outputSize / 2;
+        const centerY = outputSize / 2;
+
+        // Appliquer les transformations
+        ctx.translate(centerX, centerY);
+        ctx.rotate((imageEditor.rotation * Math.PI) / 180);
+        ctx.scale(imageEditor.scale, imageEditor.scale);
+
+        // Calculer la taille de l'image redimensionnée
+        const imgAspectRatio = img.width / img.height;
+        let drawWidth = outputSize;
+        let drawHeight = outputSize;
+
+        if (imgAspectRatio > 1) {
+          drawHeight = outputSize / imgAspectRatio;
+        } else {
+          drawWidth = outputSize * imgAspectRatio;
+        }
+
+        // Dessiner l'image centrée avec les ajustements
+        ctx.drawImage(
+          img,
+          -drawWidth / 2 + imageEditor.x * 0.5,
+          -drawHeight / 2 + imageEditor.y * 0.5,
+          drawWidth,
+          drawHeight
+        );
+
+        // Restaurer le contexte
+        ctx.restore();
+
+        // Convertir en blob
+        canvas.toBlob(resolve, 'image/jpeg', 0.9);
+      };
+      img.src = originalImageUrl;
+    });
+  }, [originalImageUrl, imageEditor]);
+
+  const handleSaveEditedImage = async () => {
+    try {
+      const croppedBlob = await generateCroppedImage();
+      if (!croppedBlob) {
+        toast.error('Erreur lors du traitement de l\'image');
+        return;
+      }
+
+      // Créer un nouveau fichier à partir du blob
+      const croppedFile = new File([croppedBlob], profilePhoto?.name || 'profile.jpg', {
+        type: 'image/jpeg'
+      });
+
+      // Créer une URL d'aperçu
+      const previewURL = URL.createObjectURL(croppedBlob);
+      setPreviewUrl(previewURL);
+      setProfilePhoto(croppedFile);
+
+      // Fermer l'éditeur
+      setShowImageEditor(false);
+      toast.success('Image ajustée avec succès');
+    } catch (error) {
+      console.error('Erreur lors du traitement de l\'image:', error);
+      toast.error('Erreur lors du traitement de l\'image');
+    }
+  };
+
+  const handleCancelImageEdit = () => {
+    setShowImageEditor(false);
+    setProfilePhoto(null);
+    if (originalImageUrl) {
+      URL.revokeObjectURL(originalImageUrl);
+      setOriginalImageUrl(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -498,17 +677,40 @@ const VendorAccountPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                  <div className="relative">
+                  <div className="relative group">
                     <Avatar className="h-28 w-28 border-4 border-white shadow-xl">
-                      <AvatarImage 
-                        src={previewUrl || user?.profile_photo_url || undefined} 
-                        alt={user?.firstName || 'Photo de profil'} 
+                      <AvatarImage
+                        src={previewUrl || user?.profile_photo_url || undefined}
+                        alt={user?.firstName || 'Photo de profil'}
                       />
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-2xl font-bold">
                         {user?.firstName?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    
+
+                    {/* Bouton d'édition overlay */}
+                    {(user?.profile_photo_url || previewUrl) && (
+                      <button
+                        onClick={() => {
+                          const imageUrl = previewUrl || user?.profile_photo_url;
+                          if (imageUrl) {
+                            setOriginalImageUrl(imageUrl);
+                            setShowImageEditor(true);
+                            setImageEditor({
+                              scale: 1,
+                              rotation: 0,
+                              x: 0,
+                              y: 0,
+                              isDragging: false
+                            });
+                          }
+                        }}
+                        className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-full"
+                      >
+                        <Edit3 className="h-6 w-6" />
+                      </button>
+                    )}
+
                     {/* Badge de statut */}
                     {profilePhoto && (
                       <Badge className="absolute -bottom-2 -right-2 bg-green-600 text-white font-semibold">
@@ -793,6 +995,155 @@ const VendorAccountPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Dialog d'édition d'image style WhatsApp */}
+      <Dialog open={showImageEditor} onOpenChange={setShowImageEditor}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
+              <Crop className="h-6 w-6 text-blue-600" />
+              Ajuster votre photo de profil
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 leading-relaxed">
+              Redimensionnez, faites pivoter et positionnez votre image comme souhaité
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Zone d'aperçu de l'image */}
+            <div className="flex justify-center">
+              <div className="relative">
+                {/* Canvas invisible pour le traitement */}
+                <canvas
+                  ref={canvasRef}
+                  className="hidden"
+                />
+
+                {/* Zone d'aperçu circulaire style WhatsApp */}
+                <div className="relative w-80 h-80 bg-gray-100 rounded-full overflow-hidden border-4 border-gray-200 shadow-xl">
+                  {originalImageUrl && (
+                    <div
+                      className="absolute inset-0 cursor-move"
+                      onMouseDown={handleImageMouseDown}
+                      onMouseMove={handleImageMouseMove}
+                      onMouseUp={handleImageMouseUp}
+                      onMouseLeave={handleImageMouseUp}
+                    >
+                      <img
+                        ref={imageRef}
+                        src={originalImageUrl}
+                        alt="Aperçu"
+                        className="absolute inset-0 w-full h-full object-cover select-none"
+                        style={{
+                          transform: `
+                            translate(${imageEditor.x}px, ${imageEditor.y}px)
+                            scale(${imageEditor.scale})
+                            rotate(${imageEditor.rotation}deg)
+                          `,
+                          transformOrigin: 'center',
+                          cursor: imageEditor.isDragging ? 'grabbing' : 'grab'
+                        }}
+                        draggable={false}
+                      />
+                    </div>
+                  )}
+
+                  {/* Overlay avec instructions */}
+                  <div className="absolute bottom-4 left-4 right-4 text-center">
+                    <div className="bg-black/70 backdrop-blur-sm text-white text-xs py-2 px-3 rounded-full">
+                      <Move className="h-3 w-3 inline mr-1" />
+                      Glissez pour repositionner
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contrôles d'édition */}
+            <div className="space-y-6 bg-gray-50 p-6 rounded-xl">
+              {/* Contrôle de zoom */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <ZoomIn className="h-4 w-4" />
+                    Zoom
+                  </Label>
+                  <span className="text-sm text-gray-500 font-mono">
+                    {Math.round(imageEditor.scale * 100)}%
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <ZoomOut className="h-4 w-4 text-gray-400" />
+                  <Slider
+                    value={[imageEditor.scale]}
+                    onValueChange={handleScaleChange}
+                    min={0.5}
+                    max={3}
+                    step={0.1}
+                    className="flex-1"
+                  />
+                  <ZoomIn className="h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Contrôle de rotation */}
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <RotateCw className="h-4 w-4" />
+                  Rotation
+                </Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRotationChange}
+                  className="text-sm font-medium"
+                >
+                  <RotateCw className="h-4 w-4 mr-2" />
+                  Faire pivoter 90°
+                </Button>
+              </div>
+
+              {/* Boutons de réinitialisation */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImageEditor({
+                    scale: 1,
+                    rotation: 0,
+                    x: 0,
+                    y: 0,
+                    isDragging: false
+                  })}
+                  className="text-sm font-medium text-gray-600"
+                >
+                  Réinitialiser
+                </Button>
+                <div className="text-xs text-gray-500">
+                  <p>💡 Astuce : Glissez l'image pour la repositionner</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-6 border-t border-gray-200">
+            <Button
+              variant="outline"
+              onClick={handleCancelImageEdit}
+              className="text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-6 py-2 rounded-lg transition-all duration-200"
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSaveEditedImage}
+              className="text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Appliquer les modifications
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de changement de mot de passe */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>

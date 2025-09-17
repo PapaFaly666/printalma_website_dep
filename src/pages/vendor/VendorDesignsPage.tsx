@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, 
@@ -46,6 +47,8 @@ import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 import { ExtendedVendorProfile } from '../../types/auth.types';
+import { designCategoryService, DesignCategory } from '../../services/designCategoryService';
+import DesignCategorySelector from '../../components/DesignCategorySelector';
 
 // Types basés sur la documentation API
 enum DesignStatus {
@@ -61,7 +64,8 @@ interface Design {
   name: string;
   description?: string;
   price: number;
-  category: 'logo' | 'pattern' | 'illustration' | 'typography' | 'abstract';
+  themeId: number;
+  themeName?: string;
   imageUrl: string;
   thumbnailUrl: string;
   fileSize: number;
@@ -199,7 +203,7 @@ class VendorDesignService {
     formData.append('name', designData.name);
     if (designData.description) formData.append('description', designData.description);
     formData.append('price', designData.price.toString());
-    formData.append('category', designData.category);
+    formData.append('themeId', designData.themeId.toString());
     if (designData.tags && designData.tags.length > 0) {
       formData.append('tags', designData.tags.join(','));
     }
@@ -385,6 +389,7 @@ const getDesignStatusInfo = (design: Design): DesignStatusInfo => {
 
 export const VendorDesignsPage: React.FC = () => {
   const { user, isVendeur } = useAuth();
+  const navigate = useNavigate();
   const [, setExtendedProfile] = useState<ExtendedVendorProfile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -392,9 +397,11 @@ export const VendorDesignsPage: React.FC = () => {
   const [designs, setDesigns] = useState<Design[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterTheme, setFilterTheme] = useState<number | null>(null);
+  const [filteredDesigns, setFilteredDesigns] = useState<Design[]>([]);
+  const [themes, setThemes] = useState<DesignCategory[]>([]);
   const [filterStatus, setFilterStatus] = useState<DesignStatus>(DesignStatus.ALL);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  // Supprimé : mode liste supprimé, toujours en grille
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -410,7 +417,7 @@ export const VendorDesignsPage: React.FC = () => {
     name: '',
     description: '',
     price: 0,
-    category: 'illustration' as const,
+    themeId: 0,
     tags: [] as string[]
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -437,6 +444,16 @@ export const VendorDesignsPage: React.FC = () => {
     totalViews: 0
   };
 
+  // Charger les thèmes admin
+  const loadThemes = async () => {
+    try {
+      const response = await designCategoryService.getActiveCategories();
+      setThemes(response);
+    } catch (error) {
+      console.error('Erreur chargement thèmes:', error);
+    }
+  };
+
   // Charger les designs avec la nouvelle API
   const loadDesigns = async () => {
     setLoading(true);
@@ -447,13 +464,13 @@ export const VendorDesignsPage: React.FC = () => {
         status: filterStatus,
       })
     );
-    
+
     if (success) {
       setDesigns(data.data.designs);
       setPagination(data.data.pagination);
       // Les stats sont maintenant calculées localement car pas de recherche textuelle dans la nouvelle API
     }
-    
+
     setLoading(false);
   };
 
@@ -461,13 +478,29 @@ export const VendorDesignsPage: React.FC = () => {
   useEffect(() => {
     loadDesigns();
 
-    // 🔄 Polling automatique toutes les 30 s pour rafraîchir le statut (validation admin éventuellement changée)
-    const interval = setInterval(() => {
-      loadDesigns();
-    }, 30000);
+    // Charger les thèmes admin une seule fois
+    loadThemes();
+  }, [currentPage, filterStatus]);
 
-    return () => clearInterval(interval);
-  }, [currentPage, filterStatus, searchTerm]);
+  // 🆕 useEffect pour filtrer les designs côté client
+  useEffect(() => {
+    let filtered = [...designs];
+
+    // Filtrer par recherche
+    if (searchTerm) {
+      filtered = filtered.filter(design =>
+        design.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (design.description && design.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    // Filtrer par thème
+    if (filterTheme !== null) {
+      filtered = filtered.filter(design => design.themeId === filterTheme);
+    }
+
+    setFilteredDesigns(filtered);
+  }, [designs, searchTerm, filterTheme]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -484,7 +517,7 @@ export const VendorDesignsPage: React.FC = () => {
     fetchProfile();
   }, [user]);
 
-  // Gestionnaires d'événements
+  // Gestionnaires d'événements pour l'upload
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -507,23 +540,33 @@ export const VendorDesignsPage: React.FC = () => {
   };
 
   const handleUploadDesign = async () => {
-    if (!selectedFile || !designForm.name.trim()) {
+    if (!selectedFile || !designForm.name.trim() || !designForm.themeId || designForm.themeId === 0) {
       toast.error('Veuillez remplir tous les champs obligatoires.');
       return;
     }
 
     setUploadingDesign(true);
-    const { success } = await handleApiCall(() => 
-      vendorDesignService.uploadDesign(selectedFile, designForm)
+
+    // Préparer les données comme attendu par l'API
+    const uploadData = {
+      name: designForm.name.trim(),
+      description: designForm.description?.trim() || '',
+      price: designForm.price || 0,
+      themeId: designForm.themeId,
+      tags: designForm.tags || []
+    };
+
+    const { success } = await handleApiCall(() =>
+      vendorDesignService.uploadDesign(selectedFile, uploadData)
     );
-    
+
     if (success) {
       toast.success('Design créé en brouillon ! Soumettez-le pour validation pour qu\'il puisse être publié.');
       setIsUploadDialogOpen(false);
       resetUploadForm();
       loadDesigns();
     }
-    
+
     setUploadingDesign(false);
   };
 
@@ -534,7 +577,7 @@ export const VendorDesignsPage: React.FC = () => {
       name: '',
       description: '',
       price: 0,
-      category: 'illustration',
+      themeId: 0,
       tags: []
     });
   };
@@ -566,33 +609,8 @@ export const VendorDesignsPage: React.FC = () => {
             <img
               src={design.thumbnailUrl || design.imageUrl}
                 alt={design.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover"
             />
-            
-            {/* Overlay avec actions */}
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-              <div className="flex space-x-2">
-                <Button size="sm" variant="secondary" className="bg-white text-black hover:bg-gray-100">
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="secondary" className="bg-white text-black hover:bg-gray-100">
-                  <Edit3 className="h-4 w-4" />
-                </Button>
-                {statusInfo.key === 'DRAFT' && (
-                  <Button 
-                    size="sm" 
-                    variant="secondary" 
-                    className="bg-white text-black hover:bg-gray-100"
-                    onClick={() => {
-                      setDesignToDelete(design.id);
-                      setDeleteModalOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
 
             {/* Badge de statut */}
             <div className="absolute top-2 left-2">
@@ -608,25 +626,16 @@ export const VendorDesignsPage: React.FC = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white border-gray-200">
-                  <DropdownMenuItem className="hover:bg-gray-50">
+                  <DropdownMenuItem
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleViewDetails(design)}
+                  >
                     <Eye className="h-4 w-4 mr-2" />
                     Voir les détails
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-gray-50">
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Modifier
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-gray-50">
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Partager
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-gray-50">
-                    <Download className="h-4 w-4 mr-2" />
-                    Télécharger
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="text-red-600 hover:bg-red-50"
+                  <DropdownMenuItem
+                    className="text-red-600 hover:bg-red-50 cursor-pointer"
                     onClick={() => {
                       setDesignToDelete(design.id);
                       setDeleteModalOpen(true);
@@ -771,8 +780,13 @@ export const VendorDesignsPage: React.FC = () => {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [designToDelete, setDesignToDelete] = useState<number | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
 
-  
+  const handleViewDetails = (design: Design) => {
+    setSelectedDesign(design);
+    setDetailsModalOpen(true);
+  };
 
   const confirmDelete = async () => {
     if (!designToDelete) return;
@@ -957,39 +971,18 @@ export const VendorDesignsPage: React.FC = () => {
                 </SelectContent>
               </Select>
               
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-full sm:w-48 border-gray-300 focus:border-black focus:ring-black">
-                  <SelectValue placeholder="Catégorie" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-gray-200">
-                  <SelectItem value="all">Toutes les catégories</SelectItem>
-                  <SelectItem value="logo">Logo</SelectItem>
-                  <SelectItem value="pattern">Pattern</SelectItem>
-                  <SelectItem value="illustration">Illustration</SelectItem>
-                  <SelectItem value="typography">Typographie</SelectItem>
-                  <SelectItem value="abstract">Abstract</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="w-full sm:w-48">
+                <DesignCategorySelector
+                  value={filterTheme}
+                  onChange={setFilterTheme}
+                  placeholder="Tous les thèmes"
+                  showImages={false}
+                  className="border-gray-300 focus:border-black focus:ring-black"
+                />
+              </div>
             </div>
             
-            <div className="flex items-center space-x-2">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-                className={viewMode === 'grid' ? 'bg-black text-white' : 'border-gray-300 text-gray-700'}
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className={viewMode === 'list' ? 'bg-black text-white' : 'border-gray-300 text-gray-700'}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
+            {/* Mode liste supprimé - toujours en grille */}
           </div>
         </div>
 
@@ -1001,11 +994,7 @@ export const VendorDesignsPage: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={`grid gap-6 ${
-            viewMode === 'grid'
-              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-              : 'grid-cols-1'
-              }`}
+              className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
             {Array.from({ length: 8 }).map((_, idx) => (
               <div key={idx} className="animate-pulse">
@@ -1015,19 +1004,15 @@ export const VendorDesignsPage: React.FC = () => {
               </div>
             ))}
             </motion.div>
-          ) : designs.length > 0 ? (
+          ) : filteredDesigns.length > 0 ? (
             <motion.div
               key="designs"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={`grid gap-6 ${
-            viewMode === 'grid' 
-              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
-              : 'grid-cols-1'
-              }`}
+              className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
-              {designs.map((design) => (
+              {filteredDesigns.map((design) => (
                 <DesignCard key={design.id} design={design} />
               ))}
             </motion.div>
@@ -1041,13 +1026,13 @@ export const VendorDesignsPage: React.FC = () => {
             >
               <ImageIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {searchTerm || filterStatus !== DesignStatus.ALL || filterCategory !== 'all'
+                {searchTerm || filterStatus !== DesignStatus.ALL || filterTheme !== null
                   ? 'Aucun design trouvé'
                   : 'Créez votre premier design'
                 }
             </h3>
               <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                {searchTerm || filterStatus !== DesignStatus.ALL || filterCategory !== 'all'
+                {searchTerm || filterStatus !== DesignStatus.ALL || filterTheme !== null
                   ? 'Essayez de modifier vos filtres de recherche ou créez un nouveau design.'
                   : 'Commencez votre parcours créatif en téléchargeant votre premier design.'
               }
@@ -1107,9 +1092,9 @@ export const VendorDesignsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Modal d'upload */}
+        {/* Modal d'upload de design */}
         <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-          <DialogContent className="sm:max-w-lg bg-white border-gray-200">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-gray-200">
             <DialogHeader>
               <DialogTitle className="text-black">Créer un nouveau design</DialogTitle>
               <DialogDescription className="text-gray-600">
@@ -1143,18 +1128,18 @@ export const VendorDesignsPage: React.FC = () => {
                   </div>
                   <p className="text-xs text-blue-700 mt-2">
                     📧 Vous recevrez un email de confirmation à chaque étape.
-                    </p>
-                  </div>
+                  </p>
+                </div>
               </div>
             </div>
-            
+
             <div className="space-y-6">
               {/* Zone de téléchargement */}
               <div className="space-y-4">
                 <Label className="text-black font-medium">Fichier design *</Label>
-                
+
                 {!previewUrl ? (
-                  <div 
+                  <div
                     className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-black transition-colors cursor-pointer"
                     onClick={() => fileInputRef.current?.click()}
                   >
@@ -1185,8 +1170,8 @@ export const VendorDesignsPage: React.FC = () => {
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
-                </div>
-              )}
+                  </div>
+                )}
 
                 <input
                   ref={fileInputRef}
@@ -1201,14 +1186,14 @@ export const VendorDesignsPage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="name" className="text-black font-medium">Nom du design *</Label>
-                <Input
+                  <Input
                     id="name"
                     value={designForm.name}
                     onChange={(e) => setDesignForm(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Ex: Logo moderne tech"
                     className="border-gray-300 focus:border-black focus:ring-black"
                   />
-              </div>
+                </div>
 
                 <div>
                   <Label htmlFor="description" className="text-black font-medium">Description</Label>
@@ -1216,41 +1201,35 @@ export const VendorDesignsPage: React.FC = () => {
                     id="description"
                     value={designForm.description}
                     onChange={(e) => setDesignForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Décrivez votre design..."
+                    placeholder="Décrivez votre design..."
                     className="border-gray-300 focus:border-black focus:ring-black"
-                />
-              </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="category" className="text-black font-medium">Catégorie *</Label>
-                    <Select value={designForm.category} onValueChange={(value) => setDesignForm(prev => ({ ...prev, category: value as any }))}>
-                      <SelectTrigger className="border-gray-300 focus:border-black focus:ring-black">
-                        <SelectValue />
-                  </SelectTrigger>
-                      <SelectContent className="bg-white border-gray-200">
-                    <SelectItem value="logo">Logo</SelectItem>
-                    <SelectItem value="pattern">Pattern</SelectItem>
-                    <SelectItem value="illustration">Illustration</SelectItem>
-                    <SelectItem value="typography">Typographie</SelectItem>
-                    <SelectItem value="abstract">Abstract</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-                  <div>
-                    <Label htmlFor="price" className="text-black font-medium">Prix (FCFA)</Label>
-                  <Input
-                      id="price"
-                    type="number"
-                      value={designForm.price}
-                      onChange={(e) => setDesignForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                      placeholder="2500"
-                      min="0"
-                      className="border-gray-300 focus:border-black focus:ring-black"
-                    />
+                  />
                 </div>
-              </div>
+
+                <div>
+                  <Label htmlFor="theme" className="text-black font-medium">Thème *</Label>
+                  <DesignCategorySelector
+                    value={designForm.themeId || null}
+                    onChange={(themeId) => setDesignForm(prev => ({ ...prev, themeId: themeId || 0 }))}
+                    required={true}
+                    placeholder="Sélectionner un thème"
+                    showImages={true}
+                    className="border-gray-300 focus:border-black focus:ring-black"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="price" className="text-black font-medium">Prix (FCFA)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={designForm.price}
+                    onChange={(e) => setDesignForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                    placeholder="2500"
+                    min="0"
+                    className="border-gray-300 focus:border-black focus:ring-black"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1267,7 +1246,7 @@ export const VendorDesignsPage: React.FC = () => {
               </Button>
               <Button
                 onClick={handleUploadDesign}
-                disabled={uploadingDesign || !selectedFile || !designForm.name.trim()}
+                disabled={uploadingDesign || !selectedFile || !designForm.name.trim() || !designForm.themeId || designForm.themeId === 0}
                 className="bg-black text-white hover:bg-gray-800"
               >
                 {uploadingDesign ? (
@@ -1278,9 +1257,139 @@ export const VendorDesignsPage: React.FC = () => {
                 ) : (
                   <>
                     <Plus className="h-4 w-4 mr-2" />
-                Créer le design
+                    Créer le design
                   </>
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de détails du design */}
+        <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-gray-200">
+            <DialogHeader>
+              <DialogTitle className="text-black">Détails du design</DialogTitle>
+              <DialogDescription className="text-gray-600">
+                Informations complètes sur votre design
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedDesign && (
+              <div className="space-y-6">
+                {/* Image du design */}
+                <div className="flex justify-center">
+                  <img
+                    src={selectedDesign.thumbnailUrl || selectedDesign.imageUrl}
+                    alt={selectedDesign.name}
+                    className="max-w-full h-64 object-contain rounded-lg border border-gray-200"
+                  />
+                </div>
+
+                {/* Informations du design */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-black font-medium">Nom</Label>
+                      <p className="mt-1 text-gray-700">{selectedDesign.name}</p>
+                    </div>
+
+                    {selectedDesign.description && (
+                      <div>
+                        <Label className="text-black font-medium">Description</Label>
+                        <p className="mt-1 text-gray-700">{selectedDesign.description}</p>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="text-black font-medium">Prix</Label>
+                      <p className="mt-1 text-gray-700 font-semibold">{selectedDesign.price.toLocaleString()} FCFA</p>
+                    </div>
+
+                    <div>
+                      <Label className="text-black font-medium">Thème</Label>
+                      <p className="mt-1 text-gray-700">{selectedDesign.themeName || 'Non spécifié'}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-black font-medium">Statut</Label>
+                      <div className="mt-1">{getDesignStatusInfo(selectedDesign).badge}</div>
+                    </div>
+
+                    <div>
+                      <Label className="text-black font-medium">Dimensions</Label>
+                      <p className="mt-1 text-gray-700">
+                        {selectedDesign.dimensions ?
+                          `${selectedDesign.dimensions.width} x ${selectedDesign.dimensions.height} px` :
+                          'Non disponible'
+                        }
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-black font-medium">Taille du fichier</Label>
+                      <p className="mt-1 text-gray-700">
+                        {selectedDesign.fileSize ?
+                          `${(selectedDesign.fileSize / 1024 / 1024).toFixed(2)} MB` :
+                          'Non disponible'
+                        }
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-black font-medium">Date de création</Label>
+                      <p className="mt-1 text-gray-700">
+                        {new Date(selectedDesign.createdAt).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Statistiques */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-black">{selectedDesign.views}</div>
+                    <div className="text-sm text-gray-600">Vues</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-black">{selectedDesign.likes}</div>
+                    <div className="text-sm text-gray-600">J'aime</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-black">{selectedDesign.usageCount}</div>
+                    <div className="text-sm text-gray-600">Utilisations</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-black">{selectedDesign.earnings?.toLocaleString() || 0}</div>
+                    <div className="text-sm text-gray-600">Gains (FCFA)</div>
+                  </div>
+                </div>
+
+                {/* Tags */}
+                {selectedDesign.tags && selectedDesign.tags.length > 0 && (
+                  <div>
+                    <Label className="text-black font-medium">Tags</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedDesign.tags.map((tag, index) => (
+                        <Badge key={index} variant="outline" className="border-gray-300 text-gray-600">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDetailsModalOpen(false)}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Fermer
               </Button>
             </DialogFooter>
           </DialogContent>

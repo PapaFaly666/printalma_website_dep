@@ -70,6 +70,9 @@ import AddProductPage from './pages/AddProductPage';
 // Page de compte vendeur
 import VendorAccountPage from './pages/vendor/VendorAccountPage';
 
+// Page de détail des commandes vendeur
+import VendorOrderDetailPage from './pages/vendor/VendorOrderDetailPage';
+
 // Page d'appel de fonds
 import AppelDeFondsPage from './pages/AppelDeFondsPage';
 
@@ -279,6 +282,7 @@ function App() {
                   <Route path="add-product" element={<AddProductPage />} />
                   <Route path="product-form" element={<AddProductPage />} />
                   <Route path="sales" element={<VendorSales />} />
+                  <Route path="sales/:orderId" element={<VendorOrderDetailPage />} />
                   <Route path="sell-design" element={<SellDesignPage />} />
                   <Route path="account" element={<VendorAccountPage />} />
                   <Route path="appel-de-fonds" element={<AppelDeFondsPage />} />

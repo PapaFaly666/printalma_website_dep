@@ -496,8 +496,8 @@ export const VendorProductsPage: React.FC = () => {
     setFilteredProducts(filtered);
   }, [products, searchTerm, statusFilter]);
 
-  // Filtrage des produits non supprimés
-  const visibleProducts = products.filter(p => !p.isDelete);
+  // Filtrage des produits non supprimés depuis la liste filtrée
+  const visibleProducts = filteredProducts.filter(p => !p.isDelete);
 
   // Calculer les statistiques
   const nonDeletedProducts = products.filter(p => !p.isDelete);
@@ -871,7 +871,6 @@ export const VendorProductsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleProducts.map((product) => {
-              console.log('🎨 Rendu produit:', product.id, product.vendorName, product.designApplication);
               return (
                 <Card key={product.id} className="group border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
                 <CardContent className="p-0">
