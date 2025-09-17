@@ -553,16 +553,7 @@ const AppelDeFondsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Notes */}
-            <div>
-              <Label>Notes (optionnel)</Label>
-              <Textarea
-                placeholder="Informations supplémentaires..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-              />
-            </div>
+            {/* Notes supprimées selon demande */}
 
             {errors.submit && (
               <Alert variant="destructive">

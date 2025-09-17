@@ -76,6 +76,10 @@ import VendorOrderDetailPage from './pages/vendor/VendorOrderDetailPage';
 // Page d'appel de fonds
 import AppelDeFondsPage from './pages/AppelDeFondsPage';
 
+// Nouvelles pages de gestion des fonds vendeur
+import VendorFundsRequestPage from './pages/vendor/VendorFundsRequestPage';
+import AdminPaymentRequestsPage from './pages/admin/AdminPaymentRequestsPage';
+
 // Page de gestion des mockups
 import ProductMockupsPage from './pages/admin/ProductMockupsPage';
 
@@ -254,7 +258,7 @@ function App() {
                   <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="analytics" element={<ProductAnalytics />} />
-                  <Route path='payment-requests' element={<PaiementRequest />} />
+                  <Route path='payment-requests' element={<AdminPaymentRequestsPage />} />
                   <Route path='sales' element={<Sale />} />
                   <Route path='add-product' element={<AddProductPage />} />
                   <Route path='product-form' element={<AddProductPage />} />
@@ -285,7 +289,7 @@ function App() {
                   <Route path="sales/:orderId" element={<VendorOrderDetailPage />} />
                   <Route path="sell-design" element={<SellDesignPage />} />
                   <Route path="account" element={<VendorAccountPage />} />
-                  <Route path="appel-de-fonds" element={<AppelDeFondsPage />} />
+                  <Route path="appel-de-fonds" element={<VendorFundsRequestPage />} />
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 

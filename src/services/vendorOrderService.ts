@@ -61,6 +61,22 @@ interface PaginatedOrderResponse {
 export class VendorOrderService {
   private baseURL = API_BASE_URL;
 
+  // Helper to get bearer token from stored session (if backend requires it)
+  private getAuthHeader(): Record<string, string> {
+    try {
+      const stored = localStorage.getItem('auth_session');
+      if (!stored) return {};
+      const data = JSON.parse(stored);
+      const token: string | undefined = data?.user?.token || data?.token;
+      if (token && typeof token === 'string') {
+        return { Authorization: `Bearer ${token}` };
+      }
+    } catch {
+      // ignore
+    }
+    return {};
+  }
+
   // ==========================================
   // MÉTHODES UTILITAIRES
   // ==========================================
@@ -76,7 +92,8 @@ export class VendorOrderService {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...options.headers
+          ...this.getAuthHeader(),
+          ...(options.headers as Record<string, string> | undefined)
         },
         ...options
       });
@@ -106,7 +123,7 @@ export class VendorOrderService {
         throw developmentError;
       }
 
-      throw error;
+      throw error as any;
     }
   }
 
@@ -184,7 +201,7 @@ export class VendorOrderService {
     }
 
     const requestData: UpdateOrderStatusRequest = {
-      status,
+      status: (status as string).toUpperCase() as OrderStatus,
       notes
     };
 
@@ -421,7 +438,7 @@ export class VendorOrderService {
       'PENDING': ['CONFIRMED'],
       'CONFIRMED': ['PROCESSING'],
       'PROCESSING': ['SHIPPED'],
-      'SHIPPED': ['DELIVERED'],
+      'SHIPPED': [],
       'DELIVERED': [],
       'CANCELLED': [],
       'REJECTED': []

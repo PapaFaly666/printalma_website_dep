@@ -65,7 +65,8 @@ const VendorOrderDetailPage: React.FC = () => {
         console.log('✅ Détails de commande récupérés:', orderData);
 
         setOrder(orderData);
-        setNewStatus(orderData.status);
+        // Ne pas présélectionner un statut non atteignable dans la liste
+        setNewStatus('');
 
       } catch (error) {
         console.error('❌ Erreur lors du chargement de la commande:', error);
@@ -98,6 +99,16 @@ const VendorOrderDetailPage: React.FC = () => {
 
     setUpdating(true);
     try {
+      // Validation côté client des transitions autorisées
+      if (!vendorOrderService.canUpdateStatus(order.status, newStatus)) {
+        toast({
+          title: "Transition non autorisée",
+          description: `Impossible de passer de "${getStatusLabel(order.status)}" à "${getStatusLabel(newStatus)}"`,
+          variant: "destructive",
+        });
+        setUpdating(false);
+        return;
+      }
       console.log('🔄 Mise à jour du statut de la commande:', {
         orderId: order.id,
         fromStatus: order.status,
@@ -113,6 +124,10 @@ const VendorOrderDetailPage: React.FC = () => {
       );
 
       console.log('✅ Statut de commande mis à jour:', updatedOrder);
+
+      if (!updatedOrder) {
+        throw new Error('Réponse vide du serveur lors de la mise à jour du statut');
+      }
 
       setOrder(updatedOrder);
       setStatusNote('');
@@ -391,16 +406,35 @@ const VendorOrderDetailPage: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Nouveau statut
                     </label>
+                    {/* Statut actuel visible par défaut pour une meilleure UX */}
+                    <div className="mb-2 flex items-center gap-2 text-xs text-gray-600">
+                      <span>Statut actuel:</span>
+                      {getStatusBadge(order.status)}
+                    </div>
                     <Select value={newStatus} onValueChange={(value) => setNewStatus(value as OrderStatus)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un statut" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CONFIRMED">Confirmée</SelectItem>
-                        <SelectItem value="PROCESSING">En traitement</SelectItem>
-                        <SelectItem value="SHIPPED">Expédiée</SelectItem>
-                        <SelectItem value="DELIVERED">Livrée</SelectItem>
-                        <SelectItem value="CANCELLED">Annulée</SelectItem>
+                      {/* Statut actuel en lecture seule */}
+                      <SelectItem disabled value={order.status}>
+                        Statut actuel: {getStatusLabel(order.status)}
+                      </SelectItem>
+                      {/* Séparateur visuel léger via item désactivé vide */}
+                      <SelectItem disabled value={"__sep__" as any}>────────────</SelectItem>
+                      {(() => {
+                        const allowed = (['CONFIRMED','PROCESSING','SHIPPED'] as OrderStatus[])
+                          .filter((st) => vendorOrderService.canUpdateStatus(order.status, st));
+                        return allowed.length > 0 ? (
+                          allowed.map((st) => (
+                            <SelectItem key={st} value={st}>{getStatusLabel(st)}</SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem disabled value={"__none__" as any}>
+                            Aucune transition possible pour le statut actuel
+                          </SelectItem>
+                        );
+                      })()}
                       </SelectContent>
                     </Select>
                   </div>
