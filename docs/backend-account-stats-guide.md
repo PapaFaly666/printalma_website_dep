@@ -553,3 +553,4 @@ CREATE INDEX IF NOT EXISTS idx_users_status_changed ON users(statusChangedAt);
 **✅ Système d'activation :** Logique déjà documentée dans VENDOR_ACCOUNT_STATUS_GUIDE.md
 
 **🎯 Action Immédiate :** Modifier l'endpoint `/vendor/stats` pour inclure `memberSince`, `lastLoginAt` et leurs versions formatées selon les spécifications de ce guide.
+

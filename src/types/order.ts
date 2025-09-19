@@ -115,6 +115,13 @@ export interface Order {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  // Optional timeline fields used in vendor views
+  processingAt?: string;
+  trackingNumber?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  rejectedAt?: string;
+  rejectReason?: string;
   validatedAt?: string;
   validatedBy?: number;
   validator?: ValidatorDto;

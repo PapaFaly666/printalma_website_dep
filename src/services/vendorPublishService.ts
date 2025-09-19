@@ -17,6 +17,8 @@ export interface VendorPublishPayload {
     size: number;
     type: string;
   };
+  // Catégorie sélectionnée côté vendeur (optionnelle)
+  category?: string;
   // 🆕 NOUVELLE ARCHITECTURE: Produit admin + design séparé + délimitations
   productStructure: {
     adminProduct: {

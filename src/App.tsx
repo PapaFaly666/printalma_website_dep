@@ -73,6 +73,9 @@ import VendorAccountPage from './pages/vendor/VendorAccountPage';
 // Page de détail des commandes vendeur
 import VendorOrderDetailPage from './pages/vendor/VendorOrderDetailPage';
 
+// Page de création de produits avec wizard
+import CreateProductWizardPage from './pages/vendor/CreateProductWizardPage';
+
 // Page d'appel de fonds
 import AppelDeFondsPage from './pages/AppelDeFondsPage';
 
@@ -288,6 +291,7 @@ function App() {
                   <Route path="sales" element={<VendorSales />} />
                   <Route path="sales/:orderId" element={<VendorOrderDetailPage />} />
                   <Route path="sell-design" element={<SellDesignPage />} />
+                  <Route path="create-product" element={<CreateProductWizardPage />} />
                   <Route path="account" element={<VendorAccountPage />} />
                   <Route path="appel-de-fonds" element={<VendorFundsRequestPage />} />
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />

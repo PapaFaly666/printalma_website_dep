@@ -677,12 +677,13 @@ const AdminPaymentRequestsPage: React.FC = () => {
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              setSelectedRequest(request);
-                              setProcessAction({
-                                status: request.status,
-                                adminNote: request.adminNote || '',
-                                rejectReason: request.rejectReason || ''
-                              });
+                          setSelectedRequest(request);
+                          // En mode lecture seule, ne pas forcer un statut potentiellement invalide pour le type ProcessFundsRequest
+                          setProcessAction({
+                            status: request.status === 'PENDING' ? 'APPROVED' : request.status,
+                            adminNote: request.adminNote || '',
+                            rejectReason: request.rejectReason || ''
+                          });
                               setIsViewOnly(true);
                               setIsRejectMode(false);
                               setShowProcessDialog(true);

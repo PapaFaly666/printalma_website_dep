@@ -832,13 +832,23 @@ export const VendorProductsPage: React.FC = () => {
               Gérez vos produits avec designs appliqués
             </p>
           </div>
-          <Button
-            onClick={() => navigate('/vendeur/sell-design')}
-            className={isAccountActive === false ? 'bg-orange-600 hover:bg-orange-700' : ''}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nouveau produit {isAccountActive === false && '(masqué aux clients)'}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => navigate('/vendeur/create-product')}
+              className={isAccountActive === false ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Créer vos produits {isAccountActive === false && '(masqué aux clients)'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/vendeur/sell-design')}
+              className="border-gray-300"
+            >
+              <Package className="w-4 h-4 mr-2" />
+              Ancienne méthode
+            </Button>
+          </div>
         </div>
 
         {/* Statistiques */}

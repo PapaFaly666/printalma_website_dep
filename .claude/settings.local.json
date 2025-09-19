@@ -11,7 +11,8 @@
       "Bash(pkill:*)",
       "Bash(npm run lint:*)",
       "Bash(git checkout:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": [],

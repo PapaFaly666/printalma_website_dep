@@ -4397,9 +4397,9 @@ const SellDesignPage: React.FC = () => {
               </button>
 
               {/* Option 2: Créer ses propres produits */}
-              <button 
+              <button
                 className="group text-left bg-gray-900 dark:bg-white border border-gray-900 dark:border-white rounded-lg p-6 hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200"
-                onClick={() => setSelectedMode('product')}
+                onClick={() => navigate('/vendeur/create-product')}
               >
                 <div className="mb-4">
                   <Package className="w-8 h-8 text-white dark:text-gray-900" />

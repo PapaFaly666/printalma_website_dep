@@ -20,6 +20,7 @@ export interface FundsRequest {
   phoneNumber: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
   rejectReason?: string;
+  approvedDate?: string;
   requestDate: string;
   processedDate?: string;
   processedBy?: number;
