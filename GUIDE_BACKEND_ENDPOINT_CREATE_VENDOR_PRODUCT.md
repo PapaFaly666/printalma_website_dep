@@ -4,6 +4,24 @@
 
 Ce document détaille l'implémentation de l'endpoint de création de produits vendeur avec upload multiple d'images, utilisé par le workflow `/vendeur/create-product`.
 
+## 🖼️ HIÉRARCHIE DES IMAGES
+
+**IMPORTANT:** Le système distingue deux types d'images :
+
+1. **Image de Base** (Base Image)
+   - **Définition:** La première image uploadée par le vendeur
+   - **Usage:** Image principale du produit, affichée en premier dans les listings
+   - **Index:** Toujours `image_0` dans la requête
+   - **Type:** `is_base_image: true`, `image_type: 'base'`
+
+2. **Images de Détail** (Detail Images)
+   - **Définition:** Toutes les autres images après la première
+   - **Usage:** Images supplémentaires pour la galerie produit
+   - **Index:** `image_1`, `image_2`, ... `image_15`
+   - **Type:** `is_base_image: false`, `image_type: 'detail'`
+
+Cette distinction est cruciale pour l'affichage frontend et doit être respectée côté backend.
+
 ---
 
 ## 🔌 ENDPOINT PRINCIPAL
@@ -207,6 +225,14 @@ for (const [index, file] of imageFiles.entries()) {
     throw new Error(`Image ${index + 1}: Fichier trop volumineux (max 5MB)`);
   }
 }
+
+// IMPORTANT: La première image (index 0) sera l'image de base
+// Les autres images (index 1+) seront les images de détail
+console.log('Images reçues:', {
+  totalImages: imageFiles.length,
+  baseImage: imageFiles[0]?.originalname,
+  detailImages: imageFiles.slice(1).map(f => f.originalname)
+});
 ```
 
 ### **4. Calculs Automatiques**
@@ -239,26 +265,43 @@ const uploadConfig = {
   maxSize: 5 * 1024 * 1024
 };
 
-// Upload des images avec organisation en colonnes
+// Upload des images avec distinction base/détail
 const uploadedImages = [];
 for (const [index, file] of imageFiles.entries()) {
-  const columnIndex = index % 4; // 4 colonnes max
+  const isBaseImage = index === 0; // La première image est l'image de base
+  const imageType = isBaseImage ? 'base' : 'detail';
+  const columnIndex = index % 4; // 4 colonnes max pour l'organisation
   const imageOrder = Math.floor(index / 4); // Position dans la colonne
 
-  // Upload du fichier
+  // Upload du fichier avec nom spécifique
   const uploadResult = await uploadImage(file, {
     ...uploadConfig,
-    filename: `${columnIndex}_${imageOrder}_${file.originalname}`
+    filename: `${imageType}_${index}_${file.originalname}`
   });
 
   uploadedImages.push({
     imageUrl: uploadResult.url,
     imageOrder: imageOrder,
     columnIndex: columnIndex,
+    isBaseImage: isBaseImage, // NOUVEAU: Identifier l'image de base
+    imageType: imageType, // NOUVEAU: 'base' ou 'detail'
     fileSize: file.size,
     fileType: file.mimetype,
     originalName: file.originalname
   });
+
+  // Log pour traçabilité
+  console.log(`Image ${index + 1} uploadée:`, {
+    type: imageType,
+    isBase: isBaseImage,
+    url: uploadResult.url
+  });
+}
+
+// Vérification qu'on a bien une image de base
+const baseImage = uploadedImages.find(img => img.isBaseImage);
+if (!baseImage) {
+  throw new Error('Image de base manquante');
 }
 ```
 
@@ -293,11 +336,18 @@ await db.transaction(async (trx) => {
     validation_status: 'PENDING'
   });
 
-  // 2. Insérer les images
+  // 2. Insérer les images avec distinction base/détail
   for (const imageData of uploadedImages) {
     await trx.vendor_product_images.create({
       vendor_product_id: vendorProduct.id,
-      ...imageData
+      image_url: imageData.imageUrl,
+      image_order: imageData.imageOrder,
+      column_index: imageData.columnIndex,
+      is_base_image: imageData.isBaseImage, // NOUVEAU: Marquer l'image de base
+      image_type: imageData.imageType, // NOUVEAU: 'base' ou 'detail'
+      file_size: imageData.fileSize,
+      file_type: imageData.fileType,
+      original_name: imageData.originalName // NOUVEAU: Nom original du fichier
     });
   }
 
@@ -342,15 +392,19 @@ await db.transaction(async (trx) => {
     "images": [
       {
         "id": 1,
-        "imageUrl": "https://cdn.example.com/vendor-products/123/1732012345/0_0_design1.jpg",
+        "imageUrl": "https://cdn.example.com/vendor-products/123/1732012345/base_0_design1.jpg",
         "imageOrder": 0,
-        "columnIndex": 0
+        "columnIndex": 0,
+        "isBaseImage": true,
+        "imageType": "base"
       },
       {
         "id": 2,
-        "imageUrl": "https://cdn.example.com/vendor-products/123/1732012345/1_0_design2.jpg",
+        "imageUrl": "https://cdn.example.com/vendor-products/123/1732012345/detail_1_design2.jpg",
         "imageOrder": 0,
-        "columnIndex": 1
+        "columnIndex": 1,
+        "isBaseImage": false,
+        "imageType": "detail"
       }
     ],
     "createdAt": "2024-01-15T10:30:00Z",

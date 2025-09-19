@@ -64,12 +64,20 @@ CREATE TABLE IF NOT EXISTS vendor_product_images (
   image_url TEXT NOT NULL,
   image_order INTEGER DEFAULT 0,
   column_index INTEGER DEFAULT 0, -- 0-3 pour les 4 colonnes max
+
+  -- NOUVEAUX CHAMPS pour distinction base/détail
+  is_base_image BOOLEAN DEFAULT false, -- true pour l'image principale (première uploadée)
+  image_type VARCHAR(20) DEFAULT 'detail', -- 'base' pour l'image principale, 'detail' pour les autres
+  original_name VARCHAR(255), -- Nom original du fichier uploadé
+
   file_size BIGINT,
   file_type VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_vendor_product_images_vendor_product_id ON vendor_product_images(vendor_product_id);
+CREATE INDEX IF NOT EXISTS idx_vendor_product_images_base ON vendor_product_images(is_base_image);
+CREATE INDEX IF NOT EXISTS idx_vendor_product_images_type ON vendor_product_images(image_type);
 ```
 
 ### 4. **Mise à jour Table `design_categories`**
@@ -201,7 +209,10 @@ Response: {
         id: number,
         imageUrl: string,
         imageOrder: number,
-        columnIndex: number
+        columnIndex: number,
+        isBaseImage: boolean, // true pour l'image principale
+        imageType: 'base' | 'detail', // Type d'image
+        originalName: string // Nom original du fichier
       }
     ],
     createdAt: string,

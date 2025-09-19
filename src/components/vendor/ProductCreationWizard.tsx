@@ -398,8 +398,8 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
   };
 
   const renderStepIndicator = () => (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-4">
+    <div className="mb-12">
+      <div className="flex items-center justify-between mb-6">
         {STEPS.map((step, index) => {
           const Icon = step.icon;
           const isActive = currentStep === step.id;
@@ -407,39 +407,44 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
           return (
             <div key={step.id} className="flex items-center">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                isActive ? 'border-blue-600 bg-blue-600 text-white' :
-                isCompleted ? 'border-green-600 bg-green-600 text-white' :
-                'border-gray-300 bg-white text-gray-500'
+              <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-200 ${
+                isActive ? 'border-gray-900 bg-gray-900 text-white shadow-lg scale-110' :
+                isCompleted ? 'border-gray-900 bg-gray-900 text-white' :
+                'border-gray-300 bg-white text-gray-400 hover:border-gray-900'
               }`}>
-                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                {isCompleted ? <Check className="w-6 h-6" /> : <Icon className="w-6 h-6" />}
               </div>
               {index < STEPS.length - 1 && (
-                <ChevronRight className={`w-5 h-5 mx-2 ${
-                  isCompleted ? 'text-green-600' : 'text-gray-300'
+                <div className={`h-0.5 w-16 mx-4 transition-colors ${
+                  isCompleted ? 'bg-gray-900' : 'bg-gray-200'
                 }`} />
               )}
             </div>
           );
         })}
       </div>
-      <div className="mb-2">
-        <Progress value={(currentStep / STEPS.length) * 100} className="h-2" />
+      <div className="mb-4">
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-gray-900 h-2 rounded-full transition-all duration-300 ease-out"
+            style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+          />
+        </div>
       </div>
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900">
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">
           Étape {currentStep}: {STEPS[currentStep - 1].title}
         </h2>
-        <p className="text-gray-600">{STEPS[currentStep - 1].description}</p>
+        <p className="text-gray-600 text-lg">{STEPS[currentStep - 1].description}</p>
       </div>
     </div>
   );
 
   const renderStep1 = () => (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="border-gray-900 bg-white shadow-lg">
+        <CardHeader className="border-b border-gray-900">
+          <CardTitle className="flex items-center gap-2 text-gray-900">
             <Package className="h-5 w-5" />
             Sélectionner un mockup
           </CardTitle>
@@ -523,9 +528,9 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
   const renderStep2 = () => (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="border-gray-900 bg-white shadow-lg">
+        <CardHeader className="border-b border-gray-900">
+          <CardTitle className="flex items-center gap-2 text-gray-900">
             <Info className="h-5 w-5" />
             Informations de base
           </CardTitle>
@@ -634,9 +639,9 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
   const renderStep3 = () => (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="border-gray-900 bg-white shadow-lg">
+        <CardHeader className="border-b border-gray-900">
+          <CardTitle className="flex items-center gap-2 text-gray-900">
             <Settings className="h-5 w-5" />
             Détails du produit
           </CardTitle>
@@ -823,16 +828,19 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
   const renderStep4 = () => (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="border-gray-900 bg-white">
+        <CardHeader className="border-b border-gray-900">
+          <CardTitle className="flex items-center gap-2 text-gray-900">
             <Upload className="h-5 w-5" />
             Upload de vos images
           </CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            La première image sera votre <span className="font-semibold text-gray-900">image principale</span>, les autres seront des images de détail
+          </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {/* Zone d'upload */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-6">
+          <div className="border-2 border-dashed border-gray-300 hover:border-gray-900 transition-colors rounded-lg p-8 text-center mb-6">
             <input
               ref={fileInputRef}
               type="file"
@@ -841,59 +849,110 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
               onChange={handleImageUpload}
               className="hidden"
             />
-            <div className="space-y-3">
-              <Upload className="h-12 w-12 mx-auto text-gray-400" />
+            <div className="space-y-4">
+              <Upload className="h-16 w-16 mx-auto text-gray-400" />
               <div>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
+                  className="border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors"
                 >
                   Sélectionner des images
                 </Button>
-                <p className="text-sm text-gray-500 mt-2">
-                  PNG, JPG, WebP jusqu'à 5MB chacune
+                <p className="text-sm text-gray-500 mt-3">
+                  PNG, JPG, WebP jusqu'à 5MB chacune • Maximum 16 images
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  La première image = Image principale • Les autres = Galerie
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Affichage des images organisées en colonnes */}
+          {/* Affichage des images avec distinction base/détail */}
           {formData.productImages.length > 0 && (
-            <div>
-              <p className="font-semibold mb-4">
-                Images téléchargées ({formData.productImages.length}) - Organisées en 4 colonnes maximum
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {formData.imageColumns.map((column, columnIndex) => (
-                  <div key={columnIndex} className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-600">
-                      Colonne {columnIndex + 1} ({column.length} images)
-                    </h4>
-                    {column.map((image, imageIndex) => {
-                      const globalIndex = formData.productImages.indexOf(image);
+            <div className="space-y-6">
+              {/* Image principale (première) */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-3 h-3 bg-gray-900 rounded-full"></div>
+                  <h3 className="text-lg font-semibold text-gray-900">Image principale</h3>
+                  <Badge className="bg-gray-900 text-white">Base</Badge>
+                </div>
+                <div className="relative group max-w-xs">
+                  <img
+                    src={URL.createObjectURL(formData.productImages[0])}
+                    alt="Image principale"
+                    className="w-full h-48 object-cover rounded-lg border-2 border-gray-900 shadow-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(0)}
+                    className="absolute top-2 right-2 bg-gray-900 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                  <div className="absolute bottom-2 left-2 bg-gray-900 text-white text-xs px-2 py-1 rounded font-medium">
+                    IMAGE PRINCIPALE
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  Cette image sera affichée en premier et représentera votre produit
+                </p>
+              </div>
+
+              {/* Images de détail */}
+              {formData.productImages.length > 1 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-gray-900">Images de détail</h3>
+                    <Badge variant="outline" className="border-gray-400 text-gray-600">Galerie</Badge>
+                    <span className="text-sm text-gray-500">({formData.productImages.length - 1} images)</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {formData.productImages.slice(1).map((image, index) => {
+                      const globalIndex = index + 1;
                       return (
-                        <div key={imageIndex} className="relative group">
+                        <div key={index} className="relative group">
                           <img
                             src={URL.createObjectURL(image)}
-                            alt={`Image ${globalIndex + 1}`}
-                            className="w-full h-32 object-cover rounded-lg border"
+                            alt={`Image détail ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-300 hover:border-gray-900 transition-colors"
                           />
                           <button
                             type="button"
                             onClick={() => removeImage(globalIndex)}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 bg-gray-900 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                           >
                             ×
                           </button>
-                          <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                            {image.name.substring(0, 15)}...
+                          <div className="absolute bottom-1 left-1 bg-gray-900 bg-opacity-80 text-white text-xs px-1 py-0.5 rounded">
+                            {index + 2}
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                ))}
+                  <p className="text-sm text-gray-600 mt-2">
+                    Ces images seront visibles dans la galerie produit lors du clic sur l'image principale
+                  </p>
+                </div>
+              )}
+
+              {/* Résumé */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Total images:</span>
+                  <span className="font-semibold text-gray-900">{formData.productImages.length}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-gray-600">Organisation:</span>
+                  <span className="font-semibold text-gray-900">
+                    1 principale + {formData.productImages.length - 1} détail
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -904,9 +963,9 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
   const renderStep5 = () => (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="border-gray-900 bg-white shadow-lg">
+        <CardHeader className="border-b border-gray-900">
+          <CardTitle className="flex items-center gap-2 text-gray-900">
             <Eye className="h-5 w-5" />
             Prévisualisation et validation
           </CardTitle>
@@ -1038,44 +1097,59 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Créer vos produits</h1>
-        <p className="text-gray-600">Suivez les étapes pour créer votre produit personnalisé</p>
+    <div className="w-full min-h-screen bg-white">
+      {/* Header avec fond noir */}
+      <div className="bg-gray-900 text-white py-8 px-6">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-4xl font-bold mb-2">Créer vos produits</h1>
+          <p className="text-gray-300">Suivez les étapes pour créer votre produit personnalisé</p>
+        </div>
       </div>
 
-      {renderStepIndicator()}
+      {/* Contenu principal */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {renderStepIndicator()}
 
-      <div className="min-h-[500px]">
-        {getCurrentStepContent()}
-      </div>
-
-      {/* Navigation */}
-      <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
-        <Button
-          variant="outline"
-          onClick={currentStep === 1 ? (onCancel || (() => navigate('/vendeur/products'))) : prevStep}
-          disabled={isSubmitting}
-        >
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          {currentStep === 1 ? 'Annuler' : 'Précédent'}
-        </Button>
-
-        <div className="text-sm text-gray-500">
-          Étape {currentStep} sur {STEPS.length}
+        <div className="min-h-[600px]">
+          {getCurrentStepContent()}
         </div>
 
-        {currentStep < STEPS.length ? (
-          <Button onClick={nextStep} disabled={isSubmitting}>
-            Suivant
-            <ChevronRight className="w-4 h-4 ml-2" />
+        {/* Navigation */}
+        <div className="flex justify-between items-center mt-12 pt-8 border-t-2 border-gray-900">
+          <Button
+            variant="outline"
+            onClick={currentStep === 1 ? (onCancel || (() => navigate('/vendeur/products'))) : prevStep}
+            disabled={isSubmitting}
+            className="border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors px-6 py-3"
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            {currentStep === 1 ? 'Annuler' : 'Précédent'}
           </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? 'Création...' : 'Créer le produit'}
-            <Check className="w-4 h-4 ml-2" />
-          </Button>
-        )}
+
+          <div className="bg-gray-900 text-white px-4 py-2 rounded-full text-sm font-medium">
+            Étape {currentStep} sur {STEPS.length}
+          </div>
+
+          {currentStep < STEPS.length ? (
+            <Button
+              onClick={nextStep}
+              disabled={isSubmitting}
+              className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3"
+            >
+              Suivant
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3"
+            >
+              {isSubmitting ? 'Création...' : 'Créer le produit'}
+              <Check className="w-4 h-4 ml-2" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
