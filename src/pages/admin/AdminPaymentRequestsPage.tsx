@@ -74,9 +74,12 @@ const AdminPaymentRequestsPage: React.FC = () => {
   const [filters, setFilters] = useState<AdminFundsRequestFilters>({
     page: 1,
     limit: 10,
-    sortBy: 'requestDate',
+    sortBy: 'createdAt',
     sortOrder: 'desc'
   });
+
+  // État pour l'onglet actif
+  const [activeTab, setActiveTab] = useState<string>('pending');
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -89,6 +92,8 @@ const AdminPaymentRequestsPage: React.FC = () => {
   // États pour les actions
   const [selectedRequest, setSelectedRequest] = useState<FundsRequest | null>(null);
   const [showProcessDialog, setShowProcessDialog] = useState(false);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [isRejectMode, setIsRejectMode] = useState(false);
   const [processAction, setProcessAction] = useState<ProcessFundsRequest>({
     status: 'APPROVED',
     adminNote: ''
@@ -162,14 +167,18 @@ const AdminPaymentRequestsPage: React.FC = () => {
       console.log('✅ Demande traitée:', updatedRequest);
 
       // Mettre à jour la liste
-      setFundsRequests(prev =>
-        prev.map(req => req.id === updatedRequest.id ? updatedRequest : req)
-      );
+      if (updatedRequest && updatedRequest.id) {
+        setFundsRequests(prev =>
+          prev.map(req => req.id === updatedRequest.id ? updatedRequest : req)
+        );
+      }
 
       // Fermer le dialog
       setShowProcessDialog(false);
       setSelectedRequest(null);
       setProcessAction({ status: 'APPROVED', adminNote: '' });
+      setIsViewOnly(false);
+      setIsRejectMode(false);
 
       // Recharger les statistiques
       loadData();
@@ -204,9 +213,11 @@ const AdminPaymentRequestsPage: React.FC = () => {
 
       const updatedRequest = await adminFundsService.processFundsRequest(request.id, processData);
 
-      setFundsRequests(prev =>
-        prev.map(req => req.id === updatedRequest.id ? updatedRequest : req)
-      );
+      if (updatedRequest && updatedRequest.id) {
+        setFundsRequests(prev =>
+          prev.map(req => req.id === updatedRequest.id ? updatedRequest : req)
+        );
+      }
 
       loadData(); // Recharger pour mettre à jour les statistiques
 
@@ -271,222 +282,211 @@ const AdminPaymentRequestsPage: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Demandes de Paiement</h1>
-            <p className="text-gray-500 mt-1">Gérez les demandes d'appel de fonds des vendeurs</p>
+            <h1 className="text-2xl font-bold tracking-tight">Gestion des Paiements</h1>
+            <p className="text-gray-500 mt-1">Traitez les demandes d'appel de fonds des vendeurs</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Actualiser
+              {loading ? 'Chargement...' : 'Actualiser'}
             </Button>
             <Button variant="outline" size="sm">
               <Download className="mr-2 h-4 w-4" />
-              Exporter
+              Exporter CSV
             </Button>
           </div>
         </div>
 
-        {/* Statistiques */}
+        {/* Statistiques - Vue d'ensemble */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">En attente</CardTitle>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setActiveTab('pending'); setFilters(prev => ({ ...prev, status: 'PENDING', page: 1 })); }}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-yellow-700">À traiter</CardTitle>
+              <div className="flex items-center space-x-1">
                 <Clock className="h-4 w-4 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-900">
-                  {loading ? '...' : statistics.totalPendingRequests}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {adminFundsService.formatCurrency(statistics.totalPendingAmount)}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                {statistics.totalPendingRequests > 0 && (
+                  <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse" />
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-900">
+                {loading ? '...' : statistics.totalPendingRequests}
+              </div>
+              <div className="text-xs text-gray-600 mt-1 font-medium">
+                {adminFundsService.formatCurrency(statistics.totalPendingAmount)}
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Traitées aujourd'hui</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-900">
-                  {loading ? '...' : statistics.totalProcessedToday}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {adminFundsService.formatCurrency(statistics.totalProcessedAmount)}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setActiveTab('processed'); setFilters(prev => ({ ...prev, status: undefined, page: 1 })); }}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-green-700">Traitées aujourd'hui</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-900">
+                {loading ? '...' : statistics.totalProcessedToday}
+              </div>
+              <div className="text-xs text-gray-600 mt-1 font-medium">
+                {adminFundsService.formatCurrency(statistics.totalProcessedAmount)}
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Temps moyen</CardTitle>
-                <TrendingUp className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-900">
-                  {loading ? '...' : `${statistics.averageProcessingTime.toFixed(1)}h`}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Temps de traitement
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-blue-700">Temps moyen</CardTitle>
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-900">
+                {loading ? '...' : `${statistics.averageProcessingTime.toFixed(1)}h`}
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                Délai de traitement
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Demandes</CardTitle>
-                <Users className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-900">
-                  {loading ? '...' : (
-                    statistics.requestsByStatus.pending +
-                    statistics.requestsByStatus.approved +
-                    statistics.requestsByStatus.rejected +
-                    statistics.requestsByStatus.paid
-                  )}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Toutes les demandes
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, status: undefined, page: 1 })); }}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-purple-700">Total</CardTitle>
+              <Users className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-900">
+                {loading ? '...' : (
+                  statistics.requestsByStatus.pending +
+                  statistics.requestsByStatus.approved +
+                  statistics.requestsByStatus.rejected +
+                  statistics.requestsByStatus.paid
+                )}
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                Toutes demandes
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Filtres et recherche */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Filtres</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="space-y-2">
-                <Label htmlFor="search">Recherche (ID Vendeur)</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="search"
-                    placeholder="ID du vendeur..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
+        {/* Navigation par onglets */}
+        <Tabs value={activeTab} onValueChange={(value) => {
+          setActiveTab(value);
+          let newStatus: FundsRequest['status'] | undefined;
+          switch(value) {
+            case 'pending': newStatus = 'PENDING'; break;
+            case 'approved': newStatus = 'APPROVED'; break;
+            case 'rejected': newStatus = 'REJECTED'; break;
+            case 'paid': newStatus = 'PAID'; break;
+            default: newStatus = undefined;
+          }
+          setFilters(prev => ({ ...prev, status: newStatus, page: 1 }));
+        }}>
+          <div className="flex items-center justify-between mb-6">
+            <TabsList className="grid w-full max-w-md grid-cols-5">
+              <TabsTrigger value="pending" className="relative">
+                À traiter
+                {statistics.totalPendingRequests > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs">
+                    {statistics.totalPendingRequests}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="approved">Approuvées</TabsTrigger>
+              <TabsTrigger value="rejected">Rejetées</TabsTrigger>
+              <TabsTrigger value="paid">Payées</TabsTrigger>
+              <TabsTrigger value="all">Toutes</TabsTrigger>
+            </TabsList>
+
+            {/* Filtres rapides */}
+            <div className="flex gap-2 items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Rechercher vendeur..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 w-64"
+                />
+              </div>
+              <Select
+                value={filters.paymentMethod || 'all'}
+                onValueChange={(value) => setFilters(prev => ({
+                  ...prev,
+                  paymentMethod: value === 'all' ? undefined : value as FundsRequest['paymentMethod'],
+                  page: 1
+                }))}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Méthode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes méthodes</SelectItem>
+                  <SelectItem value="WAVE">Wave</SelectItem>
+                  <SelectItem value="ORANGE_MONEY">Orange Money</SelectItem>
+                  <SelectItem value="BANK_TRANSFER">Virement</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <TabsContent value={activeTab} className="space-y-4">
+            <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    {activeTab === 'pending' && <Clock className="h-5 w-5 text-yellow-600" />}
+                    {activeTab === 'approved' && <CheckCircle className="h-5 w-5 text-blue-600" />}
+                    {activeTab === 'rejected' && <XCircle className="h-5 w-5 text-red-600" />}
+                    {activeTab === 'paid' && <CheckCircle className="h-5 w-5 text-green-600" />}
+                    {activeTab === 'all' && <CreditCard className="h-5 w-5 text-gray-600" />}
+                    {
+                      activeTab === 'pending' ? 'Demandes à traiter' :
+                      activeTab === 'approved' ? 'Demandes approuvées' :
+                      activeTab === 'rejected' ? 'Demandes rejetées' :
+                      activeTab === 'paid' ? 'Demandes payées' :
+                      'Toutes les demandes'
+                    }
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {loading ? 'Chargement...' : (
+                      pagination.total === 0 ? 'Aucune demande' :
+                      pagination.total === 1 ? '1 demande' :
+                      `${pagination.total} demandes`
+                    )}
+                    {activeTab === 'pending' && pagination.total > 0 && (
+                      <span className="text-yellow-600 font-medium"> • Action requise</span>
+                    )}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={`${filters.sortBy}-${filters.sortOrder}`}
+                    onValueChange={(value) => {
+                      const [sortBy, sortOrder] = value.split('-');
+                      setFilters(prev => ({
+                        ...prev,
+                        sortBy,
+                        sortOrder: sortOrder as 'asc' | 'desc',
+                        page: 1
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="createdAt-desc">Plus récentes</SelectItem>
+                      <SelectItem value="createdAt-asc">Plus anciennes</SelectItem>
+                      <SelectItem value="amount-desc">Montant ↓</SelectItem>
+                      <SelectItem value="amount-asc">Montant ↑</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label>Statut</Label>
-                <Select
-                  value={filters.status || 'all'}
-                  onValueChange={(value) => setFilters(prev => ({
-                    ...prev,
-                    status: value === 'all' ? undefined : value as FundsRequest['status'],
-                    page: 1
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tous les statuts" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
-                    <SelectItem value="PENDING">En attente</SelectItem>
-                    <SelectItem value="APPROVED">Approuvées</SelectItem>
-                    <SelectItem value="REJECTED">Rejetées</SelectItem>
-                    <SelectItem value="PAID">Payées</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Méthode de paiement</Label>
-                <Select
-                  value={filters.paymentMethod || 'all'}
-                  onValueChange={(value) => setFilters(prev => ({
-                    ...prev,
-                    paymentMethod: value === 'all' ? undefined : value as FundsRequest['paymentMethod'],
-                    page: 1
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Toutes les méthodes" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes les méthodes</SelectItem>
-                    <SelectItem value="WAVE">Wave</SelectItem>
-                    <SelectItem value="ORANGE_MONEY">Orange Money</SelectItem>
-                    <SelectItem value="BANK_TRANSFER">Virement bancaire</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Trier par</Label>
-                <Select
-                  value={`${filters.sortBy}-${filters.sortOrder}`}
-                  onValueChange={(value) => {
-                    const [sortBy, sortOrder] = value.split('-');
-                    setFilters(prev => ({
-                      ...prev,
-                      sortBy,
-                      sortOrder: sortOrder as 'asc' | 'desc',
-                      page: 1
-                    }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="requestDate-desc">Date (Plus récent)</SelectItem>
-                    <SelectItem value="requestDate-asc">Date (Plus ancien)</SelectItem>
-                    <SelectItem value="amount-desc">Montant (Plus élevé)</SelectItem>
-                    <SelectItem value="amount-asc">Montant (Plus faible)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Liste des demandes */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl font-semibold">
-                  Demandes d'appel de fonds
-                </CardTitle>
-                <CardDescription>
-                  {pagination.total} demande(s) trouvée(s)
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
+            </CardHeader>
           <CardContent className="p-0">
             {loading ? (
               <div className="flex items-center justify-center h-40">
@@ -494,27 +494,55 @@ const AdminPaymentRequestsPage: React.FC = () => {
                 <span className="ml-2 text-gray-500">Chargement...</span>
               </div>
             ) : fundsRequests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 text-gray-500">
-                <CreditCard className="h-12 w-12 mb-2 text-gray-400" />
-                <p>Aucune demande trouvée</p>
-                <p className="text-sm">Aucune demande ne correspond aux critères sélectionnés</p>
+              <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                {activeTab === 'pending' ? (
+                  <>
+                    <CheckCircle className="h-16 w-16 mb-4 text-green-400" />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Aucune demande en attente</h3>
+                    <p className="text-sm text-center max-w-md">Toutes les demandes ont été traitées. Excellent travail !</p>
+                  </>
+                ) : activeTab === 'approved' ? (
+                  <>
+                    <Clock className="h-16 w-16 mb-4 text-blue-400" />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Aucune demande approuvée</h3>
+                    <p className="text-sm text-center max-w-md">Les demandes approuvées apparaîtront ici en attente de paiement.</p>
+                  </>
+                ) : activeTab === 'rejected' ? (
+                  <>
+                    <XCircle className="h-16 w-16 mb-4 text-red-400" />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Aucune demande rejetée</h3>
+                    <p className="text-sm text-center max-w-md">Les demandes rejetées apparaîtront ici.</p>
+                  </>
+                ) : activeTab === 'paid' ? (
+                  <>
+                    <DollarSign className="h-16 w-16 mb-4 text-green-400" />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Aucun paiement effectué</h3>
+                    <p className="text-sm text-center max-w-md">Les demandes payées apparaîtront ici.</p>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-16 w-16 mb-4 text-gray-400" />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Aucune demande</h3>
+                    <p className="text-sm text-center max-w-md">Les vendeurs n'ont pas encore soumis de demandes d'appel de fonds.</p>
+                  </>
+                )}
               </div>
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Vendeur</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Montant</TableHead>
-                    <TableHead>Méthode</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="border-b border-gray-200">
+                    <TableHead className="font-semibold text-gray-700">Vendeur</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Date de demande</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Montant</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Méthode</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Statut</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Description</TableHead>
+                    <TableHead className="font-semibold text-gray-700 text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {fundsRequests.map((request) => (
-                    <TableRow key={request.id} className="hover:bg-gray-50">
+                    <TableRow key={request.id} className="hover:bg-gray-50 transition-colors">
                       <TableCell>
                         <div>
                           <div className="font-medium">
@@ -553,13 +581,18 @@ const AdminPaymentRequestsPage: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={getStatusBadgeVariant(request.status)}
-                          className="flex items-center space-x-1 w-fit"
-                        >
-                          {getStatusIcon(request.status)}
-                          <span>{adminFundsService.getStatusLabel(request.status)}</span>
-                        </Badge>
+                        <div className="flex items-center space-x-2">
+                          <Badge
+                            variant={getStatusBadgeVariant(request.status)}
+                            className="flex items-center space-x-1 w-fit"
+                          >
+                            {getStatusIcon(request.status)}
+                            <span>{adminFundsService.getStatusLabel(request.status)}</span>
+                          </Badge>
+                          {request.status === 'PENDING' && (
+                            <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse" title="Action requise" />
+                          )}
+                        </div>
                         {request.processedDate && (
                           <div className="text-xs text-gray-500 mt-1">
                             Traité le {adminFundsService.formatDate(request.processedDate).split(' ').slice(0, 3).join(' ')}
@@ -582,15 +615,15 @@ const AdminPaymentRequestsPage: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1">
                           {request.status === 'PENDING' && (
                             <>
                               <Button
                                 size="sm"
-                                variant="outline"
-                                className="text-green-600 border-green-600 hover:bg-green-50"
+                                className="bg-green-600 hover:bg-green-700 text-white"
                                 onClick={() => handleQuickAction(request, 'approve')}
                                 disabled={processing}
+                                title="Approuver rapidement"
                               >
                                 <Check className="h-4 w-4" />
                               </Button>
@@ -598,58 +631,66 @@ const AdminPaymentRequestsPage: React.FC = () => {
                                 size="sm"
                                 variant="outline"
                                 className="text-red-600 border-red-600 hover:bg-red-50"
-                                onClick={() => handleQuickAction(request, 'reject')}
+                                onClick={() => {
+                                  setSelectedRequest(request);
+                                  setProcessAction({ status: 'REJECTED', adminNote: '', rejectReason: '' });
+                                  setIsViewOnly(false);
+                                  setIsRejectMode(true);
+                                  setShowProcessDialog(true);
+                                }}
                                 disabled={processing}
+                                title="Rejeter avec note obligatoire"
                               >
                                 <X className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedRequest(request);
+                                  setProcessAction({ status: 'APPROVED', adminNote: '' });
+                                  setIsViewOnly(false);
+                                  setIsRejectMode(false);
+                                  setShowProcessDialog(true);
+                                }}
+                                title="Traiter avec note"
+                              >
+                                <MessageSquare className="h-4 w-4" />
                               </Button>
                             </>
                           )}
                           {request.status === 'APPROVED' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                              onClick={() => handleQuickAction(request, 'pay')}
-                              disabled={processing}
-                            >
-                              <DollarSign className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setProcessAction({
-                                    status: request.status === 'PENDING' ? 'APPROVED' : request.status,
-                                    adminNote: request.adminNote || ''
-                                  });
-                                  setShowProcessDialog(true);
-                                }}
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                onClick={() => handleQuickAction(request, 'pay')}
+                                disabled={processing}
+                                title="Marquer comme payé"
                               >
-                                <Eye className="mr-2 h-4 w-4" />
-                                Voir détails
-                              </DropdownMenuItem>
-                              {request.status === 'PENDING' && (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedRequest(request);
-                                    setProcessAction({ status: 'APPROVED', adminNote: '' });
-                                    setShowProcessDialog(true);
-                                  }}
-                                >
-                                  <MessageSquare className="mr-2 h-4 w-4" />
-                                  Traiter avec note
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                <DollarSign className="h-4 w-4 mr-1" />
+                                Payer
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedRequest(request);
+                              setProcessAction({
+                                status: request.status,
+                                adminNote: request.adminNote || '',
+                                rejectReason: request.rejectReason || ''
+                              });
+                              setIsViewOnly(true);
+                              setIsRejectMode(false);
+                              setShowProcessDialog(true);
+                            }}
+                            title="Voir détails"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -659,137 +700,369 @@ const AdminPaymentRequestsPage: React.FC = () => {
             )}
           </CardContent>
 
-          {/* Pagination */}
-          {!loading && pagination.totalPages > 1 && (
-            <CardContent className="border-t border-gray-200 px-6 py-4">
-              <div className="flex items-center justify-between w-full">
-                <div className="text-sm text-gray-500">
-                  Page {pagination.page} sur {pagination.totalPages} ({pagination.total} demandes)
+            {/* Pagination améliorée */}
+            {!loading && pagination.totalPages > 1 && (
+              <CardContent className="border-t border-gray-200 px-6 py-4">
+                <div className="flex items-center justify-between w-full">
+                  <div className="text-sm text-gray-600 font-medium">
+                    {pagination.total > 0 ? (
+                      <>
+                        <span className="text-gray-900">{((pagination.page - 1) * filters.limit) + 1}</span>
+                        {' - '}
+                        <span className="text-gray-900">
+                          {Math.min(pagination.page * filters.limit, pagination.total)}
+                        </span>
+                        {' sur '}
+                        <span className="text-gray-900">{pagination.total}</span>
+                        {' demandes'}
+                      </>
+                    ) : (
+                      'Aucune demande'
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!pagination.hasPrevious}
+                      onClick={() => setFilters(prev => ({ ...prev, page: pagination.page - 1 }))}
+                    >
+                      ← Précédent
+                    </Button>
+                    <div className="text-sm text-gray-500 px-2">
+                      Page {pagination.page} / {pagination.totalPages}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!pagination.hasNext}
+                      onClick={() => setFilters(prev => ({ ...prev, page: pagination.page + 1 }))}
+                    >
+                      Suivant →
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!pagination.hasPrevious}
-                    onClick={() => setFilters(prev => ({ ...prev, page: pagination.page - 1 }))}
-                  >
-                    Précédent
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!pagination.hasNext}
-                    onClick={() => setFilters(prev => ({ ...prev, page: pagination.page + 1 }))}
-                  >
-                    Suivant
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          )}
-        </Card>
+              </CardContent>
+            )}
+            </Card>
+          </TabsContent>
+        </Tabs>
 
-        {/* Dialog de traitement */}
+        {/* Dialog de traitement redesigné */}
         <Dialog open={showProcessDialog} onOpenChange={setShowProcessDialog}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Traiter la demande #{selectedRequest?.id}</DialogTitle>
-              <DialogDescription>
-                Demande de {selectedRequest?.vendor?.firstName} {selectedRequest?.vendor?.lastName} pour {adminFundsService.formatCurrency(selectedRequest?.amount || 0)}
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-4 border-b border-gray-100">
+              <DialogTitle className="flex items-center gap-3 text-xl">
+                {isRejectMode ? (
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-red-100 rounded-full">
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <span>Rejeter la demande</span>
+                  </div>
+                ) : isViewOnly ? (
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-100 rounded-full">
+                      <Eye className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <span>Détails de la demande</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-green-100 rounded-full">
+                      <MessageSquare className="h-5 w-5 text-green-600" />
+                    </div>
+                    <span>Traiter la demande</span>
+                  </div>
+                )}
+                <Badge variant="outline" className="ml-auto">
+                  #{selectedRequest?.id}
+                </Badge>
+              </DialogTitle>
+              <DialogDescription className="text-base mt-2">
+                {isRejectMode && (
+                  <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="font-medium">
+                      Cette demande sera rejetée. Veuillez indiquer la raison.
+                    </span>
+                  </div>
+                )}
               </DialogDescription>
             </DialogHeader>
 
             {selectedRequest && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <strong>Montant:</strong> {adminFundsService.formatCurrency(selectedRequest.amount)}
-                  </div>
-                  <div>
-                    <strong>Méthode:</strong> {adminFundsService.getPaymentMethodLabel(selectedRequest.paymentMethod)}
-                  </div>
-                  <div>
-                    <strong>Téléphone:</strong> {selectedRequest.phoneNumber}
-                  </div>
-                  <div>
-                    <strong>Date:</strong> {adminFundsService.formatDate(selectedRequest.requestDate).split(' ').slice(0, 3).join(' ')}
+              <div className="space-y-6 py-4">
+                {/* En-tête de la demande */}
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-bold text-lg">
+                          {selectedRequest.vendor?.firstName?.[0]}{selectedRequest.vendor?.lastName?.[0]}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-900">
+                          {selectedRequest.vendor?.firstName} {selectedRequest.vendor?.lastName}
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          {selectedRequest.vendor?.shopName || selectedRequest.vendor?.email}
+                        </p>
+                        <p className="text-gray-500 text-xs">ID Vendeur: {selectedRequest.vendorId}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {adminFundsService.formatCurrency(selectedRequest.amount)}
+                      </div>
+                      {isViewOnly && selectedRequest.status && (
+                        <Badge
+                          variant={getStatusBadgeVariant(selectedRequest.status)}
+                          className="mt-1"
+                        >
+                          {getStatusIcon(selectedRequest.status)}
+                          <span className="ml-1">{adminFundsService.getStatusLabel(selectedRequest.status)}</span>
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <strong className="text-sm">Description:</strong>
-                  <p className="text-sm text-gray-700 mt-1">{selectedRequest.description}</p>
+                {/* Informations de la demande */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium text-gray-700">Date de demande</span>
+                    </div>
+                    <p className="text-gray-900">
+                      {adminFundsService.formatDate(selectedRequest.requestDate)}
+                    </p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      {getPaymentMethodIcon(selectedRequest.paymentMethod)}
+                      <span className="font-medium text-gray-700">Méthode de paiement</span>
+                    </div>
+                    <p className="text-gray-900">
+                      {adminFundsService.getPaymentMethodLabel(selectedRequest.paymentMethod)}
+                    </p>
+                    <p className="text-gray-600 text-sm mt-1">
+                      {selectedRequest.phoneNumber}
+                    </p>
+                  </Card>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="status">Action</Label>
-                  <Select
-                    value={processAction.status}
-                    onValueChange={(value: ProcessFundsRequest['status']) =>
-                      setProcessAction(prev => ({ ...prev, status: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="APPROVED">Approuver</SelectItem>
-                      <SelectItem value="REJECTED">Rejeter</SelectItem>
-                      <SelectItem value="PAID">Marquer comme payé</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="adminNote">Note administrative</Label>
-                  <Textarea
-                    id="adminNote"
-                    placeholder="Ajoutez une note pour cette action..."
-                    value={processAction.adminNote}
-                    onChange={(e) => setProcessAction(prev => ({
-                      ...prev,
-                      adminNote: e.target.value
-                    }))}
-                    rows={3}
-                  />
-                </div>
-
-                {processAction.status === 'REJECTED' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="rejectReason">Raison du rejet</Label>
-                    <Textarea
-                      id="rejectReason"
-                      placeholder="Expliquez pourquoi cette demande est rejetée..."
-                      value={processAction.rejectReason || ''}
-                      onChange={(e) => setProcessAction(prev => ({
-                        ...prev,
-                        rejectReason: e.target.value
-                      }))}
-                      rows={2}
-                      required
-                    />
+                {/* Description */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="h-4 w-4 text-gray-500" />
+                    <span className="font-medium text-gray-700">Description de la demande</span>
                   </div>
+                  <p className="text-gray-900 leading-relaxed">
+                    {selectedRequest.description}
+                  </p>
+                </Card>
+
+                {/* Dates de traitement */}
+                {(selectedRequest.processedDate || selectedRequest.approvedDate) && (
+                  <Card className="p-4 bg-gray-50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium text-gray-700">Historique</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      {selectedRequest.approvedDate && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Approuvée le :</span>
+                          <span className="text-gray-900">
+                            {adminFundsService.formatDate(selectedRequest.approvedDate)}
+                          </span>
+                        </div>
+                      )}
+                      {selectedRequest.processedDate && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Traitée le :</span>
+                          <span className="text-gray-900">
+                            {adminFundsService.formatDate(selectedRequest.processedDate)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
                 )}
 
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowProcessDialog(false)}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    onClick={handleProcessRequest}
-                    disabled={processing || (processAction.status === 'REJECTED' && !processAction.rejectReason)}
-                  >
-                    {processing ? (
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                {/* Sélection d'action */}
+                {!isViewOnly && !isRejectMode && (
+                  <Card className="p-4 border-blue-200 bg-blue-50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <Label htmlFor="status" className="font-medium text-blue-700">Action à effectuer</Label>
+                    </div>
+                    <Select
+                      value={processAction.status}
+                      onValueChange={(value: ProcessFundsRequest['status']) =>
+                        setProcessAction(prev => ({ ...prev, status: value }))
+                      }
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="APPROVED">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            Approuver
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="REJECTED">
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-red-600" />
+                            Rejeter
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="PAID">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4 text-blue-600" />
+                            Marquer comme payé
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Card>
+                )}
+
+                {/* Note administrative */}
+                <Card className={`p-4 ${
+                  isViewOnly ? 'bg-gray-50' :
+                  isRejectMode ? 'border-orange-200 bg-orange-50' : 'border-green-200 bg-green-50'
+                }`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className={`h-4 w-4 ${
+                      isViewOnly ? 'text-gray-500' :
+                      isRejectMode ? 'text-orange-600' : 'text-green-600'
+                    }`} />
+                    <Label htmlFor="adminNote" className={`font-medium ${
+                      isViewOnly ? 'text-gray-700' :
+                      isRejectMode ? 'text-orange-700' : 'text-green-700'
+                    }`}>
+                      {isViewOnly ? 'Note administrative' :
+                       isRejectMode ? 'Note de rejet (optionnelle)' : 'Ajouter une note administrative'}
+                    </Label>
+                  </div>
+                  {isViewOnly ? (
+                    <div className="p-3 bg-white rounded-lg border min-h-[80px] text-gray-700">
+                      {processAction.adminNote || (
+                        <span className="text-gray-500 italic">Aucune note administrative</span>
+                      )}
+                    </div>
+                  ) : (
+                    <Textarea
+                      id="adminNote"
+                      placeholder={isRejectMode ?
+                        "Note optionnelle pour expliquer le contexte..." :
+                        "Ajoutez une note pour cette action..."
+                      }
+                      value={processAction.adminNote}
+                      onChange={(e) => setProcessAction(prev => ({
+                        ...prev,
+                        adminNote: e.target.value
+                      }))}
+                      rows={3}
+                      className="bg-white border-0 focus:ring-2 focus:ring-blue-500"
+                    />
+                  )}
+                </Card>
+
+                {/* Raison du rejet */}
+                {(processAction.status === 'REJECTED' || isRejectMode || (isViewOnly && selectedRequest?.rejectReason)) && (
+                  <Card className="p-4 border-red-200 bg-red-50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                      <Label htmlFor="rejectReason" className="text-red-700 font-medium">
+                        {isViewOnly ? 'Raison du rejet' : 'Raison du rejet (obligatoire)'}
+                      </Label>
+                      {!isViewOnly && <span className="text-red-500 text-sm">*</span>}
+                    </div>
+                    {isViewOnly ? (
+                      <div className="p-4 bg-white border border-red-200 rounded-lg text-red-700 min-h-[80px]">
+                        {processAction.rejectReason || selectedRequest?.rejectReason || (
+                          <span className="text-red-400 italic">Aucune raison spécifiée</span>
+                        )}
+                      </div>
                     ) : (
-                      <Check className="mr-2 h-4 w-4" />
+                      <div className="space-y-2">
+                        <Textarea
+                          id="rejectReason"
+                          placeholder="Expliquez clairement et professionnellement pourquoi cette demande est rejetée..."
+                          value={processAction.rejectReason || ''}
+                          onChange={(e) => setProcessAction(prev => ({
+                            ...prev,
+                            rejectReason: e.target.value
+                          }))}
+                          rows={4}
+                          className="bg-white border-red-200 focus:border-red-400 focus:ring-2 focus:ring-red-200"
+                          required
+                        />
+                        <p className="text-xs text-red-600">
+                          Cette raison sera visible par le vendeur. Soyez respectueux et constructif.
+                        </p>
+                      </div>
                     )}
-                    {processing ? 'Traitement...' : 'Confirmer'}
-                  </Button>
+                  </Card>
+                )}
+
+                {/* Actions du modal */}
+                <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                  <div className="text-xs text-gray-500">
+                    {isViewOnly ? 'Mode lecture seule' : 'Action irréversible'}
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowProcessDialog(false);
+                        setIsViewOnly(false);
+                        setIsRejectMode(false);
+                      }}
+                      className="min-w-[100px]"
+                    >
+                      {isViewOnly ? 'Fermer' : 'Annuler'}
+                    </Button>
+                    {!isViewOnly && (
+                      <Button
+                        onClick={handleProcessRequest}
+                        disabled={processing || (processAction.status === 'REJECTED' && !processAction.rejectReason)}
+                        className={`min-w-[120px] ${
+                          isRejectMode ? 'bg-red-600 hover:bg-red-700' :
+                          processAction.status === 'APPROVED' ? 'bg-green-600 hover:bg-green-700' :
+                          'bg-blue-600 hover:bg-blue-700'
+                        }`}
+                      >
+                        {processing ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            Traitement...
+                          </>
+                        ) : (
+                          <>
+                            {isRejectMode ? (
+                              <><XCircle className="mr-2 h-4 w-4" />Rejeter</>
+                            ) : processAction.status === 'APPROVED' ? (
+                              <><CheckCircle className="mr-2 h-4 w-4" />Approuver</>
+                            ) : processAction.status === 'PAID' ? (
+                              <><DollarSign className="mr-2 h-4 w-4" />Marquer payé</>
+                            ) : (
+                              <><Check className="mr-2 h-4 w-4" />Confirmer</>
+                            )}
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

@@ -42,6 +42,25 @@ const VendorAccountPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ Récupération du statut du compte au chargement
+  useEffect(() => {
+    const fetchAccountStatus = async () => {
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.PROFILE}`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setAccountStatus(data?.status ?? data?.user?.status ?? true);
+        }
+      } catch (error) {
+        console.error('Erreur récupération statut compte:', error);
+      }
+    };
+
+    fetchAccountStatus();
+  }, []);
+
   // ✅ États pour les champs éditables individuels
   const [editableFields, setEditableFields] = useState<Record<string, EditableField>>({
     firstName: { value: user?.firstName || '', isEditing: false, error: '', isChecking: false },
@@ -88,9 +107,10 @@ const VendorAccountPage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
-  // États pour la suppression de compte
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  // États pour la désactivation/réactivation de compte
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [deactivateConfirmation, setDeactivateConfirmation] = useState('');
+  const [accountStatus, setAccountStatus] = useState<boolean>(true); // true = actif, false = désactivé
 
   // ✅ Validation en temps réel du nom de boutique
   useEffect(() => {
@@ -517,20 +537,62 @@ const VendorAccountPage: React.FC = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmation !== 'SUPPRIMER') {
-      toast.error('Veuillez taper SUPPRIMER pour confirmer');
+  const handleDeactivateAccount = async () => {
+    if (deactivateConfirmation !== 'DESACTIVER') {
+      toast.error('Veuillez taper DESACTIVER pour confirmer');
       return;
     }
 
     setIsLoading(true);
     try {
-      // Implémenter la suppression de compte
-      toast.success('Compte supprimé avec succès');
-      setShowDeleteDialog(false);
-      setDeleteConfirmation('');
+      const response = await fetch(
+        API_CONFIG.BASE_URL + API_ENDPOINTS.AUTH.VENDOR_DEACTIVATE,
+        {
+          method: 'POST',
+          credentials: 'include'
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        toast.error(errorText || 'Erreur lors de la désactivation du compte');
+      } else {
+        const data = await response.json();
+        setAccountStatus(data.data.status);
+        toast.success('Compte désactivé avec succès. Vos produits sont maintenant masqués aux clients.');
+        setShowDeactivateDialog(false);
+        setDeactivateConfirmation('');
+        if (refreshUser) await refreshUser();
+      }
     } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de la suppression du compte');
+      toast.error(error.message || 'Erreur lors de la désactivation du compte');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReactivateAccount = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        API_CONFIG.BASE_URL + API_ENDPOINTS.AUTH.VENDOR_REACTIVATE,
+        {
+          method: 'POST',
+          credentials: 'include'
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        toast.error(errorText || 'Erreur lors de la réactivation du compte');
+      } else {
+        const data = await response.json();
+        setAccountStatus(data.data.status);
+        toast.success('Compte réactivé avec succès. Vos produits sont maintenant visibles aux clients.');
+        if (refreshUser) await refreshUser();
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la réactivation du compte');
     } finally {
       setIsLoading(false);
     }
@@ -659,6 +721,35 @@ const VendorAccountPage: React.FC = () => {
             Gérez vos informations personnelles et vos paramètres de sécurité avec une interface moderne et intuitive
           </p>
         </div>
+
+        {/* Bandeau d'avertissement si compte désactivé */}
+        {!accountStatus && (
+          <Alert className="border-orange-200 bg-orange-50 mb-6">
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
+            <AlertDescription className="text-sm text-orange-800 leading-relaxed">
+              <div className="flex items-center justify-between">
+                <span>
+                  <strong>Votre compte est désactivé.</strong> Vos produits sont masqués aux clients mais vous gardez un accès complet : visualisation, ajout, modification de produits et designs.
+                </span>
+                <Button
+                  size="sm"
+                  onClick={handleReactivateAccount}
+                  disabled={isLoading}
+                  className="ml-4 text-sm font-semibold bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-all duration-200"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Réactivation...
+                    </>
+                  ) : (
+                    'Réactiver mon compte'
+                  )}
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid gap-8 lg:grid-cols-4">
           {/* Colonne principale */}
@@ -922,25 +1013,59 @@ const VendorAccountPage: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-red-50 rounded-xl border border-gray-200">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-red-100 rounded-lg">
-                      <AlertTriangle className="h-6 w-6 text-red-600" />
+                {accountStatus ? (
+                  // Compte actif - Bouton de désactivation
+                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-orange-100 rounded-lg">
+                        <AlertTriangle className="h-6 w-6 text-orange-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900">Désactiver le compte</h4>
+                        <p className="text-sm text-gray-500 leading-relaxed">Masquer vos produits aux clients. Vous gardez l'accès complet pour gérer, ajouter et modifier vos contenus</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-base font-semibold text-gray-900">Supprimer le compte</h4>
-                      <p className="text-sm text-gray-500 leading-relaxed">Cette action est irréversible et supprimera toutes vos données</p>
-                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDeactivateDialog(true)}
+                      className="text-sm font-semibold text-orange-600 border-orange-300 hover:bg-orange-50 px-4 py-2 rounded-lg transition-all duration-200"
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Désactiver
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-sm font-semibold text-red-600 border-red-300 hover:bg-red-50 px-4 py-2 rounded-lg transition-all duration-200"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer
-                  </Button>
-                </div>
+                ) : (
+                  // Compte désactivé - Bouton de réactivation
+                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-green-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-green-100 rounded-lg">
+                        <Shield className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900">Réactiver le compte</h4>
+                        <p className="text-sm text-gray-500 leading-relaxed">Rendre vos produits visibles aux clients</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleReactivateAccount}
+                      disabled={isLoading}
+                      className="text-sm font-semibold text-green-600 border-green-300 hover:bg-green-50 px-4 py-2 rounded-lg transition-all duration-200"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
+                          Réactivation...
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="h-4 w-4 mr-2" />
+                          Réactiver
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -966,8 +1091,8 @@ const VendorAccountPage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm text-gray-600 leading-relaxed">Statut</span>
-                  <Badge className="bg-green-100 text-green-800 font-semibold">
-                    Actif
+                  <Badge className={accountStatus ? "bg-green-100 text-green-800 font-semibold" : "bg-orange-100 text-orange-800 font-semibold"}>
+                    {accountStatus ? 'Actif' : 'Désactivé'}
                   </Badge>
                 </div>
               </CardContent>
@@ -1252,57 +1377,57 @@ const VendorAccountPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de suppression de compte */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Dialog de désactivation de compte */}
+      <Dialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-red-600">Supprimer le compte</DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-orange-600">Désactiver le compte</DialogTitle>
             <DialogDescription className="text-sm text-gray-500 leading-relaxed">
-              Cette action est irréversible. Toutes vos données seront définitivement supprimées.
+              Vos produits seront masqués aux clients. Vous gardez l'accès à votre espace vendeur et pouvez vous réactiver.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Alert className="border-red-200 bg-red-50">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-sm text-red-800 leading-relaxed">
-                Attention : La suppression de votre compte entraînera la perte de toutes vos données, 
-                y compris vos produits, designs et informations personnelles.
+            <Alert className="border-orange-200 bg-orange-50">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-sm text-orange-800 leading-relaxed">
+                Attention : Vos produits seront masqués dans le catalogue public. Vous gardez l'accès complet
+                à votre espace vendeur : visualiser, ajouter, modifier vos produits et designs. Réactivation possible à tout moment.
               </AlertDescription>
             </Alert>
             <div className="space-y-2">
-              <Label htmlFor="deleteConfirmation" className="text-base font-medium text-gray-900">
-                Tapez "SUPPRIMER" pour confirmer
+              <Label htmlFor="deactivateConfirmation" className="text-base font-medium text-gray-900">
+                Tapez "DESACTIVER" pour confirmer
               </Label>
               <Input
-                id="deleteConfirmation"
-                value={deleteConfirmation}
-                onChange={(e) => setDeleteConfirmation(e.target.value)}
-                placeholder="SUPPRIMER"
-                className="text-base leading-relaxed border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                id="deactivateConfirmation"
+                value={deactivateConfirmation}
+                onChange={(e) => setDeactivateConfirmation(e.target.value)}
+                placeholder="DESACTIVER"
+                className="text-base leading-relaxed border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
               />
             </div>
             <DialogFooter className="pt-4">
               <Button
                 variant="outline"
-                onClick={() => setShowDeleteDialog(false)}
+                onClick={() => setShowDeactivateDialog(false)}
                 className="text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-4 py-2 rounded-lg transition-all duration-200"
               >
                 Annuler
               </Button>
               <Button
-                onClick={handleDeleteAccount}
-                disabled={isLoading || deleteConfirmation !== 'SUPPRIMER'}
-                className="text-sm font-semibold bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                onClick={handleDeactivateAccount}
+                disabled={isLoading || deactivateConfirmation !== 'DESACTIVER'}
+                className="text-sm font-semibold bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
               >
                 {isLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Suppression...
+                    Désactivation...
                   </>
                 ) : (
                   <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer définitivement
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Désactiver le compte
                   </>
                 )}
               </Button>

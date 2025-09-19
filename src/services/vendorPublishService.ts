@@ -657,11 +657,34 @@ export const ensureDesignId = async (payload: VendorPublishPayload): Promise<num
   const blob = await (await fetch(base64)).blob();
   const fileObj = new File([blob], payload.designName ?? 'design.png', { type: blob.type || 'image/png' });
 
+  // 🏷️ Déterminer categoryId selon le mapping pub.md ou utiliser fallback
+  let designCategoryId = 2; // Default: 'LOGO'
+
+  // Si une catégorie est spécifiée dans payload, essayer de la mapper
+  if (payload.category) {
+    try {
+      // Utiliser le mapping du designService
+      const categoryMapping: { [key: string]: number } = {
+        'Mangas': 5,
+        'ILLUSTRATION': 1,
+        'LOGO': 2,
+        'PATTERN': 3,
+        'TYPOGRAPHY': 4,
+        'ABSTRACT': 6
+      };
+
+      designCategoryId = categoryMapping[payload.category] || 2; // Fallback vers LOGO
+      console.log(`🏷️ Mapping category "${payload.category}" → ID ${designCategoryId}`);
+    } catch (err) {
+      console.warn('⚠️ Erreur mapping catégorie, utilisation de LOGO par défaut:', err);
+    }
+  }
+
   const newDesign = await designService.createDesign({
     file: fileObj,
     name: payload.designName || payload.vendorName || 'Design Vendeur',
     price: Number(payload.designPrice ?? payload.vendorPrice ?? 0),
-    categoryId: 1, // ID pour catégorie 'logo'
+    categoryId: designCategoryId,
     description: payload.vendorDescription || ''
   }).catch(err => {
     console.error('⚠️ Impossible de créer le design automatiquement:', err.message);

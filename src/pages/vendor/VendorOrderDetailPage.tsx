@@ -15,8 +15,6 @@ import {
   XCircle,
   AlertCircle,
   ArrowLeft,
-  Edit,
-  Save,
   MessageSquare,
   Image as ImageIcon,
   Download,
@@ -31,13 +29,11 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Separator } from '../../components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Textarea } from '../../components/ui/textarea';
-import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Order, OrderStatus } from '../../types/order';
 import { useToast } from '../../components/ui/use-toast';
 import { vendorOrderService } from '../../services/vendorOrderService';
+import '../../styles/order-timeline.css';
 
 const VendorOrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -45,9 +41,10 @@ const VendorOrderDetailPage: React.FC = () => {
   const { toast } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
-  const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
-  const [statusNote, setStatusNote] = useState('');
+  // ❌ États supprimés pour la modification de statut
+  // const [updating, setUpdating] = useState(false);
+  // const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
+  // const [statusNote, setStatusNote] = useState('');
 
 
   // Charger les détails de la commande depuis le backend
@@ -65,8 +62,7 @@ const VendorOrderDetailPage: React.FC = () => {
         console.log('✅ Détails de commande récupérés:', orderData);
 
         setOrder(orderData);
-        // Ne pas présélectionner un statut non atteignable dans la liste
-        setNewStatus('');
+        // ❌ Suppression de la présélection de statut
 
       } catch (error) {
         console.error('❌ Erreur lors du chargement de la commande:', error);
@@ -93,67 +89,8 @@ const VendorOrderDetailPage: React.FC = () => {
     loadOrderDetails();
   }, [orderId, toast, navigate]);
 
-  // Mettre à jour le statut de la commande
-  const updateOrderStatus = async () => {
-    if (!order || !newStatus || newStatus === order.status) return;
-
-    setUpdating(true);
-    try {
-      // Validation côté client des transitions autorisées
-      if (!vendorOrderService.canUpdateStatus(order.status, newStatus)) {
-        toast({
-          title: "Transition non autorisée",
-          description: `Impossible de passer de "${getStatusLabel(order.status)}" à "${getStatusLabel(newStatus)}"`,
-          variant: "destructive",
-        });
-        setUpdating(false);
-        return;
-      }
-      console.log('🔄 Mise à jour du statut de la commande:', {
-        orderId: order.id,
-        fromStatus: order.status,
-        toStatus: newStatus,
-        note: statusNote
-      });
-
-      // Appel au service API
-      const updatedOrder = await vendorOrderService.updateOrderStatus(
-        order.id,
-        newStatus,
-        statusNote || undefined
-      );
-
-      console.log('✅ Statut de commande mis à jour:', updatedOrder);
-
-      if (!updatedOrder) {
-        throw new Error('Réponse vide du serveur lors de la mise à jour du statut');
-      }
-
-      setOrder(updatedOrder);
-      setStatusNote('');
-
-      toast({
-        title: "Statut mis à jour",
-        description: `La commande a été mise à jour vers: ${getStatusLabel(newStatus)}`,
-      });
-
-    } catch (error) {
-      console.error('❌ Erreur lors de la mise à jour du statut:', error);
-
-      const errorMessage = vendorOrderService.handleError(error, 'mise à jour statut');
-
-      toast({
-        title: "Erreur",
-        description: errorMessage,
-        variant: "destructive",
-      });
-
-      // Réinitialiser le statut en cas d'erreur
-      setNewStatus(order.status);
-    } finally {
-      setUpdating(false);
-    }
-  };
+  // ❌ FONCTION SUPPRIMÉE: updateOrderStatus
+  // Les vendeurs ne peuvent plus modifier les statuts des commandes
 
   // Obtenir le label du statut
   const getStatusLabel = (status: OrderStatus) => {
@@ -392,88 +329,107 @@ const VendorOrderDetailPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Mise à jour du statut */}
+            {/* Message informatif */}
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="flex items-center text-blue-800">
+                  <AlertCircle className="h-5 w-5 mr-2" />
+                  Information importante
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-blue-900">
+                  Vous pouvez maintenant <strong>consulter</strong> vos commandes et suivre leur progression,
+                  mais seuls les <strong>administrateurs</strong> peuvent modifier les statuts des commandes.
+                </p>
+                <p className="text-blue-800 text-sm mt-2">
+                  Pour toute question sur le statut d'une commande, contactez l'équipe administrative.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Timeline de suivi de la commande */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Edit className="h-5 w-5 mr-2" />
-                  Mettre à jour le statut
+                  <Clock className="h-5 w-5 mr-2" />
+                  Suivi de la commande
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nouveau statut
-                    </label>
-                    {/* Statut actuel visible par défaut pour une meilleure UX */}
-                    <div className="mb-2 flex items-center gap-2 text-xs text-gray-600">
-                      <span>Statut actuel:</span>
-                      {getStatusBadge(order.status)}
+              <CardContent>
+                <div className="order-timeline">
+                  <div className="timeline">
+                    <div className={`timeline-item ${vendorOrderService.isStatusReached(order.status, 'PENDING') ? 'completed' : ''}`}>
+                      <div className="timeline-marker"></div>
+                      <div className="timeline-content">
+                        <h5>Commande reçue</h5>
+                        <p>{formatDate(order.createdAt)}</p>
+                      </div>
                     </div>
-                    <Select value={newStatus} onValueChange={(value) => setNewStatus(value as OrderStatus)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un statut" />
-                      </SelectTrigger>
-                      <SelectContent>
-                      {/* Statut actuel en lecture seule */}
-                      <SelectItem disabled value={order.status}>
-                        Statut actuel: {getStatusLabel(order.status)}
-                      </SelectItem>
-                      {/* Séparateur visuel léger via item désactivé vide */}
-                      <SelectItem disabled value={"__sep__" as any}>────────────</SelectItem>
-                      {(() => {
-                        const allowed = (['CONFIRMED','PROCESSING','SHIPPED'] as OrderStatus[])
-                          .filter((st) => vendorOrderService.canUpdateStatus(order.status, st));
-                        return allowed.length > 0 ? (
-                          allowed.map((st) => (
-                            <SelectItem key={st} value={st}>{getStatusLabel(st)}</SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem disabled value={"__none__" as any}>
-                            Aucune transition possible pour le statut actuel
-                          </SelectItem>
-                        );
-                      })()}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      onClick={updateOrderStatus}
-                      disabled={updating || !newStatus || newStatus === order.status}
-                      className="w-full"
-                    >
-                      {updating ? (
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      Mettre à jour
-                    </Button>
+
+                    <div className={`timeline-item ${vendorOrderService.isStatusReached(order.status, 'CONFIRMED') ? 'completed' : ''}`}>
+                      <div className="timeline-marker"></div>
+                      <div className="timeline-content">
+                        <h5>Commande confirmée</h5>
+                        <p>{order.confirmedAt ? formatDate(order.confirmedAt) : 'En attente de confirmation par l\'admin'}</p>
+                      </div>
+                    </div>
+
+                    <div className={`timeline-item ${vendorOrderService.isStatusReached(order.status, 'PROCESSING') ? 'completed' : ''}`}>
+                      <div className="timeline-marker"></div>
+                      <div className="timeline-content">
+                        <h5>En traitement</h5>
+                        <p>{order.processingAt ? formatDate(order.processingAt) : 'Non démarré'}</p>
+                      </div>
+                    </div>
+
+                    <div className={`timeline-item ${vendorOrderService.isStatusReached(order.status, 'SHIPPED') ? 'completed' : ''}`}>
+                      <div className="timeline-marker"></div>
+                      <div className="timeline-content">
+                        <h5>Expédiée</h5>
+                        <p>{order.shippedAt ? formatDate(order.shippedAt) : 'Non expédiée'}</p>
+                        {order.trackingNumber && (
+                          <p className="text-sm text-gray-600 mt-1">Suivi: {order.trackingNumber}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={`timeline-item ${vendorOrderService.isStatusReached(order.status, 'DELIVERED') ? 'completed' : ''}`}>
+                      <div className="timeline-marker"></div>
+                      <div className="timeline-content">
+                        <h5>Livrée</h5>
+                        <p>{order.deliveredAt ? formatDate(order.deliveredAt) : 'Non livrée'}</p>
+                      </div>
+                    </div>
+
+                    {/* Statuts terminaux */}
+                    {order.status === 'CANCELLED' && (
+                      <div className="timeline-item cancelled">
+                        <div className="timeline-marker"></div>
+                        <div className="timeline-content">
+                          <h5>Commande annulée</h5>
+                          <p>{order.cancelledAt ? formatDate(order.cancelledAt) : formatDate(order.updatedAt)}</p>
+                          {order.cancelReason && (
+                            <p className="text-sm text-red-600 mt-1">Raison: {order.cancelReason}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {order.status === 'REJECTED' && (
+                      <div className="timeline-item rejected">
+                        <div className="timeline-marker"></div>
+                        <div className="timeline-content">
+                          <h5>Commande rejetée</h5>
+                          <p>{order.rejectedAt ? formatDate(order.rejectedAt) : formatDate(order.updatedAt)}</p>
+                          {order.rejectReason && (
+                            <p className="text-sm text-red-600 mt-1">Raison: {order.rejectReason}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Note (optionnelle)
-                  </label>
-                  <Textarea
-                    placeholder="Ajouter une note sur cette mise à jour..."
-                    value={statusNote}
-                    onChange={(e) => setStatusNote(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                {newStatus !== order.status && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Le statut passera de "{getStatusLabel(order.status)}" à "{getStatusLabel(newStatus as OrderStatus)}".
-                    </AlertDescription>
-                  </Alert>
-                )}
               </CardContent>
             </Card>
           </div>

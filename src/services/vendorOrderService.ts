@@ -185,33 +185,9 @@ export class VendorOrderService {
     }
   }
 
-  /**
-   * Met à jour le statut d'une commande (uniquement certains statuts autorisés pour le vendeur)
-   */
-  async updateOrderStatus(
-    orderId: number,
-    status: OrderStatus,
-    notes?: string
-  ): Promise<Order> {
-    // Vérifier que le vendeur peut changer vers ce statut
-    const allowedStatuses: OrderStatus[] = ['CONFIRMED', 'PROCESSING', 'SHIPPED'];
-
-    if (!allowedStatuses.includes(status)) {
-      throw new Error(`Le statut "${status}" ne peut pas être défini par un vendeur.`);
-    }
-
-    const requestData: UpdateOrderStatusRequest = {
-      status: (status as string).toUpperCase() as OrderStatus,
-      notes
-    };
-
-    const response = await this.apiCall<Order>(`/vendor/orders/${orderId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify(requestData)
-    });
-
-    return response.data;
-  }
+  // ❌ MÉTHODE SUPPRIMÉE: updateOrderStatus
+  // Les vendeurs ne peuvent plus modifier les statuts des commandes
+  // Seuls les administrateurs peuvent gérer les états d'avancement
 
   /**
    * Récupère les statistiques des commandes du vendeur
@@ -229,42 +205,11 @@ export class VendorOrderService {
     }
   }
 
-  /**
-   * Marque une commande comme prête à expédier
-   */
-  async markOrderReady(orderId: number, trackingNumber?: string): Promise<Order> {
-    const requestData = {
-      status: 'PROCESSING' as OrderStatus,
-      notes: trackingNumber ? `Numéro de suivi: ${trackingNumber}` : 'Commande prête à expédier',
-      trackingNumber
-    };
+  // ❌ MÉTHODE SUPPRIMÉE: markOrderReady
+  // Les vendeurs ne peuvent plus modifier les statuts des commandes
 
-    const response = await this.apiCall<Order>(`/vendor/orders/${orderId}/ready`, {
-      method: 'PATCH',
-      body: JSON.stringify(requestData)
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Confirme l'expédition d'une commande
-   */
-  async confirmShipment(orderId: number, trackingNumber: string, carrier?: string): Promise<Order> {
-    const requestData = {
-      status: 'SHIPPED' as OrderStatus,
-      notes: `Expédié ${carrier ? `via ${carrier}` : ''}. Numéro de suivi: ${trackingNumber}`,
-      trackingNumber,
-      carrier
-    };
-
-    const response = await this.apiCall<Order>(`/vendor/orders/${orderId}/ship`, {
-      method: 'PATCH',
-      body: JSON.stringify(requestData)
-    });
-
-    return response.data;
-  }
+  // ❌ MÉTHODE SUPPRIMÉE: confirmShipment
+  // Les vendeurs ne peuvent plus modifier les statuts des commandes
 
   /**
    * Récupère les commandes par statut
@@ -431,21 +376,39 @@ export class VendorOrderService {
   }
 
   /**
-   * Vérifie si le vendeur peut modifier le statut d'une commande
+   * Obtient le variant de badge pour un statut (lecture seule)
    */
-  canUpdateStatus(currentStatus: OrderStatus, newStatus: OrderStatus): boolean {
-    const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-      'PENDING': ['CONFIRMED'],
-      'CONFIRMED': ['PROCESSING'],
-      'PROCESSING': ['SHIPPED'],
-      'SHIPPED': [],
-      'DELIVERED': [],
-      'CANCELLED': [],
-      'REJECTED': []
+  getStatusVariant(status: OrderStatus): string {
+    const variants = {
+      'PENDING': 'warning',
+      'CONFIRMED': 'info',
+      'PROCESSING': 'primary',
+      'SHIPPED': 'success',
+      'DELIVERED': 'success',
+      'CANCELLED': 'danger',
+      'REJECTED': 'danger'
     };
-
-    return allowedTransitions[currentStatus]?.includes(newStatus) || false;
+    return variants[status] || 'secondary';
   }
+
+  /**
+   * Vérifie si un statut a été atteint dans la progression
+   */
+  isStatusReached(currentStatus: OrderStatus, targetStatus: OrderStatus): boolean {
+    const statusOrder = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
+    const currentIndex = statusOrder.indexOf(currentStatus);
+    const targetIndex = statusOrder.indexOf(targetStatus);
+
+    // Gérer les statuts terminaux
+    if (currentStatus === 'CANCELLED' || currentStatus === 'REJECTED') {
+      return targetStatus === 'PENDING'; // Seule la première étape est atteinte
+    }
+
+    return currentIndex >= targetIndex && targetIndex !== -1;
+  }
+
+  // ❌ MÉTHODE SUPPRIMÉE: canUpdateStatus
+  // Les vendeurs ne peuvent plus modifier les statuts des commandes
 
   // ==========================================
   // MÉTHODES MOCK POUR LE DÉVELOPPEMENT

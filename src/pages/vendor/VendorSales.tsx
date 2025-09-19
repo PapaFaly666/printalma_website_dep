@@ -20,7 +20,6 @@ import {
   CheckCircle,
   XCircle,
   Truck,
-  MoreHorizontal,
   ExternalLink
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -31,12 +30,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Separator } from '../../components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../../components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -262,10 +255,10 @@ const VendorSales: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              Gestion des Commandes
+              Suivi des Commandes
             </h1>
             <p className="text-gray-600 mt-1">
-              Suivez et gérez toutes vos commandes en temps réel
+              Consultez et suivez la progression de toutes vos commandes
             </p>
           </div>
 
@@ -279,6 +272,25 @@ const VendorSales: React.FC = () => {
             Actualiser
           </Button>
         </div>
+
+        {/* Message informatif pour les vendeurs */}
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <h5 className="font-medium text-blue-900">📋 Information importante</h5>
+                <p className="text-blue-800 text-sm mt-1">
+                  Vous pouvez maintenant <strong>consulter</strong> vos commandes et suivre leur progression,
+                  mais seuls les <strong>administrateurs</strong> peuvent modifier les statuts des commandes.
+                </p>
+                <p className="text-blue-700 text-sm mt-1">
+                  Pour toute question sur le statut d'une commande, contactez l'équipe administrative.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Statistiques principales */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -542,23 +554,22 @@ const VendorSales: React.FC = () => {
                           Détails
                         </Button>
 
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => viewOrderDetails(order.id)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Voir les détails
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              Suivre la livraison
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {/* Actions en lecture seule uniquement */}
+                        {order.trackingNumber && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (order.trackingNumber) {
+                                navigator.clipboard.writeText(order.trackingNumber);
+                                // Vous pourriez ajouter un toast ici
+                              }
+                            }}
+                            title="Copier le numéro de suivi"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </motion.div>

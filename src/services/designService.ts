@@ -100,6 +100,27 @@ class DesignService {
   private apiUrl: string;
   private readonly useMockBackend: boolean;
 
+  // 🆕 Mapping des catégories selon pub.md
+  private readonly CATEGORY_MAPPING = {
+    'Mangas': 5,
+    'ILLUSTRATION': 1,
+    'LOGO': 2,
+    'PATTERN': 3,
+    'TYPOGRAPHY': 4,
+    'ABSTRACT': 6
+  };
+
+  // 🆕 Fonction helper pour mapper nom de catégorie vers ID
+  private getCategoryId(categoryName: string): number {
+    const id = this.CATEGORY_MAPPING[categoryName as keyof typeof this.CATEGORY_MAPPING];
+    if (!id) {
+      console.warn(`⚠️ Catégorie "${categoryName}" inconnue, utilisation de ID=1`);
+      return 1; // Fallback vers première catégorie
+    }
+    console.log(`🏷️ ${categoryName} → ID ${id}`);
+    return id;
+  };
+
   /** Convertir categoryId en nom de catégorie */
   private async getCategoryNameById(categoryId: number): Promise<string> {
     try {
@@ -903,27 +924,64 @@ class DesignService {
     name: string;
     description?: string;
     price: number;
-    categoryId: number;
+    categoryId?: number;
+    category?: string; // Support des deux formats pour compatibilité
     tags?: string;
   }): Promise<Design> {
     try {
+      console.log('🎨 === DÉBUT CRÉATION DESIGN ===');
       console.log('🎨 Création du design avec prix:', payload.price);
       console.log('🍪 Utilisation de l\'authentification par cookies');
-      
-      // ✅ VALIDATION 
-      this.validateDesignData(payload);
-      
+      console.log('📋 Payload initial:', {
+        hasFile: !!payload.file,
+        name: payload.name,
+        price: payload.price,
+        categoryId: payload.categoryId,
+        category: payload.category,
+        typeCategoryId: typeof payload.categoryId,
+        typeCategory: typeof payload.category
+      });
+
+      // 🏷️ RÉSOLUTION CATEGORYID: Convertir category string → categoryId si nécessaire
+      let finalCategoryId: number;
+      if (payload.categoryId) {
+        finalCategoryId = payload.categoryId;
+        console.log(`✅ Utilisation categoryId fourni: ${finalCategoryId}`);
+      } else if (payload.category) {
+        finalCategoryId = this.getCategoryId(payload.category);
+        console.log(`🔄 Conversion category "${payload.category}" → categoryId ${finalCategoryId}`);
+      } else {
+        console.error('❌ Ni categoryId ni category fournis!');
+        throw new Error('categoryId ou category requis');
+      }
+
+      const finalPayload = {
+        ...payload,
+        categoryId: finalCategoryId
+      };
+
+      console.log('📋 Payload final:', {
+        name: finalPayload.name,
+        price: finalPayload.price,
+        categoryId: finalPayload.categoryId,
+        typeCategoryId: typeof finalPayload.categoryId,
+        isValidCategoryId: finalPayload.categoryId > 0 && Number.isInteger(finalPayload.categoryId)
+      });
+
+      // ✅ VALIDATION
+      this.validateDesignData(finalPayload);
+
       // 🚀 TENTATIVE 1: Essayer /api/designs (selon designaide.md)
       try {
-        return await this.createDesignViaApiDesigns(payload);
+        return await this.createDesignViaApiDesigns(finalPayload);
       } catch (apiError: any) {
         console.warn('⚠️ Échec /api/designs:', apiError.message);
         console.log('🔄 Fallback vers /vendor/designs...');
       }
 
       // 🔄 FALLBACK: Utiliser /vendor/designs
-      return await this.createDesignViaVendorDesigns(payload);
-      
+      return await this.createDesignViaVendorDesigns(finalPayload);
+
     } catch (error: any) {
       console.error('❌ Erreur création design (toutes méthodes échouées):', error);
       throw error;
@@ -941,22 +999,30 @@ class DesignService {
   }): Promise<Design> {
     console.log('🔬 Tentative création via /api/designs avec FormData...');
 
+    // ✅ VALIDATION CRITIQUE du categoryId avant envoi
+    if (!payload.categoryId || payload.categoryId <= 0 || !Number.isInteger(payload.categoryId)) {
+      const error = `❌ categoryId invalide: ${payload.categoryId} (type: ${typeof payload.categoryId})`;
+      console.error(error);
+      throw new Error(`CategoryId doit être un nombre entier > 0. Reçu: ${payload.categoryId}`);
+    }
+
     const formData = new FormData();
     formData.append('file', payload.file);  // ✅ CORRECTION: Champ renommé pour correspondre au backend
     formData.append('name', payload.name);
     formData.append('description', payload.description || '');
     formData.append('price', payload.price.toString()); // 💰 PRIX EN STRING
     formData.append('categoryId', payload.categoryId.toString()); // ✅ UTILISER L'ID DE CATÉGORIE NUMÉRIQUE
-    
+
     if (payload.tags) {
       formData.append('tags', payload.tags);
     }
 
-    console.log('📝 FormData préparée:');
+    console.log('📝 FormData préparée avec validation:');
     console.log('  - file:', payload.file.name);
     console.log('  - name:', payload.name);
     console.log('  - price:', payload.price);
-    console.log('  - categoryId:', payload.categoryId);
+    console.log('  - categoryId:', payload.categoryId, '(type:', typeof payload.categoryId, ')');
+    console.log('  - categoryId valid:', payload.categoryId > 0 && Number.isInteger(payload.categoryId));
     console.log('  - tags:', payload.tags || 'aucun');
 
     const res = await fetch(`${this.apiUrl}/api/designs`, {

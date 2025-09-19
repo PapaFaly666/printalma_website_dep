@@ -31,6 +31,8 @@ import { SimpleProductPreview } from '../../components/vendor/SimpleProductPrevi
 // Services et hooks
 import { vendorProductService } from '../../services/vendorProductService';
 import { vendorProductValidationService } from '../../services/vendorProductValidationService';
+import { vendorAccountService } from '../../services/vendorAccountService';
+import { API_CONFIG } from '../../config/api';
 
 // 🆕 Interface basée sur la structure de /public/best-sellers et compatible avec SimpleProductPreview
 interface VendorProductFromAPI {
@@ -147,10 +149,40 @@ interface VendorProductFromAPI {
   
   designId: number;
   isDelete?: boolean; // Optionnel pour compatibilité
+
+  // 🆕 Informations du design
+  design?: {
+    id: number;
+    name: string;
+    description: string;
+    category: {
+      id: number;
+      name: string;
+      description?: string;
+      slug?: string;
+    };
+    imageUrl: string;
+    tags?: string[];
+    isValidated?: boolean;
+    validatedAt?: string;
+    createdAt: string;
+  };
 }
 
 export const VendorProductsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [isAccountActive, setIsAccountActive] = useState<boolean | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const statusResp = await vendorAccountService.getAccountStatus();
+        const active = typeof statusResp?.data?.isActive === 'boolean' ? statusResp.data.isActive : (typeof statusResp?.data?.status === 'boolean' ? statusResp.data.status : true);
+        setIsAccountActive(!!active);
+      } catch {
+        setIsAccountActive(true);
+      }
+    })();
+  }, []);
   
   // États principaux
   const [products, setProducts] = useState<VendorProductFromAPI[]>([]);
@@ -287,15 +319,12 @@ export const VendorProductsPage: React.FC = () => {
     try {
       console.log('📡 Chargement des produits vendeur avec mockups et designs...');
       
-      // ✅ CORRECTION : Utiliser l'endpoint spécifique aux produits vendeur
-      const response = await fetch('https://printalma-back-dep.onrender.com/vendor/products', {
-        credentials: 'include',
+      // ✅ CORRECTION : Utiliser l'endpoint configuré avec authentification par cookies
+      const response = await fetch(`${API_CONFIG.BASE_URL}/vendor/products`, {
+        method: 'GET',
+        credentials: 'include', // Important : inclure les cookies pour l'authentification JWT
         headers: {
-          'Content-Type': 'application/json',
-          // Ajouter l'authentification JWT si disponible
-          ...(localStorage.getItem('jwt_token') && {
-            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-          })
+          'Content-Type': 'application/json'
         }
       });
 
@@ -305,7 +334,7 @@ export const VendorProductsPage: React.FC = () => {
         console.warn(`⚠️ Erreur ${response.status} pour /vendor/products, essai avec /public/best-sellers...`);
         
         // Fallback vers l'endpoint public si l'authentification échoue
-        const fallbackResponse = await fetch('https://printalma-back-dep.onrender.com/public/best-sellers?limit=20', {
+        const fallbackResponse = await fetch(`${API_CONFIG.BASE_URL}/public/best-sellers?limit=20`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
@@ -370,7 +399,20 @@ export const VendorProductsPage: React.FC = () => {
         // 🔍 Extraire le statut de validation avec la fonction helper
         const designValidationStatus = extractDesignValidationStatus(product);
 
-        
+        // 🔍 DEBUG: Vérifier directement les catégories dans adminProduct
+        console.log(`🔍 DEBUG - Produit ${product.id}:`);
+        console.log(`🔍 DEBUG - adminProduct.categories:`, product.adminProduct?.categories);
+
+        if (product.adminProduct?.categories && Array.isArray(product.adminProduct.categories)) {
+          console.log(`🎯 CATÉGORIES TROUVÉES: ${product.adminProduct.categories.length} catégories`);
+          console.log(`🎯 PREMIÈRE CATÉGORIE:`, product.adminProduct.categories[0]);
+          if (product.adminProduct.categories[0]?.name) {
+            console.log(`🎯 NOM PREMIÈRE CATÉGORIE: "${product.adminProduct.categories[0].name}"`);
+          }
+        } else {
+          console.log(`❌ PAS DE CATÉGORIES - adminProduct.categories:`, product.adminProduct?.categories);
+        }
+
         return {
           id: product.id,
           vendorName: product.vendorName || product.name || 'Produit Vendeur',
@@ -449,7 +491,23 @@ export const VendorProductsPage: React.FC = () => {
           selectedSizes: product.selectedSizes || [],
           selectedColors: product.selectedColors || [],
           designId: product.designId || 0,
-          isDelete: product.isDelete || false
+          isDelete: product.isDelete || false,
+
+          // 🆕 Inclure les informations du design
+          design: product.design ? {
+            id: product.design.id,
+            name: product.design.name,
+            description: product.design.description || '',
+            category: product.design.category || {
+              id: 0,
+              name: 'Non définie'
+            },
+            imageUrl: product.design.imageUrl || '',
+            tags: product.design.tags || [],
+            isValidated: product.design.isValidated || false,
+            validatedAt: product.design.validatedAt || '',
+            createdAt: product.design.createdAt || ''
+          } : undefined
         };
       });
       
@@ -727,9 +785,45 @@ export const VendorProductsPage: React.FC = () => {
     );
   }
 
+  // ✅ Affichage du bandeau d'avertissement si compte désactivé (mais accès complet maintenu)
+  const renderDeactivatedBanner = () => {
+    if (isAccountActive === false) {
+      return (
+        <Card className="border-orange-300 bg-orange-50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Package className="w-4 h-4 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-orange-800">Compte désactivé</h3>
+                  <p className="text-orange-700 text-sm">
+                    Vos produits sont masqués aux clients mais vous gardez l'accès complet : visualisation, ajout, modification.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => navigate('/vendeur/account')}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+                size="sm"
+              >
+                Réactiver mon compte
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Bandeau d'avertissement si compte désactivé */}
+        {renderDeactivatedBanner()}
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -738,9 +832,12 @@ export const VendorProductsPage: React.FC = () => {
               Gérez vos produits avec designs appliqués
             </p>
           </div>
-          <Button onClick={() => navigate('/vendeur/sell-design')}>
+          <Button
+            onClick={() => navigate('/vendeur/sell-design')}
+            className={isAccountActive === false ? 'bg-orange-600 hover:bg-orange-700' : ''}
+          >
             <Plus className="w-4 h-4 mr-2" />
-            Nouveau produit
+            Nouveau produit {isAccountActive === false && '(masqué aux clients)'}
           </Button>
         </div>
 
@@ -903,9 +1000,33 @@ export const VendorProductsPage: React.FC = () => {
                         <h3 className="font-semibold text-lg text-gray-900 mb-2 line-clamp-1">
                           {product.vendorName}
                         </h3>
-                        <p className="text-sm text-gray-500 mb-3 font-medium">
-                          Catégorie: {product.adminProduct.categories?.[0]?.name || 'Non définie'}
-                        </p>
+                        <div className="space-y-1 mb-3">
+                          <p className="text-sm text-gray-500 font-medium">
+                            Catégorie: {(() => {
+                              console.log(`🔍 DEBUG - DISPLAY - Produit ${product.id}:`, {
+                                hasAdminProduct: !!product.adminProduct,
+                                hasCategories: !!(product.adminProduct?.categories),
+                                categoriesArray: product.adminProduct?.categories,
+                                firstCategory: product.adminProduct?.categories?.[0],
+                                categoryName: product.adminProduct?.categories?.[0]?.name,
+                                finalValue: product.adminProduct?.categories?.[0]?.name || 'Non définie'
+                              });
+                              return product.adminProduct?.categories?.[0]?.name || 'Non définie';
+                            })()}
+                          </p>
+                          {(product as any).design && (
+                            <p className="text-sm text-blue-600 font-medium">
+                              {(() => {
+                                console.log('🔍 DEBUG - Structure design:', {
+                                  design: (product as any).design,
+                                  designCategory: (product as any).design.category,
+                                  designCategoryName: (product as any).design.category?.name
+                                });
+                                return `Design: ${(product as any).design.category?.name || 'Non définie'}`;
+                              })()}
+                            </p>
+                          )}
+                        </div>
                         <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed">
                           {product.adminProduct.name}
                         </p>
@@ -916,17 +1037,7 @@ export const VendorProductsPage: React.FC = () => {
                         <div className="text-xl font-bold text-gray-900">
                           {product.price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FCFA
                         </div>
-                        <div className="flex items-center gap-2">
-                          {product.designApplication.hasDesign && (
-                            <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
-                              Design
-                            </Badge>
-                          )}
-                          {product.designPositions && product.designPositions.length > 0 && (
-                            <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
-                              Positionné
-                            </Badge>
-                          )}
+                      <div className="flex items-center gap-2">
                           {/* 🆕 Badge de validation du design */}
                           {product.designApplication.hasDesign && validationStatuses[product.id] && (
                             <Badge
@@ -1118,6 +1229,7 @@ export const VendorProductsPage: React.FC = () => {
                     <div className="text-sm text-gray-600 space-y-2">
                       <p><strong>Nom:</strong> {products.find(p => p.id === selectedProductId)?.adminProduct.name}</p>
                       <p><strong>Genre:</strong> {products.find(p => p.id === selectedProductId)?.adminProduct.genre}</p>
+                      <p><strong>Catégorie:</strong> {products.find(p => p.id === selectedProductId)?.adminProduct.categories?.[0]?.name || 'Non définie'}</p>
                       <p><strong>Couleurs disponibles:</strong> {products.find(p => p.id === selectedProductId)?.selectedColors.length}</p>
                     </div>
                   </div>
@@ -1126,6 +1238,12 @@ export const VendorProductsPage: React.FC = () => {
                     <h4 className="font-medium text-gray-900 mb-3">Design appliqué</h4>
                     <div className="text-sm text-gray-600 space-y-2">
                       <p><strong>Design présent:</strong> {products.find(p => p.id === selectedProductId)?.designApplication.hasDesign ? 'Oui' : 'Non'}</p>
+                      {products.find(p => p.id === selectedProductId)?.design && (
+                        <>
+                          <p><strong>Nom du design:</strong> {products.find(p => p.id === selectedProductId)?.design?.name}</p>
+                          <p><strong>Catégorie du design:</strong> {products.find(p => p.id === selectedProductId)?.design?.category?.name || 'Non définie'}</p>
+                        </>
+                      )}
                       <p><strong>Échelle:</strong> {products.find(p => p.id === selectedProductId)?.designApplication.scale.toFixed(2)}x</p>
                       {/* 🆕 Informations de validation */}
                       {selectedProductId && products.find(p => p.id === selectedProductId)?.designApplication.hasDesign && validationStatuses[selectedProductId] && (

@@ -4684,10 +4684,10 @@ const SellDesignPage: React.FC = () => {
                     <div
                       key={product.id}
                       data-product-id={product.id}
-                        className={`group relative bg-white dark:bg-black border-2 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
+                      className={`group relative bg-white dark:bg-black border-2 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
                           isChecked 
                             ? 'border-black dark:border-white shadow-lg' 
-                            : 'border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'
+                            : 'border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-500'
                         }`}
                       >
                         {/* Indicateur de sélection moderne */}
@@ -4703,7 +4703,7 @@ const SellDesignPage: React.FC = () => {
                             className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                               isChecked
                                 ? 'bg-black dark:bg-white border-black dark:border-white'
-                                : 'bg-white dark:bg-black border-gray-300 dark:border-gray-600 hover:border-black dark:hover:border-white'
+                                : 'bg-white dark:bg-black border-blue-400 dark:border-blue-600 hover:border-blue-600 dark:hover:border-blue-400'
                             }`}
                           >
                             {isChecked && (
@@ -5364,7 +5364,7 @@ const SellDesignPage: React.FC = () => {
                 setCheckoutOpen(true);
               }}
               size="lg"
-              className="px-6 py-4 bg-black text-white hover:bg-gray-800 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 font-semibold flex items-center gap-3"
+              className="px-6 py-4 bg-green-600 text-white hover:bg-green-700 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 font-semibold flex items-center gap-3"
             >
               <Eye className="h-5 w-5" />
               <span className="hidden sm:inline">Prévisualiser et publier</span>

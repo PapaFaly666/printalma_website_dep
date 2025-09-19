@@ -37,6 +37,10 @@ export const API_ENDPOINTS = {
     UPDATE_VENDOR_PROFILE: '/auth/vendor/profile',
     // 🆕 NOUVEAU ENDPOINT VÉRIFICATION NOM BOUTIQUE
     CHECK_SHOP_NAME: '/auth/check-shop-name'
+    ,
+    // 🆕 Désactivation / Réactivation compte vendeur
+    VENDOR_DEACTIVATE: '/auth/vendor/deactivate',
+    VENDOR_REACTIVATE: '/auth/vendor/reactivate'
   },
   ADMIN: {
     CREATE_CLIENT: '/auth/admin/create-client',
@@ -59,7 +63,9 @@ export const API_ENDPOINTS = {
   },
   VENDOR: {
     // 🆕 ENDPOINT POUR QUE LE VENDEUR VOIT SA PROPRE COMMISSION
-    MY_COMMISSION: '/vendors/my-commission'
+    MY_COMMISSION: '/vendors/my-commission',
+    // 🆕 STATS COMPTE VENDEUR (dates membre depuis / dernière connexion)
+    STATS: '/vendor/stats'
   }
 };
 

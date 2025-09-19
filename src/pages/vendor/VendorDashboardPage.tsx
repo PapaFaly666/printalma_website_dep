@@ -34,6 +34,9 @@ interface DashboardStats {
   publishedProducts: number;
   draftProducts: number;
   pendingProducts: number;
+  publishedDesigns: number;
+  validatedDesigns: number;
+  pendingDesignsCount: number;
 }
 
 interface ChartData {
@@ -128,7 +131,10 @@ export const VendorDashboardPage: React.FC = () => {
     totalRemaining: 0,
     publishedProducts: 0,
     draftProducts: 0,
-    pendingProducts: 0
+    pendingProducts: 0,
+    publishedDesigns: 0,
+    validatedDesigns: 0,
+    pendingDesignsCount: 0
   });
   const [loading, setLoading] = useState(true);
   const [extendedProfile, setExtendedProfile] = useState<any>(null);
@@ -164,43 +170,42 @@ export const VendorDashboardPage: React.FC = () => {
         setExtendedProfile(profileData.vendor);
       }
 
-      // Charger les statistiques réelles des produits selon pub.md
-      console.log('🔄 Chargement des données dashboard...');
-      const [productStats, designStats] = await Promise.all([
-        vendorProductService.getVendorStats().catch((error) => {
-          console.error('❌ Erreur vendorProductService.getVendorStats():', error);
-          return null;
-        }),
-        // Appel direct à l'endpoint designs selon pub.md
-        fetch(`${import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com'}/vendor-design-products`, {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.ok ? response.json() : { data: [] })
-        .then(result => result.data || result)
-        .catch((error) => {
-          console.error('❌ Erreur GET /vendor-design-products:', error);
-          return [];
-        })
-      ]);
+      // Charger les statistiques réelles depuis /vendor/stats
+      console.log('🔄 Chargement des données dashboard depuis /vendor/stats...');
+      const vendorStats = await vendorProductService.getVendorStats().catch((error) => {
+        console.error('❌ Erreur vendorProductService.getVendorStats():', error);
+        return null;
+      });
 
-      console.log('📊 Réponse productStats:', productStats);
-      console.log('🎨 Réponse designStats:', designStats);
+      console.log('📊 Réponse vendorStats complète:', vendorStats);
 
-      // Utiliser les données réelles selon pub.md
-      const totalProducts = productStats?.data?.totalProducts || 0;
-      const publishedProducts = productStats?.data?.publishedProducts || 0;
-      const draftProducts = productStats?.data?.draftProducts || 0;
-      const pendingProducts = productStats?.data?.pendingProducts || 0;
-      const totalValue = productStats?.data?.totalValue || 0;
-      const averagePrice = productStats?.data?.averagePrice || 0;
+      // Utiliser les données de l'endpoint /vendor/stats qui contient tout
+      const totalProducts = vendorStats?.data?.totalProducts || 0;
+      const publishedProducts = vendorStats?.data?.publishedProducts || 0;
+      const draftProducts = vendorStats?.data?.draftProducts || 0;
+      const pendingProducts = vendorStats?.data?.pendingProducts || 0;
+      const totalValue = vendorStats?.data?.totalValue || 0;
+      const averagePrice = vendorStats?.data?.averagePrice || 0;
 
-      const designs = Array.isArray(designStats) ? designStats : [];
-      const totalDesigns = designs.length;
+      // 🆕 Utiliser les données de designs directement depuis /vendor/stats
+      const totalDesigns = vendorStats?.data?.totalDesigns || 0;
+      const publishedDesigns = vendorStats?.data?.publishedDesigns || 0;
+      const draftDesigns = vendorStats?.data?.draftDesigns || 0;
+      const pendingDesignsCount = vendorStats?.data?.pendingDesigns || 0;
+      const validatedDesigns = vendorStats?.data?.validatedDesigns || 0;
 
-      // Calculer les métriques basées sur les vraies données
-      const validatedDesigns = designs.filter(d => d.status === 'validated').length;
-      const pendingDesigns = designs.filter(d => d.status === 'pending').length;
+      console.log('📊 Métriques extraites:', {
+        totalProducts,
+        publishedProducts,
+        draftProducts,
+        pendingProducts,
+        totalValue,
+        totalDesigns,
+        publishedDesigns,
+        draftDesigns,
+        pendingDesignsCount,
+        validatedDesigns
+      });
 
       // Calcul des revenus réels (selon pub.md, totalValue = somme des prix produits)
       const estimatedEarnings = Math.floor(totalValue * 0.7); // Commission vendeur 70%
@@ -210,11 +215,16 @@ export const VendorDashboardPage: React.FC = () => {
       const conversionRate = totalProducts > 0 ? ((publishedProducts / totalProducts) * 100).toFixed(1) : '0.0';
       const averageViews = totalProducts > 0 ? Math.floor((publishedProducts * 150) + (draftProducts * 50)) : 0;
 
-      console.log('📊 Données dashboard chargées:', {
-        productStats: productStats?.data,
-        designsCount: totalDesigns,
+      console.log('📊 Données dashboard finales:', {
+        totalProducts,
+        publishedProducts,
+        draftProducts,
+        pendingProducts,
+        totalDesigns,
+        publishedDesigns,
         validatedDesigns,
-        pendingDesigns
+        totalValue,
+        estimatedEarnings
       });
 
       setStats({
@@ -226,18 +236,18 @@ export const VendorDashboardPage: React.FC = () => {
         totalRemaining: remainingPotential,
         publishedProducts,
         draftProducts,
-        pendingProducts
+        pendingProducts,
+        publishedDesigns,
+        validatedDesigns,
+        pendingDesignsCount
       });
 
-      // Mettre à jour le statut API selon pub.md
-      if (productStats && Array.isArray(designStats) && designStats.length >= 0) {
-        console.log('✅ Dashboard alimenté par les vraies APIs (selon pub.md)');
+      // Mettre à jour le statut API basé sur la réponse de /vendor/stats
+      if (vendorStats && vendorStats.success) {
+        console.log('✅ Dashboard alimenté par /vendor/stats');
         setApiStatus('connected');
-      } else if (productStats || (Array.isArray(designStats) && designStats.length > 0)) {
-        console.log('⚠️ Connexion API partielle');
-        setApiStatus('partial');
       } else {
-        console.log('❌ Mode fallback - APIs non disponibles');
+        console.log('❌ Erreur de connexion à /vendor/stats');
         setApiStatus('offline');
       }
     } catch (error) {
@@ -252,7 +262,10 @@ export const VendorDashboardPage: React.FC = () => {
         totalRemaining: 0,
         publishedProducts: 0,
         draftProducts: 0,
-        pendingProducts: 0
+        pendingProducts: 0,
+        publishedDesigns: 0,
+        validatedDesigns: 0,
+        pendingDesignsCount: 0
       });
     } finally {
       setLoading(false);
@@ -524,14 +537,21 @@ export const VendorDashboardPage: React.FC = () => {
                           <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                           <span className="text-sm">Designs validés</span>
                         </div>
-                        <span className="font-medium">{loading ? '...' : (stats.totalDesigns > 0 ? Math.floor(stats.totalDesigns * 0.7) : 0)}</span>
+                        <span className="font-medium">{loading ? '...' : stats.validatedDesigns}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                           <span className="text-sm">Designs en attente</span>
                         </div>
-                        <span className="font-medium">{loading ? '...' : (stats.totalDesigns > 0 ? Math.ceil(stats.totalDesigns * 0.3) : 0)}</span>
+                        <span className="font-medium">{loading ? '...' : stats.pendingDesignsCount}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                          <span className="text-sm">Designs publiés</span>
+                        </div>
+                        <span className="font-medium">{loading ? '...' : stats.publishedDesigns}</span>
                       </div>
                     </div>
                   </CardContent>

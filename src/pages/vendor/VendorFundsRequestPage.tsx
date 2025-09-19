@@ -68,6 +68,8 @@ const VendorFundsRequestPage: React.FC = () => {
   });
 
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<FundsRequest | null>(null);
 
   // Charger les données au montage
   useEffect(() => {
@@ -489,7 +491,15 @@ const VendorFundsRequestPage: React.FC = () => {
                         </TableCell>
                       )}
                       <TableCell>
-                        <Button variant="ghost" size="sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRequest(request);
+                            setShowDetailsDialog(true);
+                          }}
+                          title="Voir les détails"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -561,6 +571,207 @@ const VendorFundsRequestPage: React.FC = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Modal de détails de la demande */}
+        <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-4 border-b border-gray-100">
+              <DialogTitle className="flex items-center gap-3 text-xl">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-100 rounded-full">
+                    <Eye className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <span>Détails de la demande</span>
+                </div>
+                <Badge variant="outline" className="ml-auto">
+                  #{selectedRequest?.id}
+                </Badge>
+              </DialogTitle>
+            </DialogHeader>
+
+            {selectedRequest && (
+              <div className="space-y-6 py-4">
+                {/* En-tête de la demande */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-100 p-4 rounded-xl border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-900">
+                        Demande d'appel de fonds
+                      </h3>
+                      <p className="text-gray-600 text-sm mt-1">
+                        Soumise le {vendorFundsService.formatDate(selectedRequest.requestDate)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {vendorFundsService.formatCurrency(selectedRequest.amount)}
+                      </div>
+                      <Badge
+                        variant={getStatusBadgeVariant(selectedRequest.status)}
+                        className="mt-1"
+                      >
+                        {getStatusIcon(selectedRequest.status)}
+                        <span className="ml-1">{vendorFundsService.getStatusLabel(selectedRequest.status)}</span>
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informations de paiement */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CreditCard className="h-4 w-4 text-gray-500" />
+                    <span className="font-medium text-gray-700">Informations de paiement</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">Méthode de paiement</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        {getPaymentMethodIcon(selectedRequest.paymentMethod)}
+                        <span className="font-medium">
+                          {vendorFundsService.getPaymentMethodLabel(selectedRequest.paymentMethod)}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Numéro de téléphone</label>
+                      <p className="font-medium mt-1">{selectedRequest.phoneNumber}</p>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Description */}
+                {selectedRequest.description && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertCircle className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium text-gray-700">Description</span>
+                    </div>
+                    <p className="text-gray-900 leading-relaxed">
+                      {selectedRequest.description}
+                    </p>
+                  </Card>
+                )}
+
+                {/* Statut et dates */}
+                <Card className="p-4 bg-gray-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    <span className="font-medium text-gray-700">Suivi de la demande</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Statut actuel :</span>
+                      <Badge variant={getStatusBadgeVariant(selectedRequest.status)}>
+                        {getStatusIcon(selectedRequest.status)}
+                        <span className="ml-1">{vendorFundsService.getStatusLabel(selectedRequest.status)}</span>
+                      </Badge>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Date de soumission :</span>
+                      <span className="text-gray-900">
+                        {vendorFundsService.formatDate(selectedRequest.requestDate)}
+                      </span>
+                    </div>
+
+                    {selectedRequest.approvedDate && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Date d'approbation :</span>
+                        <span className="text-gray-900">
+                          {vendorFundsService.formatDate(selectedRequest.approvedDate)}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedRequest.processedDate && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Date de traitement :</span>
+                        <span className="text-gray-900">
+                          {vendorFundsService.formatDate(selectedRequest.processedDate)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Note administrative si présente */}
+                {selectedRequest.adminNote && (
+                  <Card className="p-4 border-blue-200 bg-blue-50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <span className="font-medium text-blue-700">Note de l'administration</span>
+                    </div>
+                    <p className="text-blue-900 leading-relaxed">
+                      {selectedRequest.adminNote}
+                    </p>
+                  </Card>
+                )}
+
+                {/* Raison du rejet si rejetée */}
+                {selectedRequest.status === 'REJECTED' && selectedRequest.rejectReason && (
+                  <Card className="p-4 border-red-200 bg-red-50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <XCircle className="h-4 w-4 text-red-600" />
+                      <span className="font-medium text-red-700">Raison du rejet</span>
+                    </div>
+                    <p className="text-red-900 leading-relaxed">
+                      {selectedRequest.rejectReason}
+                    </p>
+                  </Card>
+                )}
+
+                {/* Actions selon le statut */}
+                {selectedRequest.status === 'PENDING' && (
+                  <Card className="p-4 border-yellow-200 bg-yellow-50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <span className="font-medium text-yellow-700">Demande en cours de traitement</span>
+                    </div>
+                    <p className="text-yellow-800 text-sm">
+                      Votre demande est en cours d'examen par notre équipe. Vous recevrez une notification une fois qu'elle sera traitée.
+                    </p>
+                  </Card>
+                )}
+
+                {selectedRequest.status === 'APPROVED' && (
+                  <Card className="p-4 border-blue-200 bg-blue-50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <span className="font-medium text-blue-700">Demande approuvée</span>
+                    </div>
+                    <p className="text-blue-800 text-sm">
+                      Votre demande a été approuvée. Le paiement sera effectué sous peu sur votre compte.
+                    </p>
+                  </Card>
+                )}
+
+                {selectedRequest.status === 'PAID' && (
+                  <Card className="p-4 border-green-200 bg-green-50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="font-medium text-green-700">Paiement effectué</span>
+                    </div>
+                    <p className="text-green-800 text-sm">
+                      Le paiement a été effectué avec succès sur votre compte. Vérifiez votre solde.
+                    </p>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Footer du modal */}
+            <div className="flex justify-end pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => setShowDetailsDialog(false)}
+                className="min-w-[100px]"
+              >
+                Fermer
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

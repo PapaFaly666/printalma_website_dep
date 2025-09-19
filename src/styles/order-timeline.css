@@ -1,0 +1,83 @@
+/* Styles pour le timeline de suivi des commandes */
+.order-timeline {
+  margin: 20px 0;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e9ecef;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -23px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e9ecef;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #e9ecef;
+}
+
+.timeline-item.completed .timeline-marker {
+  background: #28a745;
+  box-shadow: 0 0 0 2px #28a745;
+}
+
+.timeline-item.cancelled .timeline-marker {
+  background: #dc3545;
+  box-shadow: 0 0 0 2px #dc3545;
+}
+
+.timeline-item.rejected .timeline-marker {
+  background: #6c757d;
+  box-shadow: 0 0 0 2px #6c757d;
+}
+
+.timeline-content h5 {
+  margin: 0 0 5px 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.timeline-content p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.timeline-item.completed .timeline-content h5 {
+  color: #28a745;
+}
+
+.timeline-item.cancelled .timeline-content h5 {
+  color: #dc3545;
+}
+
+.timeline-item.rejected .timeline-content h5 {
+  color: #6c757d;
+}
+
+/* Styles pour les badges de statut */
+.status-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
