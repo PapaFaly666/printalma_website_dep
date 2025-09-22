@@ -38,6 +38,7 @@ import { API_CONFIG } from '../../config/api';
 interface VendorProductFromAPI {
   id: number;
   vendorName: string; // ✅ Nom du produit vendeur
+  originalAdminName?: string; // ✅ Nom du produit admin de base
   price: number;
   status: string;
   
@@ -146,8 +147,8 @@ interface VendorProductFromAPI {
     name: string;
     colorCode: string;
   }>;
-  
-  designId: number;
+
+  designId: number | null; // ✅ null pour produits wizard, number pour produits avec design
   isDelete?: boolean; // Optionnel pour compatibilité
 
   // 🆕 Informations du design
@@ -977,6 +978,14 @@ export const VendorProductsPage: React.FC = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 🔍 Debug temporaire */}
+            {console.log('🔍 Produits visibles:', visibleProducts.map(p => ({
+              id: p.id,
+              designId: p.designId,
+              type: (!p.designId || p.designId === null || p.designId === 0) ? 'WIZARD' : 'TRADITIONNEL',
+              hasImages: !!p.images,
+              imageTypes: p.images?.adminReferences?.map(img => img.imageType)
+            })))}
             {visibleProducts.map((product) => {
               return (
                 <Card key={product.id} className="group border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -989,6 +998,18 @@ export const VendorProductsPage: React.FC = () => {
                           showColorSlider={true}
                           onColorChange={(colorId) => {
                             console.log(`🎨 Couleur changée pour produit ${product.id}: ${colorId}`);
+                          }}
+                          onProductClick={(prod) => {
+                            const isWizard = !prod.designId || prod.designId === null || prod.designId === 0;
+                            console.log('🔍 Clic sur produit:', {
+                              id: prod.id,
+                              type: isWizard ? 'WIZARD' : 'TRADITIONNEL',
+                              designId: prod.designId,
+                              hasImages: !!prod.images,
+                              imagesTotal: prod.images?.total,
+                              detailImages: isWizard ? prod.images?.adminReferences?.filter(img => img.imageType === 'detail').length : 0
+                            });
+                            // TODO: Navigation vers page détails
                           }}
                         />
                       </div>

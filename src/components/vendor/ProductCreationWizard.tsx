@@ -26,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Alert, AlertDescription } from '../ui/alert';
-import { useVendorProductsWithDeduplication } from '../../hooks/useVendorProductsWithDeduplication';
+import { useWizardProductUpload, WizardCalculations, type WizardProductData, type WizardImages } from '../../hooks/useWizardProductUpload';
 import { API_CONFIG } from '../../config/api';
 import { designCategoryService, DesignCategory } from '../../services/designCategoryService';
 
@@ -95,7 +95,7 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { createProduct, loading } = useVendorProductsWithDeduplication();
+  const { uploadProduct, loading: uploadLoading, error: uploadError, progress, validateWizardData } = useWizardProductUpload();
 
   // État du wizard
   const [currentStep, setCurrentStep] = useState(1);
@@ -173,6 +173,10 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
       const result = await response.json();
       const mockupData = result.data || result || [];
 
+      console.log('🔍 Mockups chargés:', mockupData);
+      console.log('🔍 Premier mockup:', mockupData[0]);
+      console.log('🔍 Premier mockup ID:', mockupData[0]?.id);
+
       setMockups(mockupData);
       setFilteredMockups(mockupData);
 
@@ -206,8 +210,8 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
   // Calculer le revenu attendu basé sur le bénéfice vendeur
   React.useEffect(() => {
     if (formData.productPrice > 0 && formData.basePrice > 0) {
-      const profit = formData.productPrice - formData.basePrice;
-      const expectedRevenue = Math.round(profit * 0.7); // 70% du bénéfice revient au vendeur
+      const profit = WizardCalculations.calculateVendorProfit(formData.productPrice, formData.basePrice);
+      const expectedRevenue = WizardCalculations.calculateExpectedRevenue(profit);
       setFormData(prev => ({
         ...prev,
         vendorProfit: profit,
@@ -234,12 +238,12 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
   // Calculer le prix minimum autorisé (prix de revient + 10%)
   const getMinimumPrice = (): number => {
-    return Math.round(formData.basePrice * 1.1); // Prix de revient + 10% minimum
+    return WizardCalculations.calculateMinimumPrice(formData.basePrice);
   };
 
   // Calculer le revenu du vendeur (70% du bénéfice comme dans SellDesignPage)
   const calculateVendorRevenue = (): number => {
-    return Math.round(formData.vendorProfit * 0.7); // 70% du bénéfice revient au vendeur
+    return WizardCalculations.calculateExpectedRevenue(formData.vendorProfit);
   };
 
   const nextStep = () => {
@@ -359,39 +363,92 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
     organizeImagesInColumns(newImages);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (action: 'TO_DRAFT' | 'TO_PUBLISHED' = 'TO_DRAFT') => {
     if (!validateCurrentStep()) return;
+
+    // Validation supplémentaire pour s'assurer qu'un mockup est sélectionné
+    if (!formData.selectedMockup) {
+      toast.error('Veuillez sélectionner un mockup avant de continuer');
+      return;
+    }
+
+    // Vérifier que l'ID du mockup est valide
+    if (!formData.selectedMockup.id || isNaN(Number(formData.selectedMockup.id))) {
+      toast.error('L\'ID du mockup sélectionné est invalide');
+      console.error('Invalid mockup ID:', formData.selectedMockup);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const productData = {
-        baseProductId: formData.selectedMockup!.id,
-        vendorName: formData.productName,
-        vendorDescription: formData.productDescription,
-        vendorPrice: formData.productPrice * 100, // Convertir en centimes
-        vendorStock: 100,
+      // Préparer les données pour l'API wizard
+      const wizardData: WizardProductData = {
+        selectedMockup: {
+          id: formData.selectedMockup.id,
+          name: formData.selectedMockup.name,
+          price: formData.selectedMockup.price,
+          suggestedPrice: formData.selectedMockup.suggestedPrice,
+          colorVariations: formData.selectedMockup.colorVariations
+        },
+        productName: formData.productName,
+        productDescription: formData.productDescription,
+        productPrice: formData.productPrice, // Prix en FCFA (pas en centimes)
+        basePrice: formData.basePrice,
+        vendorProfit: formData.vendorProfit,
+        expectedRevenue: formData.expectedRevenue,
+        isPriceCustomized: formData.isPriceCustomized,
+        selectedTheme: formData.selectedTheme,
         selectedColors: formData.selectedColors,
         selectedSizes: formData.selectedSizes,
-        theme: formData.selectedTheme,
-        productImages: formData.productImages,
-        postValidationAction: 'TO_DRAFT' // Par défaut en brouillon
+        postValidationAction: action
       };
 
-      const result = await createProduct(productData as any);
+      // Préparer les images avec hiérarchie
+      const wizardImages: WizardImages = {
+        baseImage: formData.productImages[0], // Première image = image principale
+        detailImages: formData.productImages.slice(1) // Autres images = détail
+      };
+
+      console.log('🔍 Debug ProductCreationWizard:');
+      console.log('- formData.selectedMockup:', formData.selectedMockup);
+      console.log('- formData.selectedMockup?.id:', formData.selectedMockup?.id);
+      console.log('- wizardData.selectedMockup:', wizardData.selectedMockup);
+      console.log('- wizardData.selectedMockup.id:', wizardData.selectedMockup.id);
+      console.log('Submitting wizard data:', {
+        wizardData,
+        baseImageName: wizardImages.baseImage?.name,
+        detailImagesCount: wizardImages.detailImages.length,
+        selectedMockupId: formData.selectedMockup?.id,
+        selectedMockupName: formData.selectedMockup?.name
+      });
+
+      const result = await uploadProduct(wizardData, wizardImages);
 
       if (result.success) {
-        toast.success('Produit créé avec succès !');
+        toast.success(`Produit ${action === 'TO_PUBLISHED' ? 'publié' : 'sauvegardé'} avec succès !`);
         if (onSuccess) {
-          onSuccess(result.productId);
+          onSuccess(result.data.id);
         } else {
           navigate('/vendeur/products');
         }
       } else {
         throw new Error(result.message || 'Erreur lors de la création');
       }
-    } catch (error) {
-      console.error('Erreur création produit:', error);
-      toast.error('Erreur lors de la création du produit');
+    } catch (error: any) {
+      console.error('Erreur création produit wizard:', error);
+
+      // Gestion des erreurs spécifiques du backend
+      if (error.message.includes('INSUFFICIENT_MARGIN')) {
+        toast.error('Prix trop bas - Une marge de 10% minimum est requise');
+      } else if (error.message.includes('MISSING_BASE_IMAGE')) {
+        toast.error('Image principale obligatoire');
+      } else if (error.message.includes('INVALID_COLORS')) {
+        toast.error('Couleurs sélectionnées non disponibles pour ce mockup');
+      } else if (error.message.includes('INVALID_SIZES')) {
+        toast.error('Tailles sélectionnées non disponibles pour ce mockup');
+      } else {
+        toast.error(error.message || 'Erreur lors de la création du produit');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -489,7 +546,11 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
                   className={`cursor-pointer transition-all hover:shadow-md ${
                     formData.selectedMockup?.id === mockup.id ? 'ring-2 ring-blue-600 bg-blue-50' : ''
                   }`}
-                  onClick={() => setFormData(prev => ({ ...prev, selectedMockup: mockup }))}
+                  onClick={() => {
+                    console.log('🔍 Mockup sélectionné:', mockup);
+                    console.log('🔍 Mockup ID:', mockup.id);
+                    setFormData(prev => ({ ...prev, selectedMockup: mockup }));
+                  }}
                 >
                   <CardContent className="p-4">
                     {mockup.colorVariations[0]?.images[0] && (
@@ -971,39 +1032,113 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Erreurs de validation ou d'upload */}
+          {uploadError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2 text-red-800 font-medium mb-2">
+                <span>⚠️</span>
+                <span>Erreur lors de la création</span>
+              </div>
+              <p className="text-red-700 text-sm">{uploadError}</p>
+            </div>
+          )}
+
+          {/* Barre de progression détaillée pendant l'upload */}
+          {isSubmitting && uploadLoading && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-800 font-medium mb-3">
+                <span>🚀</span>
+                <span>Création en cours...</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-blue-700">
+                  <span>Progression</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-blue-600">
+                  {progress < 30 && 'Validation des données...'}
+                  {progress >= 30 && progress < 70 && 'Upload des images...'}
+                  {progress >= 70 && progress < 95 && 'Traitement backend...'}
+                  {progress >= 95 && 'Finalisation...'}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Résumé du produit */}
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-4">Résumé du produit</h3>
-                <div className="space-y-3">
-                  <div>
-                    <strong>Nom:</strong> {formData.productName}
+                <h3 className="text-lg font-semibold mb-4 text-gray-900">Résumé du produit</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Nom:</strong>
+                    <span className="text-gray-900 font-medium">{formData.productName}</span>
                   </div>
-                  <div>
-                    <strong>Prix:</strong> {formData.productPrice.toLocaleString()} FCFA
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Prix de vente:</strong>
+                    <span className="text-gray-900 font-medium">{formData.productPrice.toLocaleString()} FCFA</span>
                   </div>
-                  <div>
-                    <strong>Revenu estimé:</strong> {formData.expectedRevenue.toLocaleString()} FCFA
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Prix de revient:</strong>
+                    <span className="text-gray-600">{formData.basePrice.toLocaleString()} FCFA</span>
                   </div>
-                  <div>
-                    <strong>Description:</strong>
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Bénéfice:</strong>
+                    <span className="text-green-600 font-medium">{formData.vendorProfit.toLocaleString()} FCFA</span>
+                  </div>
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Votre revenu (70%):</strong>
+                    <span className="text-green-700 font-semibold">{formData.expectedRevenue.toLocaleString()} FCFA</span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200">
+                    <strong className="text-gray-700">Description:</strong>
                     <p className="text-gray-600 text-sm mt-1">{formData.productDescription}</p>
                   </div>
-                  <div>
-                    <strong>Mockup de base:</strong> {formData.selectedMockup?.name}
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Mockup:</strong>
+                    <span className="text-gray-900">{formData.selectedMockup?.name}</span>
                   </div>
-                  <div>
-                    <strong>Thème:</strong> {designCategories.find(t => t.id.toString() === formData.selectedTheme)?.name || 'Non défini'}
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Thème:</strong>
+                    <span className="text-gray-900">{designCategories.find(t => t.id.toString() === formData.selectedTheme)?.name || 'Non défini'}</span>
                   </div>
-                  <div>
-                    <strong>Couleurs:</strong> {formData.selectedColors.map(c => c.name).join(', ')}
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Couleurs:</strong>
+                    <div className="flex flex-wrap gap-1">
+                      {formData.selectedColors.map(c => (
+                        <span key={c.id} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs">
+                          <div
+                            className="w-3 h-3 rounded-full border"
+                            style={{ backgroundColor: c.colorCode }}
+                          />
+                          {c.name}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <strong>Tailles:</strong> {formData.selectedSizes.map(s => s.sizeName).join(', ')}
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Tailles:</strong>
+                    <div className="flex flex-wrap gap-1">
+                      {formData.selectedSizes.map(s => (
+                        <span key={s.id} className="px-2 py-1 bg-gray-100 rounded text-xs">{s.sizeName}</span>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <strong>Images:</strong> {formData.productImages.length} images téléchargées
+                  <div className="flex justify-between items-start">
+                    <strong className="text-gray-700">Images:</strong>
+                    <span className="text-gray-900">
+                      {formData.productImages.length} image{formData.productImages.length > 1 ? 's' : ''}
+                      <span className="text-xs text-gray-500 ml-1">
+                        (1 principale + {formData.productImages.length - 1} détail)
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1011,56 +1146,74 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
             {/* Aperçu visuel */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Aperçu visuel</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Aperçu visuel</h3>
               {formData.selectedMockup && (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {/* Image du mockup */}
                   <div className="relative">
                     <img
                       src={formData.selectedMockup.colorVariations[0]?.images[0]?.url}
                       alt={formData.selectedMockup.name}
-                      className="w-full h-64 object-cover rounded-lg"
+                      className="w-full h-64 object-cover rounded-lg border border-gray-200"
                     />
-                    <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-sm">
+                    <div className="absolute top-3 left-3 bg-gray-900 text-white px-3 py-1 rounded text-sm font-medium">
                       Mockup de base
                     </div>
                   </div>
 
-                  {/* Couleurs sélectionnées */}
-                  <div>
-                    <p className="font-medium mb-2">Couleurs disponibles:</p>
-                    <div className="flex gap-2">
-                      {formData.selectedColors.map(color => (
-                        <div key={color.id} className="flex items-center gap-1">
-                          <div
-                            className="w-6 h-6 rounded-full border"
-                            style={{ backgroundColor: color.colorCode }}
-                          />
-                          <span className="text-xs">{color.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Aperçu des images uploadées */}
+                  {/* Image principale vs détail */}
                   {formData.productImages.length > 0 && (
                     <div>
-                      <p className="font-medium mb-2">Vos images:</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {formData.productImages.slice(0, 4).map((image, index) => (
+                      <p className="font-medium mb-3 text-gray-900">Hiérarchie de vos images:</p>
+
+                      {/* Image principale */}
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-3 h-3 bg-gray-900 rounded-full"></div>
+                          <span className="text-sm font-medium text-gray-900">Image principale</span>
+                        </div>
+                        <div className="relative inline-block">
                           <img
-                            key={index}
-                            src={URL.createObjectURL(image)}
-                            alt={`Aperçu ${index + 1}`}
-                            className="w-full h-20 object-cover rounded"
+                            src={URL.createObjectURL(formData.productImages[0])}
+                            alt="Image principale"
+                            className="w-24 h-24 object-cover rounded-lg border-2 border-gray-900 shadow-md"
                           />
-                        ))}
-                        {formData.productImages.length > 4 && (
-                          <div className="bg-gray-100 rounded flex items-center justify-center text-sm text-gray-600">
-                            +{formData.productImages.length - 4} autres
+                          <div className="absolute -bottom-1 -right-1 bg-gray-900 text-white text-xs px-1 py-0.5 rounded font-medium">
+                            BASE
                           </div>
-                        )}
+                        </div>
                       </div>
+
+                      {/* Images de détail */}
+                      {formData.productImages.length > 1 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                            <span className="text-sm font-medium text-gray-900">
+                              Images de détail ({formData.productImages.length - 1})
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {formData.productImages.slice(1, 5).map((image, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={URL.createObjectURL(image)}
+                                  alt={`Détail ${index + 1}`}
+                                  className="w-full h-16 object-cover rounded border border-gray-300"
+                                />
+                                <div className="absolute -bottom-1 -right-1 bg-gray-600 text-white text-xs px-1 py-0.5 rounded">
+                                  {index + 2}
+                                </div>
+                              </div>
+                            ))}
+                            {formData.productImages.length > 5 && (
+                              <div className="bg-gray-100 rounded flex items-center justify-center text-xs text-gray-600 h-16">
+                                +{formData.productImages.length - 5}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1068,12 +1221,34 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
             </div>
           </div>
 
-          <Alert className="mt-6">
-            <Heart className="h-4 w-4" />
-            <AlertDescription>
-              Votre produit sera créé en tant que brouillon. Vous pourrez le publier après vérification.
-            </AlertDescription>
-          </Alert>
+          {/* Informations finales */}
+          <div className="mt-8 space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-blue-800 font-medium mb-2">
+                <Heart className="h-4 w-4" />
+                <span>Prêt à créer votre produit ?</span>
+              </div>
+              <p className="text-blue-700 text-sm">
+                Vous pouvez soit sauvegarder en brouillon pour revoir plus tard, soit publier directement pour mise en vente immédiate.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Marge bénéficiaire:</span>
+                <span className="font-semibold text-gray-900">
+                  {((formData.vendorProfit / formData.basePrice) * 100).toFixed(1)}%
+                  {formData.vendorProfit / formData.basePrice >= 0.1 ? '✓' : '⚠️'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm mt-1">
+                <span className="text-gray-600">Commission plateforme:</span>
+                <span className="text-gray-900">
+                  {WizardCalculations.calculatePlatformCommission(formData.vendorProfit).toLocaleString()} FCFA (30%)
+                </span>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -1119,15 +1294,29 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
           <Button
             variant="outline"
             onClick={currentStep === 1 ? (onCancel || (() => navigate('/vendeur/products'))) : prevStep}
-            disabled={isSubmitting}
+            disabled={isSubmitting || uploadLoading}
             className="border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors px-6 py-3"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             {currentStep === 1 ? 'Annuler' : 'Précédent'}
           </Button>
 
-          <div className="bg-gray-900 text-white px-4 py-2 rounded-full text-sm font-medium">
-            Étape {currentStep} sur {STEPS.length}
+          <div className="flex items-center gap-3">
+            <div className="bg-gray-900 text-white px-4 py-2 rounded-full text-sm font-medium">
+              Étape {currentStep} sur {STEPS.length}
+            </div>
+            {/* Barre de progression d'upload */}
+            {isSubmitting && uploadLoading && (
+              <div className="flex items-center gap-2">
+                <div className="w-32 bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-gray-900 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <span className="text-sm text-gray-600">{progress}%</span>
+              </div>
+            )}
           </div>
 
           {currentStep < STEPS.length ? (
@@ -1140,14 +1329,24 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3"
-            >
-              {isSubmitting ? 'Création...' : 'Créer le produit'}
-              <Check className="w-4 h-4 ml-2" />
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => handleSubmit('TO_DRAFT')}
+                disabled={isSubmitting}
+                variant="outline"
+                className="border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white px-6 py-3"
+              >
+                {isSubmitting ? 'Sauvegarde...' : 'Sauvegarder en brouillon'}
+              </Button>
+              <Button
+                onClick={() => handleSubmit('TO_PUBLISHED')}
+                disabled={isSubmitting}
+                className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3"
+              >
+                {isSubmitting ? 'Publication...' : 'Publier directement'}
+                <Check className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
           )}
         </div>
       </div>

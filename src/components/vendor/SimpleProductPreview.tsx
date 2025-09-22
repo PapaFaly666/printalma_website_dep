@@ -18,9 +18,10 @@ interface DelimitationData {
 interface VendorProductFromAPI {
   id: number;
   vendorName: string;
+  originalAdminName?: string; // ✅ Nom du produit admin de base
   price: number;
   status: string;
-  adminProduct: {
+  adminProduct?: {
     id: number;
     name: string;
     colorVariations: Array<{
@@ -34,6 +35,17 @@ interface VendorProductFromAPI {
         delimitations: DelimitationData[];
       }>;
     }>;
+  };
+  // ✅ Structure d'images selon la doc - distingue wizard vs traditionnel
+  images?: {
+    adminReferences: Array<{
+      colorName: string | null;
+      colorCode: string | null;
+      adminImageUrl: string;
+      imageType: 'base' | 'detail' | 'admin_reference'; // ✅ Type d'image selon la doc
+    }>;
+    total: number;
+    primaryImageUrl: string; // ✅ Image principale auto-déterminée
   };
   designApplication: {
     hasDesign: boolean;
@@ -75,7 +87,7 @@ interface VendorProductFromAPI {
     name: string;
     colorCode: string;
   }>;
-  designId: number;
+  designId: number | null; // ✅ null pour produits wizard, number pour produits avec design
 }
 
 interface SimpleProductPreviewProps {
@@ -84,6 +96,8 @@ interface SimpleProductPreviewProps {
   className?: string;
   onColorChange?: (colorId: number) => void;
   showDelimitations?: boolean;
+  onProductClick?: (product: VendorProductFromAPI) => void; // ✅ Callback pour clic sur la card
+  showDetailImages?: boolean; // ✅ Mode affichage détails pour wizard
 }
 
 // Interface pour les métriques d'image (comme dans useFabricCanvas)
@@ -102,43 +116,120 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
   showColorSlider = true,
   className = '',
   onColorChange,
-  showDelimitations = false
+  showDelimitations = false,
+  onProductClick,
+  showDetailImages = false
 }) => {
   // 🆕 Accès au contexte d'authentification
   const { user } = useAuth();
+
+  // État pour la couleur sélectionnée - déclaré en premier
+  const [currentColorId, setCurrentColorId] = useState<number>(
+    product.selectedColors[0]?.id || 0
+  );
+
+  // ✅ Détecter le type de produit - gérer null et 0 (problème de sérialisation)
+  const isWizardProduct = !product.designId || product.designId === null || product.designId === 0;
+  const isTraditionalProduct = !isWizardProduct;
+
+  // ✅ Obtenir l'image d'affichage selon le type de produit
+  const getCardImage = () => {
+    if (isWizardProduct && product.images) {
+      // ✅ Pour wizard: TOUJOURS utiliser l'image base (imageType: "base")
+      const baseImage = product.images.adminReferences.find(
+        img => img.imageType === 'base'
+      );
+      return baseImage?.adminImageUrl || product.images.primaryImageUrl;
+    } else if (isTraditionalProduct && product.adminProduct) {
+      // Pour traditionnel: utiliser l'image du mockup de la couleur sélectionnée
+      const currentColor = product.selectedColors.find(c => c.id === currentColorId) || product.selectedColors[0];
+      const colorVariation = product.adminProduct.colorVariations.find(
+        cv => cv.id === currentColor?.id
+      );
+      const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front')
+        || colorVariation?.images[0];
+      return mockupImage?.url;
+    } else if (product.images) {
+      // Fallback sur primaryImageUrl si disponible
+      return product.images.primaryImageUrl;
+    }
+    return null;
+  };
+
+  // ✅ Obtenir le nom d'affichage
+  const getDisplayName = () => {
+    return product.vendorName || product.originalAdminName || 'Produit sans nom';
+  };
+
+  // ✅ Obtenir toutes les images selon le type (pour les détails)
+  const getAllProductImages = () => {
+    if (isWizardProduct && product.images) {
+      // Pour wizard: retourner base + détails
+      return product.images.adminReferences.map(img => ({
+        url: img.adminImageUrl,
+        type: img.imageType,
+        isMain: img.imageType === 'base',
+        colorName: null,
+        colorCode: null
+      }));
+    } else if (isTraditionalProduct && product.adminProduct) {
+      // Pour traditionnel: retourner mockups par couleur
+      return product.adminProduct.colorVariations.flatMap(cv =>
+        cv.images.map(img => ({
+          url: img.url,
+          type: 'mockup' as const,
+          isMain: img.viewType === 'Front',
+          colorName: cv.name,
+          colorCode: cv.colorCode
+        }))
+      );
+    }
+    return [];
+  };
   
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageMetrics, setImageMetrics] = useState<ImageMetrics | null>(null);
 
-  // 🆕 Logs de diagnostic pour l'incorporation du design
-  console.log('🎨 SimpleProductPreview - Produit reçu:', product.id);
-  console.log('🎨 SimpleProductPreview - designApplication:', product.designApplication);
-  console.log('🎨 SimpleProductPreview - designPositions:', product.designPositions);
-  console.log('🎨 SimpleProductPreview - Premier colorVariation:', product.adminProduct.colorVariations[0]);
-  console.log('🎨 SimpleProductPreview - Premier image:', product.adminProduct.colorVariations[0]?.images[0]);
-  console.log('🎨 SimpleProductPreview - Délimitations du premier image:', product.adminProduct.colorVariations[0]?.images[0]?.delimitations);
+  // Pour les produits wizard, pas besoin de navigation d'images dans la card
+  // La navigation sera dans une page détails séparée
 
-  // État pour la couleur sélectionnée
-  const [currentColorId, setCurrentColorId] = useState<number>(
-    product.selectedColors[0]?.id || 0
-  );
+  // 🆕 Logs de diagnostic pour l'incorporation du design
+  console.log('🎨 SimpleProductPreview - Produit reçu:', product.id, {
+    type: isWizardProduct ? 'WIZARD' : 'TRADITIONNEL',
+    designId: product.designId,
+    hasImages: !!product.images,
+    hasAdminProduct: !!product.adminProduct
+  });
+  console.log('🎨 SimpleProductPreview - Structure images:', product.images);
+  console.log('🎨 SimpleProductPreview - AdminProduct:', product.adminProduct);
+  console.log('🎨 SimpleProductPreview - Image sélectionnée pour card:', getCardImage());
 
   // Couleur actuelle
   const currentColor = product.selectedColors.find(c => c.id === currentColorId) || product.selectedColors[0];
-  
-  // Trouver la variation de couleur correspondante
-  const colorVariation = product.adminProduct.colorVariations.find(
-    cv => cv.id === currentColor?.id
-  );
-  
-  // Prendre la première image (ou celle avec viewType "Front")
-  const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front') 
-    || colorVariation?.images[0];
 
-  // Délimitations de l'image sélectionnée
-  const delimitations = mockupImage?.delimitations || [];
+  // Variables d'image selon le type de produit
+  let currentImageUrl: string | null = null;
+  let delimitations: DelimitationData[] = [];
+
+  if (isWizardProduct) {
+    // ✅ Produit wizard : TOUJOURS afficher l'image de base dans la card
+    // Les détails seront sur une page séparée
+    currentImageUrl = getCardImage();
+    // Les produits wizard n'ont pas de délimitations
+    delimitations = [];
+  } else if (isTraditionalProduct && product.adminProduct) {
+    // ✅ Produit traditionnel : utiliser le mockup de la couleur sélectionnée
+    const colorVariation = product.adminProduct.colorVariations.find(
+      cv => cv.id === currentColor?.id
+    );
+    const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front')
+      || colorVariation?.images[0];
+
+    currentImageUrl = mockupImage?.url || null;
+    delimitations = mockupImage?.delimitations || [];
+  }
 
   // 🆕 Fonction pour synchroniser les données localStorage vers la base de données
   const syncLocalStorageToDatabase = async (vendorProductId: number, designId: number, enrichedData: any) => {
@@ -493,6 +584,15 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
     handleColorChange(nextColor.id);
   };
 
+  // Les gestionnaires d'images wizard seront dans la page détails séparée
+
+  // ✅ Gestionnaire de clic sur la card
+  const handleCardClick = () => {
+    if (onProductClick) {
+      onProductClick(product);
+    }
+  };
+
   const designPosition = getDesignPosition();
 
   // 🆕 Log complet pour debug - TOUJOURS actif pour diagnostiquer les problèmes de positionnement
@@ -530,21 +630,40 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
     }
   }, [product, currentColor, delimitations, designPosition, imageMetrics, showDelimitations]);
 
-  if (!mockupImage) {
+  if (!currentImageUrl) {
     return (
       <div className={`aspect-square bg-gray-100 flex items-center justify-center rounded-lg ${className}`}>
-        <span className="text-gray-500">Aucune image</span>
+        <span className="text-gray-500">
+          {isWizardProduct ? 'Image personnalisée manquante' : 'Aucune image mockup'}
+        </span>
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className={`aspect-square relative bg-white rounded-lg overflow-hidden ${className}`}>
-      {/* Image du produit */}
+    <div
+      ref={containerRef}
+      className={`aspect-square relative bg-white rounded-lg overflow-hidden ${className} ${
+        onProductClick ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''
+      }`}
+      onClick={handleCardClick}
+    >
+      {/* ✅ Badge type de produit */}
+      <div className="absolute top-2 left-2 z-10">
+        <span className={`px-2 py-1 rounded text-xs font-medium ${
+          isWizardProduct
+            ? 'bg-purple-100 text-purple-800 border border-purple-200'
+            : 'bg-blue-100 text-blue-800 border border-blue-200'
+        }`}>
+          {isWizardProduct ? '🎨 Personnalisé' : '🎯 Design'}
+        </span>
+      </div>
+
+      {/* ✅ Image du produit selon le type */}
       <img
         ref={imgRef}
-        src={mockupImage.url}
-        alt={product.adminProduct.name}
+        src={currentImageUrl}
+        alt={getDisplayName()}
         className="w-full h-full object-contain"
         onLoad={() => setImageLoaded(true)}
       />
@@ -565,8 +684,8 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
         </div>
       ))}
       
-      {/* 🆕 Design superposé exactement comme dans sell-design */}
-      {product.designApplication.hasDesign && product.designApplication.designUrl && imageMetrics && (
+      {/* 🆕 Design superposé UNIQUEMENT pour les produits traditionnels avec design */}
+      {isTraditionalProduct && product.designApplication.hasDesign && product.designApplication.designUrl && imageMetrics && (
         (() => {
           console.log('🎨 Affichage du design - Conditions vérifiées:', {
             hasDesign: product.designApplication.hasDesign,
@@ -716,8 +835,8 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
         })()
       )}
 
-      {/* Slider de couleurs */}
-      {showColorSlider && product.selectedColors.length > 1 && (
+      {/* ✅ Slider de couleurs - UNIQUEMENT pour produits traditionnels */}
+      {showColorSlider && isTraditionalProduct && product.selectedColors.length > 1 && (
         <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between bg-white bg-opacity-95 backdrop-blur-sm rounded-lg p-3 shadow-lg">
           <button
             onClick={(e) => {
@@ -758,15 +877,25 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
         </div>
       )}
 
-      {/* Indicateurs de statut */}
-      {!product.designApplication.hasDesign && (
-        <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs">
+
+      {/* ✅ Indicateur d'images multiples pour produits wizard - suggère de cliquer */}
+      {isWizardProduct && product.images && product.images.total > 1 && (
+        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+          <span>📸</span>
+          <span>{product.images.total} images</span>
+          <span>→</span>
+        </div>
+      )}
+
+      {/* ✅ Indicateurs de statut pour produits traditionnels */}
+      {isTraditionalProduct && !product.designApplication.hasDesign && (
+        <div className="absolute top-10 left-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs">
           Pas de design
         </div>
       )}
 
-      {product.designApplication.hasDesign && delimitations.length === 0 && (
-        <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs">
+      {isTraditionalProduct && product.designApplication.hasDesign && delimitations.length === 0 && (
+        <div className="absolute top-10 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs">
           Pas de délimitations
         </div>
       )}
