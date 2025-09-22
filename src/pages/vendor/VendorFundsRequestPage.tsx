@@ -66,6 +66,7 @@ const VendorFundsRequestPage: React.FC = () => {
     paymentMethod: 'WAVE',
     phoneNumber: ''
   });
+  const isBank = newRequest.paymentMethod === 'BANK_TRANSFER';
 
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -259,26 +260,44 @@ const VendorFundsRequestPage: React.FC = () => {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Numéro de Téléphone</Label>
-                    <div className="flex">
-                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-500 text-sm">
-                        +221
-                      </span>
+                  {!isBank && (
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Numéro de Téléphone</Label>
+                      <div className="flex">
+                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-500 text-sm">
+                          +221
+                        </span>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          className="rounded-l-none"
+                          placeholder="77 123 45 67"
+                          value={(newRequest.phoneNumber || '').replace('+221', '')}
+                          onChange={(e) => setNewRequest(prev => ({
+                            ...prev,
+                            phoneNumber: '+221' + e.target.value.replace(/\D/g, '')
+                          }))}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {isBank && (
+                    <div className="space-y-2">
+                      <Label htmlFor="iban">IBAN</Label>
                       <Input
-                        id="phone"
-                        type="tel"
-                        className="rounded-l-none"
-                        placeholder="77 123 45 67"
-                        value={newRequest.phoneNumber.replace('+221', '')}
+                        id="iban"
+                        type="text"
+                        placeholder="SN08 0000 0000 0000 0000 0000 0000"
+                        value={(newRequest as any).iban || ''}
                         onChange={(e) => setNewRequest(prev => ({
                           ...prev,
-                          phoneNumber: '+221' + e.target.value.replace(/\D/g, '')
-                        }))}
+                          iban: e.target.value
+                        }) as any)}
                         required
                       />
                     </div>
-                  </div>
+                  )}
 
 
                   <div className="flex justify-end gap-2 pt-4">

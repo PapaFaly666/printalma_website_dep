@@ -15,7 +15,6 @@ import {
   AlertTriangle,
   MoreHorizontal,
   Check,
-  X,
   MessageSquare,
   Calendar,
   Download
@@ -93,7 +92,6 @@ const AdminPaymentRequestsPage: React.FC = () => {
   const [selectedRequest, setSelectedRequest] = useState<FundsRequest | null>(null);
   const [showProcessDialog, setShowProcessDialog] = useState(false);
   const [isViewOnly, setIsViewOnly] = useState(false);
-  const [isRejectMode, setIsRejectMode] = useState(false);
   const [processAction, setProcessAction] = useState<ProcessFundsRequest>({
     status: 'APPROVED',
     adminNote: ''
@@ -178,7 +176,6 @@ const AdminPaymentRequestsPage: React.FC = () => {
       setSelectedRequest(null);
       setProcessAction({ status: 'APPROVED', adminNote: '' });
       setIsViewOnly(false);
-      setIsRejectMode(false);
 
       // Recharger les statistiques
       loadData();
@@ -193,10 +190,9 @@ const AdminPaymentRequestsPage: React.FC = () => {
   };
 
   // Actions rapides
-  const handleQuickAction = async (request: FundsRequest, action: 'approve' | 'reject' | 'pay') => {
+  const handleQuickAction = async (request: FundsRequest, action: 'approve' | 'pay') => {
     const actionMap = {
       approve: 'APPROVED' as const,
-      reject: 'REJECTED' as const,
       pay: 'PAID' as const
     };
 
@@ -204,12 +200,8 @@ const AdminPaymentRequestsPage: React.FC = () => {
     try {
       const processData: ProcessFundsRequest = {
         status: actionMap[action],
-        adminNote: `Action rapide: ${action === 'approve' ? 'Approuvé' : action === 'reject' ? 'Rejeté' : 'Marqué comme payé'}`
+        adminNote: `Action rapide: ${action === 'approve' ? 'Approuvé' : 'Marqué comme payé'}`
       };
-
-      if (action === 'reject') {
-        processData.rejectReason = 'Rejet via action rapide';
-      }
 
       const updatedRequest = await adminFundsService.processFundsRequest(request.id, processData);
 
@@ -627,36 +619,8 @@ const AdminPaymentRequestsPage: React.FC = () => {
                               >
                                 <Check className="h-4 w-4" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 border-red-600 hover:bg-red-50"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setProcessAction({ status: 'REJECTED', adminNote: '', rejectReason: '' });
-                                  setIsViewOnly(false);
-                                  setIsRejectMode(true);
-                                  setShowProcessDialog(true);
-                                }}
-                                disabled={processing}
-                                title="Rejeter avec note obligatoire"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setProcessAction({ status: 'APPROVED', adminNote: '' });
-                                  setIsViewOnly(false);
-                                  setIsRejectMode(false);
-                                  setShowProcessDialog(true);
-                                }}
-                                title="Traiter avec note"
-                              >
-                                <MessageSquare className="h-4 w-4" />
-                              </Button>
+                          {/* Suppression du bouton Rejeter conformément au nouveau flux */}
+                              {/* Bouton 'Traiter avec note' retiré */}
                             </>
                           )}
                           {request.status === 'APPROVED' && (
@@ -677,15 +641,12 @@ const AdminPaymentRequestsPage: React.FC = () => {
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                          setSelectedRequest(request);
-                          // En mode lecture seule, ne pas forcer un statut potentiellement invalide pour le type ProcessFundsRequest
-                          setProcessAction({
-                            status: request.status === 'PENDING' ? 'APPROVED' : request.status,
-                            adminNote: request.adminNote || '',
-                            rejectReason: request.rejectReason || ''
-                          });
+                              setSelectedRequest(request);
+                              setProcessAction({
+                                status: request.status === 'PENDING' ? 'APPROVED' : request.status,
+                                adminNote: request.adminNote || ''
+                              });
                               setIsViewOnly(true);
-                              setIsRejectMode(false);
                               setShowProcessDialog(true);
                             }}
                             title="Voir détails"
@@ -754,14 +715,7 @@ const AdminPaymentRequestsPage: React.FC = () => {
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader className="pb-4 border-b border-gray-100">
               <DialogTitle className="flex items-center gap-3 text-xl">
-                {isRejectMode ? (
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-red-100 rounded-full">
-                      <XCircle className="h-5 w-5 text-red-600" />
-                    </div>
-                    <span>Rejeter la demande</span>
-                  </div>
-                ) : isViewOnly ? (
+                {isViewOnly ? (
                   <div className="flex items-center gap-2">
                     <div className="p-2 bg-blue-100 rounded-full">
                       <Eye className="h-5 w-5 text-blue-600" />
@@ -780,16 +734,7 @@ const AdminPaymentRequestsPage: React.FC = () => {
                   #{selectedRequest?.id}
                 </Badge>
               </DialogTitle>
-              <DialogDescription className="text-base mt-2">
-                {isRejectMode && (
-                  <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="font-medium">
-                      Cette demande sera rejetée. Veuillez indiquer la raison.
-                    </span>
-                  </div>
-                )}
-              </DialogDescription>
+              <DialogDescription className="text-base mt-2" />
             </DialogHeader>
 
             {selectedRequest && (
@@ -896,61 +841,14 @@ const AdminPaymentRequestsPage: React.FC = () => {
                 )}
 
                 {/* Sélection d'action */}
-                {!isViewOnly && !isRejectMode && (
-                  <Card className="p-4 border-blue-200 bg-blue-50">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                      <Label htmlFor="status" className="font-medium text-blue-700">Action à effectuer</Label>
-                    </div>
-                    <Select
-                      value={processAction.status}
-                      onValueChange={(value: ProcessFundsRequest['status']) =>
-                        setProcessAction(prev => ({ ...prev, status: value }))
-                      }
-                    >
-                      <SelectTrigger className="bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="APPROVED">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            Approuver
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="REJECTED">
-                          <div className="flex items-center gap-2">
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            Rejeter
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="PAID">
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-blue-600" />
-                            Marquer comme payé
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Card>
-                )}
+                {/* Contrôles d'édition retirés: les actions se font via boutons rapides */}
 
                 {/* Note administrative */}
-                <Card className={`p-4 ${
-                  isViewOnly ? 'bg-gray-50' :
-                  isRejectMode ? 'border-orange-200 bg-orange-50' : 'border-green-200 bg-green-50'
-                }`}>
+                <Card className={`p-4 ${isViewOnly ? 'bg-gray-50' : 'border-green-200 bg-green-50'}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <MessageSquare className={`h-4 w-4 ${
-                      isViewOnly ? 'text-gray-500' :
-                      isRejectMode ? 'text-orange-600' : 'text-green-600'
-                    }`} />
-                    <Label htmlFor="adminNote" className={`font-medium ${
-                      isViewOnly ? 'text-gray-700' :
-                      isRejectMode ? 'text-orange-700' : 'text-green-700'
-                    }`}>
-                      {isViewOnly ? 'Note administrative' :
-                       isRejectMode ? 'Note de rejet (optionnelle)' : 'Ajouter une note administrative'}
+                    <MessageSquare className={`h-4 w-4 ${isViewOnly ? 'text-gray-500' : 'text-green-600'}`} />
+                    <Label htmlFor="adminNote" className={`font-medium ${isViewOnly ? 'text-gray-700' : 'text-green-700'}`}>
+                      {isViewOnly ? 'Note administrative' : 'Ajouter une note administrative'}
                     </Label>
                   </div>
                   {isViewOnly ? (
@@ -960,58 +858,22 @@ const AdminPaymentRequestsPage: React.FC = () => {
                       )}
                     </div>
                   ) : (
-                    <Textarea
-                      id="adminNote"
-                      placeholder={isRejectMode ?
-                        "Note optionnelle pour expliquer le contexte..." :
-                        "Ajoutez une note pour cette action..."
-                      }
-                      value={processAction.adminNote}
-                      onChange={(e) => setProcessAction(prev => ({
-                        ...prev,
-                        adminNote: e.target.value
-                      }))}
-                      rows={3}
-                      className="bg-white border-0 focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div className="p-3 bg-white rounded-lg border min-h-[80px] text-gray-700">
+                      <span className="text-gray-500 italic">Modification désactivée. Utilisez les actions rapides Approver/Payer.</span>
+                    </div>
                   )}
                 </Card>
 
-                {/* Raison du rejet */}
-                {(processAction.status === 'REJECTED' || isRejectMode || (isViewOnly && selectedRequest?.rejectReason)) && (
+                {/* Raison du rejet (lecture seule si existant, pas d'édition) */}
+                {isViewOnly && selectedRequest?.rejectReason && (
                   <Card className="p-4 border-red-200 bg-red-50">
                     <div className="flex items-center gap-2 mb-3">
                       <AlertTriangle className="h-4 w-4 text-red-600" />
-                      <Label htmlFor="rejectReason" className="text-red-700 font-medium">
-                        {isViewOnly ? 'Raison du rejet' : 'Raison du rejet (obligatoire)'}
-                      </Label>
-                      {!isViewOnly && <span className="text-red-500 text-sm">*</span>}
+                      <Label className="text-red-700 font-medium">Raison du rejet</Label>
                     </div>
-                    {isViewOnly ? (
-                      <div className="p-4 bg-white border border-red-200 rounded-lg text-red-700 min-h-[80px]">
-                        {processAction.rejectReason || selectedRequest?.rejectReason || (
-                          <span className="text-red-400 italic">Aucune raison spécifiée</span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Textarea
-                          id="rejectReason"
-                          placeholder="Expliquez clairement et professionnellement pourquoi cette demande est rejetée..."
-                          value={processAction.rejectReason || ''}
-                          onChange={(e) => setProcessAction(prev => ({
-                            ...prev,
-                            rejectReason: e.target.value
-                          }))}
-                          rows={4}
-                          className="bg-white border-red-200 focus:border-red-400 focus:ring-2 focus:ring-red-200"
-                          required
-                        />
-                        <p className="text-xs text-red-600">
-                          Cette raison sera visible par le vendeur. Soyez respectueux et constructif.
-                        </p>
-                      </div>
-                    )}
+                    <div className="p-4 bg-white border border-red-200 rounded-lg text-red-700 min-h-[80px]">
+                      {selectedRequest.rejectReason}
+                    </div>
                   </Card>
                 )}
 
@@ -1027,42 +889,12 @@ const AdminPaymentRequestsPage: React.FC = () => {
                       onClick={() => {
                         setShowProcessDialog(false);
                         setIsViewOnly(false);
-                        setIsRejectMode(false);
                       }}
                       className="min-w-[100px]"
                     >
                       {isViewOnly ? 'Fermer' : 'Annuler'}
                     </Button>
-                    {!isViewOnly && (
-                      <Button
-                        onClick={handleProcessRequest}
-                        disabled={processing || (processAction.status === 'REJECTED' && !processAction.rejectReason)}
-                        className={`min-w-[120px] ${
-                          isRejectMode ? 'bg-red-600 hover:bg-red-700' :
-                          processAction.status === 'APPROVED' ? 'bg-green-600 hover:bg-green-700' :
-                          'bg-blue-600 hover:bg-blue-700'
-                        }`}
-                      >
-                        {processing ? (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                            Traitement...
-                          </>
-                        ) : (
-                          <>
-                            {isRejectMode ? (
-                              <><XCircle className="mr-2 h-4 w-4" />Rejeter</>
-                            ) : processAction.status === 'APPROVED' ? (
-                              <><CheckCircle className="mr-2 h-4 w-4" />Approuver</>
-                            ) : processAction.status === 'PAID' ? (
-                              <><DollarSign className="mr-2 h-4 w-4" />Marquer payé</>
-                            ) : (
-                              <><Check className="mr-2 h-4 w-4" />Confirmer</>
-                            )}
-                          </>
-                        )}
-                      </Button>
-                    )}
+                    {/* Bouton de traitement retiré: actions via boutons rapides en liste */}
                   </div>
                 </div>
               </div>

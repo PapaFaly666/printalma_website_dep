@@ -17,7 +17,8 @@ export interface FundsRequest {
   requestedAmount: number;
   description: string;
   paymentMethod: 'WAVE' | 'ORANGE_MONEY' | 'BANK_TRANSFER';
-  phoneNumber: string;
+  phoneNumber?: string;
+  iban?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
   rejectReason?: string;
   approvedDate?: string;
@@ -63,7 +64,8 @@ export interface CreateFundsRequest {
   amount: number;
   description?: string; // Optionnel maintenant
   paymentMethod: FundsRequest['paymentMethod'];
-  phoneNumber: string;
+  phoneNumber?: string;
+  iban?: string;
   orderIds?: number[];
 }
 
@@ -210,10 +212,15 @@ export class VendorFundsService {
   async createFundsRequest(request: CreateFundsRequest): Promise<FundsRequest> {
     try {
       // Ajouter une description automatique pour le backend
-      const requestData = {
-        ...request,
-        description: `Demande de retrait de ${this.formatCurrency(request.amount)}`
+      const payloadBase: any = {
+        amount: request.amount,
+        paymentMethod: request.paymentMethod,
+        description: request.description || `Demande de retrait de ${this.formatCurrency(request.amount)}`,
+        orderIds: request.orderIds
       };
+      const requestData = request.paymentMethod === 'BANK_TRANSFER'
+        ? { ...payloadBase, iban: request.iban }
+        : { ...payloadBase, phoneNumber: request.phoneNumber };
 
       const response = await this.apiCall<FundsRequest>('/vendor/funds-requests', {
         method: 'POST',

@@ -136,14 +136,10 @@ const AppelDeFondsPage: React.FC = () => {
     }
     
     if (selectedMethod === 'BANK_TRANSFER') {
-      if (!bankDetails.bankName) {
-        newErrors.bankName = 'Nom de la banque requis';
-      }
-      if (!bankDetails.accountNumber) {
-        newErrors.accountNumber = 'Numéro de compte requis';
-      }
-      if (!bankDetails.accountHolder) {
-        newErrors.bankAccountHolder = 'Nom du titulaire requis';
+      const ibanClean = (bankDetails.iban || '').replace(/\s+/g, '').toUpperCase();
+      const ibanRegex = /^[A-Z]{2}[0-9A-Z]{13,32}$/; // IBAN générique
+      if (!ibanClean || !ibanRegex.test(ibanClean)) {
+        newErrors.iban = 'IBAN invalide';
       }
     }
     
@@ -511,40 +507,13 @@ const AppelDeFondsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Détails bancaires */}
+            {/* Détails bancaires (IBAN requis, pas de téléphone) */}
             {selectedMethod === 'BANK_TRANSFER' && (
               <div className="space-y-3">
                 <div>
-                  <Label>Nom de la banque</Label>
+                  <Label>IBAN</Label>
                   <Input
-                    placeholder="Ex: CBAO, SGBS, etc."
-                    value={bankDetails.bankName}
-                    onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
-                  />
-                  {errors.bankName && <p className="text-red-500 text-sm mt-1">{errors.bankName}</p>}
-                </div>
-                <div>
-                  <Label>Numéro de compte</Label>
-                  <Input
-                    placeholder="Numéro de compte"
-                    value={bankDetails.accountNumber}
-                    onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
-                  />
-                  {errors.accountNumber && <p className="text-red-500 text-sm mt-1">{errors.accountNumber}</p>}
-                </div>
-                <div>
-                  <Label>Nom du titulaire</Label>
-                  <Input
-                    placeholder="Nom complet sur le compte"
-                    value={bankDetails.accountHolder}
-                    onChange={(e) => setBankDetails({...bankDetails, accountHolder: e.target.value})}
-                  />
-                  {errors.bankAccountHolder && <p className="text-red-500 text-sm mt-1">{errors.bankAccountHolder}</p>}
-                </div>
-                <div>
-                  <Label>IBAN (optionnel)</Label>
-                  <Input
-                    placeholder="SN12 1234 1234 1234 1234 1234 123"
+                    placeholder="SN08 0000 0000 0000 0000 0000 0000"
                     value={bankDetails.iban}
                     onChange={(e) => setBankDetails({...bankDetails, iban: e.target.value})}
                   />

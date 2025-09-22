@@ -4687,7 +4687,7 @@ const SellDesignPage: React.FC = () => {
                       className={`group relative bg-white dark:bg-black border-2 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
                           isChecked 
                             ? 'border-black dark:border-white shadow-lg' 
-                            : 'border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-500'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
                         }`}
                       >
                         {/* Indicateur de sélection moderne */}

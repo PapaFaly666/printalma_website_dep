@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import Cropper from 'react-easy-crop';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -97,6 +98,15 @@ const VendorAccountPage: React.FC = () => {
   });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  // États react-easy-crop
+  const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
+  const onCropComplete = useCallback((_area: any, pixels: any) => {
+    setCroppedAreaPixels(pixels);
+  }, []);
 
   // États pour le changement de mot de passe
   const [currentPassword, setCurrentPassword] = useState('');
@@ -352,65 +362,32 @@ const VendorAccountPage: React.FC = () => {
   };
 
   const generateCroppedImage = useCallback(async (): Promise<Blob | null> => {
-    if (!originalImageUrl || !canvasRef.current) return null;
+    if (!originalImageUrl || !croppedAreaPixels) return null;
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.crossOrigin = 'anonymous';
+      img.src = originalImageUrl;
+    });
 
-    const canvas = canvasRef.current;
+    const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        // Taille du canvas de sortie (carré pour photo de profil)
-        const outputSize = 400;
-        canvas.width = outputSize;
-        canvas.height = outputSize;
+    const { width, height, x, y } = croppedAreaPixels;
+    canvas.width = width;
+    canvas.height = height;
 
-        // Nettoyer le canvas
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, outputSize, outputSize);
+    ctx.save();
+    // Dessiner la zone rognée
+    ctx.drawImage(image, x, y, width, height, 0, 0, width, height);
+    ctx.restore();
 
-        // Sauvegarder le contexte
-        ctx.save();
-
-        // Centre du canvas
-        const centerX = outputSize / 2;
-        const centerY = outputSize / 2;
-
-        // Appliquer les transformations
-        ctx.translate(centerX, centerY);
-        ctx.rotate((imageEditor.rotation * Math.PI) / 180);
-        ctx.scale(imageEditor.scale, imageEditor.scale);
-
-        // Calculer la taille de l'image redimensionnée
-        const imgAspectRatio = img.width / img.height;
-        let drawWidth = outputSize;
-        let drawHeight = outputSize;
-
-        if (imgAspectRatio > 1) {
-          drawHeight = outputSize / imgAspectRatio;
-        } else {
-          drawWidth = outputSize * imgAspectRatio;
-        }
-
-        // Dessiner l'image centrée avec les ajustements
-        ctx.drawImage(
-          img,
-          -drawWidth / 2 + imageEditor.x * 0.5,
-          -drawHeight / 2 + imageEditor.y * 0.5,
-          drawWidth,
-          drawHeight
-        );
-
-        // Restaurer le contexte
-        ctx.restore();
-
-        // Convertir en blob
-        canvas.toBlob(resolve, 'image/jpeg', 0.9);
-      };
-      img.src = originalImageUrl;
+    return await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.9);
     });
-  }, [originalImageUrl, imageEditor]);
+  }, [originalImageUrl, croppedAreaPixels]);
 
   const handleSaveEditedImage = async () => {
     try {
@@ -1147,30 +1124,19 @@ const VendorAccountPage: React.FC = () => {
                 {/* Zone d'aperçu circulaire style WhatsApp */}
                 <div className="relative w-80 h-80 bg-gray-100 rounded-full overflow-hidden border-4 border-gray-200 shadow-xl">
                   {originalImageUrl && (
-                    <div
-                      className="absolute inset-0 cursor-move"
-                      onMouseDown={handleImageMouseDown}
-                      onMouseMove={handleImageMouseMove}
-                      onMouseUp={handleImageMouseUp}
-                      onMouseLeave={handleImageMouseUp}
-                    >
-                      <img
-                        ref={imageRef}
-                        src={originalImageUrl}
-                        alt="Aperçu"
-                        className="absolute inset-0 w-full h-full object-cover select-none"
-                        style={{
-                          transform: `
-                            translate(${imageEditor.x}px, ${imageEditor.y}px)
-                            scale(${imageEditor.scale})
-                            rotate(${imageEditor.rotation}deg)
-                          `,
-                          transformOrigin: 'center',
-                          cursor: imageEditor.isDragging ? 'grabbing' : 'grab'
-                        }}
-                        draggable={false}
-                      />
-                    </div>
+                    <Cropper
+                      image={originalImageUrl}
+                      crop={crop}
+                      zoom={zoom}
+                      rotation={rotation}
+                      aspect={1}
+                      cropShape="round"
+                      showGrid={false}
+                      onCropChange={setCrop}
+                      onZoomChange={setZoom}
+                      onRotationChange={setRotation}
+                      onCropComplete={onCropComplete}
+                    />
                   )}
 
                   {/* Overlay avec instructions */}
@@ -1194,17 +1160,17 @@ const VendorAccountPage: React.FC = () => {
                     Zoom
                   </Label>
                   <span className="text-sm text-gray-500 font-mono">
-                    {Math.round(imageEditor.scale * 100)}%
+                    {Math.round(zoom * 100)}%
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
                   <ZoomOut className="h-4 w-4 text-gray-400" />
                   <Slider
-                    value={[imageEditor.scale]}
-                    onValueChange={handleScaleChange}
+                    value={[zoom]}
+                    onValueChange={(v) => setZoom(v[0] || 1)}
                     min={0.5}
                     max={3}
-                    step={0.1}
+                    step={0.05}
                     className="flex-1"
                   />
                   <ZoomIn className="h-4 w-4 text-gray-400" />
@@ -1220,7 +1186,7 @@ const VendorAccountPage: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleRotationChange}
+                  onClick={() => setRotation((r) => (r + 90) % 360)}
                   className="text-sm font-medium"
                 >
                   <RotateCw className="h-4 w-4 mr-2" />
@@ -1233,13 +1199,7 @@ const VendorAccountPage: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setImageEditor({
-                    scale: 1,
-                    rotation: 0,
-                    x: 0,
-                    y: 0,
-                    isDragging: false
-                  })}
+                  onClick={() => { setZoom(1); setRotation(0); setCrop({ x: 0, y: 0 }); }}
                   className="text-sm font-medium text-gray-600"
                 >
                   Réinitialiser
