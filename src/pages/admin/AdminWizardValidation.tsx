@@ -99,13 +99,13 @@ const AdminWizardValidation: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 bg-purple-500 rounded"></span>
               <span className="text-sm">
-                {products.filter(p => p.isWizardProduct).length} Produits WIZARD
+                {stats?.wizardProducts || products.filter(p => p.isWizardProduct).length} Produits WIZARD
               </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 bg-blue-500 rounded"></span>
               <span className="text-sm">
-                {products.filter(p => !p.isWizardProduct).length} Produits Traditionnels
+                {stats?.traditionalProducts || products.filter(p => !p.isWizardProduct).length} Produits Traditionnels
               </span>
             </div>
           </div>

@@ -4,7 +4,7 @@ export interface VendorProduct {
   id: number;
   vendorName: string;
   vendorDescription: string;
-  vendorPrice: number;
+  vendorPrice?: number; // Optionnel car pas toujours présent
   vendorStock: number;
   status: 'PENDING' | 'DRAFT' | 'PUBLISHED';
   isValidated: boolean;
@@ -18,11 +18,21 @@ export interface VendorProduct {
   isWizardProduct: boolean;
   productType: 'WIZARD' | 'TRADITIONAL';
   hasDesign: boolean;
+  adminValidated: boolean | null; // null = pas concerné, false = en attente, true = validé
   adminProductName?: string; // Nom du produit de base
   baseProduct?: {
     id: number;
     name: string;
   };
+
+  // ✅ Images spécifiques pour produits WIZARD
+  vendorImages?: Array<{
+    id: number;
+    imageType: 'base' | 'detail' | 'reference' | 'admin_reference';
+    cloudinaryUrl: string;
+    colorName?: string;
+    colorCode?: string;
+  }>;
 
   vendor: {
     id: number;
@@ -47,8 +57,8 @@ export interface ProductStats {
   validated: number;
   rejected: number;
   total: number;
-  wizardCount?: number;
-  traditionalCount?: number;
+  wizardProducts?: number; // Nombre de produits WIZARD
+  traditionalProducts?: number; // Nombre de produits traditionnels
 }
 
 export interface AdminValidationResponse {
@@ -56,6 +66,14 @@ export interface AdminValidationResponse {
   message: string;
   data: {
     products: VendorProduct[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNext: boolean;
+      hasPrevious: boolean;
+    };
     stats: ProductStats;
   };
 }

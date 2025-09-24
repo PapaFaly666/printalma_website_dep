@@ -31,48 +31,51 @@ interface ProductCardProps {
 
 const AdminProductValidation: React.FC = () => {
   const [products, setProducts] = useState<ProductWithValidation[]>([]);
-  const [pagination, setPagination] = useState({ 
-    currentPage: 1, 
-    totalPages: 1, 
-    totalItems: 0, 
-    itemsPerPage: 20 
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 20
   });
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<ProductWithValidation | null>(null);
-  const [validation, setValidation] = useState<{ approved: boolean | null, reason: string }>({ 
-    approved: null, 
-    reason: '' 
+  const [validation, setValidation] = useState<{ approved: boolean | null, reason: string }>({
+    approved: null,
+    reason: ''
   });
   const [processing, setProcessing] = useState(false);
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res: PaginatedResponse<ProductWithValidation> = await productValidationService.getPendingProducts({ 
-        page: pagination.currentPage, 
-        limit: 20, 
-        search 
+      const res = await productValidationService.getPendingProducts({
+        page: pagination.currentPage,
+        limit: 20,
+        search
       });
-      
-      // Correction: Vérification plus robuste de la structure de réponse
-      if (res && res.data) {
-        if (Array.isArray(res.data)) {
-          setProducts(res.data);
-        } else if ((res.data as any).items && Array.isArray((res.data as any).items)) {
-          setProducts((res.data as any).items);
-        } else {
-          setProducts([]);
-        }
-        
-        // Correction: Gestion plus sûre de la pagination
-        if ((res.data as any).pagination) {
+
+      console.log('🔍 Réponse reçue:', res);
+
+      // Structure attendue: { success: true, data: { products: [], pagination: {}, stats: {} } }
+      if (res && res.success && res.data) {
+        const products = res.data.products || [];
+        console.log('📦 Produits extraits:', products.length, products);
+
+        setProducts(products);
+
+        // Gestion de la pagination
+        if (res.data.pagination) {
           setPagination(prev => ({
             ...prev,
-            ...(res.data as any).pagination
+            currentPage: res.data.pagination.currentPage,
+            totalPages: res.data.pagination.totalPages,
+            totalItems: res.data.pagination.totalItems,
+            itemsPerPage: res.data.pagination.itemsPerPage
           }));
         }
       } else {
+        console.log('❌ Structure de réponse inattendue:', res);
         setProducts([]);
       }
     } catch (e: any) {
@@ -107,17 +110,17 @@ const AdminProductValidation: React.FC = () => {
       toast.error('Données de validation incomplètes');
       return;
     }
-    
+
     if (!validation.approved && !validation.reason.trim()) {
       toast.error('Veuillez entrer une raison de rejet.');
       return;
     }
-    
+
     setProcessing(true);
     try {
       await productValidationService.validateProduct(
-        selectedProduct.id, 
-        validation.approved, 
+        selectedProduct.id,
+        validation.approved,
         validation.reason
       );
       toast.success(`Produit ${validation.approved ? 'approuvé' : 'rejeté'} !`);
@@ -151,18 +154,18 @@ const AdminProductValidation: React.FC = () => {
     </Card>
   );
 
-  const ProductCard: React.FC<ProductCardProps> = ({ 
-    product, 
-    onViewProduct, 
-    onApprove, 
-    onReject 
+  const ProductCard: React.FC<ProductCardProps> = ({
+    product,
+    onViewProduct,
+    onApprove,
+    onReject
   }) => {
     // Correction: Vérification plus robuste pour détecter les produits WIZARD
-    const isWizardProduct = !product.designId || 
-                           product.designId === null || 
-                           product.designId === 0 || 
+    const isWizardProduct = !product.designId ||
+                           product.designId === null ||
+                           product.designId === 0 ||
                            product.designId === undefined;
-    
+
     // Image principale à afficher
     const getMainImage = (): string | null => {
       try {
@@ -201,8 +204,8 @@ const AdminProductValidation: React.FC = () => {
     const safeCategories = Array.isArray(categories) ? categories : [];
 
     return (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }} 
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
       >
@@ -244,21 +247,21 @@ const AdminProductValidation: React.FC = () => {
             </div>
 
             <div className="absolute top-2 right-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="bg-white/80 hover:bg-white/90 text-gray-700 h-8 w-8 p-0" 
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-white/80 hover:bg-white/90 text-gray-700 h-8 w-8 p-0"
                 onClick={() => onViewProduct(product)}
               >
                 <Eye className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          
+
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start justify-between">
               <h3 className="font-semibold text-gray-900 truncate flex-1 text-sm">
-                {product.name || 'Nom non défini'}
+                {product.vendorName || product.name || 'Nom non défini'}
               </h3>
               {product.vendorImages && Array.isArray(product.vendorImages) && product.vendorImages.length > 0 && (
                 <span className="text-xs text-gray-500 ml-2">
@@ -269,15 +272,22 @@ const AdminProductValidation: React.FC = () => {
 
             <div className="text-sm text-gray-600 flex items-center">
               <DollarSign className="h-3 w-3 mr-1" />
-              {product.price ? product.price.toLocaleString() : '0'} FCFA
+              {product.vendorPrice ? product.vendorPrice.toLocaleString() : '0'} FCFA
             </div>
+
+            {/* Description du vendeur */}
+            {product.vendorDescription && (
+              <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                📝 {product.vendorDescription}
+              </div>
+            )}
 
             {/* Informations spécifiques selon le type */}
             {isWizardProduct ? (
               <div className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
                 📦 Produit de base: {
-                  product.adminProductName || 
-                  product.baseProduct?.name || 
+                  product.adminProductName ||
+                  product.baseProduct?.name ||
                   'Non défini'
                 }
               </div>
@@ -316,18 +326,18 @@ const AdminProductValidation: React.FC = () => {
             </div>
 
             <div className="space-y-2 pt-2">
-              <Button 
-                className="w-full bg-green-600 text-white hover:bg-green-700" 
-                size="sm" 
+              <Button
+                className="w-full bg-green-600 text-white hover:bg-green-700"
+                size="sm"
                 onClick={() => onApprove(product)}
               >
                 <Check className="h-3 w-3 mr-1" />
                 Approuver
               </Button>
-              <Button 
-                className="w-full" 
-                variant="destructive" 
-                size="sm" 
+              <Button
+                className="w-full"
+                variant="destructive"
+                size="sm"
                 onClick={() => onReject(product)}
               >
                 <X className="h-3 w-3 mr-1" />
@@ -348,9 +358,9 @@ const AdminProductValidation: React.FC = () => {
             <h1 className="text-4xl font-bold text-black">Validation des Produits</h1>
             <p className="text-gray-600 mt-1">Examiner et valider les produits créés par les vendeurs</p>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={fetchProducts} 
+          <Button
+            variant="outline"
+            onClick={fetchProducts}
             disabled={loading}
             className="flex items-center gap-2"
           >
@@ -358,40 +368,40 @@ const AdminProductValidation: React.FC = () => {
             Actualiser
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <StatsCard 
-            title="Total en attente" 
-            value={pagination.totalItems} 
-            icon={<Package className="h-6 w-6" />} 
+          <StatsCard
+            title="Total en attente"
+            value={pagination.totalItems}
+            icon={<Package className="h-6 w-6" />}
           />
-          <StatsCard 
-            title="Sur cette page" 
-            value={products?.length ?? 0} 
-            icon={<Eye className="h-6 w-6" />} 
+          <StatsCard
+            title="Sur cette page"
+            value={products?.length ?? 0}
+            icon={<Eye className="h-6 w-6" />}
           />
-          <StatsCard 
-            title="Action requise" 
-            value={(products?.length ?? 0) > 0 ? 'Oui' : 'Non'} 
-            icon={<AlertTriangle className="h-6 w-6 text-yellow-600" />} 
+          <StatsCard
+            title="Action requise"
+            value={(products?.length ?? 0) > 0 ? 'Oui' : 'Non'}
+            icon={<AlertTriangle className="h-6 w-6 text-yellow-600" />}
           />
         </div>
-        
+
         <div className="mb-6 max-w-md relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input 
-            placeholder="Rechercher par nom..." 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
-            className="pl-10" 
+          <Input
+            placeholder="Rechercher par nom..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
           />
         </div>
-        
+
         <AnimatePresence mode="wait">
           {loading ? (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="flex items-center justify-center py-12"
             >
@@ -401,15 +411,15 @@ const AdminProductValidation: React.FC = () => {
               </div>
             </motion.div>
           ) : (products?.length ?? 0) > 0 ? (
-            <motion.div 
-              className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
-              initial={{ opacity: 0 }} 
+            <motion.div
+              className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
               {products.map(product => (
-                <ProductCard 
-                  key={product.id} 
+                <ProductCard
+                  key={product.id}
                   product={product}
                   onViewProduct={setSelectedProduct}
                   onApprove={(product) => {
@@ -424,9 +434,9 @@ const AdminProductValidation: React.FC = () => {
               ))}
             </motion.div>
           ) : (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="text-center py-12"
             >
@@ -443,14 +453,14 @@ const AdminProductValidation: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Validation produit</DialogTitle>
               <DialogDescription>
-                {selectedProduct?.name || 'Produit sans nom'}
+                {selectedProduct?.vendorName || selectedProduct?.name || 'Produit sans nom'}
               </DialogDescription>
             </DialogHeader>
-            
+
             {selectedProduct && (() => {
-              const isWizardProduct = !selectedProduct.designId || 
-                                     selectedProduct.designId === null || 
-                                     selectedProduct.designId === 0 || 
+              const isWizardProduct = !selectedProduct.designId ||
+                                     selectedProduct.designId === null ||
+                                     selectedProduct.designId === 0 ||
                                      selectedProduct.designId === undefined;
 
               return (
@@ -472,9 +482,9 @@ const AdminProductValidation: React.FC = () => {
                   </div>
 
                   {/* Galerie d'images pour produits WIZARD */}
-                  {isWizardProduct && 
-                   selectedProduct.vendorImages && 
-                   Array.isArray(selectedProduct.vendorImages) && 
+                  {isWizardProduct &&
+                   selectedProduct.vendorImages &&
+                   Array.isArray(selectedProduct.vendorImages) &&
                    selectedProduct.vendorImages.length > 0 && (
                     <div className="space-y-3">
                       <Label className="font-medium">
@@ -500,9 +510,10 @@ const AdminProductValidation: React.FC = () => {
                               }}
                             />
                             <div className="absolute bottom-1 left-1 px-1 py-0.5 bg-black/60 text-white text-xs rounded">
-                              {image.imageType === 'base' ? 'Principal' : 
-                               image.imageType === 'detail' ? 'Détail' : 
-                               image.imageType === 'reference' ? 'Référence' : 'Autre'}
+                              {image.imageType === 'base' ? 'Principal' :
+                               image.imageType === 'detail' ? 'Détail' :
+                               image.imageType === 'reference' ? 'Référence' :
+                               image.imageType === 'admin_reference' ? 'Admin' : 'Autre'}
                             </div>
                             {image.colorName && (
                               <div className="absolute top-1 right-1 px-1 py-0.5 bg-white/80 text-xs rounded flex items-center gap-1">
@@ -521,29 +532,58 @@ const AdminProductValidation: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Description du vendeur */}
+                  {selectedProduct.vendorDescription && (
+                    <div className="bg-blue-50 p-3 rounded">
+                      <Label className="font-medium text-blue-700">Description</Label>
+                      <p className="text-sm mt-1">{selectedProduct.vendorDescription}</p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <Label className="font-medium">Prix</Label>
-                      <p>{(selectedProduct.price || 0).toLocaleString()} FCFA</p>
+                      <Label className="font-medium">Prix vendeur</Label>
+                      <p className="text-lg font-semibold text-green-600">
+                        {selectedProduct.vendorPrice ? selectedProduct.vendorPrice.toLocaleString() : '0'} FCFA
+                      </p>
                     </div>
+                    <div>
+                      <Label className="font-medium">Stock</Label>
+                      <p>{selectedProduct.vendorStock || 0} unités</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <Label className="font-medium">
                         {isWizardProduct ? 'Produit de base' : 'Catégories'}
                       </Label>
                       <p className="text-sm">
                         {isWizardProduct ? (
-                          selectedProduct.adminProductName || 
-                          selectedProduct.baseProduct?.name || 
+                          selectedProduct.adminProductName ||
+                          selectedProduct.baseProduct?.name ||
                           'Non défini'
                         ) : (
                           (() => {
                             const categories = (selectedProduct as any).categories || [];
                             const safeCategories = Array.isArray(categories) ? categories : [];
-                            return safeCategories.length > 0 
+                            return safeCategories.length > 0
                               ? safeCategories.map((c: any) => typeof c === 'string' ? c : (c?.name || '')).filter(Boolean).join(', ')
                               : '—';
                           })()
                         )}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="font-medium">Statut</Label>
+                      <p className={`text-sm ${
+                        selectedProduct.status === 'DRAFT' ? 'text-gray-600' :
+                        selectedProduct.status === 'PUBLISHED' ? 'text-green-600' :
+                        'text-orange-600'
+                      }`}>
+                        {selectedProduct.status === 'DRAFT' ? 'Brouillon' :
+                         selectedProduct.status === 'PUBLISHED' ? 'Publié' :
+                         selectedProduct.status}
                       </p>
                     </div>
                   </div>
@@ -564,9 +604,9 @@ const AdminProductValidation: React.FC = () => {
                   {validation.approved === false && (
                     <div className="space-y-2">
                       <Label htmlFor="rejection-reason">Raison du rejet *</Label>
-                      <Textarea 
+                      <Textarea
                         id="rejection-reason"
-                        value={validation.reason} 
+                        value={validation.reason}
                         onChange={(e) => setValidation({...validation, reason: e.target.value})}
                         placeholder="Expliquez pourquoi ce produit est rejeté..."
                         className="min-h-[80px]"
@@ -576,15 +616,15 @@ const AdminProductValidation: React.FC = () => {
                 </div>
               );
             })()}
-            
+
             <DialogFooter className="flex gap-2">
               <Button variant="outline" onClick={handleCloseModal}>
                 Annuler
               </Button>
               {validation.approved !== null && (
-                <Button 
-                  onClick={handleValidate} 
-                  disabled={processing || (validation.approved === false && !validation.reason.trim())} 
+                <Button
+                  onClick={handleValidate}
+                  disabled={processing || (validation.approved === false && !validation.reason.trim())}
                   className={validation.approved ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
                 >
                   {processing ? (

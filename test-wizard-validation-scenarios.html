@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Scénarios WIZARD Validation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">🧪 Test Scénarios WIZARD - Validation Admin</h1>
+
+    <!-- Résumé des comportements -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">✅ Logique Implémentée</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-red-50 p-4 rounded-lg">
+          <h3 class="font-semibold text-red-800 mb-2">❌ adminValidated: false</h3>
+          <ul class="text-sm text-red-700 space-y-1">
+            <li>• <strong>DRAFT:</strong> Bouton "En attente validation admin" (désactivé)</li>
+            <li>• <strong>PUBLISHED:</strong> Bouton "En attente validation" (désactivé)</li>
+            <li>• <strong>Badge:</strong> Pas de badge "📤 Publié"</li>
+            <li>• <strong>Actions:</strong> Aucune action possible</li>
+          </ul>
+        </div>
+
+        <div class="bg-green-50 p-4 rounded-lg">
+          <h3 class="font-semibold text-green-800 mb-2">✅ adminValidated: true</h3>
+          <ul class="text-sm text-green-700 space-y-1">
+            <li>• <strong>DRAFT:</strong> "Publier (produit personnalisé)" ✓</li>
+            <li>• <strong>PUBLISHED:</strong> "Mettre en brouillon" ✓</li>
+            <li>• <strong>Badge:</strong> "📤 Publié" affiché ✓</li>
+            <li>• <strong>Actions:</strong> Toutes les actions disponibles ✓</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scénarios de test -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibent mb-4">🎭 Scénarios de Test</h2>
+
+      <div class="space-y-6">
+        <!-- Scénario 1: DRAFT non validé -->
+        <div class="border rounded-lg p-4 bg-orange-50 border-orange-200">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Produit WIZARD DRAFT - Non validé</h3>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">🎨 Personnalisé</span>
+              <span class="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded">⏳ Validation admin</span>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">
+            <code>status: "DRAFT", adminValidated: false, isWizardProduct: true</code>
+          </p>
+          <div class="flex gap-2">
+            <button class="bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed" disabled>
+              En attente validation admin
+            </button>
+            <button class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600">
+              👁️ Aperçu
+            </button>
+          </div>
+        </div>
+
+        <!-- Scénario 2: DRAFT validé -->
+        <div class="border rounded-lg p-4 bg-green-50 border-green-200">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Produit WIZARD DRAFT - Validé</h3>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">🎨 Personnalisé</span>
+              <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">✅ Validé admin</span>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">
+            <code>status: "DRAFT", adminValidated: true, isWizardProduct: true</code>
+          </p>
+          <div class="flex gap-2">
+            <button class="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-800">
+              Publier (produit personnalisé)
+            </button>
+            <button class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600">
+              👁️ Aperçu
+            </button>
+          </div>
+        </div>
+
+        <!-- Scénario 3: PUBLISHED non validé -->
+        <div class="border rounded-lg p-4 bg-orange-50 border-orange-200">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Produit WIZARD PUBLISHED - Non validé</h3>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">🎨 Personnalisé</span>
+              <span class="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded">⏳ Validation admin</span>
+              <!-- Pas de badge "Publié" car adminValidated: false -->
+            </div>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">
+            <code>status: "PUBLISHED", adminValidated: false, isWizardProduct: true</code>
+          </p>
+          <div class="flex gap-2">
+            <button class="bg-gray-300 text-gray-400 px-4 py-2 rounded cursor-not-allowed" disabled>
+              En attente validation
+            </button>
+            <button class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600">
+              👁️ Aperçu
+            </button>
+          </div>
+        </div>
+
+        <!-- Scénario 4: PUBLISHED validé -->
+        <div class="border rounded-lg p-4 bg-green-50 border-green-200">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Produit WIZARD PUBLISHED - Validé</h3>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">🎨 Personnalisé</span>
+              <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">✅ Validé admin</span>
+              <span class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">📤 Publié</span>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">
+            <code>status: "PUBLISHED", adminValidated: true, isWizardProduct: true</code>
+          </p>
+          <div class="flex gap-2">
+            <button class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 border">
+              📄 Mettre en brouillon
+            </button>
+            <button class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600">
+              👁️ Aperçu
+            </button>
+          </div>
+        </div>
+
+        <!-- Scénario 5: Produit traditionnel (pour comparaison) -->
+        <div class="border rounded-lg p-4 bg-blue-50 border-blue-200">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Produit Traditionnel PUBLISHED</h3>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">🎯 Design</span>
+              <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">✅ Design validé</span>
+              <span class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">📤 Publié</span>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">
+            <code>status: "PUBLISHED", isWizardProduct: false, designValidated: true</code>
+          </p>
+          <div class="flex gap-2">
+            <button class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 border">
+              📄 Mettre en brouillon
+            </button>
+            <button class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600">
+              👁️ Aperçu
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fonctions logiques -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold mb-4">⚙️ Fonctions de Validation</h2>
+
+      <div class="bg-gray-100 p-4 rounded-lg">
+        <h3 class="font-medium mb-2">Logique Implémentée:</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div>
+            <strong>canPublishNow():</strong><br>
+            <code class="bg-white px-2 py-1 rounded">
+              isWizardProduct ? adminValidated === true : designValidated
+            </code>
+          </div>
+          <div>
+            <strong>canSetToDraft():</strong><br>
+            <code class="bg-white px-2 py-1 rounded">
+              isWizardProduct ? adminValidated === true : true
+            </code>
+          </div>
+          <div>
+            <strong>showPublishedBadge():</strong><br>
+            <code class="bg-white px-2 py-1 rounded">
+              status === 'PUBLISHED' && (isWizardProduct ? adminValidated === true : true)
+            </code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <h3 class="font-medium text-blue-800 mb-2">🔧 Test de Validation</h3>
+      <p class="text-sm text-blue-700">
+        <strong>Résultat attendu:</strong> Les produits WIZARD avec <code>adminValidated: true</code>
+        peuvent faire toutes les actions normales (publier, mettre en brouillon, afficher badges),
+        tandis que ceux avec <code>adminValidated: false</code> ont tous leurs boutons désactivés
+        et ne montrent pas le badge "Publié".
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -21,6 +21,11 @@ interface VendorProductFromAPI {
   originalAdminName?: string; // ✅ Nom du produit admin de base
   price: number;
   status: string;
+  isWizardProduct?: boolean; // Indique si c'est un produit WIZARD
+  adminValidated?: boolean | null; // null = pas concerné, false = en attente, true = validé
+  // ✅ Statut de validation et motif de rejet (exposés côté vendor)
+  validationStatus?: string;
+  rejectionReason?: string | null;
   adminProduct?: {
     id: number;
     name: string;
@@ -648,8 +653,8 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       }`}
       onClick={handleCardClick}
     >
-      {/* ✅ Badge type de produit */}
-      <div className="absolute top-2 left-2 z-10">
+      {/* ✅ Badge type de produit et validation WIZARD */}
+      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
         <span className={`px-2 py-1 rounded text-xs font-medium ${
           isWizardProduct
             ? 'bg-purple-100 text-purple-800 border border-purple-200'
@@ -657,7 +662,37 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
         }`}>
           {isWizardProduct ? '🎨 Personnalisé' : '🎯 Design'}
         </span>
+
+        {/* Badge de validation WIZARD */}
+        {isWizardProduct && (
+          <span className={`px-2 py-1 rounded text-xs font-medium ${
+            product.adminValidated === true
+              ? 'bg-green-100 text-green-700 border border-green-200'
+              : product.adminValidated === false
+              ? 'bg-orange-100 text-orange-700 border border-orange-200'
+              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+          }`}>
+            {product.adminValidated === true && '✅ Validé admin'}
+            {product.adminValidated === false && '⏳ Validation admin'}
+            {product.adminValidated !== true && product.adminValidated !== false && '⏳ En attente'}
+          </span>
+        )}
+
+        {/* Badge de statut publié - seulement si réellement validé (suppression redondance) */}
+        {/* Ce badge est maintenant géré par l'interface principale via getStatusText() */}
       </div>
+
+      {/* ✅ Motif de rejet si présent */}
+      {product.rejectionReason && (
+        <div className="absolute top-2 right-2 z-10 max-w-[65%]">
+          <div
+            className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 border border-red-200 shadow-sm overflow-hidden text-ellipsis whitespace-nowrap"
+            title={`Motif du rejet: ${product.rejectionReason}`}
+          >
+            Rejeté: {product.rejectionReason}
+          </div>
+        </div>
+      )}
 
       {/* ✅ Image du produit selon le type */}
       <img

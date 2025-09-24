@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Vendeur WIZARD Validation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">🧪 Test Vendeur - Validation WIZARD</h1>
+
+    <!-- Résumé des modifications -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">✅ Modifications effectuées côté vendeur</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Logique de publication -->
+        <div class="bg-blue-50 p-4 rounded-lg">
+          <h3 class="font-semibold text-blue-800 mb-2">🔧 Logique de publication modifiée</h3>
+          <ul class="text-sm text-blue-700 space-y-1">
+            <li><strong>canPublishNow():</strong> Vérifie adminValidated === true pour WIZARD</li>
+            <li><strong>canRepublishPendingProduct():</strong> Idem pour les produits en PENDING</li>
+            <li><strong>getPublishMessage():</strong> Messages adaptés au statut de validation admin</li>
+          </ul>
+        </div>
+
+        <!-- Interface utilisateur -->
+        <div class="bg-green-50 p-4 rounded-lg">
+          <h3 class="font-semibold text-green-800 mb-2">🎨 Interface utilisateur</h3>
+          <ul class="text-sm text-green-700 space-y-1">
+            <li><strong>Badges visuels:</strong> État de validation admin</li>
+            <li><strong>Boutons désactivés:</strong> Si adminValidated !== true</li>
+            <li><strong>Messages clairs:</strong> Attente de validation admin</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Simulation des statuts WIZARD -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">🎭 Simulation des statuts WIZARD</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Produit WIZARD en attente -->
+        <div class="border rounded-lg p-4 bg-orange-50 border-orange-200">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">T-shirt Personnalisé</h3>
+            <span class="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded">⏳ Validation admin</span>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">Produit WIZARD avec images personnalisées</p>
+          <button class="w-full bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
+            En attente validation
+          </button>
+          <p class="text-xs text-center text-orange-600 mt-2">
+            adminValidated: false
+          </p>
+        </div>
+
+        <!-- Produit WIZARD validé -->
+        <div class="border rounded-lg p-4 bg-green-50 border-green-200">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Mug Photo</h3>
+            <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">✅ Validé admin</span>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">Produit WIZARD validé par l'admin</p>
+          <button class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+            Publier maintenant
+          </button>
+          <p class="text-xs text-center text-green-600 mt-2">
+            adminValidated: true
+          </p>
+        </div>
+
+        <!-- Produit traditionnel (pour comparaison) -->
+        <div class="border rounded-lg p-4 bg-blue-50 border-blue-200">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium">Polo Design</h3>
+            <span class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">✅ Design validé</span>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">Produit traditionnel avec design</p>
+          <button class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Publier maintenant
+          </button>
+          <p class="text-xs text-center text-blue-600 mt-2">
+            isWizardProduct: false
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flux de validation -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold mb-4">🔄 Nouveau flux de validation</h2>
+
+      <div class="flex items-center justify-between bg-gray-100 rounded-lg p-4">
+        <div class="flex-1">
+          <div class="flex items-center space-x-4">
+            <!-- Étape 1 -->
+            <div class="flex flex-col items-center">
+              <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">1</div>
+              <p class="text-xs mt-1 text-center">Vendeur crée<br>produit WIZARD</p>
+            </div>
+
+            <div class="w-8 h-1 bg-gray-300"></div>
+
+            <!-- Étape 2 -->
+            <div class="flex flex-col items-center">
+              <div class="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm">2</div>
+              <p class="text-xs mt-1 text-center">Admin valide<br>le produit</p>
+            </div>
+
+            <div class="w-8 h-1 bg-gray-300"></div>
+
+            <!-- Étape 3 -->
+            <div class="flex flex-col items-center">
+              <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm">3</div>
+              <p class="text-xs mt-1 text-center">Vendeur peut<br>publier</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <h3 class="font-semibold text-yellow-800 mb-2">📋 Règles de validation</h3>
+        <ul class="text-sm text-yellow-700 space-y-1">
+          <li>• <strong>Produits WIZARD :</strong> Validation admin obligatoire (adminValidated = true)</li>
+          <li>• <strong>Produits traditionnels :</strong> Validation design (comme avant)</li>
+          <li>• <strong>Boutons désactivés :</strong> Tant que la validation n'est pas accordée</li>
+          <li>• <strong>Messages clairs :</strong> État de validation affiché au vendeur</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Instructions de test -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <h3 class="font-medium text-blue-800 mb-2">🧪 Comment tester</h3>
+      <ol class="text-sm text-blue-700 space-y-1">
+        <li><strong>1.</strong> Aller sur /vendeur/products</li>
+        <li><strong>2.</strong> Vérifier que les produits WIZARD montrent les nouveaux badges</li>
+        <li><strong>3.</strong> Essayer de publier un produit WIZARD avec adminValidated = false</li>
+        <li><strong>4.</strong> Le bouton doit être désactivé avec message "En attente validation"</li>
+        <li><strong>5.</strong> Simuler adminValidated = true pour voir le bouton actif</li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>

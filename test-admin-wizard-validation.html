@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Admin WIZARD Validation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">🧪 Test Admin WIZARD Validation Interface</h1>
+
+    <!-- Status de la configuration -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">📊 Configuration actuelle</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-green-50 p-4 rounded">
+          <h3 class="font-medium text-green-800">✅ Corrections effectuées</h3>
+          <ul class="text-sm text-green-700 mt-2 space-y-1">
+            <li>• Proxy Vite: http://localhost:3004</li>
+            <li>• Endpoint: /api/admin/products/validation → /admin/products/validation</li>
+            <li>• Types adaptés aux données réelles</li>
+            <li>• Gestion du prix optionnel</li>
+          </ul>
+        </div>
+        <div class="bg-blue-50 p-4 rounded">
+          <h3 class="font-medium text-blue-800">🔍 Données attendues</h3>
+          <ul class="text-sm text-blue-700 mt-2 space-y-1">
+            <li>• 4 produits WIZARD en attente</li>
+            <li>• Images vendorImages avec types</li>
+            <li>• Pagination complète</li>
+            <li>• Statistiques par type</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test des endpoints -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">🔧 Tests des endpoints</h2>
+
+      <div class="space-y-4">
+        <div class="flex gap-4">
+          <button id="test-validation-list"
+                  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
+            📋 Test GET /api/admin/products/validation
+          </button>
+
+          <button id="test-with-filters"
+                  class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors">
+            🎨 Test avec filtre WIZARD
+          </button>
+        </div>
+
+        <div id="test-results" class="bg-gray-100 rounded p-4 min-h-32">
+          <p class="text-gray-500">Cliquez sur un bouton pour tester...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aperçu des données WIZARD -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold mb-4">🎨 Aperçu des produits WIZARD</h2>
+      <div id="wizard-products" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Les produits seront affichés ici -->
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+      <h3 class="font-medium text-yellow-800 mb-2">📝 Instructions</h3>
+      <ol class="text-sm text-yellow-700 space-y-1">
+        <li><strong>1.</strong> Assurez-vous que le backend est démarré sur localhost:3004</li>
+        <li><strong>2.</strong> Testez l'endpoint pour voir les produits WIZARD</li>
+        <li><strong>3.</strong> Vérifiez que les images s'affichent correctement</li>
+        <li><strong>4.</strong> Testez la validation d'un produit</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    const resultsDiv = document.getElementById('test-results');
+    const wizardDiv = document.getElementById('wizard-products');
+
+    function showResult(message, type = 'info') {
+      const colors = {
+        success: 'bg-green-100 text-green-800 border-green-200',
+        error: 'bg-red-100 text-red-800 border-red-200',
+        info: 'bg-blue-100 text-blue-800 border-blue-200'
+      };
+
+      const div = document.createElement('div');
+      div.className = `p-3 rounded border ${colors[type]} mb-2`;
+      div.innerHTML = message;
+      resultsDiv.appendChild(div);
+      div.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderWizardProducts(products) {
+      wizardDiv.innerHTML = '';
+
+      products.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.className = 'border rounded-lg p-4 bg-gray-50';
+
+        // Images
+        let imagesHtml = '';
+        if (product.vendorImages && product.vendorImages.length > 0) {
+          imagesHtml = `
+            <div class="mb-3">
+              <p class="text-xs text-gray-600 mb-2">Images (${product.vendorImages.length}):</p>
+              <div class="flex gap-2 flex-wrap">
+                ${product.vendorImages.slice(0, 3).map((img, idx) => `
+                  <div class="relative w-16 h-16">
+                    <img src="${img.cloudinaryUrl}" alt="Image ${idx + 1}"
+                         class="w-full h-full object-cover rounded border"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="w-full h-full bg-gray-200 rounded border hidden items-center justify-center text-xs text-gray-500">
+                      Erreur
+                    </div>
+                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded-b">
+                      ${img.imageType}
+                    </div>
+                  </div>
+                `).join('')}
+                ${product.vendorImages.length > 3 ? `<div class="w-16 h-16 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-500">+${product.vendorImages.length - 3}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }
+
+        productCard.innerHTML = `
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-semibold text-gray-900">${product.vendorName}</h3>
+            <span class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">🎨 WIZARD</span>
+          </div>
+          <p class="text-sm text-gray-600 mb-2">${product.vendorDescription}</p>
+          ${imagesHtml}
+          <div class="flex justify-between items-center text-xs text-gray-500">
+            <span>Stock: ${product.vendorStock}</span>
+            <span>ID: ${product.id}</span>
+          </div>
+          <div class="mt-2 pt-2 border-t">
+            <span class="text-sm font-medium text-gray-700">Vendeur: ${product.vendor?.shop_name || 'Non défini'}</span>
+          </div>
+        `;
+
+        wizardDiv.appendChild(productCard);
+      });
+    }
+
+    async function testValidationEndpoint() {
+      resultsDiv.innerHTML = '';
+      showResult('🔄 Test de l\\'endpoint /api/admin/products/validation...', 'info');
+
+      try {
+        const response = await fetch('/api/admin/products/validation?page=1&limit=10', {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          showResult(`✅ Succès ! ${data.data.products.length} produits récupérés`, 'success');
+          showResult(`📊 Stats: ${data.data.stats.wizardProducts} WIZARD, ${data.data.stats.traditionalProducts} traditionnels`, 'info');
+
+          if (data.data.products.length > 0) {
+            const wizardProducts = data.data.products.filter(p => p.isWizardProduct);
+            showResult(`🎨 ${wizardProducts.length} produits WIZARD trouvés`, 'success');
+            renderWizardProducts(wizardProducts);
+          }
+
+          showResult(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+        } else {
+          showResult(`❌ Erreur HTTP: ${response.status}`, 'error');
+          const text = await response.text();
+          showResult(`Détails: ${text}`, 'error');
+        }
+      } catch (error) {
+        showResult(`❌ Erreur réseau: ${error.message}`, 'error');
+      }
+    }
+
+    async function testWithWizardFilter() {
+      resultsDiv.innerHTML = '';
+      showResult('🔄 Test avec filtre productType=WIZARD...', 'info');
+
+      try {
+        const response = await fetch('/api/admin/products/validation?productType=WIZARD&page=1&limit=10', {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          showResult(`✅ Filtre WIZARD: ${data.data.products.length} produits`, 'success');
+          renderWizardProducts(data.data.products);
+        } else {
+          showResult(`❌ Erreur avec filtre: ${response.status}`, 'error');
+        }
+      } catch (error) {
+        showResult(`❌ Erreur: ${error.message}`, 'error');
+      }
+    }
+
+    document.getElementById('test-validation-list').onclick = testValidationEndpoint;
+    document.getElementById('test-with-filters').onclick = testWithWizardFilter;
+
+    // Test automatique au chargement
+    setTimeout(() => {
+      showResult('🚀 Test automatique au chargement...', 'info');
+      testValidationEndpoint();
+    }, 1000);
+  </script>
+</body>
+</html>

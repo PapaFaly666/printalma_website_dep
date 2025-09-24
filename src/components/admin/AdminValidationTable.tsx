@@ -100,9 +100,29 @@ const AdminValidationTable: React.FC<AdminValidationTableProps> = ({
                     {/* ✅ Prévisualisation selon le type */}
                     <div className="flex-shrink-0 h-12 w-12">
                       {product.isWizardProduct ? (
-                        <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <span className="text-purple-600 text-lg">🎨</span>
-                        </div>
+                        product.vendorImages && product.vendorImages.length > 0 ? (
+                          <img
+                            className="h-12 w-12 rounded-lg object-cover"
+                            src={product.vendorImages.find(img => img.imageType === 'base')?.cloudinaryUrl ||
+                                 product.vendorImages[0]?.cloudinaryUrl}
+                            alt="Image WIZARD"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent && !parent.querySelector('.fallback-icon')) {
+                                const fallbackDiv = document.createElement('div');
+                                fallbackDiv.className = 'fallback-icon h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center';
+                                fallbackDiv.innerHTML = '<span class="text-purple-600 text-lg">🎨</span>';
+                                parent.appendChild(fallbackDiv);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <span className="text-purple-600 text-lg">🎨</span>
+                          </div>
+                        )
                       ) : (
                         <img
                           className="h-12 w-12 rounded-lg object-cover"
@@ -128,13 +148,26 @@ const AdminValidationTable: React.FC<AdminValidationTableProps> = ({
                 </td>
 
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    product.isWizardProduct
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {product.isWizardProduct ? '🎨 WIZARD' : '🎯 DESIGN'}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      product.isWizardProduct
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {product.isWizardProduct ? '🎨 WIZARD' : '🎯 DESIGN'}
+                    </span>
+                    {/* Badge de validation admin pour produits WIZARD */}
+                    {product.isWizardProduct && product.adminValidated === false && (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                        ⏳ Validation requise
+                      </span>
+                    )}
+                    {product.isWizardProduct && product.adminValidated === true && (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        ✅ Validé admin
+                      </span>
+                    )}
+                  </div>
                 </td>
 
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -147,7 +180,7 @@ const AdminValidationTable: React.FC<AdminValidationTableProps> = ({
                 </td>
 
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {product.vendorPrice ? product.vendorPrice.toLocaleString() : '0'} FCFA
+                  {product.vendorPrice ? product.vendorPrice.toLocaleString() : 'Prix non défini'} {product.vendorPrice ? 'FCFA' : ''}
                 </td>
 
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

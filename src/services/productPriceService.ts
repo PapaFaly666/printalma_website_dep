@@ -285,7 +285,7 @@ class ProductPriceService {
     productsWithSuggestedPrice: number;
   }> {
     try {
-      const { data } = await this.api.get('/admin/price-statistics');
+      const { data } = await this.api.get('/api/admin/price-statistics');
       return data.data;
     } catch (error: any) {
       console.warn('❌ Impossible de récupérer les statistiques de prix:', error.message);

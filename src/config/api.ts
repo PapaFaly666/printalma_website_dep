@@ -56,10 +56,10 @@ export const API_ENDPOINTS = {
     // 🆕 NOUVEAUX ENDPOINTS STATISTIQUES ÉTENDUES
     VENDORS_STATS_BY_COUNTRY: '/auth/admin/vendors/stats-by-country',
     // 🆕 ENDPOINTS COMMISSION VENDEURS
-    VENDOR_COMMISSION: (id: number) => `/admin/vendors/${id}/commission`,
-    VENDORS_COMMISSIONS: '/admin/vendors/commissions',
-    COMMISSION_STATS: '/admin/commission-stats',
-    VENDOR_COMMISSION_HISTORY: (id: number) => `/admin/vendors/${id}/commission/history`
+    VENDOR_COMMISSION: (id: number) => `/api/admin/vendors/${id}/commission`,
+    VENDORS_COMMISSIONS: '/api/admin/vendors/commissions',
+    COMMISSION_STATS: '/api/admin/commission-stats',
+    VENDOR_COMMISSION_HISTORY: (id: number) => `/api/admin/vendors/${id}/commission/history`
   },
   VENDOR: {
     // 🆕 ENDPOINT POUR QUE LE VENDEUR VOIT SA PROPRE COMMISSION

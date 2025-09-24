@@ -22,9 +22,9 @@ export default defineConfig({
     // Configuration du proxy pour les requêtes API
     proxy: {
       '/api': {
-        target: 'https://printalma-back-dep.onrender.com',
+        target: 'http://localhost:3004',
         changeOrigin: true,
-        secure: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {

@@ -151,6 +151,10 @@ interface VendorProductFromAPI {
   designId: number | null; // ✅ null pour produits wizard, number pour produits avec design
   isDelete?: boolean; // Optionnel pour compatibilité
 
+  // ✅ Champs pour la validation admin des produits WIZARD
+  isWizardProduct?: boolean; // Indique si c'est un produit WIZARD
+  adminValidated?: boolean | null; // null = pas concerné, false = en attente, true = validé
+
   // 🆕 Informations du design
   design?: {
     id: number;
@@ -401,6 +405,17 @@ export const VendorProductsPage: React.FC = () => {
 
       // ✅ TRANSFORMATION : Adapter les données pour l'affichage avec mockups
       const transformedProducts = apiProducts.map((product: any, index: number) => {
+        // 🔍 DEBUG: Vérifier les données WIZARD brutes avant transformation
+        if (product.isWizardProduct || product.adminValidated !== undefined) {
+          console.log(`🔍 RAW WIZARD DATA - Produit ${product.id}:`, {
+            isWizardProduct: product.isWizardProduct,
+            adminValidated: product.adminValidated,
+            adminValidatedType: typeof product.adminValidated,
+            status: product.status,
+            designId: product.designId
+          });
+        }
+
         // 🔍 Extraire le statut de validation avec la fonction helper
         const designValidationStatus = extractDesignValidationStatus(product);
 
@@ -497,6 +512,10 @@ export const VendorProductsPage: React.FC = () => {
           selectedColors: product.selectedColors || [],
           designId: product.designId || 0,
           isDelete: product.isDelete || false,
+
+          // 🆕 WIZARD VALIDATION FIELDS (MANQUANTS !)
+          isWizardProduct: product.isWizardProduct ?? false,
+          adminValidated: product.adminValidated,
 
           // 🆕 Inclure les informations du design
           design: product.design ? {
@@ -682,31 +701,48 @@ export const VendorProductsPage: React.FC = () => {
 
   // 🆕 Helper pour déterminer si un produit peut être publié directement
   const canPublishNow = (product: VendorProductFromAPI): boolean => {
-    // Un produit peut être publié directement si :
-    // 1. Il a un design ET
-    // 2. Le design est validé
-    if (!product.designApplication.hasDesign) {
-      return false;
-    }
+    // ✅ Détection WIZARD - Priorité à isWizardProduct si présent, sinon fallback sur designId
+    const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
 
-    const validationStatus = validationStatuses[product.id];
-    return validationStatus?.isValidated === true && validationStatus?.validationStatus === 'validated';
+    // 🔍 DEBUG: Log pour identifier le problème
+    console.log(`🔍 canPublishNow - Produit ${product.id}:`, {
+      isWizardProduct,
+      adminValidated: product.adminValidated,
+      status: product.status,
+      designId: product.designId,
+      hasDesign: product.designApplication.hasDesign
+    });
+
+    if (isWizardProduct) {
+      // 🎨 PRODUITS WIZARD: doivent attendre validation admin du PRODUIT
+      // Un produit WIZARD ne peut être publié que si adminValidated === true
+      const canPublish = product.adminValidated === true;
+      console.log(`🎨 WIZARD canPublish: ${canPublish} (adminValidated: ${product.adminValidated})`);
+      return canPublish;
+    } else {
+      // 🖼 PRODUITS AVEC DESIGN: utilisent la validation du design
+      if (!product.designApplication.hasDesign) {
+        return false;
+      }
+
+      const validationStatus = validationStatuses[product.id];
+      return validationStatus?.isValidated === true && validationStatus?.validationStatus === 'validated';
+    }
   };
 
-  // 🆕 Helper pour déterminer si un produit PENDING peut être republié
+  // ✅ Helper pour déterminer si un produit PENDING peut être republié
   const canRepublishPendingProduct = (product: VendorProductFromAPI): boolean => {
     if (product.status !== 'PENDING') {
       return true; // Les produits non-PENDING peuvent être publiés normalement
     }
 
-    // ✅ Détection WIZARD
-    const isWizardProduct = !product.designId || product.designId === null || product.designId === 0;
+    // ✅ Détection WIZARD - Priorité à isWizardProduct si présent, sinon fallback sur designId
+    const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
 
     if (isWizardProduct) {
       // 🎨 PRODUITS WIZARD: doivent attendre validation admin du PRODUIT
-      // Pour l'instant, on bloque tous les produits WIZARD en PENDING
-      // Le backend devra fournir le statut de validation du produit (pas du design)
-      return false; // Bloqué jusqu'à validation admin
+      // Un produit WIZARD en PENDING ne peut être republié que si adminValidated === true
+      return product.adminValidated === true;
     } else {
       // 🎯 PRODUITS TRADITIONAL: doivent attendre validation admin du DESIGN
       const validationStatus = validationStatuses[product.id];
@@ -714,21 +750,48 @@ export const VendorProductsPage: React.FC = () => {
     }
   };
 
-  // 🆕 Obtenir le message d'info pour un produit selon son statut de validation
+  // 🆕 Fonction pour vérifier si un produit WIZARD peut être mis en brouillon
+  const canSetToDraft = (product: VendorProductFromAPI): boolean => {
+    // ✅ Détection WIZARD - Priorité à isWizardProduct si présent, sinon fallback sur designId
+    const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
+
+    // 🔍 DEBUG: Log pour identifier le problème
+    console.log(`🔍 canSetToDraft - Produit ${product.id}:`, {
+      isWizardProduct,
+      adminValidated: product.adminValidated,
+      status: product.status
+    });
+
+    if (isWizardProduct) {
+      // Un produit WIZARD publié ne peut être mis en brouillon que si adminValidated === true
+      const canDraft = product.adminValidated === true;
+      console.log(`🎨 WIZARD canSetToDraft: ${canDraft} (adminValidated: ${product.adminValidated})`);
+      return canDraft;
+    } else {
+      // Pour les produits traditionnels, pas de restriction
+      return true;
+    }
+  };
+
+  // ✅ Obtenir le message d'info pour un produit selon son statut de validation
   const getPublishMessage = (product: VendorProductFromAPI): string => {
-    // ✅ Détection WIZARD
-    const isWizardProduct = !product.designId || product.designId === null || product.designId === 0;
+    // ✅ Détection WIZARD - Priorité à isWizardProduct si présent, sinon fallback sur designId
+    const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
 
     if (isWizardProduct) {
       // 🎨 PRODUITS WIZARD: validation du produit par l'admin
-      if (product.status === 'PENDING') {
+      if (product.adminValidated === true) {
+        return 'Produit validé par l\'admin - Prêt à publier';
+      } else if (product.adminValidated === false) {
         return 'Produit en attente de validation par l\'admin';
+      } else if (product.status === 'PENDING') {
+        return 'Produit soumis - En attente de validation admin';
       } else if (product.status === 'PUBLISHED') {
         return 'Produit validé et publié';
       } else if (product.status === 'REJECTED') {
         return 'Produit rejeté par l\'admin';
       } else {
-        return 'Produit en brouillon - Prêt à soumettre';
+        return 'Produit en brouillon - Validation admin requise';
       }
     }
 
@@ -770,9 +833,25 @@ export const VendorProductsPage: React.FC = () => {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, product?: VendorProductFromAPI) => {
     switch (status) {
-      case 'PUBLISHED': return 'Publié';
+      case 'PUBLISHED': {
+        if (product) {
+          // Vérifier si le produit est réellement validé avant d'afficher "Publié"
+          const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
+
+          if (isWizardProduct) {
+            // Produit WIZARD : vérifier adminValidated
+            return product.adminValidated === true ? 'Publié' : 'En attente validation';
+          } else {
+            // Produit traditionnel : vérifier validation du design
+            const validationStatus = validationStatuses[product.id];
+            const isDesignValidated = validationStatus?.isValidated === true && validationStatus?.validationStatus === 'validated';
+            return isDesignValidated ? 'Publié' : 'En attente validation';
+          }
+        }
+        return 'Publié'; // Fallback si pas de produit fourni
+      }
       case 'PENDING': return 'En attente';
       case 'DRAFT': return 'Brouillon';
       case 'REJECTED': return 'Rejeté';
@@ -1056,7 +1135,7 @@ export const VendorProductsPage: React.FC = () => {
                           variant="outline"
                           className={`font-medium text-xs ${getStatusBadgeStyle(product.status)}`}
                         >
-                          {getStatusText(product.status)}
+                          {getStatusText(product.status, product)}
                         </Badge>
                       </div>
                     </div>
@@ -1105,23 +1184,48 @@ export const VendorProductsPage: React.FC = () => {
                           {product.price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FCFA
                         </div>
                       <div className="flex items-center gap-2">
-                          {/* 🆕 Badge de validation du design */}
-                          {product.designApplication.hasDesign && validationStatuses[product.id] && (
-                            <Badge
-                              variant="outline"
-                              className={`text-xs ${
-                                validationStatuses[product.id].validationStatus === 'validated'
-                                  ? 'border-green-400 text-green-700 bg-green-50'
-                                  : validationStatuses[product.id].validationStatus === 'rejected'
-                                  ? 'border-red-400 text-red-700 bg-red-50'
-                                  : 'border-amber-400 text-amber-700 bg-amber-50'
-                              }`}
-                            >
-                              {validationStatuses[product.id].validationStatus === 'validated' && '✅ Validé'}
-                              {validationStatuses[product.id].validationStatus === 'pending' && '⏳ En attente'}
-                              {validationStatuses[product.id].validationStatus === 'rejected' && '❌ Rejeté'}
-                            </Badge>
-                          )}
+                          {/* ✅ Badge de validation WIZARD ou TRADITIONAL */}
+                          {(() => {
+                            const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
+
+                            if (isWizardProduct) {
+                              // Badge pour produits WIZARD basé sur adminValidated
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    product.adminValidated === true
+                                      ? 'border-green-400 text-green-700 bg-green-50'
+                                      : product.adminValidated === false
+                                      ? 'border-orange-400 text-orange-700 bg-orange-50'
+                                      : 'border-purple-400 text-purple-700 bg-purple-50'
+                                  }`}
+                                >
+                                  {product.adminValidated === true && '✅ Validé admin'}
+                                  {product.adminValidated === false && '⏳ Validation admin'}
+                                  {product.adminValidated !== true && product.adminValidated !== false && '🎨 WIZARD'}
+                                </Badge>
+                              );
+                            } else {
+                              // Badge pour produits TRADITIONAL basé sur la validation du design
+                              return product.designApplication.hasDesign && validationStatuses[product.id] && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    validationStatuses[product.id].validationStatus === 'validated'
+                                      ? 'border-green-400 text-green-700 bg-green-50'
+                                      : validationStatuses[product.id].validationStatus === 'rejected'
+                                      ? 'border-red-400 text-red-700 bg-red-50'
+                                      : 'border-amber-400 text-amber-700 bg-amber-50'
+                                  }`}
+                                >
+                                  {validationStatuses[product.id].validationStatus === 'validated' && '✅ Design validé'}
+                                  {validationStatuses[product.id].validationStatus === 'pending' && '⏳ Design en attente'}
+                                  {validationStatuses[product.id].validationStatus === 'rejected' && '❌ Design rejeté'}
+                                </Badge>
+                              );
+                            }
+                          })()}
                         </div>
                       </div>
                       
@@ -1155,15 +1259,44 @@ export const VendorProductsPage: React.FC = () => {
                           <Button
                             size="sm"
                             onClick={() => handleSetToDraft(product.id)}
+                            disabled={!canSetToDraft(product)}
                             variant="outline"
-                            className="flex-1 border-gray-400 text-gray-700 hover:bg-gray-50 font-medium"
+                            className={`flex-1 font-medium ${
+                              canSetToDraft(product)
+                                ? 'border-gray-400 text-gray-700 hover:bg-gray-50'
+                                : 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
+                            }`}
                           >
                             <Save className="w-4 h-4 mr-2" />
-                            Mettre en brouillon
+                            {canSetToDraft(product) ? 'Mettre en brouillon' : 'En attente validation'}
                           </Button>
                         )}
 
-                        {(product.status === 'PENDING' || (!product.designApplication.hasDesign && product.status !== 'PUBLISHED')) && (
+                        {/* Produits DRAFT WIZARD sans design - nécessitent validation admin */}
+                        {product.status === 'DRAFT' && !product.designApplication.hasDesign && (product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0)) && (
+                          <div className="flex-1 flex flex-col gap-1">
+                            <Button
+                              size="sm"
+                              onClick={() => handlePublish(product.id)}
+                              disabled={!canPublishNow(product)}
+                              className={`w-full font-medium ${
+                                canPublishNow(product)
+                                  ? 'bg-gray-900 hover:bg-gray-800 text-white'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              {canPublishNow(product) ? 'Publier (produit personnalisé)' : 'En attente validation admin'}
+                            </Button>
+                            <span className={`text-xs text-center px-2 ${
+                              canPublishNow(product) ? 'text-green-600' : 'text-orange-600'
+                            }`}>
+                              {getPublishMessage(product)}
+                            </span>
+                          </div>
+                        )}
+
+                        {(product.status === 'PENDING' || (!product.designApplication.hasDesign && product.status !== 'PUBLISHED' && !(product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0)))) && (
                           <div className="flex-1 flex flex-col gap-1">
                             <Button
                               size="sm"
@@ -1176,10 +1309,19 @@ export const VendorProductsPage: React.FC = () => {
                               }`}
                             >
                               <CheckCircle className="w-4 h-4 mr-2" />
-                              {product.status === 'PENDING' && !canRepublishPendingProduct(product)
-                                ? 'En attente de validation'
-                                : (product.designApplication.hasDesign ? 'Publier' : 'Publier (sans design)')
-                              }
+                              {(() => {
+                                const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
+
+                                if (product.status === 'PENDING' && !canRepublishPendingProduct(product)) {
+                                  return isWizardProduct ? 'En attente validation admin' : 'En attente de validation';
+                                }
+
+                                if (isWizardProduct) {
+                                  return 'Publier (produit personnalisé)';
+                                } else {
+                                  return product.designApplication.hasDesign ? 'Publier' : 'Publier (sans design)';
+                                }
+                              })()}
                             </Button>
                             {product.status === 'PENDING' && product.designApplication.hasDesign && (
                               <span className={`text-xs text-center px-2 ${
@@ -1269,7 +1411,7 @@ export const VendorProductsPage: React.FC = () => {
                               variant="outline"
                               className={`font-medium ${getStatusBadgeStyle(products.find(p => p.id === selectedProductId)?.status || 'DRAFT')}`}
                             >
-                              {getStatusText(products.find(p => p.id === selectedProductId)?.status || 'DRAFT')}
+                              {getStatusText(products.find(p => p.id === selectedProductId)?.status || 'DRAFT', products.find(p => p.id === selectedProductId))}
                             </Badge>
                           </div>
                         </div>
@@ -1371,15 +1513,46 @@ export const VendorProductsPage: React.FC = () => {
                                 handleSetToDraft(selectedProductId);
                                 setIsPreviewOpen(false);
                               }}
+                              disabled={!canSetToDraft(product)}
                               variant="outline"
-                              className="border-gray-400 text-gray-700 hover:bg-gray-50 font-medium"
+                              className={`font-medium ${
+                                canSetToDraft(product)
+                                  ? 'border-gray-400 text-gray-700 hover:bg-gray-50'
+                                  : 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
+                              }`}
                             >
                               <Save className="w-4 h-4 mr-2" />
-                              Mettre en brouillon
+                              {canSetToDraft(product) ? 'Mettre en brouillon' : 'En attente validation'}
                             </Button>
                           )}
 
-                          {(product.status === 'PENDING' || (!product.designApplication.hasDesign && product.status !== 'PUBLISHED')) && (
+                          {/* Produits DRAFT WIZARD sans design - nécessitent validation admin */}
+                          {product.status === 'DRAFT' && !product.designApplication.hasDesign && (product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0)) && (
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                onClick={() => {
+                                  handlePublish(selectedProductId);
+                                  setIsPreviewOpen(false);
+                                }}
+                                disabled={!canPublishNow(product)}
+                                className={`font-medium ${
+                                  canPublishNow(product)
+                                    ? 'bg-gray-900 hover:bg-gray-800 text-white'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                {canPublishNow(product) ? 'Publier (produit personnalisé)' : 'En attente validation admin'}
+                              </Button>
+                              <span className={`text-xs text-center px-2 ${
+                                canPublishNow(product) ? 'text-green-600' : 'text-orange-600'
+                              }`}>
+                                {getPublishMessage(product)}
+                              </span>
+                            </div>
+                          )}
+
+                          {(product.status === 'PENDING' || (!product.designApplication.hasDesign && product.status !== 'PUBLISHED' && !(product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0)))) && (
                             <div className="flex flex-col gap-2">
                               <Button
                                 onClick={() => {
@@ -1394,10 +1567,19 @@ export const VendorProductsPage: React.FC = () => {
                                 }`}
                               >
                                 <CheckCircle className="w-4 h-4 mr-2" />
-                                {product.status === 'PENDING' && !canRepublishPendingProduct(product)
-                                  ? 'En attente de validation'
-                                  : (product.designApplication.hasDesign ? 'Publier' : 'Publier (sans design)')
-                                }
+                                {(() => {
+                                  const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
+
+                                  if (product.status === 'PENDING' && !canRepublishPendingProduct(product)) {
+                                    return isWizardProduct ? 'En attente validation admin' : 'En attente de validation';
+                                  }
+
+                                  if (isWizardProduct) {
+                                    return 'Publier (produit personnalisé)';
+                                  } else {
+                                    return product.designApplication.hasDesign ? 'Publier' : 'Publier (sans design)';
+                                  }
+                                })()}
                               </Button>
                               {product.status === 'PENDING' && product.designApplication.hasDesign && (
                                 <span className={`text-xs text-center px-2 ${
@@ -1482,7 +1664,7 @@ export const VendorProductsPage: React.FC = () => {
                       )}
                       <div className="flex items-center gap-4 mt-2">
                         <Badge variant="outline" className={`${getStatusBadgeStyle(selectedProductForDetails.status)}`}>
-                          {getStatusText(selectedProductForDetails.status)}
+                          {getStatusText(selectedProductForDetails.status, selectedProductForDetails)}
                         </Badge>
                         <span className="text-2xl font-bold text-gray-900">
                           {selectedProductForDetails.price.toLocaleString()} FCFA

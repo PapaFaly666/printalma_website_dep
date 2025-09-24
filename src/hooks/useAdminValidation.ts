@@ -36,11 +36,28 @@ export const useAdminValidation = ({ filters }: UseAdminValidationProps = {}) =>
         isWizardProduct: true,
         productType: "WIZARD",
         hasDesign: false,
+        adminValidated: false,
         adminProductName: "T-shirt Blanc Classique",
         baseProduct: {
           id: 34,
           name: "T-shirt Blanc Classique"
         },
+        vendorImages: [
+          {
+            id: 45,
+            imageType: "base",
+            cloudinaryUrl: "https://res.cloudinary.com/demo/image/upload/family-tshirt-white.jpg",
+            colorName: "Blanc",
+            colorCode: "#FFFFFF"
+          },
+          {
+            id: 46,
+            imageType: "detail",
+            cloudinaryUrl: "https://res.cloudinary.com/demo/image/upload/family-tshirt-detail.jpg",
+            colorName: "Blanc",
+            colorCode: "#FFFFFF"
+          }
+        ],
         vendor: {
           id: 7,
           firstName: "John",
@@ -64,6 +81,7 @@ export const useAdminValidation = ({ filters }: UseAdminValidationProps = {}) =>
         isWizardProduct: false,
         productType: "TRADITIONAL",
         hasDesign: true,
+        adminValidated: null, // Produits traditionnels = null (pas concernés par validation admin)
         adminProductName: "Polo",
         baseProduct: {
           id: 12,
@@ -92,11 +110,21 @@ export const useAdminValidation = ({ filters }: UseAdminValidationProps = {}) =>
         isWizardProduct: true,
         productType: "WIZARD",
         hasDesign: false,
+        adminValidated: false,
         adminProductName: "Mug Blanc Standard",
         baseProduct: {
           id: 56,
           name: "Mug Blanc Standard"
         },
+        vendorImages: [
+          {
+            id: 47,
+            imageType: "base",
+            cloudinaryUrl: "https://res.cloudinary.com/demo/image/upload/mug-photo-travel.jpg",
+            colorName: "Blanc",
+            colorCode: "#FFFFFF"
+          }
+        ],
         vendor: {
           id: 9,
           firstName: "Marie",
@@ -130,8 +158,8 @@ export const useAdminValidation = ({ filters }: UseAdminValidationProps = {}) =>
       validated: 15,
       rejected: 3,
       total: mockProducts.length + 15 + 3,
-      wizardCount: mockProducts.filter(p => p.isWizardProduct).length,
-      traditionalCount: mockProducts.filter(p => !p.isWizardProduct).length
+      wizardProducts: mockProducts.filter(p => p.isWizardProduct).length,
+      traditionalProducts: mockProducts.filter(p => !p.isWizardProduct).length
     };
 
     return { products: filteredProducts, stats: mockStats };
@@ -154,7 +182,7 @@ export const useAdminValidation = ({ filters }: UseAdminValidationProps = {}) =>
         queryParams.append('status', filters.status);
       }
 
-      const url = `${API_CONFIG.BASE_URL}/admin/pending-products?${queryParams}`;
+      const url = `${API_CONFIG.BASE_URL}/admin/products/validation?${queryParams}`;
       console.log('🔄 Tentative de récupération depuis:', url);
 
       const response = await fetch(url, {
@@ -213,11 +241,11 @@ export const useAdminValidation = ({ filters }: UseAdminValidationProps = {}) =>
     try {
       if (!useMockData) {
         // ✅ TENTATIVE DE VALIDATION VIA BACKEND
-        const url = `${API_CONFIG.BASE_URL}/admin/validate-product/${productId}`;
+        const url = `${API_CONFIG.BASE_URL}/admin/products/${productId}/validate`;
         console.log(`🔄 Tentative de validation via backend - Produit ${productId}: ${approved ? 'APPROUVÉ' : 'REJETÉ'}`);
 
         const response = await fetch(url, {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },

@@ -50,12 +50,62 @@ const AdminProductCard: React.FC<AdminProductCardProps> = ({ product, onValidate
         <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-purple-600 font-medium">🎨 Produit WIZARD</span>
+            {product.adminValidated === false && (
+              <span className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded">
+                ⏳ Validation requise
+              </span>
+            )}
+            {product.adminValidated === true && (
+              <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
+                ✅ Validé
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-700 mb-2">
             <strong>Produit de base:</strong> {product.adminProductName || product.baseProduct?.name || 'Non défini'}
           </p>
+
+          {/* Affichage des images WIZARD */}
+          {product.vendorImages && product.vendorImages.length > 0 && (
+            <div className="mb-2">
+              <p className="text-xs text-gray-600 mb-1">Images personnalisées ({product.vendorImages.length}):</p>
+              <div className="flex gap-2 flex-wrap">
+                {product.vendorImages.slice(0, 3).map((image, index) => (
+                  <div key={image.id || index} className="relative">
+                    <img
+                      src={image.cloudinaryUrl}
+                      alt={`Image ${index + 1}`}
+                      className="w-16 h-16 object-cover rounded border"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.error-placeholder')) {
+                          const placeholder = document.createElement('div');
+                          placeholder.className = 'error-placeholder w-16 h-16 bg-gray-200 rounded border flex items-center justify-center text-gray-400 text-xs';
+                          placeholder.textContent = 'Erreur';
+                          parent.appendChild(placeholder);
+                        }
+                      }}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs px-1 py-0.5 rounded-b">
+                      {image.imageType === 'base' ? 'Principal' :
+                       image.imageType === 'detail' ? 'Détail' :
+                       image.imageType === 'reference' ? 'Référence' : 'Autre'}
+                    </div>
+                  </div>
+                ))}
+                {product.vendorImages.length > 3 && (
+                  <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center text-gray-500 text-xs">
+                    +{product.vendorImages.length - 3}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <p className="text-sm text-gray-600">
-            ℹ️ Ce produit utilise des images personnalisées fournies par le vendeur (pas de design à valider)
+            ℹ️ Ce produit utilise des images personnalisées fournies par le vendeur
           </p>
         </div>
       ) : (
@@ -83,7 +133,7 @@ const AdminProductCard: React.FC<AdminProductCardProps> = ({ product, onValidate
         <p className="text-gray-700 mb-2">{product.vendorDescription}</p>
         <div className="flex justify-between items-center">
           <span className="text-lg font-semibold text-gray-900">
-            {product.vendorPrice ? product.vendorPrice.toLocaleString() : '0'} FCFA
+            {product.vendorPrice ? `${product.vendorPrice.toLocaleString()} FCFA` : 'Prix non défini'}
           </span>
           <span className="text-sm text-gray-500">
             Stock: {product.vendorStock || 0}
