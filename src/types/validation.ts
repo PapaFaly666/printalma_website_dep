@@ -65,6 +65,30 @@ export interface ProductWithValidation {
   rejectionReason?: string;
   images?: string[];
   baseProductId: number;
+
+  // ✅ Support pour produits WIZARD
+  isWizardProduct?: boolean;
+  productType?: 'WIZARD' | 'TRADITIONAL';
+  hasDesign?: boolean;
+  vendorImages?: Array<{
+    id: number;
+    imageType: 'base' | 'detail' | 'admin_reference';
+    cloudinaryUrl: string;
+    colorName?: string;
+    colorCode?: string;
+  }>;
+  adminProductName?: string;
+  baseProduct?: {
+    id: number;
+    name: string;
+  };
+  vendor?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    shop_name?: string;
+  };
 }
 
 export interface VendorProductWithValidation {

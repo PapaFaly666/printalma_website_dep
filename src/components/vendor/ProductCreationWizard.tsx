@@ -29,6 +29,8 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { useWizardProductUpload, WizardCalculations, type WizardProductData, type WizardImages } from '../../hooks/useWizardProductUpload';
 import { API_CONFIG } from '../../config/api';
 import { designCategoryService, DesignCategory } from '../../services/designCategoryService';
+import commissionService from '../../services/commissionService';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Types pour les étapes du workflow
 interface MockupProduct {
@@ -96,6 +98,7 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadProduct, loading: uploadLoading, error: uploadError, progress, validateWizardData } = useWizardProductUpload();
+  const { isAuthenticated, user } = useAuth();
 
   // État du wizard
   const [currentStep, setCurrentStep] = useState(1);
@@ -130,11 +133,41 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
   const [designCategories, setDesignCategories] = useState<DesignCategory[]>([]);
   const [designCategoriesLoading, setDesignCategoriesLoading] = useState(false);
 
+  // États pour la commission du vendeur (comme dans SellDesignPage)
+  const [vendorCommission, setVendorCommission] = useState<number | null>(null);
+  const [commissionLoading, setCommissionLoading] = useState(false);
+
   // Charger les mockups disponibles et les catégories de design
   React.useEffect(() => {
     loadMockups();
     loadDesignCategories();
   }, []);
+
+  // Charger la commission du vendeur (comme dans SellDesignPage) - séparé pour auth
+  React.useEffect(() => {
+    const loadVendorCommission = async () => {
+      if (isAuthenticated && user?.role === 'VENDEUR') {
+        setCommissionLoading(true);
+        try {
+          const commission = await commissionService.getMyCommission();
+          setVendorCommission(commission.commissionRate || 70); // Par défaut 70% comme dans le wizard
+
+          console.log('✅ Commission vendeur chargée pour wizard:', commission);
+
+          if (commission.isDefault) {
+            console.warn('⚠️ Utilisation de la commission par défaut (70%) - Endpoint backend manquant?');
+          }
+        } catch (error) {
+          console.error('❌ Erreur lors du chargement de la commission pour wizard:', error);
+          setVendorCommission(70); // Valeur par défaut pour wizard
+        } finally {
+          setCommissionLoading(false);
+        }
+      }
+    };
+
+    loadVendorCommission();
+  }, [isAuthenticated, user?.role]);
 
   // Filtrer les mockups
   React.useEffect(() => {
@@ -207,18 +240,27 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
     }
   };
 
-  // Calculer le revenu attendu basé sur le bénéfice vendeur
+  // Calculer le revenu attendu basé sur le bénéfice vendeur avec la vraie commission
   React.useEffect(() => {
-    if (formData.productPrice > 0 && formData.basePrice > 0) {
-      const profit = WizardCalculations.calculateVendorProfit(formData.productPrice, formData.basePrice);
-      const expectedRevenue = WizardCalculations.calculateExpectedRevenue(profit);
+    if (formData.productPrice > 0 && formData.basePrice > 0 && vendorCommission !== null) {
+      const profit = Math.max(0, WizardCalculations.calculateVendorProfit(formData.productPrice, formData.basePrice));
+      // Utiliser la vraie commission du vendeur au lieu du 70% codé en dur
+      const vendorRate = vendorCommission / 100;
+      const expectedRevenue = Math.max(0, Math.round(profit * vendorRate));
       setFormData(prev => ({
         ...prev,
         vendorProfit: profit,
         expectedRevenue
       }));
+    } else {
+      // Si les prix ne sont pas valides, mettre des valeurs par défaut positives
+      setFormData(prev => ({
+        ...prev,
+        vendorProfit: 0,
+        expectedRevenue: 0
+      }));
     }
-  }, [formData.productPrice, formData.basePrice]);
+  }, [formData.productPrice, formData.basePrice, vendorCommission]);
 
   // Gérer la sélection d'un mockup et initialiser le prix
   React.useEffect(() => {
@@ -241,9 +283,11 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
     return WizardCalculations.calculateMinimumPrice(formData.basePrice);
   };
 
-  // Calculer le revenu du vendeur (70% du bénéfice comme dans SellDesignPage)
+  // Calculer le revenu du vendeur avec la vraie commission (comme dans SellDesignPage)
   const calculateVendorRevenue = (): number => {
-    return WizardCalculations.calculateExpectedRevenue(formData.vendorProfit);
+    if (vendorCommission === null) return 0;
+    const vendorRate = vendorCommission / 100;
+    return Math.round(formData.vendorProfit * vendorRate);
   };
 
   const nextStep = () => {
@@ -293,8 +337,8 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
           toast.error('Le thème sélectionné n\'est plus disponible');
           return false;
         }
-        if (formData.selectedColors.length === 0) {
-          toast.error('Veuillez sélectionner au moins une couleur du mockup');
+        if (formData.selectedColors.length !== 1) {
+          toast.error('Veuillez sélectionner exactement une couleur du mockup');
           return false;
         }
         if (formData.selectedSizes.length === 0) {
@@ -318,6 +362,20 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
     if (!fileList) return;
 
     const files = Array.from(fileList);
+    const currentImageCount = formData.productImages.length;
+    const maxImages = 6; // 1 image de base + 5 images de détail
+
+    // Vérifier la limite d'images
+    if (currentImageCount + files.length > maxImages) {
+      const remainingSlots = maxImages - currentImageCount;
+      if (remainingSlots <= 0) {
+        toast.error('Maximum 6 images autorisées (1 image principale + 5 images de détail)');
+        return;
+      } else {
+        toast.error(`Vous ne pouvez ajouter que ${remainingSlots} image(s) de plus (maximum 6 images au total)`);
+        return;
+      }
+    }
 
     // Validation des fichiers
     for (const file of files) {
@@ -339,6 +397,14 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
     // Organiser en colonnes (max 4 par colonne)
     organizeImagesInColumns(updatedImages);
+
+    // Afficher un message informatif sur le nombre d'images restantes
+    const remainingSlots = maxImages - updatedImages.length;
+    if (remainingSlots > 0) {
+      toast.success(`${files.length} image(s) ajoutée(s). Vous pouvez encore ajouter ${remainingSlots} image(s).`);
+    } else {
+      toast.success(`${files.length} image(s) ajoutée(s). Limite maximale atteinte (6 images).`);
+    }
   };
 
   const organizeImagesInColumns = (images: File[]) => {
@@ -422,7 +488,7 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
         selectedMockupName: formData.selectedMockup?.name
       });
 
-      const result = await uploadProduct(wizardData, wizardImages);
+      const result = await uploadProduct(wizardData, wizardImages, vendorCommission || 70);
 
       if (result.success) {
         toast.success(`Produit ${action === 'TO_PUBLISHED' ? 'publié' : 'sauvegardé'} avec succès !`);
@@ -554,11 +620,13 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
                 >
                   <CardContent className="p-4">
                     {mockup.colorVariations[0]?.images[0] && (
-                      <img
-                        src={mockup.colorVariations[0].images[0].url}
-                        alt={mockup.name}
-                        className="w-full h-32 object-cover rounded-md mb-3"
-                      />
+                      <div className="w-full h-32 bg-gray-50 rounded-md mb-3 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={mockup.colorVariations[0].images[0].url}
+                          alt={mockup.name}
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
                     )}
                     <h3 className="font-semibold text-sm mb-1">{mockup.name}</h3>
                     <p className="text-xs text-gray-600 mb-2 line-clamp-2">{mockup.description}</p>
@@ -607,71 +675,139 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="productPrice">
-                {formData.isPriceCustomized ? 'Prix de vente personnalisé' : 'Prix de vente suggéré'} (FCFA) *
-              </Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="productPrice"
-                  type="number"
-                  min={formData.basePrice > 0 ? getMinimumPrice() : 0}
-                  value={formData.productPrice}
-                  onChange={(e) => {
-                    const newPrice = parseFloat(e.target.value) || 0;
-                    const initialSuggestedPrice = formData.selectedMockup?.suggestedPrice || (formData.basePrice * 1.1);
-                    setFormData(prev => ({
-                      ...prev,
-                      productPrice: newPrice,
-                      isPriceCustomized: newPrice !== initialSuggestedPrice
-                    }));
-                  }}
-                  placeholder={formData.basePrice > 0 ? (formData.selectedMockup?.suggestedPrice || getMinimumPrice()).toString() : "5000"}
-                  className="pl-10"
-                />
+          {/* Système de pricing avancé inspiré de SellDesignPage */}
+          <div className="space-y-4">
+            {formData.basePrice > 0 && (
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <div className="text-xs text-blue-700">
+                  <span className="font-medium">💡 MARGE RECOMMANDÉE:</span> Il est conseillé de vendre au minimum à prix de revient + 10%
+                  <br />
+                  <span className="text-blue-600">
+                    Prix de revient {formData.basePrice.toLocaleString()} FCFA → Prix recommandé: {getMinimumPrice().toLocaleString()} FCFA
+                  </span>
+                </div>
               </div>
-              {formData.basePrice > 0 && (
-                <div className="mt-2 space-y-1">
-                  {/* Informations sur le système de prix comme SellDesignPage */}
-                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <div className="text-xs text-blue-700">
-                      <span className="font-medium">💡 MARGE RECOMMANDÉE:</span> Il est conseillé de vendre au minimum à prix de revient + 10%
-                      <br />
-                      <span className="text-blue-600">
-                        Prix de revient {formData.basePrice.toLocaleString()} FCFA → Prix recommandé: {getMinimumPrice().toLocaleString()} FCFA
-                      </span>
-                    </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Prix de vente */}
+              <div className="space-y-2">
+                <Label htmlFor="productPrice" className="text-sm font-medium text-blue-800">
+                  {formData.isPriceCustomized ? 'Prix de vente personnalisé' : 'Prix de vente suggéré'} (FCFA) *
+                </Label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-blue-400" />
+                    <Input
+                      id="productPrice"
+                      type="number"
+                      step="100"
+                      min={formData.basePrice > 0 ? getMinimumPrice() : 0}
+                      value={formData.productPrice}
+                      onChange={(e) => {
+                        const newPrice = parseFloat(e.target.value) || 0;
+                        const initialSuggestedPrice = formData.selectedMockup?.suggestedPrice || (formData.basePrice * 1.1);
+                        const newProfit = Math.max(0, newPrice - formData.basePrice);
+                        setFormData(prev => ({
+                          ...prev,
+                          productPrice: newPrice,
+                          vendorProfit: newProfit,
+                          isPriceCustomized: newPrice !== initialSuggestedPrice
+                        }));
+                      }}
+                      placeholder={formData.basePrice > 0 ? (formData.selectedMockup?.suggestedPrice || getMinimumPrice()).toString() : "5000"}
+                      className="pl-10 border-blue-300 focus:border-blue-500"
+                    />
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Prix de revient (mockup) : {formData.basePrice.toLocaleString()} FCFA
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Bénéfice vendeur : {formData.vendorProfit.toLocaleString()} FCFA
-                  </p>
-                  {formData.isPriceCustomized && (
-                    <p className="text-xs text-blue-600 font-medium">
-                      💡 Vous avez personnalisé le prix
-                    </p>
-                  )}
+                  <span className="text-sm text-blue-600 font-medium">FCFA</span>
                 </div>
-              )}
-            </div>
-            <div>
-              <Label>Votre revenu estimé (FCFA)</Label>
-              <div className="p-3 bg-green-50 border border-green-200 rounded-md space-y-1">
-                <div className="text-lg font-semibold text-green-700">
-                  {formData.expectedRevenue.toLocaleString()} FCFA
+                {formData.basePrice > 0 && formData.productPrice < getMinimumPrice() && (
+                  <div className="text-xs text-red-600">
+                    ⚠️ Prix inférieur au minimum recommandé ({getMinimumPrice().toLocaleString()} FCFA)
+                  </div>
+                )}
+              </div>
+
+              {/* Bénéfice */}
+              <div className="space-y-2">
+                <Label htmlFor="vendorProfit" className="text-sm font-medium text-green-700">
+                  Votre bénéfice (FCFA)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="vendorProfit"
+                    type="number"
+                    step="100"
+                    min="0"
+                    value={formData.vendorProfit}
+                    onChange={(e) => {
+                      const newProfit = parseFloat(e.target.value) || 0;
+                      const newPrice = formData.basePrice + newProfit;
+                      const initialSuggestedPrice = formData.selectedMockup?.suggestedPrice || (formData.basePrice * 1.1);
+                      setFormData(prev => ({
+                        ...prev,
+                        vendorProfit: newProfit,
+                        productPrice: newPrice,
+                        isPriceCustomized: newPrice !== initialSuggestedPrice
+                      }));
+                    }}
+                    className="border-green-300 focus:border-green-500"
+                  />
+                  <span className="text-sm text-green-600 font-medium">FCFA</span>
                 </div>
-                <div className="text-xs text-green-600">
-                  70% de votre bénéfice ({formData.vendorProfit.toLocaleString()} FCFA)
-                </div>
-                <div className="text-xs text-gray-500">
-                  Commission plateforme : 30%
-                </div>
+                {formData.basePrice > 0 && (
+                  <div className="text-xs text-gray-500">
+                    Marge: {formData.basePrice > 0 ? ((formData.vendorProfit / formData.basePrice) * 100).toFixed(1) : 0}%
+                    {formData.vendorProfit < (formData.basePrice * 0.1) && formData.basePrice > 0 && (
+                      <span className="text-orange-600 ml-1">⚠️ Marge faible (moins de 10%)</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Résumé financier */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <div className="text-xs text-gray-600 mb-1">Prix de revient</div>
+                <div className="font-semibold text-gray-800">
+                  {formData.basePrice.toLocaleString()} FCFA
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <div className="text-xs text-blue-600 mb-1">Prix de vente</div>
+                <div className="font-semibold text-blue-800">
+                  {formData.productPrice.toLocaleString()} FCFA
+                </div>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                <div className="text-xs text-green-600 mb-1">
+                  Votre revenu {vendorCommission !== null ? `(${vendorCommission}%)` : ''}
+                  {commissionLoading && <span className="animate-pulse">...</span>}
+                </div>
+                <div className="font-semibold text-green-700">
+                  {Math.max(0, formData.expectedRevenue).toLocaleString()} FCFA
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Commission plateforme : {vendorCommission !== null ? (100 - vendorCommission) : 30}%
+                </div>
+                {formData.expectedRevenue < 0 && (
+                  <div className="text-xs text-red-600 mt-1">
+                    ⚠️ Prix de vente trop bas
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {formData.isPriceCustomized && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <p className="text-xs text-purple-700 font-medium">
+                  💡 Vous avez personnalisé le prix de vente
+                </p>
+              </div>
+            )}
           </div>
 
           <div>
@@ -727,12 +863,12 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
                     onClick={() => setFormData(prev => ({ ...prev, selectedTheme: category.id.toString() }))}
                   >
                     {/* Image de couverture du thème */}
-                    <div className="relative h-24 bg-gray-100">
+                    <div className="relative h-24 bg-gray-100 flex items-center justify-center overflow-hidden">
                       {category.coverImageUrl ? (
                         <img
                           src={category.coverImageUrl}
                           alt={`Thème ${category.name}`}
-                          className="w-full h-full object-cover"
+                          className="max-w-full max-h-full object-contain"
                           onError={(e) => {
                             // Si l'image ne se charge pas, on affiche le fallback
                             const target = e.target as HTMLImageElement;
@@ -766,7 +902,6 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
                     {/* Informations du thème */}
                     <div className="p-3">
                       <p className="text-center text-sm font-medium text-gray-900 mb-1">{category.name}</p>
-                      <p className="text-center text-xs text-gray-500">{category.designCount} designs disponibles</p>
                       {category.description && (
                         <p className="text-center text-xs text-gray-400 mt-1 line-clamp-2">{category.description}</p>
                       )}
@@ -779,49 +914,71 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
 
           {/* Sélection des couleurs */}
           <div>
-            <Label className="text-base font-semibold">Couleurs disponibles *</Label>
+            <Label className="text-base font-semibold">Couleur disponible *</Label>
+            <p className="text-sm text-gray-600 mt-1 mb-3">Choisissez une seule couleur pour votre produit</p>
             {formData.selectedMockup ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                {formData.selectedMockup.colorVariations.map(color => (
-                  <div
-                    key={color.id}
-                    className={`cursor-pointer p-3 rounded-lg border-2 transition-all ${
-                      formData.selectedColors.some(c => c.id === color.id) ?
-                      'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => {
-                      const isSelected = formData.selectedColors.some(c => c.id === color.id);
-                      if (isSelected) {
-                        setFormData(prev => ({
-                          ...prev,
-                          selectedColors: prev.selectedColors.filter(c => c.id !== color.id)
-                        }));
-                      } else {
-                        setFormData(prev => ({
-                          ...prev,
-                          selectedColors: [...prev.selectedColors, {
-                            id: color.id,
-                            name: color.name,
-                            colorCode: color.colorCode
-                          }]
-                        }));
-                      }
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-full border-2 border-gray-300"
-                        style={{ backgroundColor: color.colorCode }}
-                      />
-                      <div>
-                        <span className="text-sm font-medium">{color.name}</span>
-                        <div className="text-xs text-gray-500">
-                          {color.images?.length || 0} image(s)
+                {formData.selectedMockup.colorVariations.map(color => {
+                  const isSelected = formData.selectedColors.some(c => c.id === color.id);
+                  const hasAnySelection = formData.selectedColors.length > 0;
+                  const isDisabled = hasAnySelection && !isSelected;
+
+                  return (
+                    <div
+                      key={color.id}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        isSelected ?
+                        'border-blue-600 bg-blue-50 ring-2 ring-blue-200' :
+                        isDisabled ?
+                        'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed' :
+                        'border-gray-200 hover:border-gray-300 cursor-pointer'
+                      }`}
+                      onClick={() => {
+                        if (isDisabled) return;
+
+                        if (isSelected) {
+                          // Déselectionner la couleur actuelle
+                          setFormData(prev => ({
+                            ...prev,
+                            selectedColors: []
+                          }));
+                        } else {
+                          // Sélectionner cette couleur uniquement
+                          setFormData(prev => ({
+                            ...prev,
+                            selectedColors: [{
+                              id: color.id,
+                              name: color.name,
+                              colorCode: color.colorCode
+                            }]
+                          }));
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <div
+                            className="w-8 h-8 rounded-full border-2 border-gray-300"
+                            style={{ backgroundColor: color.colorCode }}
+                          />
+                          {isSelected && (
+                            <div className="absolute -top-1 -right-1 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center">
+                              <span className="text-xs">✓</span>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <span className={`text-sm font-medium ${isDisabled ? 'text-gray-400' : 'text-gray-900'}`}>
+                            {color.name}
+                          </span>
+                          <div className={`text-xs ${isDisabled ? 'text-gray-300' : 'text-gray-500'}`}>
+                            {color.images?.length || 0} image(s)
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-gray-500 mt-3 text-sm italic">
@@ -831,7 +988,7 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
             {formData.selectedColors.length > 0 && (
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-green-700">
-                  ✅ {formData.selectedColors.length} couleur(s) sélectionnée(s)
+                  ✅ Couleur sélectionnée: <strong>{formData.selectedColors[0].name}</strong>
                 </p>
               </div>
             )}
@@ -896,12 +1053,40 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
             Upload de vos images
           </CardTitle>
           <p className="text-sm text-gray-600 mt-2">
-            La première image sera votre <span className="font-semibold text-gray-900">image principale</span>, les autres seront des images de détail
+            La première image sera votre <span className="font-semibold text-gray-900">image principale</span>, les autres seront des images de détail.
+            <span className="font-semibold text-blue-600"> Maximum 6 images</span> (1 principale + 5 détail).
           </p>
         </CardHeader>
         <CardContent className="pt-6">
+          {/* Indicateur de limite d'images */}
+          {formData.productImages.length > 0 && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-blue-700">
+                  📸 Images uploadées: {formData.productImages.length}/6
+                </span>
+                <span className="text-xs text-blue-600">
+                  {6 - formData.productImages.length > 0
+                    ? `${6 - formData.productImages.length} image(s) restante(s)`
+                    : 'Limite atteinte'
+                  }
+                </span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(formData.productImages.length / 6) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Zone d'upload */}
-          <div className="border-2 border-dashed border-gray-300 hover:border-gray-900 transition-colors rounded-lg p-8 text-center mb-6">
+          <div className={`border-2 border-dashed transition-colors rounded-lg p-8 text-center mb-6 ${
+            formData.productImages.length >= 6
+              ? 'border-gray-200 bg-gray-50'
+              : 'border-gray-300 hover:border-gray-900'
+          }`}>
             <input
               ref={fileInputRef}
               type="file"
@@ -917,15 +1102,20 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
                   type="button"
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors"
+                  disabled={formData.productImages.length >= 6}
+                  className={`transition-colors ${
+                    formData.productImages.length >= 6
+                      ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+                      : 'border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
+                  }`}
                 >
-                  Sélectionner des images
+                  {formData.productImages.length >= 6 ? 'Limite atteinte (6/6)' : 'Sélectionner des images'}
                 </Button>
                 <p className="text-sm text-gray-500 mt-3">
-                  PNG, JPG, WebP jusqu'à 5MB chacune • Maximum 16 images
+                  PNG, JPG, WebP jusqu'à 5MB chacune • Maximum 6 images
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  La première image = Image principale • Les autres = Galerie
+                  La première image = Image principale • Les autres = Images de détail (max 5)
                 </p>
               </div>
             </div>
@@ -970,7 +1160,7 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
                     <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
                     <h3 className="text-lg font-semibold text-gray-900">Images de détail</h3>
                     <Badge variant="outline" className="border-gray-400 text-gray-600">Galerie</Badge>
-                    <span className="text-sm text-gray-500">({formData.productImages.length - 1} images)</span>
+                    <span className="text-sm text-gray-500">({formData.productImages.length - 1}/5 images)</span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                     {formData.productImages.slice(1).map((image, index) => {
@@ -1244,7 +1434,10 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
               <div className="flex items-center justify-between text-sm mt-1">
                 <span className="text-gray-600">Commission plateforme:</span>
                 <span className="text-gray-900">
-                  {WizardCalculations.calculatePlatformCommission(formData.vendorProfit).toLocaleString()} FCFA (30%)
+                  {vendorCommission !== null ?
+                    Math.round(formData.vendorProfit * (100 - vendorCommission) / 100).toLocaleString() :
+                    WizardCalculations.calculatePlatformCommission(formData.vendorProfit).toLocaleString()
+                  } FCFA ({vendorCommission !== null ? (100 - vendorCommission) : 30}%)
                 </span>
               </div>
             </div>

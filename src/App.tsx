@@ -100,8 +100,9 @@ import { ProductListModernPage } from './pages/admin/ProductListModernPage';
 
 // Admin Design Validation
 import { AdminDesignValidation } from './pages/admin/AdminDesignValidation';
-import { AdminProductValidation } from './pages/admin/AdminProductValidation';
+import AdminProductValidation from './pages/admin/AdminProductValidation';
 import AutoValidationDashboard from './pages/admin/AutoValidationDashboard';
+import AdminWizardValidation from './pages/admin/AdminWizardValidation';
 
 // 🎯 Démonstration du système de workflow moderne
 import WorkflowDemo from './pages/WorkflowDemo';
@@ -246,6 +247,7 @@ function App() {
                   <Route path="clients" element={<ClientManagement />} />
                   <Route path="design-validation" element={<AdminDesignValidation />} />
                   <Route path="product-validation" element={<AdminProductValidation />} />
+                  <Route path="wizard-validation" element={<AdminWizardValidation />} />
                   <Route path="auto-validation" element={<AutoValidationDashboard />} />
                   <Route path="design-categories" element={<AdminDesignCategories />} />
                   <Route path="vendor-products-admin" element={<AdminVendorProductsPage />} />

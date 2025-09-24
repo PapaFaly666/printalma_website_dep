@@ -23,6 +23,7 @@ export interface FundsRequest {
   rejectReason?: string;
   approvedDate?: string;
   requestDate: string;
+  validatedAt?: string;
   processedDate?: string;
   processedBy?: number;
   adminNote?: string;

@@ -51,6 +51,7 @@ import {
   ProcessFundsRequest
 } from '../../services/adminFundsService';
 import { FundsRequest } from '../../services/vendorFundsService';
+import { formatDate, formatDateShort, calculateDuration } from '../../utils/dateUtils';
 
 const AdminPaymentRequestsPage: React.FC = () => {
   // États pour les données
@@ -524,11 +525,13 @@ const AdminPaymentRequestsPage: React.FC = () => {
                 <TableHeader>
                   <TableRow className="border-b border-gray-200">
                     <TableHead className="font-semibold text-gray-700">Vendeur</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Date de demande</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Date demande</TableHead>
+                    <TableHead className="font-semibold text-gray-700 hidden md:table-cell">Date validation</TableHead>
+                    <TableHead className="font-semibold text-gray-700 hidden lg:table-cell">Temps traitement</TableHead>
                     <TableHead className="font-semibold text-gray-700">Montant</TableHead>
                     <TableHead className="font-semibold text-gray-700">Méthode</TableHead>
                     <TableHead className="font-semibold text-gray-700">Statut</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Description</TableHead>
+                    <TableHead className="font-semibold text-gray-700 hidden xl:table-cell">Description</TableHead>
                     <TableHead className="font-semibold text-gray-700 text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -548,13 +551,51 @@ const AdminPaymentRequestsPage: React.FC = () => {
                           </div>
                         </div>
                       </TableCell>
+                      {/* Date de demande */}
                       <TableCell>
-                        <div className="text-sm">
-                          {adminFundsService.formatDate(request.requestDate).split(' ').slice(0, 3).join(' ')}
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">
+                            {formatDateShort(request.requestedAt || request.createdAt)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : '-'}
+                          </span>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {adminFundsService.formatDate(request.requestDate).split(' ').slice(3).join(' ')}
-                        </div>
+                      </TableCell>
+
+                      {/* Date de validation */}
+                      <TableCell className="hidden md:table-cell">
+                        {request.validatedAt ? (
+                          <div className="flex flex-col">
+                            <span className={`font-medium text-sm ${request.status === 'PAID' || request.status === 'APPROVED' ? 'text-green-700' : request.status === 'REJECTED' ? 'text-red-700' : 'text-blue-700'}`}>
+                              {formatDateShort(request.validatedAt)}
+                            </span>
+                            <span className={`text-xs ${request.status === 'PAID' || request.status === 'APPROVED' ? 'text-green-600' : request.status === 'REJECTED' ? 'text-red-600' : 'text-blue-600'}`}>
+                              {new Date(request.validatedAt).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 text-xs">
+                            <span>En attente</span>
+                          </div>
+                        )}
+                      </TableCell>
+
+                      {/* Temps de traitement */}
+                      <TableCell className="hidden lg:table-cell">
+                        {(request.requestedAt || request.createdAt) && request.validatedAt ? (
+                          <span className="text-blue-600 font-medium text-sm">
+                            {calculateDuration(request.requestedAt || request.createdAt, request.validatedAt)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">

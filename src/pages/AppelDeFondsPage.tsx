@@ -54,6 +54,7 @@ const AppelDeFondsPage: React.FC = () => {
       method: 'WAVE',
       status: 'COMPLETED',
       requestedAt: new Date('2024-01-15').toISOString(),
+      validatedAt: new Date('2024-01-15T14:30:00').toISOString(),
       processedAt: new Date('2024-01-16').toISOString(),
       notes: 'Retrait mensuel'
     },
@@ -73,8 +74,19 @@ const AppelDeFondsPage: React.FC = () => {
       method: 'BANK_TRANSFER',
       status: 'REJECTED',
       requestedAt: new Date('2024-01-10').toISOString(),
+      validatedAt: new Date('2024-01-11T16:45:00').toISOString(),
       rejectedAt: new Date('2024-01-12').toISOString(),
       rejectionReason: 'Informations bancaires incorrectes'
+    },
+    {
+      id: 4,
+      vendorId: 1,
+      amount: 125000,
+      method: 'WAVE',
+      status: 'PROCESSING',
+      requestedAt: new Date('2024-01-22').toISOString(),
+      validatedAt: new Date('2024-01-23T10:15:00').toISOString(),
+      notes: 'Demande validée par admin - En attente de paiement'
     }
   ]);
 
@@ -359,24 +371,96 @@ const AppelDeFondsPage: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 text-sm font-medium text-gray-600">Date</th>
+                  <th className="text-left py-3 text-sm font-medium text-gray-600">Date demande</th>
+                  <th className="text-left py-3 text-sm font-medium text-gray-600 hidden md:table-cell">Date validation</th>
                   <th className="text-left py-3 text-sm font-medium text-gray-600">Méthode</th>
                   <th className="text-right py-3 text-sm font-medium text-gray-600">Montant</th>
                   <th className="text-center py-3 text-sm font-medium text-gray-600">Statut</th>
-                  <th className="text-left py-3 text-sm font-medium text-gray-600 hidden sm:table-cell">Notes</th>
+                  <th className="text-left py-3 text-sm font-medium text-gray-600 hidden lg:table-cell">Notes</th>
                   <th className="text-center py-3 text-sm font-medium text-gray-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {withdrawalRequests.map((request) => (
                   <tr key={request.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    {/* Date de demande */}
                     <td className="py-3 text-sm text-gray-900">
-                      {new Date(request.requestedAt).toLocaleDateString('fr-FR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: '2-digit'
-                      })}
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {new Date(request.requestedAt).toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: '2-digit'
+                          })}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(request.requestedAt).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
                     </td>
+
+                    {/* Date de validation */}
+                    <td className="py-3 text-sm text-gray-900 hidden md:table-cell">
+                      {request.validatedAt ? (
+                        <div className="flex flex-col">
+                          <span className="font-medium text-green-700">
+                            {new Date(request.validatedAt).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: '2-digit'
+                            })}
+                          </span>
+                          <span className="text-xs text-green-600">
+                            Validée par admin
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(request.validatedAt).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      ) : request.processedAt && request.status === 'COMPLETED' ? (
+                        <div className="flex flex-col">
+                          <span className="font-medium text-blue-700">
+                            {new Date(request.processedAt).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: '2-digit'
+                            })}
+                          </span>
+                          <span className="text-xs text-blue-600">
+                            Paiement effectué
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(request.processedAt).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      ) : request.rejectedAt ? (
+                        <div className="flex flex-col">
+                          <span className="font-medium text-red-700">
+                            {new Date(request.rejectedAt).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: '2-digit'
+                            })}
+                          </span>
+                          <span className="text-xs text-red-600">Rejetée</span>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-xs">
+                          <span>En attente</span>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Méthode */}
                     <td className="py-3 text-sm">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{getPaymentIcon(request.method)}</span>
@@ -385,17 +469,25 @@ const AppelDeFondsPage: React.FC = () => {
                         </span>
                       </div>
                     </td>
+
+                    {/* Montant */}
                     <td className="py-3 text-sm font-medium text-black text-right">
                       {fundsService.formatCFA(request.amount)}
                     </td>
+
+                    {/* Statut */}
                     <td className="py-3 text-center">
                       <Badge className={getStatusColor(request.status)}>
                         {WITHDRAWAL_STATUS_LABELS[request.status]}
                       </Badge>
                     </td>
-                    <td className="py-3 text-sm text-gray-600 hidden sm:table-cell max-w-32 truncate">
+
+                    {/* Notes */}
+                    <td className="py-3 text-sm text-gray-600 hidden lg:table-cell max-w-32 truncate">
                       {request.notes || '-'}
                     </td>
+
+                    {/* Actions */}
                     <td className="py-3 text-center">
                       {request.status === 'PENDING' ? (
                         <Button

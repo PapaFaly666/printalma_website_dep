@@ -30,10 +30,45 @@ import { Badge } from '../../components/ui/badge';
 import { Separator } from '../../components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import DefaultProductImage from '../../components/ui/DefaultProductImage';
 import { Order, OrderStatus } from '../../types/order';
 import { useToast } from '../../components/ui/use-toast';
 import { vendorOrderService } from '../../services/vendorOrderService';
 import '../../styles/order-timeline.css';
+
+// Composant pour afficher une image avec fallback
+const ProductImageWithFallback: React.FC<{
+  src?: string;
+  alt: string;
+  className?: string;
+}> = ({ src, alt, className }) => {
+  const [imageError, setImageError] = React.useState(false);
+
+  // Reset error state when src changes
+  React.useEffect(() => {
+    setImageError(false);
+  }, [src]);
+
+  if (!src || imageError) {
+    return (
+      <DefaultProductImage 
+        size="md" 
+        alt={alt}
+        showText={false}
+        className={className}
+      />
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => setImageError(true)}
+    />
+  );
+};
 
 const VendorOrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -257,17 +292,11 @@ const VendorOrderDetailPage: React.FC = () => {
                   <div className="space-y-4">
                     {order.orderItems.map((item) => (
                       <div key={item.id} className="flex items-start space-x-4 p-4 border border-gray-200 rounded-lg">
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                          {item.productImage ? (
-                            <img
-                              src={item.productImage}
-                              alt={item.productName}
-                              className="w-16 h-16 object-cover rounded-lg"
-                            />
-                          ) : (
-                            <ImageIcon className="h-6 w-6 text-gray-400" />
-                          )}
-                        </div>
+                        <ProductImageWithFallback 
+                          src={item.productImage}
+                          alt={item.productName}
+                          className="w-16 h-16 object-cover rounded-lg"
+                        />
                         <div className="flex-1">
                           <h4 className="font-medium text-gray-900">{item.productName}</h4>
                           {item.product?.description && (

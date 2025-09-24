@@ -37,6 +37,7 @@ import {
   CreateFundsRequest,
   FundsRequestFilters
 } from '../../services/vendorFundsService';
+import { formatDateShort } from '../../utils/dateUtils';
 
 const VendorFundsRequestPage: React.FC = () => {
   // États pour les données - Initialiser avec les données mock en mode développement
@@ -462,7 +463,8 @@ const VendorFundsRequestPage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Date demande</TableHead>
+                    <TableHead className="hidden md:table-cell">Date validation</TableHead>
                     <TableHead>Montant</TableHead>
                     <TableHead>Méthode</TableHead>
                     <TableHead>Statut</TableHead>
@@ -479,6 +481,45 @@ const VendorFundsRequestPage: React.FC = () => {
                         <div className="text-xs text-gray-500">
                           {vendorFundsService.formatDate(request.requestDate).split(' ').slice(3).join(' ')}
                         </div>
+                      </TableCell>
+
+                      {/* Date de validation */}
+                      <TableCell className="hidden md:table-cell">
+                        {request.validatedAt ? (
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm text-green-700">
+                              {formatDateShort(request.validatedAt)}
+                            </span>
+                            <span className="text-xs text-green-600">
+                              Validée par admin
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(request.validatedAt).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        ) : request.processedAt && request.status === 'PAID' ? (
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm text-blue-700">
+                              {formatDateShort(request.processedAt)}
+                            </span>
+                            <span className="text-xs text-blue-600">
+                              Paiement effectué
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(request.processedAt).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 text-xs">
+                            <span>En attente</span>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">
@@ -693,6 +734,15 @@ const VendorFundsRequestPage: React.FC = () => {
                         {vendorFundsService.formatDate(selectedRequest.requestDate)}
                       </span>
                     </div>
+
+                    {selectedRequest.validatedAt && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Date de validation :</span>
+                        <span className="text-gray-900 text-green-700 font-medium">
+                          {vendorFundsService.formatDate(selectedRequest.validatedAt)}
+                        </span>
+                      </div>
+                    )}
 
                     {selectedRequest.approvedDate && (
                       <div className="flex justify-between">

@@ -13,6 +13,7 @@ const router = express.Router();
 // Import the fixed controllers
 const { getNewArrivals } = require('../controllers/publicController');
 const { getVendorProducts, saveDesignPosition } = require('../controllers/vendorController');
+const { getPendingProducts, validateProduct, getValidationStats } = require('../controllers/adminController');
 
 // ========================================================================
 // PUBLIC ROUTES - Fixed /public/new-arrivals
@@ -39,6 +40,28 @@ router.get('/vendor/products', getVendorProducts);
  * Save design position using unified calculation system
  */
 router.post('/vendor/design-position', saveDesignPosition);
+
+// ========================================================================
+// ADMIN ROUTES - Product validation
+// ========================================================================
+
+/**
+ * GET /api/products/admin/pending
+ * Returns products pending admin validation (WIZARD + TRADITIONAL)
+ */
+router.get('/products/admin/pending', getPendingProducts);
+
+/**
+ * POST /api/products/:id/validate
+ * Validate or reject a product
+ */
+router.post('/products/:id/validate', validateProduct);
+
+/**
+ * GET /api/products/admin/stats
+ * Get validation statistics for admin dashboard
+ */
+router.get('/products/admin/stats', getValidationStats);
 
 // ========================================================================
 // HEALTH CHECK - API consistency validation

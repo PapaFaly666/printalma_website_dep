@@ -23,6 +23,7 @@ export interface WithdrawalRequest {
   bankDetails?: BankDetails;
   mobileDetails?: MobileMoneyDetails;
   requestedAt: string;
+  validatedAt?: string;
   processedAt?: string;
   rejectedAt?: string;
   rejectionReason?: string;

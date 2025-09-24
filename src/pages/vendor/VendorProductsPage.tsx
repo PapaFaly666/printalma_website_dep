@@ -202,6 +202,10 @@ export const VendorProductsPage: React.FC = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
+
+  // États pour le modal de détails des produits
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedProductForDetails, setSelectedProductForDetails] = useState<VendorProductFromAPI | null>(null);
   
   // 🆕 Vérifier le statut de validation des designs
   const checkDesignValidationStatuses = async (productList: VendorProductFromAPI[]) => {
@@ -691,20 +695,44 @@ export const VendorProductsPage: React.FC = () => {
 
   // 🆕 Helper pour déterminer si un produit PENDING peut être republié
   const canRepublishPendingProduct = (product: VendorProductFromAPI): boolean => {
-    // Pour les produits PENDING (publiés directement mais design non validé),
-    // le bouton Publier doit être désactivé jusqu'à validation admin
-    if (product.status === 'PENDING' && product.designApplication.hasDesign) {
-      const validationStatus = validationStatuses[product.id];
-      // Seulement si le design est maintenant validé
-      return validationStatus?.isValidated === true && validationStatus?.validationStatus === 'validated';
+    if (product.status !== 'PENDING') {
+      return true; // Les produits non-PENDING peuvent être publiés normalement
     }
 
-    // Pour les autres cas (produits sans design), on peut publier
-    return !product.designApplication.hasDesign;
+    // ✅ Détection WIZARD
+    const isWizardProduct = !product.designId || product.designId === null || product.designId === 0;
+
+    if (isWizardProduct) {
+      // 🎨 PRODUITS WIZARD: doivent attendre validation admin du PRODUIT
+      // Pour l'instant, on bloque tous les produits WIZARD en PENDING
+      // Le backend devra fournir le statut de validation du produit (pas du design)
+      return false; // Bloqué jusqu'à validation admin
+    } else {
+      // 🎯 PRODUITS TRADITIONAL: doivent attendre validation admin du DESIGN
+      const validationStatus = validationStatuses[product.id];
+      return validationStatus?.isValidated === true && validationStatus?.validationStatus === 'validated';
+    }
   };
 
   // 🆕 Obtenir le message d'info pour un produit selon son statut de validation
   const getPublishMessage = (product: VendorProductFromAPI): string => {
+    // ✅ Détection WIZARD
+    const isWizardProduct = !product.designId || product.designId === null || product.designId === 0;
+
+    if (isWizardProduct) {
+      // 🎨 PRODUITS WIZARD: validation du produit par l'admin
+      if (product.status === 'PENDING') {
+        return 'Produit en attente de validation par l\'admin';
+      } else if (product.status === 'PUBLISHED') {
+        return 'Produit validé et publié';
+      } else if (product.status === 'REJECTED') {
+        return 'Produit rejeté par l\'admin';
+      } else {
+        return 'Produit en brouillon - Prêt à soumettre';
+      }
+    }
+
+    // 🎯 PRODUITS TRADITIONAL: validation du design par l'admin
     if (!product.designApplication.hasDesign) {
       return 'Ce produit n\'a pas de design';
     }
@@ -1009,7 +1037,15 @@ export const VendorProductsPage: React.FC = () => {
                               imagesTotal: prod.images?.total,
                               detailImages: isWizard ? prod.images?.adminReferences?.filter(img => img.imageType === 'detail').length : 0
                             });
-                            // TODO: Navigation vers page détails
+
+                            if (isWizard) {
+                              // Pour les produits WIZARD : ouvrir le modal de détails
+                              setSelectedProductForDetails(product);
+                              setIsDetailsModalOpen(true);
+                            } else {
+                              // Pour les produits TRADITIONNEL : ouvrir l'aperçu comme le bouton "Aperçu"
+                              handlePreview(product.id);
+                            }
                           }}
                         />
                       </div>
@@ -1127,7 +1163,7 @@ export const VendorProductsPage: React.FC = () => {
                           </Button>
                         )}
 
-                        {(product.status === 'PENDING' || (!product.designApplication.hasDesign)) && (
+                        {(product.status === 'PENDING' || (!product.designApplication.hasDesign && product.status !== 'PUBLISHED')) && (
                           <div className="flex-1 flex flex-col gap-1">
                             <Button
                               size="sm"
@@ -1343,7 +1379,7 @@ export const VendorProductsPage: React.FC = () => {
                             </Button>
                           )}
 
-                          {(product.status === 'PENDING' || (!product.designApplication.hasDesign)) && (
+                          {(product.status === 'PENDING' || (!product.designApplication.hasDesign && product.status !== 'PUBLISHED')) && (
                             <div className="flex flex-col gap-2">
                               <Button
                                 onClick={() => {
@@ -1410,6 +1446,192 @@ export const VendorProductsPage: React.FC = () => {
               </DialogClose>
               <Button variant="destructive" onClick={confirmDelete}>Supprimer</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de détails du produit */}
+        <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-4 border-b border-gray-100">
+              <DialogTitle className="flex items-center gap-3 text-xl">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-blue-600" />
+                  <span>Détails du produit</span>
+                </div>
+                {selectedProductForDetails && (
+                  <Badge variant="outline" className="ml-auto">
+                    {(!selectedProductForDetails.designId || selectedProductForDetails.designId === 0) ? 'WIZARD' : 'TRADITIONNEL'}
+                  </Badge>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+
+            {selectedProductForDetails && (
+              <div className="space-y-6 py-4">
+                {/* En-tête produit */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-100 p-4 rounded-xl border">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg text-gray-900">
+                        {selectedProductForDetails.vendorName}
+                      </h3>
+                      {selectedProductForDetails.originalAdminName && (
+                        <p className="text-gray-600 text-sm mt-1">
+                          Basé sur: {selectedProductForDetails.originalAdminName}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-4 mt-2">
+                        <Badge variant="outline" className={`${getStatusBadgeStyle(selectedProductForDetails.status)}`}>
+                          {getStatusText(selectedProductForDetails.status)}
+                        </Badge>
+                        <span className="text-2xl font-bold text-gray-900">
+                          {selectedProductForDetails.price.toLocaleString()} FCFA
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Images du produit */}
+                {selectedProductForDetails.images && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Eye className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium text-gray-700">Images du produit</span>
+                      <Badge variant="secondary" className="ml-2">
+                        {selectedProductForDetails.images.total} images
+                      </Badge>
+                    </div>
+
+                    {/* Image principale */}
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Image principale</h4>
+                      <div className="aspect-square w-48 bg-gray-50 rounded-lg overflow-hidden border">
+                        <img
+                          src={selectedProductForDetails.images.primaryImageUrl}
+                          alt="Image principale"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Images par couleur et type */}
+                    {selectedProductForDetails.images.adminReferences && selectedProductForDetails.images.adminReferences.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium text-gray-700">Toutes les images</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {selectedProductForDetails.images.adminReferences.map((img, index) => (
+                            <div key={index} className="space-y-2">
+                              <div className="aspect-square bg-gray-50 rounded-lg overflow-hidden border">
+                                <img
+                                  src={img.adminImageUrl}
+                                  alt={`${img.colorName} - ${img.imageType}`}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <div className="text-xs text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <div
+                                    className="w-3 h-3 rounded-full border"
+                                    style={{ backgroundColor: img.colorCode }}
+                                  />
+                                  <span className="font-medium">{img.colorName}</span>
+                                </div>
+                                <div className="text-gray-500 capitalize">{img.imageType}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                )}
+
+                {/* Couleurs sélectionnées */}
+                {selectedProductForDetails.selectedColors && selectedProductForDetails.selectedColors.length > 0 && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-4 h-4 rounded-full bg-gradient-to-r from-red-400 to-blue-400" />
+                      <span className="font-medium text-gray-700">Couleurs disponibles</span>
+                      <Badge variant="secondary" className="ml-2">
+                        {selectedProductForDetails.selectedColors.length} couleurs
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {selectedProductForDetails.selectedColors.map((color) => (
+                        <div key={color.id} className="flex items-center gap-2 p-2 border rounded-lg">
+                          <div
+                            className="w-4 h-4 rounded-full border"
+                            style={{ backgroundColor: color.colorCode }}
+                          />
+                          <span className="text-sm font-medium">{color.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Tailles disponibles */}
+                {selectedProductForDetails.selectedSizes && selectedProductForDetails.selectedSizes.length > 0 && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Settings className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium text-gray-700">Tailles disponibles</span>
+                      <Badge variant="secondary" className="ml-2">
+                        {selectedProductForDetails.selectedSizes.length} tailles
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProductForDetails.selectedSizes.map((size) => (
+                        <Badge key={size.id} variant="outline" className="px-3 py-1">
+                          {size.sizeName}
+                        </Badge>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Statistiques de vente */}
+                {selectedProductForDetails.bestSeller && (
+                  <Card className="p-4 bg-green-50 border-green-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="font-medium text-green-700">Statistiques de vente</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-900">
+                          {selectedProductForDetails.bestSeller.salesCount}
+                        </div>
+                        <div className="text-sm text-green-700">Ventes</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-900">
+                          {selectedProductForDetails.bestSeller.totalRevenue.toLocaleString()} FCFA
+                        </div>
+                        <div className="text-sm text-green-700">Chiffre d'affaires</div>
+                      </div>
+                      <div className="text-center">
+                        <Badge variant={selectedProductForDetails.bestSeller.isBestSeller ? "default" : "secondary"}>
+                          {selectedProductForDetails.bestSeller.isBestSeller ? "Best Seller ⭐" : "Produit normal"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Footer du modal */}
+            <div className="flex justify-end pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailsModalOpen(false)}
+                className="min-w-[100px]"
+              >
+                Fermer
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

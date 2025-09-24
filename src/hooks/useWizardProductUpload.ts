@@ -78,11 +78,11 @@ interface ValidationResult {
 }
 
 interface UseWizardProductUpload {
-  uploadProduct: (data: WizardProductData, images: WizardImages) => Promise<any>;
+  uploadProduct: (data: WizardProductData, images: WizardImages, vendorCommission?: number) => Promise<any>;
   loading: boolean;
   error: string | null;
   progress: number;
-  validateWizardData: (data: WizardProductData, images: WizardImages) => ValidationResult;
+  validateWizardData: (data: WizardProductData, images: WizardImages, vendorCommission?: number) => ValidationResult;
 }
 
 export const useWizardProductUpload = (): UseWizardProductUpload => {
@@ -90,7 +90,7 @@ export const useWizardProductUpload = (): UseWizardProductUpload => {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
 
-  const validateWizardData = (data: WizardProductData, images: WizardImages): ValidationResult => {
+  const validateWizardData = (data: WizardProductData, images: WizardImages, vendorCommission: number = 70): ValidationResult => {
     const errors: Record<string, string> = {};
 
     // Validation mockup sélectionné
@@ -109,16 +109,17 @@ export const useWizardProductUpload = (): UseWizardProductUpload => {
       errors.productPrice = `Prix minimum: ${minimumPrice.toLocaleString()} FCFA (marge 10%)`;
     }
 
-    // Validation calculs
+    // Validation calculs avec commission dynamique
     const expectedProfit = data.productPrice - data.basePrice;
-    const expectedRevenue = Math.round(expectedProfit * 0.7);
+    const vendorRate = vendorCommission / 100;
+    const expectedRevenue = Math.round(expectedProfit * vendorRate);
 
     if (Math.abs(data.vendorProfit - expectedProfit) > 1) {
       errors.vendorProfit = 'Erreur dans le calcul du bénéfice';
     }
 
     if (Math.abs(data.expectedRevenue - expectedRevenue) > 1) {
-      errors.expectedRevenue = 'Erreur dans le calcul du revenu attendu';
+      errors.expectedRevenue = `Erreur dans le calcul du revenu attendu (commission ${vendorCommission}%)`;
     }
 
     // Validation sélections
@@ -159,14 +160,14 @@ export const useWizardProductUpload = (): UseWizardProductUpload => {
     };
   };
 
-  const uploadProduct = async (productData: WizardProductData, images: WizardImages) => {
+  const uploadProduct = async (productData: WizardProductData, images: WizardImages, vendorCommission?: number) => {
     try {
       setLoading(true);
       setError(null);
       setProgress(0);
 
       // Validation côté frontend
-      const validationResult = validateWizardData(productData, images);
+      const validationResult = validateWizardData(productData, images, vendorCommission);
       if (!validationResult.isValid) {
         const firstError = Object.values(validationResult.errors)[0];
         throw new Error(firstError);
