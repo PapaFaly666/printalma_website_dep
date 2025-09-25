@@ -37,11 +37,14 @@ import {
   CreateFundsRequest,
   FundsRequestFilters
 } from '../../services/vendorFundsService';
+import { vendorProductService } from '../../services/vendorProductService';
+import { vendorStatsService } from '../../services/vendorStatsService';
 import { formatDateShort } from '../../utils/dateUtils';
 
 const VendorFundsRequestPage: React.FC = () => {
-  // États pour les données - Initialiser avec les données mock en mode développement
+  // États pour les données - Utiliser les nouvelles données de /vendor/stats
   const [earnings, setEarnings] = useState<VendorEarnings | null>(null);
+  const [statsData, setStatsData] = useState<any>(null); // Données de /vendor/stats pour cohérence
 
   const [fundsRequests, setFundsRequests] = useState<FundsRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,17 +85,25 @@ const VendorFundsRequestPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      console.log('🔄 Chargement des données d\'appel de fonds...');
+      console.log('🔄 Chargement des données d\'appel de fonds avec /vendor/earnings...');
 
-      // Charger les gains et les demandes en parallèle
+      // 🎯 Utiliser /vendor/earnings en priorité car il fonctionne avec des données dynamiques réelles
       const [earningsData, requestsData] = await Promise.all([
         vendorFundsService.getVendorEarnings(),
         vendorFundsService.getVendorFundsRequests(filters)
       ]);
 
-      console.log('✅ Données récupérées:', { earningsData, requestsData });
+      console.log('✅ Données récupérées depuis /vendor/earnings:', { earningsData, requestsData });
+      console.log('💰 Montants dynamiques depuis /vendor/earnings:', {
+        availableAmount: earningsData.availableAmount,
+        pendingAmount: earningsData.pendingAmount,
+        totalEarnings: earningsData.totalEarnings,
+        thisMonthEarnings: earningsData.thisMonthEarnings
+      });
 
       setEarnings(earningsData);
+      setStatsData(null); // Pas besoin des données /vendor/stats
+
       setFundsRequests(requestsData.requests);
       setPagination({
         page: requestsData.page,
@@ -103,9 +114,38 @@ const VendorFundsRequestPage: React.FC = () => {
       });
 
     } catch (error) {
-      console.error('❌ Erreur lors du chargement des données:', error);
-      const errorMessage = vendorFundsService.handleError(error, 'chargement données');
-      console.warn('Message d\'erreur utilisateur:', errorMessage);
+      console.error('❌ Erreur lors du chargement des données depuis /vendor/earnings:', error);
+      console.log('⚠️ Tentative de fallback vers /vendor/stats...');
+
+      try {
+        // Fallback vers /vendor/stats si /vendor/earnings échoue
+        const statsData = await vendorStatsService.getVendorStats();
+        if (statsData) {
+          const data = statsData;
+          setStatsData(data);
+
+          // Convertir les données /vendor/stats vers le format VendorEarnings
+          const compatibleEarnings: VendorEarnings = {
+            totalEarnings: data.totalEarnings || 0,
+            pendingAmount: data.pendingAmount || 0,
+            availableAmount: data.availableBalance || 0,
+            thisMonthEarnings: data.monthlyRevenue || 0,
+            lastMonthEarnings: Math.floor((data.monthlyRevenue || 0) * 0.8),
+            commissionPaid: data.totalEarnings - data.availableBalance - data.pendingAmount || 0,
+            totalCommission: data.totalEarnings || 0,
+            averageCommissionRate: data.averageCommissionRate || 0
+          };
+
+          console.log('✅ FALLBACK SUCCESS: Données récupérées depuis /vendor/stats');
+          setEarnings(compatibleEarnings);
+        } else {
+          throw new Error('Both endpoints failed');
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback vers /vendor/stats également échoué:', fallbackError);
+        const errorMessage = vendorFundsService.handleError(error, 'chargement données');
+        console.warn('Message d\'erreur utilisateur:', errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -359,6 +399,7 @@ const VendorFundsRequestPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-900">
+                  {/* ✅ Montant dynamique depuis /vendor/earnings (endpoint fonctionnel) */}
                   {loading ? '...' : vendorFundsService.formatCurrency(earnings?.availableAmount || 0)}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
@@ -500,16 +541,16 @@ const VendorFundsRequestPage: React.FC = () => {
                               })}
                             </span>
                           </div>
-                        ) : request.processedAt && request.status === 'PAID' ? (
+                        ) : request.processedDate && request.status === 'PAID' ? (
                           <div className="flex flex-col">
                             <span className="font-medium text-sm text-blue-700">
-                              {formatDateShort(request.processedAt)}
+                              {formatDateShort(request.processedDate)}
                             </span>
                             <span className="text-xs text-blue-600">
                               Paiement effectué
                             </span>
                             <span className="text-xs text-gray-500">
-                              {new Date(request.processedAt).toLocaleTimeString('fr-FR', {
+                              {new Date(request.processedDate).toLocaleTimeString('fr-FR', {
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })}

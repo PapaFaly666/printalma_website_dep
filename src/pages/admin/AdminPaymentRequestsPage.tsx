@@ -555,10 +555,10 @@ const AdminPaymentRequestsPage: React.FC = () => {
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium text-sm">
-                            {formatDateShort(request.requestedAt || request.createdAt)}
+                            {formatDateShort(request.requestDate || request.createdAt)}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleTimeString('fr-FR', {
+                            {(request.requestDate || request.createdAt) ? new Date(request.requestDate || request.createdAt).toLocaleTimeString('fr-FR', {
                               hour: '2-digit',
                               minute: '2-digit'
                             }) : '-'}
@@ -589,9 +589,9 @@ const AdminPaymentRequestsPage: React.FC = () => {
 
                       {/* Temps de traitement */}
                       <TableCell className="hidden lg:table-cell">
-                        {(request.requestedAt || request.createdAt) && request.validatedAt ? (
+                        {(request.requestDate || request.createdAt) && request.validatedAt ? (
                           <span className="text-blue-600 font-medium text-sm">
-                            {calculateDuration(request.requestedAt || request.createdAt, request.validatedAt)}
+                            {calculateDuration(request.requestDate || request.createdAt, request.validatedAt)}
                           </span>
                         ) : (
                           <span className="text-gray-400 text-xs">-</span>

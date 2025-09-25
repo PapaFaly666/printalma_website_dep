@@ -59,12 +59,16 @@ export interface ProductWithValidation {
   designName?: string;
   vendorId: number;
   vendorName?: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DRAFT' | 'PUBLISHED';
   submittedAt: string;
   validatedAt?: string;
   rejectionReason?: string;
   images?: string[];
   baseProductId: number;
+
+  // Mockup images support
+  mockupUrl?: string;
+  mockupImages?: string[] | Record<string, string>;
 
   // ✅ Support pour produits WIZARD
   isWizardProduct?: boolean;
@@ -81,6 +85,25 @@ export interface ProductWithValidation {
   baseProduct?: {
     id: number;
     name: string;
+    mockupImages?: Array<{
+      id: number;
+      url: string;
+      viewType: string;
+      colorName: string;
+      colorCode: string;
+    }>;
+  };
+  adminProductDetails?: {
+    id: number;
+    name: string;
+    description?: string;
+    mockupImages?: Array<{
+      id: number;
+      url: string;
+      viewType: string;
+      colorName: string;
+      colorCode: string;
+    }>;
   };
   vendor?: {
     id: number;
@@ -89,6 +112,36 @@ export interface ProductWithValidation {
     email: string;
     shop_name?: string;
   };
+
+  // ✅ Nouveaux champs selon la documentation API
+  validationStatus?: string;
+  finalStatus?: string;
+  isRejected?: boolean;
+  rejectedAt?: string;
+  validatedBy?: string;
+  vendorPrice?: number;
+  vendorStock?: number;
+  vendorDescription?: string;
+  adminValidated?: boolean | null;
+  selectedColors?: Array<{
+    id: number;
+    name: string;
+    colorCode: string;
+  }>;
+  selectedSizes?: Array<{
+    id: number;
+    sizeName: string;
+  }>;
+  vendorSelectedTheme?: {
+    id: number;
+    name: string;
+  };
+  categories?: Array<{
+    id: number;
+    name: string;
+  }>;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface VendorProductWithValidation {

@@ -1,162 +1,124 @@
-Curl
+PS C:\Users\HP\Desktop\printalma-perso\printalma_website_dep> npm run build
 
-curl -X 'GET' \
-  'http://localhost:3004/admin/products/validation' \
-  -H 'accept: application/json'
-Request URL
-http://localhost:3004/admin/products/validation
-Server response
-Code	Details
-200	
-Response body
-Download
-{
-  "success": true,
-  "message": "Produits en attente récupérés avec succès",
-  "data": {
-    "products": [
-      {
-        "id": 173,
-        "vendorName": "carre",
-        "vendorDescription": "dddddd",
-        "vendorPrice": 12000,
-        "vendorStock": 10,
-        "status": "DRAFT",
-        "isValidated": false,
-        "validatedAt": null,
-        "validatedBy": null,
-        "postValidationAction": "AUTO_PUBLISH",
-        "designCloudinaryUrl": null,
-        "rejectionReason": null,
-        "isWizardProduct": true,
-        "productType": "WIZARD",
-        "hasDesign": false,
-        "adminProductName": "Mugs",
-        "baseProduct": {
-          "id": 33,
-          "name": "Mugs"
-        },
-        "createdAt": "2025-09-24T15:08:12.257Z",
-        "updatedAt": "2025-09-24T15:08:12.257Z",
-        "vendor": {
-          "id": 7,
-          "firstName": "Papa ",
-          "lastName": "Diagne",
-          "email": "pf.d@zig.univ.sn",
-          "shop_name": "C'est carré"
-        },
-        "vendorImages": [
-          {
-            "id": 483,
-            "imageType": "base",
-            "cloudinaryUrl": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1758726488/wizard-products/wizard-base-1758726487537.jpg",
-            "colorName": null,
-            "colorCode": null,
-            "width": 800,
-            "height": 800
-          },
-          {
-            "id": 484,
-            "imageType": "detail",
-            "cloudinaryUrl": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1758726489/wizard-products/wizard-detail-1758726489203-1.jpg",
-            "colorName": null,
-            "colorCode": null,
-            "width": 800,
-            "height": 800
-          },
-          {
-            "id": 485,
-            "imageType": "detail",
-            "cloudinaryUrl": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1758726491/wizard-products/wizard-detail-1758726490911-2.jpg",
-            "colorName": null,
-            "colorCode": null,
-            "width": 800,
-            "height": 800
-          }
-        ],
-        "adminProductDetails": null,
-        "selectedColors": [],
-        "selectedSizes": []
-      },
-      {
-        "id": 172,
-        "vendorName": "carre",
-        "vendorDescription": "gergreg gegre",
-        "vendorPrice": 10000,
-        "vendorStock": 10,
-        "status": "PUBLISHED",
-        "isValidated": false,
-        "validatedAt": null,
-        "validatedBy": null,
-        "postValidationAction": "AUTO_PUBLISH",
-        "designCloudinaryUrl": null,
-        "rejectionReason": null,
-        "isWizardProduct": true,
-        "productType": "WIZARD",
-        "hasDesign": false,
-        "adminProductName": "Polo",
-        "baseProduct": {
-          "id": 34,
-          "name": "Polo"
-        },
-        "createdAt": "2025-09-24T14:53:18.220Z",
-        "updatedAt": "2025-09-24T14:53:18.220Z",
-        "vendor": {
-          "id": 7,
-          "firstName": "Papa ",
-          "lastName": "Diagne",
-          "email": "pf.d@zig.univ.sn",
-          "shop_name": "C'est carré"
-        },
-        "vendorImages": [
-          {
-            "id": 480,
-            "imageType": "base",
-            "cloudinaryUrl": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1758725595/wizard-products/wizard-base-1758725594043.jpg",
-            "colorName": null,
-            "colorCode": null,
-            "width": 800,
-            "height": 800
-          },
-          {
-            "id": 481,
-            "imageType": "detail",
-            "cloudinaryUrl": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1758725596/wizard-products/wizard-detail-1758725595845-1.jpg",
-            "colorName": null,
-            "colorCode": null,
-            "width": 800,
-            "height": 800
-          },
-          {
-            "id": 482,
-            "imageType": "detail",
-            "cloudinaryUrl": "https://res.cloudinary.com/dsxab4qnu/image/upload/v1758725597/wizard-products/wizard-detail-1758725596903-2.jpg",
-            "colorName": null,
-            "colorCode": null,
-            "width": 800,
-            "height": 800
-          }
-        ],
-        "adminProductDetails": null,
-        "selectedColors": [],
-        "selectedSizes": []
-      }
-    ],
-    "pagination": {
-      "currentPage": 1,
-      "totalPages": 1,
-      "totalItems": 2,
-      "itemsPerPage": 20,
-      "hasNext": false,
-      "hasPrevious": false
-    },
-    "stats": {
-      "pending": 0,
-      "validated": 0,
-      "rejected": 0,
-      "total": 0,
-      "wizardProducts": 2,
-      "traditionalProducts": 0
-    }
-  }
-}
+> printalma_website@0.0.0 build
+> tsc -b && vite build
+
+src/pages/admin/AdminPaymentRequestsPage.tsx:558:54 - error TS2551: Property 'requestedAt' does not exist on type 'FundsRequest'. Did you mean 'requestDate'?
+
+558                             {formatDateShort(request.requestedAt || request.createdAt)}
+                                                         ~~~~~~~~~~~
+
+  src/services/vendorFundsService.ts:25:3
+    25   requestDate: string;
+         ~~~~~~~~~~~
+    'requestDate' is declared here.
+
+src/pages/admin/AdminPaymentRequestsPage.tsx:561:39 - error TS2551: Property 'requestedAt' does not exist on type 'FundsRequest'. Did you mean 'requestDate'?
+
+561                             {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleTimeString('fr-FR', {
+                                          ~~~~~~~~~~~
+
+  src/services/vendorFundsService.ts:25:3
+    25   requestDate: string;
+         ~~~~~~~~~~~
+    'requestDate' is declared here.
+
+src/pages/admin/AdminPaymentRequestsPage.tsx:561:92 - error TS2551: Property 'requestedAt' does not exist on type 'FundsRequest'. Did you mean 'requestDate'?
+
+561                             {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleTimeString('fr-FR', {
+                                                                                               ~~~~~~~~~~~
+
+  src/services/vendorFundsService.ts:25:3
+    25   requestDate: string;
+         ~~~~~~~~~~~
+    'requestDate' is declared here.
+
+src/pages/admin/AdminPaymentRequestsPage.tsx:592:35 - error TS2551: Property 'requestedAt' does not exist on type 'FundsRequest'. Did you mean 'requestDate'?
+
+592                         {(request.requestedAt || request.createdAt) && request.validatedAt ? (
+                                      ~~~~~~~~~~~
+
+  src/services/vendorFundsService.ts:25:3
+    25   requestDate: string;
+         ~~~~~~~~~~~
+    'requestDate' is declared here.
+
+src/pages/admin/AdminPaymentRequestsPage.tsx:594:56 - error TS2551: Property 'requestedAt' does not exist on type 'FundsRequest'. Did you mean 'requestDate'?
+
+594                             {calculateDuration(request.requestedAt || request.createdAt, request.validatedAt)}
+                                                           ~~~~~~~~~~~
+
+  src/services/vendorFundsService.ts:25:3
+    25   requestDate: string;
+         ~~~~~~~~~~~
+    'requestDate' is declared here.
+
+src/pages/vendor/VendorFundsRequestPage.tsx:503:37 - error TS2551: Property 'processedAt' does not exist on type 'FundsRequest'. Did you mean 'processedDate'?
+
+503                         ) : request.processedAt && request.status === 'PAID' ? (
+                                        ~~~~~~~~~~~
+
+  src/services/vendorFundsService.ts:27:3
+    27   processedDate?: string;
+         ~~~~~~~~~~~~~
+    'processedDate' is declared here.
+
+src/pages/vendor/VendorFundsRequestPage.tsx:506:56 - error TS2551: Property 'processedAt' does not exist on type 'FundsRequest'. Did you mean 'processedDate'?
+
+506                               {formatDateShort(request.processedAt)}
+                                                           ~~~~~~~~~~~
+
+  src/services/vendorFundsService.ts:27:3
+    27   processedDate?: string;
+         ~~~~~~~~~~~~~
+    'processedDate' is declared here.
+
+src/pages/vendor/VendorFundsRequestPage.tsx:512:49 - error TS2551: Property 'processedAt' does not exist on type 'FundsRequest'. Did you mean 'processedDate'?
+
+512                               {new Date(request.processedAt).toLocaleTimeString('fr-FR', {
+                                                    ~~~~~~~~~~~
+
+  src/services/vendorFundsService.ts:27:3
+    27   processedDate?: string;
+         ~~~~~~~~~~~~~
+    'processedDate' is declared here.
+
+src/pages/vendor/VendorProductsPage.tsx:1088:13 - error TS2322: Type 'void' is not assignable to type 'ReactNode'.
+
+1088             {/* 🔍 Debug temporaire */}
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/vendor/VendorProductsPage.tsx:1104:27 - error TS2719: Type 'VendorProductFromAPI' is not assignable to type 'VendorProductFromAPI'. Two different types with this name exist, but they are unrelated.
+  The types of 'images.adminReferences' are incompatible between these types.
+    Type '{ colorName: string; colorCode: string; adminImageUrl: string; imageType: string; }[]' is not assignable to type '{ colorName: string; colorCode: string; adminImageUrl: string; imageType: "admin_reference" | "base" | "detail"; }[]'.
+      Type '{ colorName: string; colorCode: string; adminImageUrl: string; imageType: string; }' is not assignable to type '{ colorName: string; colorCode: string; adminImageUrl: string; imageType: "admin_reference" | "base" | "detail"; }'.
+        Types of property 'imageType' are incompatible.
+          Type 'string' is not assignable to type '"admin_reference" | "base" | "detail"'.
+
+1104                           product={product}
+                               ~~~~~~~
+
+  src/components/vendor/SimpleProductPreview.tsx:99:3
+    99   product: VendorProductFromAPI;
+         ~~~~~~~
+    The expected type comes from property 'product' which is declared here on type 'IntrinsicAttributes & SimpleProductPreviewProps'
+
+src/pages/vendor/VendorProductsPage.tsx:1378:21 - error TS2719: Type 'VendorProductFromAPI' is not assignable to type 'VendorProductFromAPI'. Two different types with this name exist, but they are unrelated.
+  The types of 'images.adminReferences' are incompatible between these types.
+    Type '{ colorName: string; colorCode: string; adminImageUrl: string; imageType: string; }[]' is not assignable to type '{ colorName: string; colorCode: string; adminImageUrl: string; imageType: "admin_reference" | "base" | "detail"; }[]'.
+      Type '{ colorName: string; colorCode: string; adminImageUrl: string; imageType: string; }' is not assignable to type '{ colorName: string; colorCode: string; adminImageUrl: string; imageType: "admin_reference" | "base" | "detail"; }'.
+        Types of property 'imageType' are incompatible.
+          Type 'string' is not assignable to type '"admin_reference" | "base" | "detail"'.
+
+1378                     product={products.find(p => p.id === selectedProductId)!}
+                         ~~~~~~~
+
+  src/components/vendor/SimpleProductPreview.tsx:99:3
+    99   product: VendorProductFromAPI;
+         ~~~~~~~
+    The expected type comes from property 'product' which is declared here on type 'IntrinsicAttributes & SimpleProductPreviewProps'
+
+
+Found 11 errors.
+
+PS C:\Users\HP\Desktop\printalma-perso\printalma_website_dep>

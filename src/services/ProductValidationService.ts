@@ -6,12 +6,10 @@ export class AdminValidationService {
   private baseUrl = '/api'; // Use proxy for API calls
 
   private getFetchOptions(): RequestInit {
-    const token = localStorage.getItem('admin_token');
     return {
-      credentials: 'include',
+      credentials: 'include', // Important pour inclure les cookies HTTP
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
         'accept': 'application/json'
       }
     };
@@ -22,47 +20,63 @@ export class AdminValidationService {
     limit?: number;
     productType?: 'ALL' | 'WIZARD' | 'TRADITIONAL';
     vendor?: string;
-    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
   } = {}): Promise<any> {
     const {
       page = 1,
       limit = 20,
       productType = 'ALL',
       vendor = '',
-      status = 'PENDING'
+      status = 'ALL' // ✅ Par défaut récupérer TOUS les produits selon la documentation
     } = filters;
 
     const params = new URLSearchParams({
       page: page.toString(),
-      limit: limit.toString(),
-      productType,
-      status
+      limit: limit.toString()
     });
 
+    // N'ajouter les paramètres que s'ils ne sont pas les valeurs par défaut
+    if (productType && productType !== 'ALL') params.append('productType', productType);
+    if (status && status !== 'ALL') params.append('status', status);
     if (vendor) params.append('vendor', vendor);
 
-    console.log('🔗 Calling endpoint:', `/admin/products/validation?${params}`);
+    const endpoint = `/api/admin/products/validation?${params}`;
+    console.log('🔗 Calling endpoint:', endpoint);
+    console.log('🔗 Fetch options:', this.getFetchOptions());
 
-    const response = await fetch(`/api/admin/products/validation?${params}`, this.getFetchOptions());
+    try {
+      const response = await fetch(endpoint, this.getFetchOptions());
 
-    console.log('📡 Response status:', response.status);
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
-    if (!response.ok) {
-      if (response.status === 401) throw new Error('Token expiré - reconnexion requise');
-      if (response.status === 403) throw new Error('Droits administrateur requis');
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('❌ Error response body:', errorText);
+
+        if (response.status === 401) throw new Error('Token expiré - reconnexion requise');
+        if (response.status === 403) throw new Error('Droits administrateur requis');
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('📦 Data received in service:', data);
+      return data;
+    } catch (error) {
+      console.error('🔥 Service error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    console.log('📦 Data received:', data);
-    return data;
   }
 
   async validateProduct(productId: number, approved: boolean, rejectionReason?: string): Promise<any> {
     console.log('🔗 Validating product:', { productId, approved, rejectionReason });
 
     const response = await fetch(`/api/admin/products/${productId}/validate`, {
-      ...this.getFetchOptions(),
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
+      },
       method: 'POST',
       body: JSON.stringify({
         approved,
@@ -80,22 +94,19 @@ export class AdminValidationService {
 }
 
 export class ProductValidationService extends AdminValidationService {
-  private baseUrl = '/api/products';
+  // private baseUrl = '/api/products' // ✅ Supprimé car hérité de AdminValidationService;
 
-  private getFetchOptions(): RequestInit {
-    return {
-      credentials: 'include', // 🍪 Inclure les cookies pour l'authentification
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    };
-  }
+  // ✅ Supprimé getFetchOptions car hérité de AdminValidationService
 
   // Vendeur : Soumettre un produit admin pour validation
   async submitForValidation(productId: number): Promise<any> {
     const response = await fetch(`/api/vendor/products/${productId}/submit-for-validation`, {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
+      }
     });
 
     if (!response.ok) {
@@ -155,7 +166,11 @@ export class ProductValidationService extends AdminValidationService {
   ): Promise<ValidationResponse> {
     // Utiliser l'endpoint spécifique pour la validation admin selon la doc
     const response = await fetch(`/api/admin/products/${productId}/validate`, {
-      ...this.getFetchOptions(),
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
+      },
       method: 'POST',
       body: JSON.stringify({
         approved,

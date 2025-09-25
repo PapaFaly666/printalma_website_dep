@@ -158,6 +158,9 @@ import ThemesPage from './pages/admin/ThemesPage';
 import ThemeProductsPage from './pages/admin/ThemeProductsPage';
 import ThemesPageTest from './pages/admin/ThemesPageTest';
 
+// 🧪 Test de connexion admin
+import AdminLoginTest from './pages/test/AdminLoginTest';
+
 // 🏆 Best Sellers
 import BestSellersPage from './pages/BestSellersPage';
 
@@ -227,6 +230,9 @@ function App() {
                 
                 {/* 🚀 Test interface moderne des produits */}
                 <Route path='/products-modern' element={<ProductListModernPage />} />
+
+                {/* 🧪 Test de connexion admin */}
+                <Route path='/admin-login-test' element={<AdminLoginTest />} />
                 
                 {/* Route client protégée pour les commandes */}
                 <Route path='/my-orders' element={

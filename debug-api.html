@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug API Admin Products</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .section { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+        button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Debug API Admin Products Validation</h1>
+
+    <div class="section">
+        <h3>Test API Endpoint</h3>
+        <button onclick="testAPI()">Test /api/admin/products/validation</button>
+        <button onclick="testWithFilters()">Test avec filtres PENDING</button>
+        <button onclick="checkAuth()">Check Auth</button>
+    </div>
+
+    <div class="section">
+        <h3>Résultats:</h3>
+        <pre id="results">Cliquez sur un bouton pour tester...</pre>
+    </div>
+
+    <script>
+        async function log(message, data = null) {
+            const resultsEl = document.getElementById('results');
+            const timestamp = new Date().toISOString();
+            let logMessage = `[${timestamp}] ${message}`;
+            if (data) {
+                logMessage += '\n' + JSON.stringify(data, null, 2);
+            }
+            resultsEl.textContent += logMessage + '\n\n';
+            console.log(message, data);
+        }
+
+        async function testAPI() {
+            document.getElementById('results').textContent = '';
+            log('🚀 Test de l\'endpoint /api/admin/products/validation');
+
+            try {
+                const url = '/api/admin/products/validation?page=1&limit=20';
+                log('📡 URL appelée:', url);
+
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'accept': 'application/json'
+                    }
+                });
+
+                log('📊 Status:', response.status);
+                log('📊 Headers:', Object.fromEntries(response.headers.entries()));
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log('❌ Erreur:', errorText);
+                    return;
+                }
+
+                const data = await response.json();
+                log('✅ Données reçues:', data);
+                log('📦 Nombre de produits:', data?.data?.products?.length || 0);
+
+            } catch (error) {
+                log('🔥 Erreur catch:', error.message);
+                log('🔥 Stack:', error.stack);
+            }
+        }
+
+        async function testWithFilters() {
+            document.getElementById('results').textContent = '';
+            log('🚀 Test avec filtres PENDING');
+
+            try {
+                const url = '/api/admin/products/validation?page=1&limit=20&status=PENDING';
+                log('📡 URL appelée:', url);
+
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'accept': 'application/json'
+                    }
+                });
+
+                log('📊 Status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log('❌ Erreur:', errorText);
+                    return;
+                }
+
+                const data = await response.json();
+                log('✅ Données reçues:', data);
+
+            } catch (error) {
+                log('🔥 Erreur:', error.message);
+            }
+        }
+
+        async function checkAuth() {
+            document.getElementById('results').textContent = '';
+            log('🔐 Vérification de l\'authentification');
+
+            try {
+                // Vérifier les cookies
+                log('🍪 Cookies:', document.cookie);
+
+                // Avec les cookies HTTP, pas besoin de localStorage
+                log('🔑 Authentification: Utilise les cookies HTTP only');
+
+                // Test d'un endpoint simple
+                const response = await fetch('/api/auth/me', {
+                    credentials: 'include', // Important pour inclure les cookies
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log('👤 Auth check status:', response.status);
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    log('👤 User data:', userData);
+                }
+
+            } catch (error) {
+                log('🔥 Erreur auth check:', error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -19,8 +19,7 @@ import {
   Clock,
   FileText,
   ArrowUpCircle,
-  RefreshCw,
-  AlertTriangle
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -45,14 +44,11 @@ import {
   DialogClose
 } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { vendorAccountService } from '../../services/vendorAccountService';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 import { ExtendedVendorProfile } from '../../types/auth.types';
 import { designCategoryService, DesignCategory } from '../../services/designCategoryService';
 import DesignCategorySelector from '../../components/DesignCategorySelector';
-import VendorAccessError from '../../components/vendor/VendorAccessError';
-import { vendorFetch, vendorApi } from '../../utils/vendorFetch';
 
 // Types basés sur la documentation API
 enum DesignStatus {
@@ -134,11 +130,9 @@ interface ApiResponse<T> {
   data: T;
 }
 
-import { API_CONFIG } from '../../config/api';
-
 // Service API mis à jour selon la documentation
 class VendorDesignService {
-  private apiUrl = `${API_CONFIG.BASE_URL}/api/designs`;
+  private apiUrl = 'https://printalma-back-dep.onrender.com/api/designs';
   
   private getFetchOptions(method: string = 'GET', body?: any): RequestInit {
     const options: RequestInit = {
@@ -204,43 +198,24 @@ class VendorDesignService {
   }
   
   async uploadDesign(file: File, designData: any): Promise<ApiResponse<Design>> {
-    // ✅ UTILISER designService.createDesign() comme dans sell-design
-    console.log('🎨 Upload design via VendorDesignsPage - utilisation de designService');
-    console.log('📋 Design data:', designData);
-
-    try {
-      // Importer designService pour réutiliser la logique de sell-design
-      const designService = (await import('../../services/designService')).default;
-
-      // Préparer les données selon le format attendu par designService.createDesign()
-      const designPayload = {
-        file: file,
-        name: designData.name,
-        description: designData.description || '',
-        price: designData.price,
-        // ✅ Utiliser categoryId ou themeId selon ce qui est fourni
-        categoryId: designData.categoryId || designData.themeId, // Support des deux formats
-        tags: designData.tags ? designData.tags.join(',') : undefined
-      };
-
-      console.log('📤 Payload pour designService:', designPayload);
-
-      // Utiliser la même méthode que sell-design qui fonctionne
-      const createdDesign = await designService.createDesign(designPayload);
-
-      console.log('✅ Design créé avec succès via designService');
-
-      // Retourner dans le format attendu par VendorDesignsPage
-      return {
-        success: true,
-        data: createdDesign as any,
-        message: 'Design uploadé avec succès'
-      };
-
-    } catch (error: any) {
-      console.error('❌ Erreur upload design via designService:', error);
-      throw error;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', designData.name);
+    if (designData.description) formData.append('description', designData.description);
+    formData.append('price', designData.price.toString());
+    formData.append('themeId', designData.themeId.toString());
+    if (designData.tags && designData.tags.length > 0) {
+      formData.append('tags', designData.tags.join(','));
     }
+    
+    const response = await fetch(this.apiUrl, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+    
+    await this.handleError(response);
+    return response.json();
   }
   
   async deleteDesign(designId: number): Promise<ApiResponse<any>> {
@@ -307,48 +282,15 @@ class VendorDesignService {
 
 const vendorDesignService = new VendorDesignService();
 
-// 🚨 Nouveau gestionnaire d'erreurs avec diagnostic intelligent
-const handleApiCall = async (apiCall: () => Promise<any>, setAccessError: (error: any) => void, setShowAccessError: (show: boolean) => void) => {
+// Wrapper pour la gestion d'erreurs avec cookies
+const handleApiCall = async (apiCall: () => Promise<any>) => {
   try {
     const data = await apiCall();
     return { success: true, data };
   } catch (error: any) {
-    console.log('🚨 Erreur API détectée:', error);
-
-    // Si l'erreur contient un diagnostic vendeur (via vendorFetch)
-    if (error.vendorDiagnosis) {
-      console.log('🔍 Diagnostic disponible:', error.vendorDiagnosis);
-
-      // Gérer selon le type de diagnostic
-      switch (error.vendorDiagnosis.type) {
-        case 'REDIRECT_TO_LOGIN':
-          // Redirection automatique pour session expirée
-          window.location.href = error.vendorDiagnosis.primaryUrl || '/auth/login';
-          return { success: false, error };
-
-        case 'SHOW_REACTIVATION_FORM':
-          // Afficher l'interface de réactivation
-          setAccessError(error);
-          setShowAccessError(true);
-          return { success: false, error };
-
-        case 'CONTACT_ADMIN':
-          // Afficher l'interface pour contacter l'admin
-          setAccessError(error);
-          setShowAccessError(true);
-          return { success: false, error };
-
-        default:
-          // Autres cas, afficher l'erreur générée
-          setAccessError(error);
-          setShowAccessError(true);
-          return { success: false, error };
-      }
-    }
-
-    // Fallback pour les erreurs sans diagnostic (anciennes erreurs)
     const errorMessage = error.message || 'Erreur inconnue';
     const httpStatusMatch = errorMessage.match(/^HTTP (\d+):?/);
+    const toastOptions: { duration: number; description?: string } = { duration: 8000 };
 
     if (httpStatusMatch) {
       const status = parseInt(httpStatusMatch[1], 10);
@@ -359,6 +301,15 @@ const handleApiCall = async (apiCall: () => Promise<any>, setAccessError: (error
         case 400:
           title = "Requête incorrecte";
           description = `Le serveur a indiqué une erreur. Détails : ${description}`;
+          break;
+        case 401:
+          title = "Session expirée";
+          description = "Veuillez vous reconnecter pour continuer.";
+          window.location.href = '/auth/login';
+          break;
+        case 403:
+          title = "Accès refusé";
+          description = "Vous n'avez pas les permissions nécessaires pour cette action.";
           break;
         case 404:
           title = "Non trouvé";
@@ -376,12 +327,12 @@ const handleApiCall = async (apiCall: () => Promise<any>, setAccessError: (error
           title = `Erreur ${status}`;
           break;
       }
-      toast.error(title, { duration: 8000, description });
+      toast.error(title, { ...toastOptions, description });
     } else {
       // Erreurs non-HTTP (ex: problème réseau)
-      toast.error('Erreur de communication', { duration: 8000, description: errorMessage });
+      toast.error('Erreur de communication', { ...toastOptions, description: errorMessage });
     }
-
+    
     return { success: false, error };
   }
 };
@@ -441,10 +392,6 @@ export const VendorDesignsPage: React.FC = () => {
   const navigate = useNavigate();
   const [, setExtendedProfile] = useState<ExtendedVendorProfile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // 🆕 États pour la gestion d'erreurs avancée
-  const [accessError, setAccessError] = useState<any>(null);
-  const [showAccessError, setShowAccessError] = useState(false);
   
   // États principaux
   const [designs, setDesigns] = useState<Design[]>([]);
@@ -507,27 +454,15 @@ export const VendorDesignsPage: React.FC = () => {
     }
   };
 
-  // 🚨 Gestionnaire d'action pour les erreurs d'accès
-  const handleAccessErrorAction = (action: string) => {
-    if (action === 'reactivated') {
-      // Compte réactivé, masquer l'erreur et recharger
-      setShowAccessError(false);
-      setAccessError(null);
-      loadDesigns();
-    }
-  };
-
   // Charger les designs avec la nouvelle API
   const loadDesigns = async () => {
     setLoading(true);
-    const { success, data } = await handleApiCall(
-      () => vendorDesignService.getMyDesigns({
+    const { success, data } = await handleApiCall(() =>
+      vendorDesignService.getMyDesigns({
         page: currentPage,
         limit: 20,
         status: filterStatus,
-      }),
-      setAccessError,
-      setShowAccessError
+      })
     );
 
     if (success) {
@@ -559,10 +494,9 @@ export const VendorDesignsPage: React.FC = () => {
       );
     }
 
-    // Filtrer par catégorie (coercition en nombre pour gérer les IDs string)
+    // Filtrer par thème
     if (filterTheme !== null) {
-      const themeIdNumber = Number(filterTheme);
-      filtered = filtered.filter(design => Number((design as any).categoryId ?? (design as any).themeId) === themeIdNumber);
+      filtered = filtered.filter(design => design.themeId === filterTheme);
     }
 
     setFilteredDesigns(filtered);
@@ -622,10 +556,8 @@ export const VendorDesignsPage: React.FC = () => {
       tags: designForm.tags || []
     };
 
-    const { success } = await handleApiCall(
-      () => vendorDesignService.uploadDesign(selectedFile, uploadData),
-      setAccessError,
-      setShowAccessError
+    const { success } = await handleApiCall(() =>
+      vendorDesignService.uploadDesign(selectedFile, uploadData)
     );
 
     if (success) {
@@ -651,10 +583,8 @@ export const VendorDesignsPage: React.FC = () => {
   };
 
   const handleSubmitForValidation = async (designId: number) => {
-    const { success } = await handleApiCall(
-      () => vendorDesignService.submitForValidation(designId),
-      setAccessError,
-      setShowAccessError
+    const { success } = await handleApiCall(() =>
+      vendorDesignService.submitForValidation(designId)
     );
 
     if (success) {
@@ -798,7 +728,6 @@ export const VendorDesignsPage: React.FC = () => {
                         {design.validatedAt && (
                           <p className="text-xs text-green-600">
                             Validé le {new Date(design.validatedAt).toLocaleDateString('fr-FR')}
-                            {design.validatorName && ` par ${design.validatorName}`}
                           </p>
                         )}
                       </div>
@@ -817,7 +746,6 @@ export const VendorDesignsPage: React.FC = () => {
                         {design.validatedAt && (
                           <p className="text-xs text-green-600">
                             Validé le {new Date(design.validatedAt).toLocaleDateString('fr-FR')}
-                            {design.validatorName && ` par ${design.validatorName}`}
                           </p>
                         )}
                       </div>
@@ -852,20 +780,6 @@ export const VendorDesignsPage: React.FC = () => {
   const [designToDelete, setDesignToDelete] = useState<number | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
-  // 🆕 Statut compte
-  const [isAccountActive, setIsAccountActive] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const statusResp = await vendorAccountService.getAccountStatus();
-        const active = typeof statusResp?.data?.isActive === 'boolean' ? statusResp.data.isActive : (typeof statusResp?.data?.status === 'boolean' ? statusResp.data.status : true);
-        setIsAccountActive(!!active);
-      } catch {
-        setIsAccountActive(true);
-      }
-    })();
-  }, []);
 
   const handleViewDetails = (design: Design) => {
     setSelectedDesign(design);
@@ -875,10 +789,8 @@ export const VendorDesignsPage: React.FC = () => {
   const confirmDelete = async () => {
     if (!designToDelete) return;
     
-    const { success, data } = await handleApiCall(
-      () => vendorDesignService.deleteDesign(designToDelete),
-      setAccessError,
-      setShowAccessError
+    const { success, data } = await handleApiCall(() => 
+      vendorDesignService.deleteDesign(designToDelete)
     );
     
     if (success && data) {
@@ -894,43 +806,6 @@ export const VendorDesignsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto p-6">
-        {/* ✅ Bandeau informatif si compte désactivé (mais accès complet maintenu) */}
-        {isAccountActive === false && (
-          <Card className="border-orange-300 bg-orange-50 mb-6">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                    <ImageIcon className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-orange-800">Compte désactivé</h3>
-                    <p className="text-orange-700 text-sm">
-                      Vos designs sont masqués aux clients mais vous gardez l'accès complet : visualisation, ajout, modification.
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => window.location.assign('/vendeur/account')}
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
-                  size="sm"
-                >
-                  Réactiver mon compte
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {/* 🚨 Gestion intelligente des erreurs d'accès */}
-        {showAccessError && accessError && (
-          <div className="mb-6">
-            <VendorAccessError
-              error={accessError}
-              onAction={handleAccessErrorAction}
-            />
-          </div>
-        )}
-
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -958,14 +833,13 @@ export const VendorDesignsPage: React.FC = () => {
             
             <Button
               onClick={() => setIsUploadDialogOpen(true)}
-              className={`text-white ${isAccountActive === false ? 'bg-orange-600 hover:bg-orange-700' : 'bg-black hover:bg-gray-800'}`}
+                className="bg-black text-white hover:bg-gray-800"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Nouveau design {isAccountActive === false && '(masqué aux clients)'}
+                Nouveau design
             </Button>
             </div>
           </div>
-
 
           {/* Cartes de statistiques */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">

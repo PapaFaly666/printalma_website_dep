@@ -131,7 +131,7 @@ interface VendorProductFromAPI {
       colorName: string;
       colorCode: string;
       adminImageUrl: string;
-      imageType: string;
+      imageType: 'base' | 'detail' | 'admin_reference';
     }>;
     total: number;
     primaryImageUrl: string;
@@ -1085,14 +1085,6 @@ export const VendorProductsPage: React.FC = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* 🔍 Debug temporaire */}
-            {console.log('🔍 Produits visibles:', visibleProducts.map(p => ({
-              id: p.id,
-              designId: p.designId,
-              type: (!p.designId || p.designId === null || p.designId === 0) ? 'WIZARD' : 'TRADITIONNEL',
-              hasImages: !!p.images,
-              imageTypes: p.images?.adminReferences?.map(img => img.imageType)
-            })))}
             {visibleProducts.map((product) => {
               return (
                 <Card key={product.id} className="group border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
