@@ -158,6 +158,9 @@ import ThemesPage from './pages/admin/ThemesPage';
 import ThemeProductsPage from './pages/admin/ThemeProductsPage';
 import ThemesPageTest from './pages/admin/ThemesPageTest';
 
+// 📦 Gestion du stock - Admin
+import AdminStockManagement from './pages/admin/AdminStockManagement';
+
 // 🧪 Test de connexion admin
 import AdminLoginTest from './pages/test/AdminLoginTest';
 
@@ -279,6 +282,7 @@ function App() {
                   <Route path="trash" element={<AdminTrashPage />} />
                   <Route path="themes" element={<ThemesPage />} />
                   <Route path="themes/:themeId/products" element={<ThemeProductsPage />} />
+                  <Route path="stock" element={<AdminStockManagement />} />
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                 </Route>
                 

@@ -56,8 +56,12 @@ import {
   PaginationPrevious, 
   PaginationEllipsis
 } from "../components/ui/pagination";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Skeleton } from "../components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { CreateCategoryStructureForm } from '../components/categories/CreateCategoryStructureForm';
+import { CategoryTree } from '../components/categories/CategoryTree';
+import categoryService from '../services/categoryService';
+import { Category as HierarchicalCategory } from '../types/category.types';
 
 const CategoryManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -120,14 +124,37 @@ const CategoryManagement: React.FC = () => {
   // Add state for product color management
   const [productColorImages, setProductColorImages] = useState<Record<number, { selectedColor?: number }>>({});
   const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
+
+  // États pour la gestion hiérarchique des catégories
+  const [hierarchicalCategories, setHierarchicalCategories] = useState<HierarchicalCategory[]>([]);
+  const [loadingHierarchy, setLoadingHierarchy] = useState(false);
   
   const handleDeleteConfirmationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDeleteConfirmationText(e.target.value);
   };
-  
+
   const isDeleteConfirmationValid = () => {
     return currentCategory && deleteConfirmationText === currentCategory.name;
   };
+
+  // Charger la hiérarchie des catégories
+  const loadHierarchy = async () => {
+    setLoadingHierarchy(true);
+    try {
+      const hierarchy = await categoryService.getCategoryHierarchy();
+      setHierarchicalCategories(hierarchy);
+    } catch (error) {
+      console.error('Error loading hierarchy:', error);
+      toast.error('Erreur lors du chargement de la hiérarchie');
+    } finally {
+      setLoadingHierarchy(false);
+    }
+  };
+
+  // Charger la hiérarchie au montage du composant
+  useEffect(() => {
+    loadHierarchy();
+  }, []);
   
   // Fonction pour rafraîchir les données avec feedback
   const handleRefreshData = async () => {
@@ -1235,28 +1262,29 @@ const CategoryManagement: React.FC = () => {
       ) : (
         <>
           {/* En-tête */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des Catégories</h1>
-              <p className="text-gray-500 dark:text-gray-400 mt-1">
-                Ajoutez, modifiez ou supprimez des catégories de produits
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Catégories</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Gérez la structure hiérarchique de vos catégories
               </p>
             </div>
 
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={handleRefreshData}
                 variant="outline"
+                size="sm"
                 className="border-gray-200 dark:border-gray-700"
                 disabled={isRefreshing}
               >
-                <RefreshCcw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Actualiser
+                <RefreshCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               </Button>
 
-              <Button 
+              <Button
                 onClick={() => setIsAddModalOpen(true)}
-                className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black font-medium"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Nouvelle catégorie
@@ -1268,10 +1296,10 @@ const CategoryManagement: React.FC = () => {
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-lg">
               <p>{error}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRefreshData} 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshData}
                 className="mt-2 text-red-700 dark:text-red-400 border-red-300 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30"
               >
                 <RefreshCcw className="mr-2 h-3 w-3" />
@@ -1280,220 +1308,60 @@ const CategoryManagement: React.FC = () => {
             </div>
           )}
 
-          {/* Carte principale */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle>Catégories ({filteredCategories.length})</CardTitle>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                  <Input
-                    placeholder="Rechercher une catégorie..."
-                    className="pl-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+          {/* Vue Hiérarchique Unique */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Catégories</CardTitle>
+                  <CardDescription className="text-sm mt-0.5">
+                    Structure hiérarchique parent/enfant/variation
+                  </CardDescription>
                 </div>
               </div>
-              <CardDescription>Gérez les catégories de votre catalogue de produits</CardDescription>
             </CardHeader>
-            <CardContent>
-              {loading ? (
-                renderLoading()
-              ) : filteredCategories.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Nom</TableHead>
-                      <TableHead className="hidden sm:table-cell">Description</TableHead>
-                      <TableHead className="hidden md:table-cell">Produits</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCategories.map((category, index) => (
-                      <TableRow key={category.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
-                        <TableCell className="font-medium">{index + 1}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Tag className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                            <span className="font-medium text-gray-900 dark:text-gray-100">{category.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-gray-500 dark:text-gray-400 max-w-xs truncate">
-                          {category.description || <span className="text-gray-400 dark:text-gray-600 italic">Aucune description</span>}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Badge 
-                            className={`${countProductsByCategory(category.id) > 0 
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800' 
-                              : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}
-                            onClick={() => countProductsByCategory(category.id) > 0 && openProductsView(category)}
-                          >
-                            {countProductsByCategory(category.id)} produit{countProductsByCategory(category.id) !== 1 ? 's' : ''}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {countProductsByCategory(category.id) > 0 && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => openProductsView(category)}
-                                className="hidden sm:inline-flex text-blue-600 dark:text-blue-500 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-blue-700"
-                              >
-                                <ShoppingBag className="h-4 w-4 mr-1" />
-                                Produits
-                              </Button>
-                            )}
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => openEditModal(category)}
-                              className="hidden sm:inline-flex"
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Modifier
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="hidden sm:inline-flex text-red-600 dark:text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/50 hover:text-red-700" 
-                              onClick={() => openDeleteModal(category)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Supprimer
-                            </Button>
-                            
-                            {/* Menu déroulant pour mobile */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild className="sm:hidden">
-                                <Button variant="outline" size="sm">
-                                  <span className="sr-only">Actions</span>
-                                  <span>•••</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {countProductsByCategory(category.id) > 0 && (
-                                  <DropdownMenuItem onClick={() => openProductsView(category)}>
-                                    <ShoppingBag className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-500" />
-                                    Voir les produits
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem onClick={() => openEditModal(category)}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Modifier
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openDeleteModal(category)} className="text-red-600 dark:text-red-500">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Supprimer
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="h-24 w-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-6">
-                    <Tag className="h-12 w-12 text-gray-400 dark:text-gray-500" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    {searchTerm ? "Aucune catégorie trouvée" : "Aucune catégorie disponible"}
-                  </h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md">
-                    {searchTerm 
-                      ? "Aucune catégorie ne correspond à votre recherche. Essayez un autre terme ou effacez votre recherche."
-                      : "Commencez par ajouter une catégorie en cliquant sur le bouton 'Nouvelle catégorie' ci-dessus."}
-                  </p>
-                  {searchTerm && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setSearchTerm('')}
-                    >
-                      Effacer la recherche
-                    </Button>
-                  )}
+            <CardContent className="pt-6">
+              {loadingHierarchy ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Loader2 className="h-10 w-10 animate-spin text-blue-500 mb-3" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Chargement...</span>
                 </div>
+              ) : (
+                <CategoryTree
+                  categories={hierarchicalCategories}
+                  onRefresh={loadHierarchy}
+                />
               )}
             </CardContent>
           </Card>
         </>
       )}
       
-      {/* Modal d'ajout de catégorie */}
-      <Dialog open={isAddModalOpen} onOpenChange={(open) => !isAdding && setIsAddModalOpen(open)}>
+      {/* Modal d'ajout de catégorie avec structure hiérarchique */}
+      <Dialog open={isAddModalOpen} onOpenChange={(open) => setIsAddModalOpen(open)}>
         <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
-              Ajouter une catégorie
+              Nouvelle Catégorie
             </DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400">
-              Créez une nouvelle catégorie pour vos produits
+              Ajoutez une catégorie et ses sous-catégories
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <label htmlFor="categoryName" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
-                Nom de la catégorie *
-              </label>
-              <Input
-                id="categoryName"
-                placeholder="Nom de la catégorie"
-                className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                disabled={isAdding}
-              />
-            </div>
-            <div className="grid gap-2">
-              <label htmlFor="categoryDescription" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
-                Description (optionnelle)
-              </label>
-              <Textarea
-                id="categoryDescription"
-                placeholder="Description de la catégorie"
-                className="resize-none bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
-                rows={3}
-                value={newCategoryDescription}
-                onChange={(e) => setNewCategoryDescription(e.target.value)}
-                disabled={isAdding}
-              />
-            </div>
+          <div className="py-4">
+            <CreateCategoryStructureForm
+              onSuccess={() => {
+                setIsAddModalOpen(false);
+                loadHierarchy();
+                refreshData();
+                toast.success('Catégorie créée avec succès !');
+              }}
+              onCancel={() => setIsAddModalOpen(false)}
+            />
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row-reverse gap-2 sm:gap-0">
-            <Button
-              type="button"
-              className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black w-full sm:w-auto"
-              onClick={handleAddCategory}
-              disabled={isAdding}
-            >
-              {isAdding ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Création en cours...</span>
-                </span>
-              ) : (
-                'Ajouter'
-              )}
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="border-gray-200 dark:border-gray-700 dark:text-gray-300 w-full sm:w-auto"
-              onClick={() => setIsAddModalOpen(false)}
-              disabled={isAdding}
-            >
-              Annuler
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

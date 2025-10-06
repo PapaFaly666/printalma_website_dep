@@ -40,7 +40,8 @@ import {
     Store,
     FileText,
     Wallet,
-    Banknote
+    Banknote,
+    PackageSearch
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -426,6 +427,15 @@ export default function Sidebar() {
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'design-categories'}
                             onClick={() => handleNavigation('design-categories')}
+                            badge=""
+                            textColor=""
+                        />
+                        <NavItem
+                            icon={<PackageSearch size={18} />}
+                            label="Stock"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'stock'}
+                            onClick={() => handleNavigation('stock')}
                             badge=""
                             textColor=""
                         />

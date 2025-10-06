@@ -15,7 +15,8 @@
       "Bash(npx eslint:*)",
       "Bash(npm restart)",
       "Bash(npm install)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [],
