@@ -16,6 +16,8 @@ const initialFormData: ProductFormData = {
   designs: [],
   colorVariations: [],
   sizes: [], // Added missing sizes field
+  colors: [], // Couleurs disponibles (ex: Noir, Blanc)
+  stockBySizeColor: {}, // Stock par taille et couleur
   genre: 'UNISEXE' // ← NOUVEAU: Ajout du champ genre
 };
 
@@ -188,6 +190,13 @@ export const useProductForm = () => {
         colorVariations: formData.colorVariations.map(color => ({
           name: color.name,
           colorCode: color.colorCode,
+          // ✅ Convertir stock object en array pour le backend
+          stocks: color.stock
+            ? Object.entries(color.stock).map(([sizeName, stockQty]) => ({
+                sizeName,
+                stock: stockQty
+              }))
+            : [],
           images: color.images.map(image => ({
             fileId: image.id,
             view: image.view,
@@ -221,6 +230,10 @@ export const useProductForm = () => {
       console.log('🔍 [DEBUG] Genre dans apiPayload:', apiPayload.genre);
       console.log('🔍 [DEBUG] Prix suggéré:', formData.suggestedPrice);
       console.log('🔍 [DEBUG] Prix suggéré sera envoyé:', apiPayload.suggestedPrice);
+      console.log('🔍 [DEBUG] Stock par variation (format backend):', apiPayload.colorVariations?.map(c => ({
+        name: c.name,
+        stocks: c.stocks
+      })));
 
       // Appeler l'API avec le nouveau format
       const result = await ProductService.createProduct(apiPayload, files);

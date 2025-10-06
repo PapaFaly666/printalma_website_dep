@@ -220,8 +220,10 @@ const AppelDeFondsPage: React.FC = () => {
 
   const getPaymentIcon = (method: PaymentMethod) => {
     switch (method) {
-      case 'WAVE': return '📱';
-      case 'ORANGE_MONEY': return '🍊';
+      case 'WAVE':
+        return <img src="https://goamobile.com/logosent/wave@221@-P-2021-06-30_00-18-27wave_logo_2.png" alt="Wave" className="h-5 w-5 object-contain" />;
+      case 'ORANGE_MONEY':
+        return <img src="https://otobi.sn/wp-content/uploads/2022/03/Orange-Money-logo.png" alt="Orange Money" className="h-5 w-5 object-contain" />;
       case 'BANK_TRANSFER': return '🏦';
       default: return '💳';
     }

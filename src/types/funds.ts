@@ -77,7 +77,7 @@ export const PAYMENT_METHODS: PaymentMethodOption[] = [
   {
     id: 'WAVE',
     name: 'Wave',
-    icon: '📱',
+    icon: 'https://goamobile.com/logosent/wave@221@-P-2021-06-30_00-18-27wave_logo_2.png',
     description: 'Transfert mobile Wave',
     minAmount: 1000,
     maxAmount: 2000000,
@@ -87,7 +87,7 @@ export const PAYMENT_METHODS: PaymentMethodOption[] = [
   {
     id: 'ORANGE_MONEY',
     name: 'Orange Money',
-    icon: '🟠',
+    icon: 'https://otobi.sn/wp-content/uploads/2022/03/Orange-Money-logo.png',
     description: 'Transfert mobile Orange Money',
     minAmount: 1000,
     maxAmount: 1500000,

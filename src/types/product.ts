@@ -9,17 +9,27 @@ export interface ProductFormData {
   categoryId?: number;
   categories: string[];
   sizes: string[];
+  colors?: string[]; // Couleurs disponibles (ex: Noir, Blanc)
   designs: string[];
   colorVariations: ColorVariation[];
   hasDesign?: boolean; // Calculé automatiquement par le backend
   designCount?: number; // Nombre total de designs sur le produit
   genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Genre cible du produit
+  stockBySizeColor?: StockBySizeColor; // Stock par taille et couleur
+}
+
+// Structure de stock par taille et couleur
+export interface StockBySizeColor {
+  [size: string]: {
+    [color: string]: number;
+  };
 }
 
 export interface ColorVariation {
   id: string;
   name: string;
   colorCode: string;
+  stock?: { [size: string]: number }; // Stock par taille pour cette couleur
   images: ProductImage[];
 }
 

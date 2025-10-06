@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Save, 
-  RotateCcw, 
-  Eye, 
-  CheckCircle, 
-  AlertCircle, 
+import {
+  Save,
+  RotateCcw,
+  Eye,
+  CheckCircle,
+  AlertCircle,
   Image as ImageIcon,
   Download,
   Layers,
@@ -14,7 +14,8 @@ import {
   Palette,
   Tag,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  PackageOpen
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
@@ -25,10 +26,11 @@ import { useProductForm } from '../../hooks/useProductForm';
 import { ProductFormFields } from './ProductFormFields';
 import { ColorVariationsPanel } from './ColorVariationsPanel';
 import { CategoriesAndSizesPanel } from './CategoriesAndSizesPanel';
+import { StockManagementPanel } from './StockManagementPanel';
 import { DelimitationCanvas, DelimitationCanvasHandle } from './DelimitationCanvas';
 import { DesignUploadInterface } from './DesignUploadInterface';
 import { DelimitationDuplicator } from './DelimitationDuplicator';
-import { ProductImage, Delimitation } from '../../types/product';
+import { ProductImage, Delimitation, StockBySizeColor } from '../../types/product';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../../contexts/CategoryContext';
@@ -180,6 +182,30 @@ const CategoriesStep: React.FC<{
           sizes={sizes}
           onCategoriesUpdate={onCategoriesUpdate}
           onSizesUpdate={onSizesUpdate}
+        />
+      </CardContent>
+    </Card>
+  );
+};
+
+const StockStep: React.FC<{
+  sizes: string[];
+  colorVariations: any[];
+  onStockChange: (colorIndex: number, stock: { [size: string]: number }) => void;
+}> = ({ sizes, colorVariations, onStockChange }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <PackageOpen className="h-5 w-5" />
+          Gestion du stock par variation
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <StockManagementPanel
+          sizes={sizes}
+          colorVariations={colorVariations}
+          onStockChange={onStockChange}
         />
       </CardContent>
     </Card>
@@ -505,8 +531,9 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     { id: 1, title: 'Informations de base', icon: Package },
     { id: 2, title: 'Variations de couleur', icon: Palette },
     { id: 3, title: 'Catégories et tailles', icon: Tag },
-    { id: 4, title: 'Images et délimitations', icon: Layers },
-    { id: 5, title: 'Validation', icon: CheckCircle }
+    { id: 4, title: 'Gestion du stock', icon: PackageOpen },
+    { id: 5, title: 'Images et délimitations', icon: Layers },
+    { id: 6, title: 'Validation', icon: CheckCircle }
   ];
 
   // Ordre des couleurs: toujours commencer par le blanc
@@ -714,15 +741,25 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         if (formData.categories.length === 0) errors.push('Au moins une catégorie requise');
         if (formData.sizes.length === 0) errors.push('Au moins une taille requise');
         break;
-      
+
       case 4:
+        // Validation optionnelle du stock - vérifier si au moins une variation a du stock
+        const hasStock = formData.colorVariations.some(color =>
+          color.stock && Object.values(color.stock).some(qty => qty > 0)
+        );
+        if (!hasStock) {
+          errors.push('⚠️ Aucun stock défini (vous pouvez continuer)');
+        }
+        break;
+
+      case 5:
         if (formStats.totalImages === 0) errors.push('Au moins une image requise');
-        
+
         // 🧠 Validation obligatoire des délimitations pour les produits mockup admin
-        const totalDelimitations = formData.colorVariations.reduce((total, color) => 
+        const totalDelimitations = formData.colorVariations.reduce((total, color) =>
           total + color.images.reduce((imageTotal, image) => imageTotal + (image.delimitations?.length || 0), 0), 0
         );
-        
+
         if (totalDelimitations === 0) {
           errors.push('⚠️ Délimitation obligatoire : Au moins une zone de personnalisation doit être définie pour ce produit mockup admin');
         }
@@ -1625,7 +1662,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         );
       
       case 3:
-          return (
+        return (
           <CategoriesStep
             categories={formData.categories}
             sizes={formData.sizes}
@@ -1633,8 +1670,25 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
             onSizesUpdate={(sizes: string[]) => updateFormData('sizes', sizes)}
           />
         );
-      
+
       case 4:
+        return (
+          <StockStep
+            sizes={formData.sizes}
+            colorVariations={formData.colorVariations}
+            onStockChange={(colorIndex: number, stock: { [size: string]: number }) => {
+              // Mettre à jour le stock pour une colorVariation spécifique
+              const updatedVariations = [...formData.colorVariations];
+              updatedVariations[colorIndex] = {
+                ...updatedVariations[colorIndex],
+                stock: stock
+              };
+              updateFormData('colorVariations', updatedVariations);
+            }}
+          />
+        );
+
+      case 5:
         return (
           <DelimitationsStep
             colorVariations={colorVariationsWhiteFirst}
@@ -1648,8 +1702,8 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
             onExportFinalImage={handleExportFinalImage}
           />
         );
-      
-      case 5:
+
+      case 6:
         return (
           <ValidationStep
             formData={formData}

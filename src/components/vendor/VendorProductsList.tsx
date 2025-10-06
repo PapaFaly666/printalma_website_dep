@@ -190,9 +190,7 @@ export const VendorProductsList: React.FC = () => {
                     className="w-12 h-12 object-contain border rounded"
                   />
                   <div className="flex-1">
-                    <p className="text-xs text-gray-500">
-                      {product.design?.isValidated ? '✅ Design validé' : '⏳ En attente de validation'}
-                    </p>
+                    {/* Suppression des libellés de statut du design pour éviter la redondance */}
                   </div>
                 </div>
               )}

@@ -9,7 +9,8 @@ import {
   ChevronDown,
   ChevronRight,
   AlertCircle,
-  Loader2
+  Loader2,
+  Palette
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -401,270 +402,91 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
       transition={{ duration: 0.3, delay: 0.1 }}
       className="space-y-6"
     >
-      {/* Panel Catégorie sélectionnée */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            <Tag className="h-5 w-5 text-blue-500" />
-            Catégorie du produit
-            <Badge variant="outline" className="text-xs">
-              Une sous-catégorie, plusieurs variations
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Catégories actuellement sélectionnées */}
-          {selectedParent && selectedChildName ? (
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Sous-catégorie sélectionnée
-              </Label>
+      {/* Panel Sélection moderne de catégories */}
+      <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        {/* En-tête */}
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                <Tag className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Catégorie du produit</h3>
+                <p className="text-sm text-blue-100">Sélectionnez une sous-catégorie et ses variations</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              {/* Affichage de la sous-catégorie */}
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant="default"
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200 text-sm"
-                >
-                  <Tag className="h-4 w-4" />
-                  <span>{selectedParent} &gt; {selectedChildName}</span>
-                  <button
-                    onClick={removeSelectedCategory}
-                    className="ml-2 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-1 transition-colors"
-                    title="Changer de sous-catégorie"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+        <div className="p-6 space-y-6">
+          {/* Breadcrumb de sélection */}
+          {selectedParent && selectedChildName && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-lg border border-blue-200 dark:border-blue-800"
+            >
+              <div className="flex-1 flex items-center gap-2 overflow-x-auto">
+                <Badge className="bg-blue-600 text-white shrink-0">
+                  {selectedParent}
+                </Badge>
+                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                <Badge className="bg-purple-600 text-white shrink-0">
+                  {selectedChildName}
+                </Badge>
+                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                <div className="flex items-center gap-1 flex-wrap">
+                  {selectedVariations.map((variation, idx) => (
+                    <React.Fragment key={variation}>
+                      {idx > 0 && <span className="text-gray-400 text-xs">•</span>}
+                      <Badge className="bg-green-600 text-white shrink-0 text-xs">
+                        {variation}
+                      </Badge>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={removeSelectedCategory}
+                className="shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </motion.div>
+          )}
+
+          {/* Variations sélectionnées (si existantes) */}
+          {selectedVariations.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Variations sélectionnées
+                </Label>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-300">
+                  {selectedVariations.length}
                 </Badge>
               </div>
-
-              {/* Affichage des variations sélectionnées */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Variations sélectionnées ({selectedVariations.length})
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  <AnimatePresence>
-                    {selectedVariations.map((variation) => (
-                      <motion.div
-                        key={variation}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        layout
-                      >
-                        <Badge
-                          variant="default"
-                          className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200"
-                        >
-                          <Check className="h-3 w-3" />
-                          <span>{variation}</span>
-                          <button
-                            onClick={() => removeVariation(variation)}
-                            className="ml-1 hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </div>
-
-              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Cliquez sur une variation pour l'ajouter ou la retirer
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-              <Tag className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500 dark:text-gray-400 font-medium">
-                Aucune catégorie sélectionnée
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Choisissez une catégorie et sous-catégorie ci-dessous
-              </p>
-            </div>
-          )}
-
-          {/* Structure hiérarchique des catégories */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {selectedParent ? 'Changer de sous-catégorie' : 'Sélectionner une sous-catégorie'}
-            </Label>
-
-            {loadingCategories ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                <span className="ml-2 text-sm text-gray-500">Chargement des catégories...</span>
-              </div>
-            ) : hierarchicalCategories.length === 0 ? (
-              <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-                <Tag className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  Aucune catégorie disponible
-                </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Créez des catégories dans la page de gestion
-                </p>
-              </div>
-            ) : (
-            <div className="space-y-2">
-              {selectedParent && selectedChildName && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg mb-2">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
-                    <p className="text-xs text-amber-700 dark:text-amber-300">
-                      Vous pouvez sélectionner plusieurs variations pour <strong>{selectedParent} &gt; {selectedChildName}</strong>.
-                      Pour changer de sous-catégorie, cliquez sur le X ci-dessus.
-                    </p>
-                  </div>
-                </div>
-              )}
-              {hierarchicalCategories.map((category) => (
-                <div key={category.id} className="border border-gray-200 dark:border-gray-700 rounded-lg">
-                  {/* En-tête de catégorie */}
-                  <button
-                    onClick={() => toggleCategoryExpansion(category.id)}
-                    className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{category.icon}</span>
-                      <span className="font-medium text-gray-900 dark:text-gray-100">
-                        {category.name}
-                      </span>
-                      <Badge variant="outline" className="text-xs">
-                        {category.children.length} sous-catégories
-                      </Badge>
-                    </div>
-                    {expandedCategories.has(category.id) ? (
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-500" />
-                    )}
-                  </button>
-
-                  {/* Sous-catégories (Enfants) */}
-                  <AnimatePresence>
-                    {expandedCategories.has(category.id) && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="border-t border-gray-200 dark:border-gray-700 p-3 space-y-3"
-                      >
-                        {category.children.map((child) => (
-                          <div key={child.id} className="space-y-2">
-                            <div className="flex items-center gap-2 px-2">
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {child.name}
-                              </span>
-                              <Badge variant="outline" className="text-xs">
-                                {child.variations.length} variations
-                              </Badge>
-                            </div>
-
-                            {/* Variations */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pl-4">
-                              {child.variations.map((variation) => {
-                                const fullCategoryName = `${category.name} > ${child.name} > ${variation.name}`;
-                                const isSelected = categories.includes(fullCategoryName);
-                                const isDifferentChild = selectedParent && selectedChildName &&
-                                  (selectedParent !== category.name || selectedChildName !== child.name);
-
-                                return (
-                                  <motion.button
-                                    key={variation.id}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => toggleVariation(category.name, child.name, variation.name, child.variations)}
-                                    disabled={isDifferentChild}
-                                    className={`
-                                      flex items-center justify-center p-2 rounded-md border-2 text-left transition-all text-xs
-                                      ${isDifferentChild
-                                        ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700'
-                                        : isSelected
-                                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 shadow-md'
-                                        : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                      }
-                                    `}
-                                  >
-                                    <div className="flex flex-col items-center text-center w-full">
-                                      <span className="font-medium">{variation.name}</span>
-                                      {isSelected && (
-                                        <Check className="h-3 w-3 text-green-500 mt-1" />
-                                      )}
-                                    </div>
-                                  </motion.button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-          </div>
-              ))}
-            </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Panel Tailles adaptatives */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-            <Ruler className="h-5 w-5 text-purple-500" />
-            Tailles disponibles
-            {selectedParent && selectedVariations.length > 0 && (
-              <Badge variant="outline" className="text-xs">
-                Pour {selectedVariations.length} variation(s)
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Message d'information si aucune catégorie */}
-          {!selectedParent && (
-            <div className="text-center py-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-              <Ruler className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500 dark:text-gray-400 font-medium">
-                Aucune taille disponible
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Sélectionnez d'abord une sous-catégorie et des variations
-              </p>
-            </div>
-          )}
-
-          {/* Tailles sélectionnées */}
-          {(sizes?.length > 0) && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Tailles sélectionnées ({sizes?.length || 0})
-              </Label>
               <div className="flex flex-wrap gap-2">
-                <AnimatePresence>
-                  {(sizes || []).map((size) => (
+                <AnimatePresence mode="popLayout">
+                  {selectedVariations.map((variation) => (
                     <motion.div
-                      key={size}
+                      key={variation}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                       layout
                     >
-                      <Badge 
-                        variant="default" 
-                        className="flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900 dark:text-purple-200"
+                      <Badge
+                        className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:shadow-lg transition-shadow cursor-pointer"
                       >
-                        <span>{size}</span>
+                        <Check className="h-3 w-3" />
+                        <span className="font-medium">{variation}</span>
                         <button
-                          onClick={() => removeSize(size)}
-                          className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
+                          onClick={() => removeVariation(variation)}
+                          className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -676,60 +498,249 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
             </div>
           )}
 
-
-          {/* Info tailles - Afficher seulement si pas de tailles */}
-          {selectedParent && selectedVariations.length > 0 && sizes.length === 0 && (
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300 mb-1">
-                    ⚠️ Aucune taille définie
-                  </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    Les variations sélectionnées n'ont pas de tailles prédéfinies. Ajoutez-les ci-dessous.
-                  </p>
-                </div>
+          {/* État vide */}
+          {!selectedParent && (
+            <div className="text-center py-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 mb-4">
+                <Tag className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Aucune catégorie sélectionnée
+              </h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Parcourez les catégories ci-dessous pour commencer
+              </p>
             </div>
           )}
 
-          {/* Ajouter taille personnalisée */}
-          {selectedParent && selectedVariations.length > 0 && (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Ou ajouter une taille personnalisée
+          {/* Liste des catégories */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <ChevronDown className="h-4 w-4" />
+              {selectedParent ? 'Changer de catégorie' : 'Parcourir les catégories'}
             </Label>
-            <div className="flex gap-2">
-              <Input
-                  value={newCustomSize}
-                  onChange={(e) => setNewCustomSize(e.target.value)}
-                placeholder="Ex: 42, Grande, 500ml..."
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addCustomSize();
-                  }
-                }}
-                className="flex-1 border-2 border-purple-300 dark:border-purple-600 focus:border-purple-500"
-              />
-              <Button
-                onClick={addCustomSize}
-                  disabled={!newCustomSize.trim() || (sizes || []).includes(newCustomSize.trim())}
-                size="sm"
-                className="shrink-0 bg-purple-600 hover:bg-purple-700"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Ajouter
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              💡 Appuyez sur Entrée ou cliquez sur "Ajouter" pour valider
-            </p>
+
+            {loadingCategories ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Chargement des catégories...</p>
+              </div>
+            ) : hierarchicalCategories.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl">
+                <Tag className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Aucune catégorie disponible
+                </h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Créez des catégories dans la page de gestion
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {hierarchicalCategories.map((category) => (
+                  <motion.div
+                    key={category.id}
+                    layout
+                    className="border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+                  >
+                    {/* En-tête catégorie parent */}
+                    <button
+                      onClick={() => toggleCategoryExpansion(category.id)}
+                      className="w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{category.icon}</span>
+                        <div className="text-left">
+                          <h4 className="font-bold text-gray-900 dark:text-gray-100">
+                            {category.name}
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {category.children.length} sous-{category.children.length > 1 ? 'catégories' : 'catégorie'}
+                          </p>
+                        </div>
+                      </div>
+                      <motion.div
+                        animate={{ rotate: expandedCategories.has(category.id) ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronDown className="h-5 w-5 text-gray-500" />
+                      </motion.div>
+                    </button>
+
+                    {/* Sous-catégories */}
+                    <AnimatePresence>
+                      {expandedCategories.has(category.id) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                        >
+                          <div className="p-4 space-y-4">
+                            {category.children.map((child) => {
+                              const isChildSelected = selectedParent === category.name && selectedChildName === child.name;
+
+                              return (
+                                <div
+                                  key={child.id}
+                                  className={`rounded-lg border-2 overflow-hidden transition-all ${
+                                    isChildSelected
+                                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20 shadow-md'
+                                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+                                  }`}
+                                >
+                                  {/* En-tête sous-catégorie */}
+                                  <div className="p-3 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-700">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                        {child.name}
+                                      </span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {child.variations.length} variation{child.variations.length > 1 ? 's' : ''}
+                                      </Badge>
+                                    </div>
+                                  </div>
+
+                                  {/* Variations en grille */}
+                                  <div className="p-3">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                                      {child.variations.map((variation) => {
+                                        const fullCategoryName = `${category.name} > ${child.name} > ${variation.name}`;
+                                        const isSelected = categories.includes(fullCategoryName);
+                                        const isDifferentChild = selectedParent && selectedChildName &&
+                                          (selectedParent !== category.name || selectedChildName !== child.name);
+
+                                        return (
+                                          <motion.button
+                                            key={variation.id}
+                                            whileHover={!isDifferentChild ? { scale: 1.05, y: -2 } : {}}
+                                            whileTap={!isDifferentChild ? { scale: 0.95 } : {}}
+                                            onClick={() => !isDifferentChild && toggleVariation(category.name, child.name, variation.name, child.variations)}
+                                            disabled={isDifferentChild}
+                                            className={`
+                                              relative p-3 rounded-lg border-2 font-medium text-sm transition-all
+                                              ${isDifferentChild
+                                                ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700'
+                                                : isSelected
+                                                ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 text-green-700 dark:text-green-300 shadow-lg'
+                                                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:shadow-md'
+                                              }
+                                            `}
+                                          >
+                                            <div className="flex flex-col items-center gap-1">
+                                              <span className="text-center leading-tight">{variation.name}</span>
+                                              {isSelected && (
+                                                <motion.div
+                                                  initial={{ scale: 0 }}
+                                                  animate={{ scale: 1 }}
+                                                  className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-1"
+                                                >
+                                                  <Check className="h-3 w-3" />
+                                                </motion.div>
+                                              )}
+                                            </div>
+                                          </motion.button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Panel Tailles & Couleurs - Version simplifiée */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="p-6 space-y-6">
+          {/* Section Tailles */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Ruler className="h-5 w-5 text-purple-600" />
+                Tailles
+              </Label>
+              {sizes?.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {sizes.length}
+                </Badge>
+              )}
+            </div>
+
+            {!selectedParent ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Sélectionnez d'abord une catégorie
+              </p>
+            ) : (
+              <>
+                {/* Tailles */}
+                {sizes?.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <AnimatePresence mode="popLayout">
+                      {sizes.map((size) => (
+                        <motion.div
+                          key={size}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          layout
+                        >
+                          <Badge className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            <span>{size}</span>
+                            <button
+                              onClick={() => removeSize(size)}
+                              className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+
+                {/* Ajouter taille */}
+                {selectedVariations.length > 0 && (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newCustomSize}
+                      onChange={(e) => setNewCustomSize(e.target.value)}
+                      placeholder="Ajouter une taille..."
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addCustomSize();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={addCustomSize}
+                      disabled={!newCustomSize.trim() || (sizes || []).includes(newCustomSize.trim())}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+        </div>
+      </div>
     </motion.div>
   );
 }; 

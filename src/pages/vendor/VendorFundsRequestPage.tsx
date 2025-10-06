@@ -223,9 +223,21 @@ const VendorFundsRequestPage: React.FC = () => {
   const getPaymentMethodIcon = (method: FundsRequest['paymentMethod']) => {
     switch (method) {
       case 'WAVE':
-        return <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 text-sm font-bold">W</div>;
+        return (
+          <img
+            src="https://goamobile.com/logosent/wave@221@-P-2021-06-30_00-18-27wave_logo_2.png"
+            alt="Wave"
+            className="h-6 w-6 object-contain"
+          />
+        );
       case 'ORANGE_MONEY':
-        return <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600 text-sm font-bold">O</div>;
+        return (
+          <img
+            src="https://otobi.sn/wp-content/uploads/2022/03/Orange-Money-logo.png"
+            alt="Orange Money"
+            className="h-6 w-6 object-contain"
+          />
+        );
       case 'BANK_TRANSFER':
         return <CreditCard className="h-8 w-8 text-gray-600" />;
       default:

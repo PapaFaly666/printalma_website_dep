@@ -660,26 +660,12 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
             ? 'bg-purple-100 text-purple-800 border border-purple-200'
             : 'bg-blue-100 text-blue-800 border border-blue-200'
         }`}>
-          {isWizardProduct ? '🎨 Personnalisé' : '🎯 Design'}
+          {product.adminValidated === true
+            ? (isWizardProduct ? '🎨 Personnalisé' : '🎯 Design')
+            : '⏳ En attente de validation'}
         </span>
 
-        {/* Badge de validation WIZARD */}
-        {isWizardProduct && (
-          <span className={`px-2 py-1 rounded text-xs font-medium ${
-            product.adminValidated === true
-              ? 'bg-green-100 text-green-700 border border-green-200'
-              : product.adminValidated === false
-              ? 'bg-orange-100 text-orange-700 border border-orange-200'
-              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-          }`}>
-            {product.adminValidated === true && '✅ Validé admin'}
-            {product.adminValidated === false && '⏳ Validation admin'}
-            {product.adminValidated !== true && product.adminValidated !== false && '⏳ En attente'}
-          </span>
-        )}
-
-        {/* Badge de statut publié - seulement si réellement validé (suppression redondance) */}
-        {/* Ce badge est maintenant géré par l'interface principale via getStatusText() */}
+        {/* Badge de validation WIZARD supprimé pour éviter la redondance */}
       </div>
 
       {/* ✅ Motif de rejet si présent */}

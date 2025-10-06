@@ -47,6 +47,10 @@ export interface CreateProductPayload {
   colorVariations?: Array<{
     name: string;
     colorCode: string;
+    stocks?: Array<{
+      sizeName: string;
+      stock: number;
+    }>; // Stock par taille pour cette couleur (format backend)
     images: Array<{
       fileId?: string;
       view: string;
