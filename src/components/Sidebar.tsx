@@ -525,15 +525,6 @@ export default function Sidebar() {
                             textColor=""
                         />
 
-                        <NavItem
-                            icon={<ShoppingCart size={18} />}
-                            label="Ventes"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'sales'}
-                            onClick={() => handleNavigation('sales')}
-                            badge=""
-                            textColor=""
-                        />
                     </NavGroup>
 
                     <NavGroup
@@ -551,15 +542,6 @@ export default function Sidebar() {
                             textColor=""
                         />
 
-                        <NavItem
-                            icon={<CreditCard size={18} />}
-                            label="Historique"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'payment-history'}
-                            onClick={() => handleNavigation('payment-history')}
-                            badge=""
-                            textColor=""
-                        />
                     </NavGroup>
                         </>
                     )}

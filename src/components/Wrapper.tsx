@@ -2,6 +2,7 @@ import React from "react";
 import NavBar from "./NavBar";
 import { useLocation } from "react-router-dom";
 import { Toaster as SonnerToaster } from "../components/ui/sonner";
+import { useAuth } from "../contexts/AuthContext";
 
 type WrapperProps = {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ type WrapperProps = {
 
 const Wrapper = ({ children }: WrapperProps) => {
   const location = useLocation();
+  const { isSuperAdmin } = useAuth();
 
   // Liste des routes où le NavBar ne doit PAS apparaître
   const hideNavbarRoutes = ["/admin/products","/admin/dashboard","/admin/payment-requests","/login","/admin/product-form","/admin/categories","/admin/clients","/forgot-password","admin/orders","/admin/orders","/admin/add-product","/admin/design-validation","/admin/product-validation","/admin/vendor-products-admin","/admin/vendor-products/create","/admin/vendor-products","/admin/trash","/admin/design-categories"];
@@ -31,7 +33,7 @@ const Wrapper = ({ children }: WrapperProps) => {
 
   return (
     <div>
-      {!shouldHideNavbar && <NavBar />}
+      {!shouldHideNavbar && !isSuperAdmin() && <NavBar />}
       <div>{children}</div>
       <SonnerToaster 
         position="bottom-right"

@@ -237,11 +237,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const currentImage = currentColor?.images[selectedImageIndex];
   const designCount = product.designCount || 0;
 
-  // Reset image index when color changes
-  // useEffect(() => {
-  //   setSelectedImageIndex(0);
-  // }, [selectedColorIndex]);
-
   const handleDelete = async () => {
     setShowDeleteConfirm(false);
     onDelete(product.id);
@@ -339,8 +334,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
       delimitations: currentImage.delimitations
     } : null
   });
-
-  // List view removed; only grid view remains
 
   // Vue grille simplifiée
   return (
@@ -573,9 +566,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1 mb-1">
               {product.name}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+            {/* Description masquée selon la demande */}
+            {/* <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
               {product.description}
-            </p>
+            </p> */}
           </div>
 
           <div className="flex items-center justify-between mb-3">
@@ -585,19 +579,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 {product.price.toLocaleString()} FCFA
               </div>
               
-              {/* Prix suggéré si différent du prix de base */}
+              {/* Prix suggéré si différent du prix de base - pourcentage supprimé */}
               {product.suggestedPrice && product.suggestedPrice !== product.price && (
                 <div className="text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Prix suggéré: </span>
                   <span className="font-semibold text-blue-600 dark:text-blue-400">
                     {product.suggestedPrice.toLocaleString()} FCFA
                   </span>
-                  {/* Indication si le prix suggéré est plus élevé */}
-                  {product.suggestedPrice > product.price && (
-                    <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                      +{((product.suggestedPrice - product.price) / product.price * 100).toFixed(0)}%
-                    </span>
-                  )}
                 </div>
               )}
               
@@ -725,8 +713,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </p>
         </div>
       )}
-
-      
 
       {/* Modal de confirmation de suppression */}
       {showDeleteConfirm && (
@@ -998,6 +984,34 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
           </div>
         )}
       </motion.div>
+
+      {/* Cartes de statistiques */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-gray-500">Produits</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-gray-500">Publiés</div>
+            <div className="text-2xl font-bold">{stats.published}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-gray-500">Brouillons</div>
+            <div className="text-2xl font-bold">{stats.draft}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-gray-500">En attente</div>
+            <div className="text-2xl font-bold">{stats.pending}</div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Modal Corbeille */}
       <Dialog open={showTrashModal} onOpenChange={setShowTrashModal}>

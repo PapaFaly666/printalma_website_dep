@@ -1,19 +1,8 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Avatar } from '../components/ui/avatar';
-import {
-  DollarSign,
-  Users,
-  CreditCard,
-  Activity,
-  ShoppingBag,
-  TrendingUp,
-  ShoppingCart,
-  Eye
-} from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -82,74 +71,60 @@ const Dashboard = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <div className="flex flex-col gap-6 p-4 md:p-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight dark:text-white">Tableau de Bord</h1>
-          <Button variant="outline" className="dark:text-white dark:border-gray-600">
-            Télécharger le rapport
-          </Button>
-        </div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight dark:text-white">Tableau de Bord</h1>
+      </div>
 
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview" className="relative dark:text-white">
-              Aperçu
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="dark:text-white">Analytiques</TabsTrigger>
-            <TabsTrigger value="products" className="dark:text-white">Produits</TabsTrigger>
-            <TabsTrigger value="customers" className="dark:text-white">Clients</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Onglets supprimés selon la demande */}
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Chiffre d'Affaires Total
-              </CardTitle>
-              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Chiffre d'affaires annuel</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">45 231 890 FCFA</div>
-              <p className={`text-xs ${positiveTextColor}`}>+20.1% depuis le mois dernier</p>
+              <div className="text-2xl font-bold">0 FCFA</div>
+              <p className={`text-xs ${positiveTextColor}`}>Gain annuel</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Nouveaux Clients
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Chiffre d'affaires mensuel</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+2 350</div>
-              <p className={`text-xs ${positiveTextColor}`}>+18.1% depuis le mois dernier</p>
+              <div className="text-2xl font-bold">0 FCFA</div>
+              <p className={`text-xs ${positiveTextColor}`}>Gain mensuel</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Ventes
-              </CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Vendeurs</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+12 234</div>
-              <p className={`text-xs ${positiveTextColor}`}>+19% depuis le mois dernier</p>
+              <div className="text-2xl font-bold">0</div>
+              <p className={`text-xs ${positiveTextColor}`}>0 vendeur ce mois</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Visiteurs Actifs
-              </CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Produits</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+573</div>
-              <p className={`text-xs ${positiveTextColor}`}>+201 depuis la dernière heure</p>
+              <div className="text-2xl font-bold">0</div>
+              <p className={`text-xs ${positiveTextColor}`}>produit en attente</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Designs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">0</div>
+              <p className={`text-xs ${positiveTextColor}`}>10 en attente</p>
             </CardContent>
           </Card>
         </div>
@@ -221,29 +196,21 @@ const Dashboard = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader>
-              <CardTitle>Produits les Plus Vendus</CardTitle>
+              <CardTitle>Designs</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span>T-shirt Original</span>
-                  <span className="font-medium">1,254 unités</span>
+                  <span>Total designs</span>
+                  <span className="font-medium">0</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Pull Premium</span>
-                  <span className="font-medium">876 unités</span>
+                  <span>Designs en attente</span>
+                  <span className="font-medium">0</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Pantalon Cargo</span>
-                  <span className="font-medium">654 unités</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Mug Personnalisé</span>
-                  <span className="font-medium">432 unités</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Casquette Urban</span>
-                  <span className="font-medium">321 unités</span>
+                  <span>Designs publiés</span>
+                  <span className="font-medium">0</span>
                 </div>
               </div>
             </CardContent>
@@ -251,53 +218,21 @@ const Dashboard = () => {
 
           <Card className="col-span-2">
             <CardHeader>
-              <CardTitle>Statistiques de Stock</CardTitle>
+              <CardTitle>Nombre de visites</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="font-medium">T-shirt Original</p>
-                    <p className="text-sm text-muted-foreground">12 000 FCFA</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs rounded-full ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-200 text-gray-800'}`}>
-                      En stock: 125
-                    </span>
-                  </div>
+                  <span className="font-medium">Aujourd'hui</span>
+                  <span className="text-sm">0</span>
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="font-medium">Pull Premium</p>
-                    <p className="text-sm text-muted-foreground">25 000 FCFA</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs rounded-full ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-200 text-gray-800'}`}>
-                      En stock: 78
-                    </span>
-                  </div>
+                  <span className="font-medium">Cette semaine</span>
+                  <span className="text-sm">0</span>
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="font-medium">Pantalon Cargo</p>
-                    <p className="text-sm text-muted-foreground">30 000 FCFA</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs rounded-full ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-200 text-gray-800'}`}>
-                      En stock: 45
-                    </span>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="font-medium">Mug Personnalisé</p>
-                    <p className="text-sm text-muted-foreground">8 000 FCFA</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs rounded-full ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-200 text-gray-800'}`}>
-                      En stock: 210
-                    </span>
-                  </div>
+                  <span className="font-medium">Ce mois</span>
+                  <span className="text-sm">0</span>
                 </div>
               </div>
             </CardContent>

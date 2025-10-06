@@ -351,14 +351,6 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                             </span>
                           </DropdownMenuItem>
                         )}
-                        {onViewDetails && (
-                          <DropdownMenuItem
-                            onClick={() => onViewDetails(client)}
-                            className="text-indigo-600"
-                          >
-                            ✏️ Éditer le vendeur
-                          </DropdownMenuItem>
-                        )}
                         
                         {onViewDetails && <DropdownMenuSeparator />}
                         

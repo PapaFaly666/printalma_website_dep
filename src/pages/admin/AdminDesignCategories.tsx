@@ -25,12 +25,19 @@ const AdminDesignCategories: React.FC = () => {
   const [currentCoverImage, setCurrentCoverImage] = useState<string | null>(null);
   const [removeCoverImage, setRemoveCoverImage] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [previewCoverImageUrl, setPreviewCoverImageUrl] = useState<string | null>(null);
 
   const { toast } = useToast();
 
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewCoverImageUrl) URL.revokeObjectURL(previewCoverImageUrl);
+    };
+  }, [previewCoverImageUrl]);
 
   const loadCategories = async () => {
     try {
@@ -56,6 +63,7 @@ const AdminDesignCategories: React.FC = () => {
       coverImage: null
     });
     setCurrentCoverImage(null);
+    setPreviewCoverImageUrl(null);
     setRemoveCoverImage(false);
     setFormErrors({});
     setEditingCategory(null);
@@ -69,6 +77,7 @@ const AdminDesignCategories: React.FC = () => {
       coverImage: null
     });
     setCurrentCoverImage(category.coverImageUrl || null);
+    setPreviewCoverImageUrl(null);
     setRemoveCoverImage(false);
     setFormErrors({});
     setEditingCategory(category);
@@ -251,13 +260,15 @@ const AdminDesignCategories: React.FC = () => {
                       </div>
                       <div className="mb-3">
                         {category.coverImageUrl ? (
-                          <img 
-                            src={category.coverImageUrl} 
-                            alt={category.name}
-                            className="w-full h-32 object-cover rounded-lg"
-                          />
+                          <div className="w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                            <img 
+                              src={category.coverImageUrl} 
+                              alt={category.name}
+                              className="max-h-full w-full object-contain"
+                            />
+                          </div>
                         ) : (
-                          <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                          <div className="w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
                             <span>Aucune image</span>
                           </div>
                         )}
@@ -306,70 +317,89 @@ const AdminDesignCategories: React.FC = () => {
 
       {/* Dialog de création/modification */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
               {editingCategory ? 'Modifier le thème' : 'Nouveau thème'}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Nom */}
-            <div className="space-y-2">
-              <Label htmlFor="name">Nom *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Logo Design"
-                className={formErrors.name ? 'border-red-500' : ''}
-              />
-              {formErrors.name && (
-                <p className="text-xs text-red-600">{formErrors.name}</p>
-              )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">
+            {/* Colonne gauche: Nom & Description */}
+            <div className="space-y-4">
+              {/* Nom */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Nom *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Logo Design"
+                  className={formErrors.name ? 'border-red-500' : ''}
+                />
+                {formErrors.name && (
+                  <p className="text-xs text-red-600">{formErrors.name}</p>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Pour les logos et identités visuelles..."
+                  rows={8}
+                />
+              </div>
             </div>
 
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Pour les logos et identités visuelles..."
-                rows={3}
-              />
-            </div>
+            {/* Colonne droite: Image de couverture + Preview */}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Image de couverture</Label>
+                <ImageUploader
+                  onImageSelect={(file) => {
+                    setFormData({ ...formData, coverImage: file });
+                    if (previewCoverImageUrl) URL.revokeObjectURL(previewCoverImageUrl);
+                    setPreviewCoverImageUrl(file ? URL.createObjectURL(file) : null);
+                    if (file) {
+                      setRemoveCoverImage(false);
+                    }
+                  }}
+                  currentImage={currentCoverImage}
+                  maxSize={2}
+                />
+                {currentCoverImage && !formData.coverImage && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="removeCoverImage"
+                      checked={removeCoverImage}
+                      onChange={(e) => setRemoveCoverImage(e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="removeCoverImage" className="text-sm">
+                      Supprimer l'image actuelle
+                    </Label>
+                  </div>
+                )}
+              </div>
 
-            {/* Image de couverture */}
-            <div className="space-y-2">
-              <Label>Image de couverture</Label>
-              <ImageUploader
-                onImageSelect={(file) => {
-                  setFormData({ ...formData, coverImage: file });
-                  if (file) {
-                    setRemoveCoverImage(false);
-                  }
-                }}
-                currentImage={currentCoverImage}
-                maxSize={2}
-              />
-              {currentCoverImage && !formData.coverImage && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="removeCoverImage"
-                    checked={removeCoverImage}
-                    onChange={(e) => setRemoveCoverImage(e.target.checked)}
-                    className="rounded"
+              {/* Aperçu image affichée entièrement */}
+              <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                {previewCoverImageUrl || currentCoverImage ? (
+                  <img
+                    src={previewCoverImageUrl || currentCoverImage || ''}
+                    alt="Aperçu couverture"
+                    className="max-h-full w-full object-contain"
                   />
-                  <Label htmlFor="removeCoverImage" className="text-sm">
-                    Supprimer l'image actuelle
-                  </Label>
-                </div>
-              )}
+                ) : (
+                  <span className="text-gray-500 text-sm">Aucun aperçu disponible</span>
+                )}
+              </div>
             </div>
-
           </div>
 
           <DialogFooter>

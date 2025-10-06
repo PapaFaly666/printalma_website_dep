@@ -92,7 +92,7 @@ export const AdminDesignValidation: React.FC = () => {
   const [sortBy, setSortBy] = useState<'submittedAt' | 'createdAt' | 'price'>('submittedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
-  // 🆕 NOUVEAU: Filtre par statut
+  // 🆕 NOUVEAU: Filtre par statut (utiliser Select au lieu des cards)
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'VALIDATED' | 'REJECTED'>('PENDING');
 
   // 🆕 Filtres supplémentaires: par vendeur et par nombre de designs
@@ -357,7 +357,7 @@ export const AdminDesignValidation: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-8">
-        {/* Header avec statistiques */}
+        {/* Header */}
         <div className="mb-8">
           <NotificationBanner type="admin" className="mb-6" />
           
@@ -365,69 +365,62 @@ export const AdminDesignValidation: React.FC = () => {
                 Validation des Designs
               </h1>
           
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <button
-              onClick={() => setStatusFilter('PENDING')}
-              className={`bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md text-left w-full transition-transform hover:scale-[1.02] ${statusFilter==='PENDING' ? 'ring-2 ring-blue-500' : ''}`}
-            >
-              <div className="flex items-center">
-                <Clock className="w-8 h-8 text-yellow-500 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">En attente</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {validationStats.pendingValidation}
-                  </p>
-                </div>
-              </div>
-            </button>
-            
-            <button
-              onClick={() => setStatusFilter('VALIDATED')}
-              className={`bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md text-left w-full transition-transform hover:scale-[1.02] ${statusFilter==='VALIDATED' ? 'ring-2 ring-blue-500' : ''}`}
-            >
-              <div className="flex items-center">
-                <Check className="w-8 h-8 text-green-500 mr-3" />
+          {/* Statistiques (non interactives) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Clock className="w-8 h-8 text-yellow-500 mr-3" />
                   <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Validés</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {validationStats.validated}
-                  </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">En attente</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{validationStats.pendingValidation}</p>
+                  </div>
                 </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setStatusFilter('REJECTED')}
-              className={`bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md text-left w-full transition-transform hover:scale-[1.02] ${statusFilter==='REJECTED' ? 'ring-2 ring-blue-500' : ''}`}
-            >
-              <div className="flex items-center">
-                <X className="w-8 h-8 text-red-500 mr-3" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Check className="w-8 h-8 text-green-500 mr-3" />
                   <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Rejetés</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {validationStats.rejected}
-                  </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Validés</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{validationStats.validated}</p>
+                  </div>
                 </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setStatusFilter('ALL')}
-              className={`bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md text-left w-full transition-transform hover:scale-[1.02] ${statusFilter==='ALL' ? 'ring-2 ring-blue-500' : ''}`}
-            >
-              <div className="flex items-center">
-                <TrendingUp className="w-8 h-8 text-blue-500 mr-3" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <X className="w-8 h-8 text-red-500 mr-3" />
                   <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Soumissions aujourd'hui</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {validationStats.todaySubmissions}
-                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Rejetés</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{validationStats.rejected}</p>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </CardContent>
+            </Card>
           </div>
+          
+          {/* Status filter as Select */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Statut</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="PENDING">En attente</option>
+                  <option value="VALIDATED">Validés</option>
+                  <option value="REJECTED">Rejetés</option>
+                  <option value="ALL">Tous</option>
+                </select>
+              </div>
+            </div>
           </div>
+        </div>
 
         {/* Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-6 shadow-md">
@@ -633,31 +626,12 @@ export const AdminDesignValidation: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
                           <button
-                              onClick={() => openVendorModal(design.vendor)}
+                              onClick={() => { setSelectedDesign(design); setShowValidationModal(true); }}
                               className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                            
-                            {designStatus === 'PENDING' && (
-                              <>
-                          <button
-                                  onClick={() => handleValidateDesign(design.id as number, true)}
-                            disabled={validating === design.id}
-                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openValidationModal(design)}
-                            disabled={validating === design.id}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                              </>
-                            )}
-                </div>
+                          </div>
                       </td>
                     </tr>
                     );
@@ -699,111 +673,100 @@ export const AdminDesignValidation: React.FC = () => {
           </div>
         )}
 
-        {/* Modal de validation/rejet */}
+        {/* Modal de détails + validation/rejet */}
       {showValidationModal && selectedDesign && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-screen overflow-y-auto"
           >
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                  Rejeter le design
+                  Détails du design
               </h3>
-              
-                <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Motif de rejet (requis)
-                </label>
-                <textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    rows={4}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Expliquez pourquoi ce design est rejeté..."
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Aperçu visuel */}
+                <div className="w-full bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center overflow-hidden">
+                  <img
+                    src={selectedDesign.imageUrl || selectedDesign.thumbnailUrl || '/placeholder-design.png'}
+                    alt={selectedDesign.name || 'Design'}
+                    className="max-h-96 w-full object-contain"
                   />
                 </div>
 
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setShowValidationModal(false)}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={() => handleValidateDesign(selectedDesign.id as number, false)}
-                    disabled={!rejectionReason.trim() || validating === selectedDesign.id}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                {/* Informations */}
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Nom:</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{selectedDesign.name || 'Sans nom'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Catégorie:</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{selectedDesign.category || 'Non spécifiée'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Prix:</span>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(selectedDesign.price || 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Produits associés:</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{selectedDesign.associatedProducts || 0}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Soumis le:</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{formatDate(selectedDesign.submittedForValidationAt)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Zone de rejet/validation */}
+              {selectedDesign && (
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Motif de rejet (obligatoire uniquement pour le rejet)
+                    </label>
+                    <textarea
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      rows={4}
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Expliquez pourquoi ce design est rejeté..."
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setShowValidationModal(false)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      Fermer
+                    </button>
+                    <button
+                      onClick={() => handleValidateDesign(selectedDesign.id as number, false)}
+                      disabled={validating === selectedDesign.id}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                     >
                       Rejeter
-                </button>
+                    </button>
+                    <button
+                      onClick={() => handleValidateDesign(selectedDesign.id as number, true)}
+                      disabled={validating === selectedDesign.id}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Valider
+                    </button>
                   </div>
-                      </div>
-          </motion.div>
-                  </div>
-                )}
-
-        {/* Modal fiche vendeur */}
-      {showVendorModal && selectedVendor && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4"
-            >
-              <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                  Informations vendeur
-                </h3>
-                
-                <div className="space-y-3">
-                <div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Nom:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                    {selectedVendor.firstName} {selectedVendor.lastName}
-                    </p>
                 </div>
-                  
-                  <div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Email:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {selectedVendor.email}
-                    </p>
-              </div>
-
-                  {selectedVendor.shop_name && (
-                    <div>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">Boutique:</span>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {selectedVendor.shop_name}
-                      </p>
-              </div>
-                  )}
-                  
-                  {selectedVendor.country && (
-                    <div>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">Pays:</span>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {selectedVendor.country}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end mt-6">
-                <button
-                  onClick={() => setShowVendorModal(false)}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                >
-                  Fermer
-                </button>
-              </div>
-                      </div>
+              )}
+            </div>
           </motion.div>
-                  </div>
-                )}
+        </div>
+      )}
       </div>
     </div>
   );

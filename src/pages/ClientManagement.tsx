@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { UserPlus, Users, UserCheck, UserX, Activity, RefreshCw, Info, Shield, AlertTriangle, Clock } from 'lucide-react';
-import { withAuth } from '../middleware/authMiddleware';
+
 import { RequireAuth } from '../components/auth/RequireAuth';
 
 const ClientManagement: React.FC = () => {
@@ -45,23 +45,13 @@ const ClientManagement: React.FC = () => {
     refreshStats
   } = useClientStats();
 
-  // Vérifier les permissions
-  if (!isAdmin() && !isSuperAdmin()) {
-    return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="text-center p-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Accès refusé
-            </h2>
-            <p className="text-gray-600">
-              Vous n'avez pas les permissions nécessaires pour accéder à cette page.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Frontend-only status filter state
+  const [frontendStatus, setFrontendStatus] = useState<'all' | 'active' | 'inactive'>('all');
+
+  const mapFrontendStatusToBool = (s: 'all' | 'active' | 'inactive'): boolean | undefined => {
+    if (s === 'all') return undefined;
+    return s === 'active';
+  };
 
   const handleCreateSuccess = () => {
     setShowCreateForm(false);
@@ -82,37 +72,11 @@ const ClientManagement: React.FC = () => {
     return await resetClientPassword(email);
   };
 
-  const handleUnlockClient = async (clientId: number) => {
-    try {
-      const result = await unlockClient(clientId);
-      return result;
-    } catch (error: any) {
-      // Afficher un message plus convivial pour les fonctionnalités non disponibles
-      alert('Cette fonctionnalité sera bientôt disponible.\nL\'endpoint backend n\'est pas encore implémenté.');
-      throw error;
-    }
-  };
+  const handleUnlockClient = async (clientId: number) => unlockClient(clientId);
 
-  const handleRefreshAll = () => {
-    refreshClients();
-    refreshStats();
-  };
+  const handleUpdateCommission = async (vendeurId: number, commission: number) => updateCommission(vendeurId, commission);
 
-  // 🆕 Gestionnaire pour la mise à jour des commissions - Compatible NestJS Backend
-  const handleUpdateCommission = async (vendeurId: number, commission: number) => {
-    try {
-      // Utiliser la méthode du hook qui gère automatiquement la mise à jour locale
-      await updateCommission(vendeurId, commission);
-      
-      console.log(`✅ Commission mise à jour: ${commission}% pour le vendeur #${vendeurId}`);
-    } catch (error: any) {
-      console.error('❌ Erreur lors de la mise à jour de la commission:', error);
-      throw new Error(`${error.message}`);
-    }
-  };
-
-  // 🆕 Gestionnaire pour ouvrir les détails d'un client
-  const handleViewDetails = (client) => {
+  const handleViewDetails = (client: any) => {
     setSelectedClientForDetails(client);
     setShowDetailsSheet(true);
   };
@@ -122,23 +86,53 @@ const ClientManagement: React.FC = () => {
     setSelectedClientForDetails(null);
   };
 
-  // 🆕 Calcul des statistiques de sécurité selon la documentation
-  const securityStats = {
-    lockedAccounts: clients.filter(client => 
-      client.locked_until && new Date(client.locked_until) > new Date()
-    ).length,
-    failedAttempts: clients.filter(client => 
-      client.login_attempts > 0
-    ).length,
-    mustChangePassword: clients.filter(client => 
-      client.must_change_password
-    ).length,
-    totalSecurityIssues: clients.filter(client =>
-      (client.locked_until && new Date(client.locked_until) > new Date()) ||
-      client.login_attempts > 0 ||
-      client.must_change_password
-    ).length
+  const handleRefreshAll = () => {
+    refreshClients();
+    refreshStats();
   };
+
+  // Wrap filters change to keep status filtering on frontend only
+  const handleFiltersChange = (partial: any) => {
+    if (Object.prototype.hasOwnProperty.call(partial, 'status')) {
+      const incoming = partial.status as boolean | undefined;
+      const nextFrontendStatus: 'all' | 'active' | 'inactive' = incoming === undefined ? 'all' : (incoming ? 'active' : 'inactive');
+      setFrontendStatus(nextFrontendStatus);
+      const { status, ...rest } = partial;
+      updateFilters(rest);
+    } else {
+      updateFilters(partial);
+    }
+  };
+
+  const handleReset = () => {
+    setFrontendStatus('all');
+    resetFilters();
+  };
+
+  // Compute displayed clients based on frontend status filter
+  const displayedClients = clients.filter(c => {
+    const s = mapFrontendStatusToBool(frontendStatus);
+    if (s === undefined) return true;
+    return !!c.status === s;
+  });
+
+  // Vérifier les permissions
+  if (!isAdmin() && !isSuperAdmin()) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="text-center p-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Accès refusé
+            </h2>
+            <p className="text-gray-600">
+              Vous n'avez pas les permissions nécessaires pour accéder à cette page.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (showCreateForm) {
     return (
@@ -241,12 +235,12 @@ const ClientManagement: React.FC = () => {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Sur cette page</CardTitle>
+                <CardTitle className="text-sm font-medium">Vendeurs de ce mois</CardTitle>
                 <UserCheck className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  {clients.length}
+                  {displayedClients.length}
                 </div>
                 <p className="text-xs text-gray-600">Vendeurs affichés</p>
               </CardContent>
@@ -259,7 +253,7 @@ const ClientManagement: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {clients.filter(c => c.status).length}
+                  {displayedClients.filter(c => c.status).length}
                 </div>
                 <p className="text-xs text-gray-600">Comptes actifs</p>
               </CardContent>
@@ -272,89 +266,21 @@ const ClientManagement: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {clients.filter(c => !c.status).length}
+                  {displayedClients.filter(c => !c.status).length}
                 </div>
                 <p className="text-xs text-gray-600">Comptes désactivés</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* 🆕 Section de sécurité selon la documentation */}
-          {securityStats.totalSecurityIssues > 0 && (
-            <div className="mb-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Shield className="h-5 w-5 text-orange-600" />
-                <h3 className="text-lg font-semibold text-gray-900">État de la Sécurité</h3>
-                <Badge variant="outline" className="text-orange-600 border-orange-200">
-                  {securityStats.totalSecurityIssues} problème(s) détecté(s)
-                </Badge>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <Card className={securityStats.lockedAccounts > 0 ? "border-red-200 bg-red-50" : ""}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <Clock className={`h-8 w-8 ${securityStats.lockedAccounts > 0 ? 'text-red-600' : 'text-gray-400'}`} />
-                      <div>
-                        <div className={`text-2xl font-bold ${securityStats.lockedAccounts > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                          {securityStats.lockedAccounts}
-                        </div>
-                        <p className="text-sm text-gray-600">Comptes verrouillés</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className={securityStats.failedAttempts > 0 ? "border-yellow-200 bg-yellow-50" : ""}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <AlertTriangle className={`h-8 w-8 ${securityStats.failedAttempts > 0 ? 'text-yellow-600' : 'text-gray-400'}`} />
-                      <div>
-                        <div className={`text-2xl font-bold ${securityStats.failedAttempts > 0 ? 'text-yellow-600' : 'text-gray-600'}`}>
-                          {securityStats.failedAttempts}
-                        </div>
-                        <p className="text-sm text-gray-600">Tentatives échouées</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className={securityStats.mustChangePassword > 0 ? "border-blue-200 bg-blue-50" : ""}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <Shield className={`h-8 w-8 ${securityStats.mustChangePassword > 0 ? 'text-blue-600' : 'text-gray-400'}`} />
-                      <div>
-                        <div className={`text-2xl font-bold ${securityStats.mustChangePassword > 0 ? 'text-blue-600' : 'text-gray-600'}`}>
-                          {securityStats.mustChangePassword}
-                        </div>
-                        <p className="text-sm text-gray-600">Doivent changer leur mot de passe</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Alerte de sécurité selon la documentation */}
-              {securityStats.lockedAccounts > 0 && (
-                <Alert className="border-red-200 bg-red-50">
-                  <Clock className="h-4 w-4 text-red-600" />
-                  <AlertDescription className="text-red-800">
-                    <strong>Attention :</strong> {securityStats.lockedAccounts} compte(s) temporairement verrouillé(s) suite à de multiples tentatives de connexion échouées. 
-                    Vous pouvez les débloquer manuellement via le menu d'actions. 
-                    <em className="text-red-600 ml-1">
-                      ⚠️ Note : Les comptes SUPERADMIN ne peuvent jamais être verrouillés automatiquement.
-                    </em>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-
           {/* Filtres */}
           <ClientsFilters
-            filters={filters}
-            onFiltersChange={updateFilters}
-            onReset={resetFilters}
+            filters={{
+              ...filters,
+              status: mapFrontendStatusToBool(frontendStatus)
+            } as any}
+            onFiltersChange={handleFiltersChange}
+            onReset={handleReset}
             loading={loading}
           />
 
@@ -375,7 +301,7 @@ const ClientManagement: React.FC = () => {
             </CardHeader>
             <CardContent className="p-0">
               <ClientsTable
-                clients={clients}
+                clients={displayedClients}
                 loading={loading}
                 onToggleStatus={handleToggleStatus}
                 onResetPassword={handleResetPassword}
