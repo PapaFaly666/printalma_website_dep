@@ -1,21 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Package,
   Search,
-  Filter,
   Eye,
   RefreshCw,
-  Calendar,
   Clock,
   DollarSign,
   User,
   Phone,
   MapPin,
   ShoppingBag,
-  ArrowUpRight,
-  ArrowDownRight,
-  TrendingUp,
   AlertCircle,
   CheckCircle,
   XCircle,
@@ -27,70 +22,47 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Separator } from '../../components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table';
-import { Progress } from '../../components/ui/progress';
-import { Order, OrderStatus, OrderStatistics } from '../../types/order';
 import { useNavigate } from 'react-router-dom';
-import { vendorOrderService, VendorOrderStatistics, VendorOrderFilters } from '../../services/vendorOrderService';
-
+import { ordersService, Order, OrderStatus } from '../../services/ordersService';
+import { toast } from 'sonner';
 
 const VendorSales: React.FC = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [dateFilter, setDateFilter] = useState<string>('all');
-  const [statistics, setStatistics] = useState<VendorOrderStatistics>({
-    totalOrders: 0,
-    totalRevenue: 0,
-    averageOrderValue: 0,
-    monthlyGrowth: 0,
-    pendingOrders: 0,
-    processingOrders: 0,
-    shippedOrders: 0,
-    deliveredOrders: 0,
-    cancelledOrders: 0,
-    revenueThisMonth: 0,
-    ordersThisMonth: 0,
-    revenueLastMonth: 0,
-    ordersLastMonth: 0
-  });
 
-  // État pour les métadonnées de pagination
   const [pagination, setPagination] = useState({
     page: 1,
-    totalPages: 1,
+    limit: 10,
     total: 0,
-    hasNext: false,
-    hasPrevious: false
+    totalPages: 0
   });
 
-  // Charger les données depuis le backend
-  const loadOrders = async () => {
-    setLoading(true);
-    try {
-      console.log('🔄 Chargement des commandes vendeur depuis le backend...');
+  // Statistiques calculées localement
+  const statistics = useMemo(() => ({
+    totalOrders: pagination?.total || 0,
+    totalRevenue: orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
+    pendingOrders: orders.filter(o => o.status === 'PENDING').length,
+    processingOrders: orders.filter(o => o.status === 'PROCESSING').length,
+    shippedOrders: orders.filter(o => o.status === 'SHIPPED').length,
+    deliveredOrders: orders.filter(o => o.status === 'DELIVERED').length,
+    cancelledOrders: orders.filter(o => o.status === 'CANCELLED').length,
+  }), [orders, pagination]);
 
-      // Construire les filtres pour l'API
-      const filters: VendorOrderFilters = {
+  // Charger les données depuis le backend
+  const loadOrders = async (showLoader = true) => {
+    try {
+      if (showLoader) setLoading(true);
+
+      const filters: any = {
         page: pagination.page,
-        limit: 10,
-        search: searchTerm || undefined,
-        status: statusFilter !== 'all' ? statusFilter as OrderStatus : undefined,
-        sortBy: 'createdAt',
-        sortOrder: 'desc'
+        limit: pagination.limit,
+        ...(statusFilter !== 'ALL' && { status: statusFilter }),
+        ...(searchTerm && { search: searchTerm })
       };
 
       // Ajouter les filtres de date
@@ -111,100 +83,62 @@ const VendorSales: React.FC = () => {
         }
       }
 
-      // Appel au service API
-      const response = await vendorOrderService.getVendorOrders(filters);
+      console.log('🔄 Chargement des commandes vendeur...');
+      const response = await ordersService.getMyOrders(filters);
 
       console.log('✅ Commandes récupérées:', response);
 
       setOrders(response.orders);
-      setFilteredOrders(response.orders);
-
-      // Mettre à jour les métadonnées de pagination
-      setPagination({
-        page: response.page,
-        totalPages: response.totalPages,
-        total: response.total,
-        hasNext: response.hasNext,
-        hasPrevious: response.hasPrevious
-      });
-
-      // Charger les statistiques en parallèle
-      loadStatistics();
-
-    } catch (error) {
-      console.log('⚠️ Commandes non disponibles depuis le backend, utilisation des données mock');
-
-      // En cas d'erreur, on garde les données existantes ou on affiche un état vide
-      // Le service gère déjà le fallback vers les données mock en mode développement
-      setOrders([]);
-      setFilteredOrders([]);
+      setPagination(response.pagination);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des commandes:', error);
+      toast.error(error.message || 'Erreur lors du chargement des commandes');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  // Charger les statistiques séparément
-  const loadStatistics = async () => {
-    try {
-      console.log('📊 Chargement des statistiques vendeur...');
-      const stats = await vendorOrderService.getVendorOrderStatistics();
-
-      console.log('✅ Statistiques récupérées:', stats);
-      setStatistics(stats);
-
-    } catch (error) {
-      console.log('⚠️ Statistiques non disponibles depuis le backend, utilisation des données locales');
-
-      // En cas d'erreur (backend pas disponible), calculer les statistiques localement
-      if (orders.length > 0) {
-        const localStats = vendorOrderService.calculateLocalStatistics(orders);
-        setStatistics(localStats);
-      } else {
-        // Statistiques par défaut pour la démo quand aucune commande n'est disponible
-        setStatistics({
-          totalOrders: 0,
-          totalRevenue: 0,
-          averageOrderValue: 0,
-          monthlyGrowth: 0,
-          pendingOrders: 0,
-          processingOrders: 0,
-          shippedOrders: 0,
-          deliveredOrders: 0,
-          cancelledOrders: 0
-        });
-      }
-    }
-  };
-
-  // Effet pour charger les données au montage et quand les filtres changent
+  // Chargement initial
   useEffect(() => {
     loadOrders();
   }, [pagination.page, statusFilter, dateFilter]);
 
-  // Effet séparé pour la recherche avec debounce
+  // Recherche avec debounce
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       if (searchTerm !== undefined) {
+        setPagination(prev => ({ ...prev, page: 1 }));
         loadOrders();
       }
-    }, 500); // Attendre 500ms après la dernière frappe
+    }, 500);
 
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
-  // Fonction pour changer de page
+  // Polling toutes les 5 secondes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadOrders(false); // Rafraîchir sans loader
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [pagination.page, statusFilter, dateFilter, searchTerm]);
+
+  // Rafraîchissement manuel
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadOrders(false);
+  };
+
+  // Changer de page
   const changePage = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, page: newPage }));
     }
   };
 
-  // Fonction pour rafraîchir les données
-  const refreshData = () => {
-    loadOrders();
-  };
-
-  // Obtenir le badge de statut
+  // Badge de statut
   const getStatusBadge = (status: OrderStatus) => {
     const statusConfig = {
       PENDING: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
@@ -212,8 +146,7 @@ const VendorSales: React.FC = () => {
       PROCESSING: { label: 'En traitement', color: 'bg-orange-100 text-orange-800', icon: Package },
       SHIPPED: { label: 'Expédiée', color: 'bg-purple-100 text-purple-800', icon: Truck },
       DELIVERED: { label: 'Livrée', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-      CANCELLED: { label: 'Annulée', color: 'bg-red-100 text-red-800', icon: XCircle },
-      REJECTED: { label: 'Rejetée', color: 'bg-gray-100 text-gray-800', icon: AlertCircle }
+      CANCELLED: { label: 'Annulée', color: 'bg-red-100 text-red-800', icon: XCircle }
     };
 
     const config = statusConfig[status];
@@ -265,10 +198,10 @@ const VendorSales: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={refreshData}
-            disabled={loading}
+            onClick={handleRefresh}
+            disabled={refreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Actualiser
           </Button>
         </div>
@@ -309,7 +242,7 @@ const VendorSales: React.FC = () => {
                   {loading ? '...' : statistics.totalOrders}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {loading ? '' : `Commandes ce mois: ${statistics.ordersThisMonth ?? 0}`}
+                  Toutes vos commandes
                 </div>
               </CardContent>
             </Card>
@@ -330,7 +263,7 @@ const VendorSales: React.FC = () => {
                   {loading ? '...' : formatAmount(statistics.totalRevenue)}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {loading ? '' : `CA ce mois: ${formatAmount(statistics.revenueThisMonth ?? 0)}`}
+                  Revenu total
                 </div>
               </CardContent>
             </Card>
@@ -398,12 +331,12 @@ const VendorSales: React.FC = () => {
                 </div>
               </div>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as OrderStatus | 'ALL')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="ALL">Tous les statuts</SelectItem>
                   <SelectItem value="PENDING">En attente</SelectItem>
                   <SelectItem value="CONFIRMED">Confirmée</SelectItem>
                   <SelectItem value="PROCESSING">En traitement</SelectItem>
@@ -457,18 +390,18 @@ const VendorSales: React.FC = () => {
                 <ShoppingBag className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">Aucune commande</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {searchTerm || statusFilter !== 'all' || dateFilter !== 'all' ?
+                  {searchTerm || statusFilter !== 'ALL' || dateFilter !== 'all' ?
                     'Aucune commande ne correspond aux filtres appliqués.' :
                     'Vous n\'avez pas encore de commandes.'
                   }
                 </p>
-                {searchTerm || statusFilter !== 'all' || dateFilter !== 'all' ? (
+                {searchTerm || statusFilter !== 'ALL' || dateFilter !== 'all' ? (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
                       setSearchTerm('');
-                      setStatusFilter('all');
+                      setStatusFilter('ALL');
                       setDateFilter('all');
                     }}
                     className="mt-4"
@@ -481,107 +414,98 @@ const VendorSales: React.FC = () => {
               <>
                 <div className="space-y-4">
                   {orders.map((order) => (
-                  <motion.div
-                    key={order.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 space-y-3">
-                        {/* Header de la commande */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <h3 className="font-semibold text-lg text-gray-900">
-                              {order.orderNumber}
-                            </h3>
-                            {getStatusBadge(order.status)}
+                    <motion.div
+                      key={order.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 space-y-3">
+                          {/* Header de la commande */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <h3 className="font-semibold text-lg text-gray-900">
+                                {order.orderNumber}
+                              </h3>
+                              {getStatusBadge(order.status)}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-gray-900">
+                                {formatAmount(order.totalAmount)}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {formatDate(order.createdAt)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-gray-900">
-                              {formatAmount(order.totalAmount)}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {formatDate(order.createdAt)}
-                            </p>
-                          </div>
-                        </div>
 
-                        {/* Informations client */}
-                        <div className="flex items-center space-x-6 text-sm text-gray-600">
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4" />
-                            <span>{order.user.firstName} {order.user.lastName}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Phone className="h-4 w-4" />
-                            <span>{order.phoneNumber}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <MapPin className="h-4 w-4" />
-                            <span>{order.shippingAddress.city}, {order.shippingAddress.region}</span>
-                          </div>
-                        </div>
-
-                        {/* Produits */}
-                        <div className="border-t pt-3">
-                          <p className="text-sm text-gray-600 mb-2">
-                            {order.orderItems.length} produit(s):
-                          </p>
-                          <div className="space-y-1">
-                            {order.orderItems.map((item) => (
-                              <div key={item.id} className="flex items-center justify-between text-sm">
-                                <span className="text-gray-900">
-                                  {item.quantity}x {item.productName}
-                                </span>
-                                <span className="text-gray-600">
-                                  {formatAmount(item.unitPrice * item.quantity)}
-                                </span>
+                          {/* Informations client */}
+                          {order.user && (
+                            <div className="flex items-center space-x-6 text-sm text-gray-600">
+                              <div className="flex items-center space-x-2">
+                                <User className="h-4 w-4" />
+                                <span>{order.user.username || order.user.email}</span>
                               </div>
-                            ))}
-                          </div>
+                              {order.phoneNumber && (
+                                <div className="flex items-center space-x-2">
+                                  <Phone className="h-4 w-4" />
+                                  <span>{order.phoneNumber}</span>
+                                </div>
+                              )}
+                              {order.shippingAddress && (
+                                <div className="flex items-center space-x-2">
+                                  <MapPin className="h-4 w-4" />
+                                  <span>{order.shippingAddress}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Produits */}
+                          {order.items && order.items.length > 0 && (
+                            <div className="border-t pt-3">
+                              <p className="text-sm text-gray-600 mb-2">
+                                {order.items.length} produit(s):
+                              </p>
+                              <div className="space-y-1">
+                                {order.items.map((item) => (
+                                  <div key={item.id} className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-900">
+                                      {item.quantity}x {item.productName}
+                                    </span>
+                                    <span className="text-gray-600">
+                                      {formatAmount(item.totalPrice)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
 
-                      {/* Actions */}
-                      <div className="ml-6 flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => viewOrderDetails(order.id)}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Détails
-                        </Button>
-
-                        {/* Actions en lecture seule uniquement */}
-                        {order.trackingNumber && (
+                        {/* Actions */}
+                        <div className="ml-6 flex items-center space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              if (order.trackingNumber) {
-                                navigator.clipboard.writeText(order.trackingNumber);
-                                // Vous pourriez ajouter un toast ici
-                              }
-                            }}
-                            title="Copier le numéro de suivi"
+                            onClick={() => viewOrderDetails(order.id)}
                           >
-                            <ExternalLink className="h-4 w-4" />
+                            <Eye className="h-4 w-4 mr-2" />
+                            Détails
                           </Button>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))}
                 </div>
 
                 {/* Contrôles de pagination */}
                 {pagination.totalPages > 1 && (
                   <div className="flex items-center justify-between mt-6 pt-4 border-t">
                     <div className="text-sm text-gray-700">
-                      Affichage {((pagination.page - 1) * 10) + 1} à{' '}
-                      {Math.min(pagination.page * 10, pagination.total)} sur{' '}
+                      Affichage {((pagination.page - 1) * pagination.limit) + 1} à{' '}
+                      {Math.min(pagination.page * pagination.limit, pagination.total)} sur{' '}
                       {pagination.total} commande{pagination.total > 1 ? 's' : ''}
                     </div>
 
@@ -590,7 +514,7 @@ const VendorSales: React.FC = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => changePage(pagination.page - 1)}
-                        disabled={!pagination.hasPrevious || loading}
+                        disabled={pagination.page === 1 || loading}
                       >
                         Précédent
                       </Button>
@@ -621,7 +545,7 @@ const VendorSales: React.FC = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => changePage(pagination.page + 1)}
-                        disabled={!pagination.hasNext || loading}
+                        disabled={pagination.page === pagination.totalPages || loading}
                       >
                         Suivant
                       </Button>
@@ -637,4 +561,4 @@ const VendorSales: React.FC = () => {
   );
 };
 
-export default VendorSales; 
+export default VendorSales;

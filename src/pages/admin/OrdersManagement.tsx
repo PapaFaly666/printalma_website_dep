@@ -542,6 +542,7 @@ const OrdersManagement = () => {
                       <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                         <TableHead className="font-semibold text-slate-900">Commande</TableHead>
                         <TableHead className="font-semibold text-slate-900">Client</TableHead>
+                        <TableHead className="font-semibold text-slate-900">Vendeur</TableHead>
                         <TableHead className="font-semibold text-slate-900">Articles</TableHead>
                         <TableHead className="font-semibold text-slate-900">Statut</TableHead>
                         <TableHead className="font-semibold text-slate-900">Montant</TableHead>
@@ -587,7 +588,7 @@ const OrdersManagement = () => {
                               </Avatar>
                               <div>
                                 <p className="font-medium text-slate-900 text-sm">
-                                  {order.user?.firstName || 'Client'} 
+                                  {order.user?.firstName || 'Client'}
                                   {order.user?.lastName || 'inconnu'}
                                 </p>
                                 <p className="text-xs text-slate-500">
@@ -595,6 +596,31 @@ const OrdersManagement = () => {
                                 </p>
                               </div>
                             </div>
+                          </TableCell>
+
+                          <TableCell>
+                            {order.vendor ? (
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs font-semibold">
+                                    {(order.vendor?.username?.[0] || 'V').toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-slate-900 text-sm">
+                                    {order.vendor?.username || 'Vendeur'}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {order.vendor?.email || 'Email inconnu'}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-slate-400">
+                                <Users className="h-4 w-4" />
+                                <span className="text-sm">Pas de vendeur</span>
+                              </div>
+                            )}
                           </TableCell>
 
                           <TableCell>

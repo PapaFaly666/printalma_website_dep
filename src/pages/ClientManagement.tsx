@@ -7,11 +7,12 @@ import { ClientsFilters } from '../components/ClientsFilters';
 import { ClientsTable } from '../components/ClientsTable';
 import { Pagination } from '../components/Pagination';
 import { ClientDetailsSheet } from '../components/admin/ClientDetailsSheet';
+import { VendorTypesManagementModal } from '../components/admin/VendorTypesManagementModal';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
-import { UserPlus, Users, UserCheck, UserX, Activity, RefreshCw, Info, Shield, AlertTriangle, Clock } from 'lucide-react';
+import { UserPlus, Users, UserCheck, UserX, Activity, RefreshCw, Info, Shield, AlertTriangle, Clock, Tag } from 'lucide-react';
 
 import { RequireAuth } from '../components/auth/RequireAuth';
 
@@ -19,7 +20,8 @@ const ClientManagement: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedClientForDetails, setSelectedClientForDetails] = useState(null);
   const [showDetailsSheet, setShowDetailsSheet] = useState(false);
-  const { isAdmin, isSuperAdmin } = useAuth();
+  const [showVendorTypeModal, setShowVendorTypeModal] = useState(false);
+  const { isAdmin, isSuperAdmin} = useAuth();
   
   const {
     clients,
@@ -184,7 +186,16 @@ const ClientManagement: React.FC = () => {
                   <RefreshCw className={`w-4 h-4 mr-2 ${(loading || statsLoading) ? 'animate-spin' : ''}`} />
                   Actualiser
                 </Button>
-                
+
+                <Button
+                  variant="outline"
+                  onClick={() => setShowVendorTypeModal(true)}
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                >
+                  <Tag className="w-4 h-4 mr-2" />
+                  Créer Type Vendeur
+                </Button>
+
                 <Button
                   onClick={() => setShowCreateForm(true)}
                   className="bg-black hover:bg-gray-800 text-white"
@@ -329,6 +340,15 @@ const ClientManagement: React.FC = () => {
         isOpen={showDetailsSheet}
         onClose={handleCloseDetails}
         onUpdateCommission={handleUpdateCommission}
+      />
+
+      {/* Modal de gestion des types de vendeur */}
+      <VendorTypesManagementModal
+        open={showVendorTypeModal}
+        onOpenChange={setShowVendorTypeModal}
+        onSuccess={() => {
+          console.log('Type de vendeur géré avec succès');
+        }}
       />
     </div>
   );

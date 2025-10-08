@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ProductFormData, ProductFormErrors, ColorVariation, ProductImage, ImageView } from '../types/product';
 import { ProductService, CreateProductPayload, ProductFile } from '../services/productService';
+import { updateProductStocks } from '../services/stockService';
 import { useCategories } from '../contexts/CategoryContext';
 import { toast } from 'sonner';
 import { normalizeSizes, validateSizes } from '../utils/productNormalization';
@@ -12,7 +13,8 @@ const initialFormData: ProductFormData = {
   stock: 0,
   status: 'draft',
   description: '',
-  categories: [],
+  categoryId: undefined, // ID de la catégorie sélectionnée
+  categories: [], // Garde pour compatibilité mais utilise categoryId maintenant
   designs: [],
   colorVariations: [],
   sizes: [], // Added missing sizes field
@@ -140,8 +142,8 @@ export const useProductForm = () => {
       newErrors.stock = 'Le stock ne peut pas être négatif';
     }
 
-    if (formData.categories.length === 0) {
-      newErrors.categories = 'Sélectionnez au moins une catégorie';
+    if (!formData.categoryId) {
+      newErrors.categories = 'Sélectionnez une catégorie';
     }
 
     if (formData.colorVariations.length === 0) {
@@ -172,8 +174,8 @@ export const useProductForm = () => {
 
     setLoading(true);
     try {
-      // Plus besoin de conversion - on envoie directement les noms de catégories
-      console.log(`🔍 [DEBUG] Catégories du formulaire:`, formData.categories);
+      // Envoyer categoryId au lieu du tableau categories
+      console.log(`🔍 [DEBUG] Catégorie sélectionnée (ID):`, formData.categoryId);
 
       // Transformer les données du formulaire pour l'API selon la nouvelle documentation
       const apiPayload: CreateProductPayload = {
@@ -183,20 +185,15 @@ export const useProductForm = () => {
         suggestedPrice: formData.suggestedPrice, // ✅ AJOUTÉ: Champ prix suggéré
         stock: formData.stock,
         status: formData.status,
-        categories: formData.categories, // Directement les noms (pas de conversion en IDs)
+        categoryId: formData.categoryId, // ✅ Envoyer l'ID de catégorie au lieu du nom
         sizes: normalizeSizes(formData.sizes || []), // Normalized array of strings
         genre: formData.genre || 'UNISEXE', // ← NOUVEAU: Ajout du champ genre
         isReadyProduct: false, // ← NOUVEAU: Force isReadyProduct: false pour les mockups
         colorVariations: formData.colorVariations.map(color => ({
           name: color.name,
           colorCode: color.colorCode,
-          // ✅ Convertir stock object en array pour le backend
-          stocks: color.stock
-            ? Object.entries(color.stock).map(([sizeName, stockQty]) => ({
-                sizeName,
-                stock: stockQty
-              }))
-            : [],
+          // ✅ Envoyer stockBySize comme objet (format backend mockup)
+          stockBySize: color.stock || {},
           images: color.images.map(image => ({
             fileId: image.id,
             view: image.view,
@@ -230,15 +227,53 @@ export const useProductForm = () => {
       console.log('🔍 [DEBUG] Genre dans apiPayload:', apiPayload.genre);
       console.log('🔍 [DEBUG] Prix suggéré:', formData.suggestedPrice);
       console.log('🔍 [DEBUG] Prix suggéré sera envoyé:', apiPayload.suggestedPrice);
-      console.log('🔍 [DEBUG] Stock par variation (format backend):', apiPayload.colorVariations?.map(c => ({
+      console.log('🔍 [DEBUG] Stock par variation (format objet stockBySize):', apiPayload.colorVariations?.map(c => ({
         name: c.name,
-        stocks: c.stocks
+        stockBySize: c.stockBySize
       })));
 
       // Appeler l'API avec le nouveau format
       const result = await ProductService.createProduct(apiPayload, files);
-      
+
       if (result.success) {
+        const createdProduct = result.data;
+        console.log('✅ [DEBUG] Produit créé:', createdProduct);
+
+        // ✅ IMPORTANT: Enregistrer les stocks en base de données
+        if (createdProduct?.id && formData.colorVariations.length > 0) {
+          try {
+            // Préparer les stocks pour l'API stockService
+            const stocksToSave: { colorId: number; sizeName: string; stock: number }[] = [];
+
+            formData.colorVariations.forEach((color, colorIndex) => {
+              // Trouver l'ID de la couleur créée dans la réponse du backend
+              const createdColor = createdProduct.colorVariations?.[colorIndex];
+
+              if (createdColor?.id && color.stock) {
+                // Pour chaque taille ayant du stock
+                Object.entries(color.stock).forEach(([sizeName, stockQty]) => {
+                  if (stockQty > 0) {
+                    stocksToSave.push({
+                      colorId: createdColor.id,
+                      sizeName,
+                      stock: stockQty
+                    });
+                  }
+                });
+              }
+            });
+
+            if (stocksToSave.length > 0) {
+              console.log('📦 [DEBUG] Enregistrement des stocks:', stocksToSave);
+              await updateProductStocks(createdProduct.id, stocksToSave);
+              console.log('✅ [DEBUG] Stocks enregistrés avec succès en base de données');
+            }
+          } catch (stockError) {
+            console.error('❌ [ERROR] Erreur lors de l\'enregistrement des stocks:', stockError);
+            toast.warning('Produit créé mais erreur lors de l\'enregistrement des stocks');
+          }
+        }
+
         toast.success(result.message || 'Produit créé avec succès !');
         setFormData(initialFormData);
         return true;

@@ -40,17 +40,14 @@ export interface CreateProductPayload {
   suggestedPrice?: number;
   stock?: number; // Optionnel avec valeur par défaut 0
   status?: string;
-  categories: string[]; // Array de noms de catégories (pas d'IDs)
+  categoryId?: number; // ID de la catégorie à lier (au lieu de créer une nouvelle)
   sizes?: string[]; // Array de noms de tailles
   genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Genre du produit
   isReadyProduct?: boolean; // Indique si c'est un produit prêt (true) ou un mockup (false)
   colorVariations?: Array<{
     name: string;
     colorCode: string;
-    stocks?: Array<{
-      sizeName: string;
-      stock: number;
-    }>; // Stock par taille pour cette couleur (format backend)
+    stockBySize?: { [size: string]: number }; // Stock par taille pour cette couleur (format objet)
     images: Array<{
       fileId?: string;
       view: string;

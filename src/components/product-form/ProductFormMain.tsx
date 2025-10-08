@@ -26,6 +26,7 @@ import { useProductForm } from '../../hooks/useProductForm';
 import { ProductFormFields } from './ProductFormFields';
 import { ColorVariationsPanel } from './ColorVariationsPanel';
 import { CategoriesAndSizesPanel } from './CategoriesAndSizesPanel';
+import { CategorySelector } from './CategorySelector';
 import { StockManagementPanel } from './StockManagementPanel';
 import { DelimitationCanvas, DelimitationCanvasHandle } from './DelimitationCanvas';
 import { DesignUploadInterface } from './DesignUploadInterface';
@@ -163,24 +164,31 @@ const ColorVariationsStep: React.FC<{
 };
 
 const CategoriesStep: React.FC<{
-  categories: string[];
+  categoryId: number | null;
   sizes: string[];
-  onCategoriesUpdate: (categories: string[]) => void;
+  onCategoryChange: (categoryId: number | null) => void;
   onSizesUpdate: (sizes: string[]) => void;
-}> = ({ categories, sizes, onCategoriesUpdate, onSizesUpdate }) => {
+}> = ({ categoryId, sizes, onCategoryChange, onSizesUpdate }) => {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Tag className="h-5 w-5" />
-          Catégories et tailles
+          Catégorie et tailles
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
+        {/* Sélecteur de catégorie - Liaison uniquement */}
+        <CategorySelector
+          value={categoryId || undefined}
+          onChange={onCategoryChange}
+        />
+
+        {/* Gestion des tailles */}
         <CategoriesAndSizesPanel
-          categories={categories}
+          categories={[]} // Pas utilisé car on utilise CategorySelector
           sizes={sizes}
-          onCategoriesUpdate={onCategoriesUpdate}
+          onCategoriesUpdate={() => {}} // Désactivé
           onSizesUpdate={onSizesUpdate}
         />
       </CardContent>
@@ -738,7 +746,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         break;
       
       case 3:
-        if (formData.categories.length === 0) errors.push('Au moins une catégorie requise');
+        if (!formData.categoryId) errors.push('Une catégorie est requise');
         if (formData.sizes.length === 0) errors.push('Au moins une taille requise');
         break;
 
@@ -1664,9 +1672,9 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       case 3:
         return (
           <CategoriesStep
-            categories={formData.categories}
+            categoryId={formData.categoryId || null}
             sizes={formData.sizes}
-            onCategoriesUpdate={(categories: string[]) => updateFormData('categories', categories)}
+            onCategoryChange={(categoryId: number | null) => updateFormData('categoryId', categoryId)}
             onSizesUpdate={(sizes: string[]) => updateFormData('sizes', sizes)}
           />
         );

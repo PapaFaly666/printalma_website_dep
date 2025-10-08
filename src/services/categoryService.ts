@@ -102,22 +102,77 @@ class CategoryService {
   }
 
   /**
-   * Mettre à jour une catégorie
+   * Mettre à jour une catégorie (avec synchronisation automatique)
    */
-  async updateCategory(id: number, data: Partial<CreateCategoryDto>): Promise<Category> {
-    const response = await axios.put(`${API_BASE}/categories/${id}`, data, {
-      withCredentials: true
-    });
-    return response.data.data || response.data;
+  async updateCategory(id: number, data: Partial<CreateCategoryDto>): Promise<{
+    success: boolean;
+    message: string;
+    data: Category & { productCount?: number };
+  }> {
+    try {
+      const response = await axios.patch(`${API_BASE}/categories/${id}`, data, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error === 'DUPLICATE_CATEGORY') {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
   }
 
   /**
-   * Supprimer une catégorie
+   * Supprimer une catégorie (avec vérification des contraintes)
    */
-  async deleteCategory(id: number): Promise<void> {
-    await axios.delete(`${API_BASE}/categories/${id}`, {
-      withCredentials: true
-    });
+  async deleteCategory(id: number): Promise<{
+    success: boolean;
+    message: string;
+    deletedCount: number;
+  }> {
+    try {
+      const response = await axios.delete(`${API_BASE}/categories/${id}`, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error: any) {
+      // Relancer l'erreur avec le message du backend (contrainte de produits liés)
+      if (error.response?.status === 400) {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Déplacer un produit vers d'autres catégories
+   */
+  async updateProductCategories(productId: number, categoryIds: number[]): Promise<{
+    success: boolean;
+    message: string;
+    data: any;
+  }> {
+    const response = await axios.patch(
+      `${API_BASE}/products/${productId}/categories`,
+      { categoryIds },
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
+  /**
+   * Récupérer le nombre de produits liés à une catégorie (incluant sous-catégories)
+   */
+  async getCategoryProductCount(id: number): Promise<number> {
+    try {
+      const response = await axios.get(`${API_BASE}/categories/${id}/product-count`, {
+        withCredentials: true
+      });
+      return response.data.count || 0;
+    } catch (error) {
+      console.error('Error fetching product count:', error);
+      return 0;
+    }
   }
 }
 
