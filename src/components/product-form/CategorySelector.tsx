@@ -29,6 +29,8 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
   const handleChange = (categoryIdStr: string) => {
     console.log('🔍 [handleChange] categoryIdStr:', categoryIdStr);
+    console.log('🔍 [handleChange] Available categories:', categories.map(c => ({ id: c.id, name: c.name, level: c.level, parentId: c.parentId })));
+    console.log('🔍 [handleChange] handleChange function called with:', categoryIdStr);
 
     if (categoryIdStr === 'none') {
       console.log('🔍 [handleChange] Sélection: Aucune catégorie');
@@ -38,16 +40,26 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
     const categoryId = parseInt(categoryIdStr);
     console.log('🔍 [handleChange] categoryId parsed:', categoryId);
+    console.log('🔍 [handleChange] Is valid number:', !isNaN(categoryId));
+
+    const category = categories.find((c: any) => c.id === categoryId);
+    console.log('🔍 [handleChange] Found category:', category);
+
+    if (isNaN(categoryId)) {
+      console.error('❌ [handleChange] Invalid category ID:', categoryIdStr);
+      toast.error('ID de catégorie invalide');
+      return;
+    }
 
     onChange(categoryId);
     console.log('✅ [handleChange] onChange appelé avec:', categoryId);
 
-    const category = categories.find((c: any) => c.id === categoryId);
     if (category) {
-      console.log('✅ Catégorie sélectionnée:', category.name, `(ID: ${category.id})`);
+      console.log('✅ Catégorie sélectionnée:', category.name, `(ID: ${category.id}, Level: ${category.level}, ParentId: ${category.parentId})`);
       toast.success(`Catégorie liée: ${category.name}`);
     } else {
       console.log('⚠️ Catégorie non trouvée avec ID:', categoryId);
+      toast.error(`Catégorie non trouvée avec ID: ${categoryId}`);
     }
   };
 
@@ -118,6 +130,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   const selectValue = value?.toString() || 'none';
   console.log('🔍 [CategorySelector] Select value:', selectValue);
   console.log('🔍 [CategorySelector] Prop value:', value);
+  console.log('🔍 [CategorySelector] Available categories for selection:', flatCategories.map(c => ({ id: c.id, name: c.name, value: c.id.toString() })));
 
   return (
     <div className="space-y-3">
@@ -129,6 +142,9 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
         value={selectValue}
         onValueChange={handleChange}
         disabled={disabled || categoriesLoading}
+        onOpenChange={(open) => {
+          console.log('🔍 [CategorySelector] Select opened:', open);
+        }}
       >
         <SelectTrigger id="category" className="w-full">
           <SelectValue placeholder={categoriesLoading ? 'Chargement...' : 'Sélectionnez une catégorie'} />
@@ -139,24 +155,40 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
           </SelectItem>
 
           {flatCategories.length > 0 ? (
-            flatCategories.map(category => (
-              <SelectItem key={category.id} value={category.id.toString()}>
-                <div className="flex items-center gap-2">
-                  {/* Indentation visuelle selon le niveau */}
-                  <span style={{ marginLeft: `${category.level * 16}px` }} className="text-sm">
-                    {category.level === 0 && '📁 '}
-                    {category.level === 1 && '📂 '}
-                    {category.level === 2 && '🏷️ '}
-                    {category.name}
-                    {category.level < 2 && (
-                      <span className="text-xs text-gray-500 ml-2">
-                        (Niveau {category.level})
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </SelectItem>
-            ))
+            flatCategories.map(category => {
+              console.log('🔍 [CategorySelector] Rendering category:', {
+                id: category.id,
+                name: category.name,
+                level: category.level,
+                parentId: category.parentId,
+                displayName: category.displayName
+              });
+              
+              return (
+                <SelectItem 
+                  key={category.id} 
+                  value={category.id.toString()}
+                  onSelect={() => {
+                    console.log('🔍 [SelectItem] onSelect triggered for category:', category.id, category.name);
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    {/* Indentation visuelle selon le niveau */}
+                    <span style={{ marginLeft: `${category.level * 16}px` }} className="text-sm">
+                      {category.level === 0 && '📁 '}
+                      {category.level === 1 && '📂 '}
+                      {category.level === 2 && '🏷️ '}
+                      {category.displayName || category.name}
+                      {category.level < 2 && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          (Niveau {category.level})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </SelectItem>
+              );
+            })
           ) : (
             <SelectItem value="no-categories" disabled>
               <span className="text-gray-500">Aucune catégorie disponible</span>
@@ -190,6 +222,43 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
           </span>
         </div>
       )}
+
+      {/* Test de débogage */}
+      <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Test de débogage :</p>
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              console.log('🧪 [Test] Forcing selection of category 96 (2XL)');
+              handleChange('96');
+            }}
+            className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+          >
+            Test: Sélectionner 2XL (ID: 96)
+          </button>
+          <button
+            onClick={() => {
+              console.log('🧪 [Test] Forcing selection of category 93 (Polo)');
+              handleChange('93');
+            }}
+            className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 ml-2"
+          >
+            Test: Sélectionner Polo (ID: 93)
+          </button>
+          <button
+            onClick={() => {
+              console.log('🧪 [Test] Forcing selection of category 92 (Vetement)');
+              handleChange('92');
+            }}
+            className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 ml-2"
+          >
+            Test: Sélectionner Vetement (ID: 92)
+          </button>
+        </div>
+        <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
+          Valeur actuelle: {selectValue} | Prop value: {value}
+        </p>
+      </div>
     </div>
   );
 };

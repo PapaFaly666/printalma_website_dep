@@ -266,11 +266,13 @@ export default function Sidebar() {
                         {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                     </Button>
                     <div className="flex items-center space-x-2">
-                        <div className="h-7 w-7 rounded-md bg-black dark:bg-white flex items-center justify-center">
-                            <Home size={14} className="text-white dark:text-black" />
-                        </div>
+                        <img
+                            src="/printalma_logo.svg"
+                            alt="Printalma Logo"
+                            className="h-7 w-7 object-contain"
+                        />
                         <h2 className="text-lg font-semibold text-black dark:text-white">
-                            {isVendeur() ? 'Espace Vendeur' : 'Dashboard'}
+                            {isVendeur() ? 'Espace Vendeur' : 'Printalma'}
                         </h2>
                     </div>
                     <div className="ml-auto flex items-center space-x-1">
@@ -281,18 +283,7 @@ export default function Sidebar() {
                         >
                             <Bell size={18} />
                         </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={toggleDarkMode}
-                            className="rounded-full w-8 h-8 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                            {isDarkMode ? (
-                                <Sun size={18} />
-                            ) : (
-                                <Moon size={18} />
-                            )}
-                        </Button>
+                        
                         <Avatar className="h-8 w-8 ml-1">
                             <AvatarImage src={adminUser.avatarUrl} alt={adminUser.name} />
                             <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs">
@@ -319,12 +310,21 @@ export default function Sidebar() {
                     <div className="p-4 flex items-center justify-between">
                         {!collapsed && (
                             <div className="flex items-center space-x-3">
-                                <div className="h-8 w-8 rounded-md bg-black dark:bg-white flex items-center justify-center">
-                                    <Home size={16} className="text-white dark:text-black" />
-                                </div>
-                                <h2 className="text-lg font-semibold text-black dark:text-white">
-                                    {isVendeur() ? 'Espace Vendeur' : 'Dashboard'}
-                                </h2>
+                                <img
+                                    src="/printalma_logo.svg"
+                                    alt="Printalma Logo"
+                                    className="h-32 w-32 object-contain"
+                                />
+                                
+                            </div>
+                        )}
+                        {collapsed && (
+                            <div className="flex justify-center w-full">
+                                <img
+                                    src="/printalma_logo.svg"
+                                    alt="Printalma Logo"
+                                    className="h-8 w-8 object-contain"
+                                />
                             </div>
                         )}
                         <Button
@@ -753,29 +753,7 @@ export default function Sidebar() {
                         </>
                     )}
 
-                    {!isMobile && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={toggleDarkMode}
-                            className={cn(
-                                "w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 my-1 py-2 text-black dark:text-white",
-                                collapsed && "justify-center"
-                            )}
-                        >
-                            {isDarkMode ? (
-                                <>
-                                    <Sun size={18} />
-                                    {!collapsed && <span className="ml-3 text-sm">Mode Clair</span>}
-                                </>
-                            ) : (
-                                <>
-                                    <Moon size={18} />
-                                    {!collapsed && <span className="ml-3 text-sm">Mode Sombre</span>}
-                                </>
-                            )}
-                        </Button>
-                    )}
+                    
 
                     <NavItem
                         icon={<LogOut size={18} className="text-gray-500 dark:text-gray-400" />}

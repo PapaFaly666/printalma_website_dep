@@ -286,6 +286,14 @@ export const fetchCategories = async (): Promise<Category[]> => {
     const response: AxiosResponse<any[]> = await axios.get(`${API_URL}/categories`);
     
     console.log('🔍 [fetchCategories] Données brutes reçues:', response.data);
+    console.log('🔍 [fetchCategories] Structure des catégories:', response.data.map((item, index) => ({
+      index,
+      id: item?.id,
+      name: item?.name,
+      parentId: item?.parentId,
+      level: item?.level,
+      hasParentId: !!item?.parentId
+    })));
     
     // Filtrer et nettoyer les catégories manuellement
     const validCategories: Category[] = [];
@@ -299,6 +307,7 @@ export const fetchCategories = async (): Promise<Category[]> => {
             id: Number(item.id),
             name: String(item.name).trim(),
             description: item.description ? String(item.description).trim() : null,
+            parentId: item.parentId ? Number(item.parentId) : null,
             order: item.order || 0,
             level: item.level || 0
           };

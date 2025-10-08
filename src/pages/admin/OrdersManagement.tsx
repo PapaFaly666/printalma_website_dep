@@ -75,6 +75,8 @@ const OrdersManagement = () => {
   const [statistics, setStatistics] = useState<OrderStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportPeriod, setExportPeriod] = useState<'all' | '24h' | '7d' | '30d'>('all');
   
   // États de filtrage et pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -297,6 +299,143 @@ const OrdersManagement = () => {
   // RENDU PRINCIPAL
   // ==========================================
 
+  // Export CSV (avec filtres status + période + recherche)
+  const handleExportCSV = async () => {
+    try {
+      setExporting(true);
+
+      // Déterminer période
+      let startISO: string | undefined;
+      let endISO: string | undefined;
+      if (exportPeriod !== 'all') {
+        const now = new Date();
+        const nowISO = new Date(now).toISOString();
+        let start: Date;
+        if (exportPeriod === '24h') {
+          start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        } else if (exportPeriod === '7d') {
+          start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else {
+          start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        }
+        startISO = start.toISOString();
+        endISO = nowISO;
+      }
+
+      // Pagination API
+      const pageSizeExport = 100; // respecter contraintes backend
+      const maxPages = 100; // garde-fou
+      let page = 1;
+      const allRows: Order[] = [];
+
+      // Construire les filtres de la requête
+      const baseFilters: Record<string, any> = {
+        page,
+        limit: pageSizeExport,
+      };
+      if (statusFilter !== 'all') baseFilters.status = statusFilter;
+      if (searchTerm) baseFilters.orderNumber = searchTerm;
+      if (startISO) baseFilters.startDate = startISO;
+      if (endISO) baseFilters.endDate = endISO;
+
+      // Boucle jusqu'à épuisement des pages
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const res = await newOrderService.getAllOrders({ ...baseFilters, page });
+        if (Array.isArray(res.orders)) {
+          allRows.push(...res.orders);
+        }
+        if (!res || !res.orders || res.orders.length < pageSizeExport || page >= maxPages) break;
+        page += 1;
+      }
+
+      // Sécurité: filtre client par période + statut + recherche si nécessaire
+      let filtered = [...allRows];
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(o => o.status === statusFilter);
+      }
+      if (searchTerm) {
+        filtered = filtered.filter(o => String(o.orderNumber || '').includes(searchTerm));
+      }
+      if (startISO || endISO) {
+        const startMs = startISO ? new Date(startISO).getTime() : undefined;
+        const endMs = endISO ? new Date(endISO).getTime() : undefined;
+        filtered = filtered.filter(o => {
+          const t = new Date(o.createdAt).getTime();
+          if (Number.isNaN(t)) return false;
+          if (startMs && t < startMs) return false;
+          if (endMs && t > endMs) return false;
+          return true;
+        });
+      }
+
+      // Génération CSV
+      const headers = [
+        'ID',
+        'Numéro commande',
+        'Client - Prénom',
+        'Client - Nom',
+        'Client - Email',
+        'Vendeur',
+        'Vendeur - Email',
+        'Articles (nb)',
+        'Statut',
+        'Montant total',
+        'Téléphone',
+        'Adresse',
+        'Créé le',
+        'Mis à jour le'
+      ];
+
+      const escapeCell = (val: unknown) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+      };
+
+      const rows = filtered.map(o => {
+        const itemsCount = Array.isArray(o.orderItems) ? o.orderItems.reduce((sum, it) => sum + (it.quantity || 0), 0) : 0;
+        const address = (o as any).shippingAddress?.fullFormatted
+          || (((o as any).shippingAddress?.street || '') + (((o as any).shippingAddress?.city) ? ', ' + (o as any).shippingAddress.city : ''))
+          || '';
+        return [
+          o.id,
+          o.orderNumber || '',
+          o.user?.firstName || '',
+          o.user?.lastName || '',
+          o.user?.email || '',
+          (o as any).vendor?.username || '',
+          (o as any).vendor?.email || '',
+          itemsCount,
+          o.status,
+          o.totalAmount,
+          o.phoneNumber || '',
+          address,
+          o.createdAt,
+          o.updatedAt
+        ].map(escapeCell).join(',');
+      });
+
+      const csvContent = [headers.map(escapeCell).join(','), ...rows].join('\n');
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const periodLabel = exportPeriod === 'all' ? 'toutes_periodes' : exportPeriod;
+      const statusLabel = statusFilter === 'all' ? 'tous_statuts' : statusFilter.toLowerCase();
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `commandes_${statusLabel}_${periodLabel}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Erreur export commandes CSV:', e);
+      alert('Erreur lors de l\'export CSV.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
@@ -344,10 +483,23 @@ const OrdersManagement = () => {
                   Actualiser
                 </Button>
 
-                <Button className="gap-2 bg-slate-900 hover:bg-slate-800">
-                  <Download className="h-4 w-4" />
-                  Exporter
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Select value={exportPeriod} onValueChange={(v) => setExportPeriod(v as 'all' | '24h' | '7d' | '30d')}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Période export" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes périodes</SelectItem>
+                      <SelectItem value="24h">Dernières 24h</SelectItem>
+                      <SelectItem value="7d">7 derniers jours</SelectItem>
+                      <SelectItem value="30d">30 derniers jours</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button className="gap-2 bg-slate-900 hover:bg-slate-800" disabled={exporting} onClick={async () => { await handleExportCSV(); }}>
+                    <Download className={`h-4 w-4 ${exporting ? 'animate-pulse' : ''}`} />
+                    {exporting ? 'Export...' : 'Exporter'}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -599,19 +751,19 @@ const OrdersManagement = () => {
                           </TableCell>
 
                           <TableCell>
-                            {order.vendor ? (
+                            {(order as any).vendor ? (
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
                                   <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs font-semibold">
-                                    {(order.vendor?.username?.[0] || 'V').toUpperCase()}
+                                    {(((order as any).vendor?.username?.[0]) || 'V').toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
                                   <p className="font-medium text-slate-900 text-sm">
-                                    {order.vendor?.username || 'Vendeur'}
+                                    {(order as any).vendor?.username || 'Vendeur'}
                                   </p>
                                   <p className="text-xs text-slate-500">
-                                    {order.vendor?.email || 'Email inconnu'}
+                                    {(order as any).vendor?.email || 'Email inconnu'}
                                   </p>
                                 </div>
                               </div>

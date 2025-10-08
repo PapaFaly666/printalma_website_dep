@@ -79,6 +79,9 @@ import CreateProductWizardPage from './pages/vendor/CreateProductWizardPage';
 // Page d'appel de fonds
 import AppelDeFondsPage from './pages/AppelDeFondsPage';
 
+// Page paramètres admin
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+
 // Nouvelles pages de gestion des fonds vendeur
 import VendorFundsRequestPage from './pages/vendor/VendorFundsRequestPage';
 import AdminPaymentRequestsPage from './pages/admin/AdminPaymentRequestsPage';
@@ -283,6 +286,7 @@ function App() {
                   <Route path="themes" element={<ThemesPage />} />
                   <Route path="themes/:themeId/products" element={<ThemeProductsPage />} />
                   <Route path="stock" element={<AdminStockManagement />} />
+                  <Route path="settings" element={<AdminSettingsPage />} />
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                 </Route>
                 

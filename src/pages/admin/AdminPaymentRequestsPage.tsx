@@ -68,6 +68,7 @@ const AdminPaymentRequestsPage: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   // États pour les filtres et pagination
@@ -223,6 +224,117 @@ const AdminPaymentRequestsPage: React.FC = () => {
     }
   };
 
+  // Export CSV sur la période et filtres courants
+  const handleExportCSV = async () => {
+    try {
+      setExporting(true);
+      const pageSize = 100;
+      let page = 1;
+      const allRows: FundsRequest[] = [];
+
+      const baseFilters: AdminFundsRequestFilters = {
+        status: filters.status,
+        vendorId: filters.vendorId,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        minAmount: (filters as AdminFundsRequestFilters).minAmount,
+        maxAmount: (filters as AdminFundsRequestFilters).maxAmount,
+        paymentMethod: filters.paymentMethod,
+        sortBy: filters.sortBy || 'createdAt',
+        sortOrder: filters.sortOrder || 'desc',
+        limit: pageSize,
+        page
+      };
+
+      const maxPages = 100;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const resp = await adminFundsService.getAllFundsRequests({ ...baseFilters, page });
+        if (Array.isArray(resp.requests)) {
+          allRows.push(...resp.requests);
+        }
+        if (!resp.hasNext || page >= maxPages) break;
+        page += 1;
+      }
+
+      const headers = [
+        'ID',
+        'ID Vendeur',
+        'Vendeur - Prénom',
+        'Vendeur - Nom',
+        'Boutique',
+        'Email',
+        'Montant',
+        'Montant demandé',
+        'Méthode',
+        'Téléphone',
+        'Statut',
+        'Note admin',
+        'Raison rejet',
+        'Solde disponible',
+        'Taux commission',
+        'Date demande',
+        'Date validation',
+        'Date traitement',
+        'Créé le',
+        'Mis à jour le'
+      ];
+
+      const escapeCell = (val: unknown) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+      };
+
+      const rows = allRows.map(r => [
+        r.id,
+        r.vendorId,
+        r.vendor?.firstName || '',
+        r.vendor?.lastName || '',
+        r.vendor?.shopName || '',
+        r.vendor?.email || '',
+        r.amount,
+        r.requestedAmount,
+        r.paymentMethod,
+        r.phoneNumber || '',
+        r.status,
+        r.adminNote || '',
+        r.rejectReason || '',
+        (r as any).availableBalance ?? '',
+        (r as any).commissionRate ?? '',
+        r.requestDate || r.createdAt || '',
+        (r as any).validatedAt || '',
+        (r as any).processedAt || (r as any).processedDate || '',
+        r.createdAt || '',
+        r.updatedAt || ''
+      ].map(escapeCell).join(','));
+
+      const csvContent = [headers.map(escapeCell).join(','), ...rows].join('\n');
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const periodLabel = (() => {
+        if (filters.startDate || filters.endDate) {
+          const s = filters.startDate ? new Date(filters.startDate).toISOString().slice(0, 10) : '...';
+          const e = filters.endDate ? new Date(filters.endDate).toISOString().slice(0, 10) : '...';
+          return `${s}_au_${e}`;
+        }
+        return 'toutes_periodes';
+      })();
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `appel_fonds_${periodLabel}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Erreur export CSV:', e);
+      alert('Erreur lors de l\'export CSV.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Obtenir l'icône et la couleur pour le statut
   const getStatusIcon = (status: FundsRequest['status']) => {
     switch (status) {
@@ -283,9 +395,9 @@ const AdminPaymentRequestsPage: React.FC = () => {
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {loading ? 'Chargement...' : 'Actualiser'}
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Exporter CSV
+            <Button variant="outline" size="sm" disabled={exporting} onClick={async () => { await handleExportCSV(); }}>
+              <Download className={`mr-2 h-4 w-4 ${exporting ? 'animate-pulse' : ''}`} />
+              {exporting ? 'Export...' : 'Exporter CSV'}
             </Button>
           </div>
         </div>
@@ -327,20 +439,6 @@ const AdminPaymentRequestsPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-blue-700">Temps moyen</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-900">
-                {loading ? '...' : `${statistics.averageProcessingTime.toFixed(1)}h`}
-              </div>
-              <div className="text-xs text-gray-600 mt-1">
-                Délai de traitement
-              </div>
-            </CardContent>
-          </Card>
 
           <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, status: undefined, page: 1 })); }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -377,32 +475,48 @@ const AdminPaymentRequestsPage: React.FC = () => {
           setFilters(prev => ({ ...prev, status: newStatus, page: 1 }));
         }}>
           <div className="flex items-center justify-between mb-6">
-            <TabsList className="grid w-full max-w-md grid-cols-5">
-              <TabsTrigger value="pending" className="relative">
-                À traiter
-                {statistics.totalPendingRequests > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs">
-                    {statistics.totalPendingRequests}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="approved">Approuvées</TabsTrigger>
-              <TabsTrigger value="rejected">Rejetées</TabsTrigger>
-              <TabsTrigger value="paid">Payées</TabsTrigger>
-              <TabsTrigger value="all">Toutes</TabsTrigger>
-            </TabsList>
+           
 
-            {/* Filtres rapides */}
-            <div className="flex gap-2 items-center">
+            {/* Filtres */}
+            <div className="flex gap-2 items-center flex-wrap justify-end">
+              {/* Recherche vendeur par ID */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Rechercher vendeur..."
+                  placeholder="ID vendeur..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64"
+                  className="pl-9 w-40"
                 />
               </div>
+
+              {/* Statut */}
+              <Select
+                value={filters.status || 'all'}
+                onValueChange={(value) => {
+                  const newStatus = value === 'all' ? undefined : (value as FundsRequest['status']);
+                  setActiveTab(
+                    newStatus === 'PENDING' ? 'pending' :
+                    newStatus === 'APPROVED' ? 'approved' :
+                    newStatus === 'REJECTED' ? 'rejected' :
+                    newStatus === 'PAID' ? 'paid' :
+                    'all'
+                  );
+                  setFilters(prev => ({ ...prev, status: newStatus, page: 1 }));
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous statuts</SelectItem>
+                  <SelectItem value="PENDING">En attente</SelectItem>
+                  <SelectItem value="APPROVED">Approuvées</SelectItem>
+                  <SelectItem value="PAID">Payées</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Méthode de paiement */}
               <Select
                 value={filters.paymentMethod || 'all'}
                 onValueChange={(value) => setFilters(prev => ({
@@ -411,7 +525,7 @@ const AdminPaymentRequestsPage: React.FC = () => {
                   page: 1
                 }))}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-44">
                   <SelectValue placeholder="Méthode" />
                 </SelectTrigger>
                 <SelectContent>
@@ -421,6 +535,84 @@ const AdminPaymentRequestsPage: React.FC = () => {
                   <SelectItem value="BANK_TRANSFER">Virement</SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* Période */}
+              <Select
+                value={(() => {
+                  if (!filters.startDate && !filters.endDate) return 'all';
+                  const now = new Date();
+                  const start = filters.startDate ? new Date(filters.startDate) : null;
+                  if (!start) return 'all';
+                  const diffMs = now.getTime() - start.getTime();
+                  const oneDay = 24 * 60 * 60 * 1000;
+                  if (diffMs <= oneDay) return '24h';
+                  if (diffMs <= 7 * oneDay) return '7d';
+                  if (diffMs <= 30 * oneDay) return '30d';
+                  return 'custom';
+                })()}
+                onValueChange={(value) => {
+                  const now = new Date();
+                  const toISO = (d: Date) => new Date(d).toISOString();
+                  if (value === 'all') {
+                    setFilters(prev => ({ ...prev, startDate: undefined, endDate: undefined, page: 1 }));
+                    return;
+                  }
+                  if (value === '24h') {
+                    const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                    setFilters(prev => ({ ...prev, startDate: toISO(start), endDate: toISO(now), page: 1 }));
+                    return;
+                  }
+                  if (value === '7d') {
+                    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    setFilters(prev => ({ ...prev, startDate: toISO(start), endDate: toISO(now), page: 1 }));
+                    return;
+                  }
+                  if (value === '30d') {
+                    const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    setFilters(prev => ({ ...prev, startDate: toISO(start), endDate: toISO(now), page: 1 }));
+                    return;
+                  }
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Période" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes périodes</SelectItem>
+                  <SelectItem value="24h">Dernières 24h</SelectItem>
+                  <SelectItem value="7d">7 derniers jours</SelectItem>
+                  <SelectItem value="30d">30 derniers jours</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Taille page */}
+              <Select
+                value={String(filters.limit || 10)}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, limit: parseInt(value), page: 1 }))}
+              >
+                <SelectTrigger className="w-28">
+                  <SelectValue placeholder="Taille" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 / page</SelectItem>
+                  <SelectItem value="20">20 / page</SelectItem>
+                  <SelectItem value="50">50 / page</SelectItem>
+                  <SelectItem value="100">100 / page</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Reset */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('');
+                  setActiveTab('all');
+                  setFilters({ page: 1, limit: 10, sortBy: 'createdAt', sortOrder: 'desc' });
+                }}
+              >
+                Réinitialiser
+              </Button>
             </div>
           </div>
 
@@ -527,11 +719,9 @@ const AdminPaymentRequestsPage: React.FC = () => {
                     <TableHead className="font-semibold text-gray-700">Vendeur</TableHead>
                     <TableHead className="font-semibold text-gray-700">Date demande</TableHead>
                     <TableHead className="font-semibold text-gray-700 hidden md:table-cell">Date validation</TableHead>
-                    <TableHead className="font-semibold text-gray-700 hidden lg:table-cell">Temps traitement</TableHead>
                     <TableHead className="font-semibold text-gray-700">Montant</TableHead>
                     <TableHead className="font-semibold text-gray-700">Méthode</TableHead>
                     <TableHead className="font-semibold text-gray-700">Statut</TableHead>
-                    <TableHead className="font-semibold text-gray-700 hidden xl:table-cell">Description</TableHead>
                     <TableHead className="font-semibold text-gray-700 text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -587,16 +777,7 @@ const AdminPaymentRequestsPage: React.FC = () => {
                         )}
                       </TableCell>
 
-                      {/* Temps de traitement */}
-                      <TableCell className="hidden lg:table-cell">
-                        {(request.requestDate || request.createdAt) && request.validatedAt ? (
-                          <span className="text-blue-600 font-medium text-sm">
-                            {calculateDuration(request.requestDate || request.createdAt, request.validatedAt)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-xs">-</span>
-                        )}
-                      </TableCell>
+                      
                       <TableCell>
                         <div className="font-medium">
                           {adminFundsService.formatCurrency(request.amount)}
@@ -629,21 +810,6 @@ const AdminPaymentRequestsPage: React.FC = () => {
                         {request.processedDate && (
                           <div className="text-xs text-gray-500 mt-1">
                             Traité le {adminFundsService.formatDate(request.processedDate).split(' ').slice(0, 3).join(' ')}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm text-gray-900 max-w-xs truncate">
-                          {request.description}
-                        </div>
-                        {request.rejectReason && (
-                          <div className="text-xs text-red-600 mt-1">
-                            Raison: {request.rejectReason}
-                          </div>
-                        )}
-                        {request.adminNote && (
-                          <div className="text-xs text-blue-600 mt-1">
-                            Note: {request.adminNote}
                           </div>
                         )}
                       </TableCell>
