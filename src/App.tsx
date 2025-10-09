@@ -81,6 +81,7 @@ import AppelDeFondsPage from './pages/AppelDeFondsPage';
 
 // Page paramètres admin
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
 
 // Nouvelles pages de gestion des fonds vendeur
 import VendorFundsRequestPage from './pages/vendor/VendorFundsRequestPage';
@@ -275,6 +276,8 @@ function App() {
                   <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="analytics" element={<ProductAnalytics />} />
+                  <Route path="users" element={<AdminUsersPage />} />
+                  <Route path="users/create" element={<AdminUsersPage />} />
                   <Route path='payment-requests' element={<AdminPaymentRequestsPage />} />
                   <Route path='sales' element={<Sale />} />
                   <Route path='add-product' element={<AddProductPage />} />

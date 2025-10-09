@@ -181,6 +181,10 @@ export default function Sidebar() {
             setActiveItem('settings');
         } else if (location.pathname.includes('/admin/trash')) {
             setActiveItem('trash');
+        } else if (location.pathname.includes('/admin/users/create')) {
+            setActiveItem('users-create');
+        } else if (location.pathname.includes('/admin/users')) {
+            setActiveItem('users');
         }
         // Vendor routes
         else if (location.pathname.includes('/vendeur/dashboard')) {
@@ -509,6 +513,34 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                    </NavGroup>
+
+                    {/* Utilisateurs (Admins & Superadmins) */}
+                    <NavGroup
+                        title="Utilisateurs"
+                        collapsed={collapsed && !isMobile}
+                    >
+                        <NavItem
+                            icon={<Users size={18} />}
+                            label="Admins & Superadmins"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'users'}
+                            onClick={() => handleNavigation('users')}
+                            badge=""
+                            textColor=""
+                        />
+
+                        {isSuperAdmin() && (
+                            <NavItem
+                                icon={<User size={18} />}
+                                label="Créer utilisateur"
+                                collapsed={collapsed && !isMobile}
+                                active={activeItem === 'users-create'}
+                                onClick={() => handleNavigation('users/create')}
+                                badge=""
+                                textColor=""
+                            />
+                        )}
                     </NavGroup>
 
                     <NavGroup
