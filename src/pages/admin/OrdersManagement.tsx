@@ -160,6 +160,13 @@ const OrdersManagement = () => {
   // FONCTIONS AVANCÉES
   // ==========================================
 
+  // Extraction du nom du vendeur depuis le champ notes quand l'objet vendor n'est pas fourni par l'API
+  const extractVendorNameFromNotes = (notes?: string | null): string | null => {
+    if (!notes) return null;
+    const match = notes.match(/Produit vendeur:\s*(.+?)\s*\(ID:/i);
+    return match ? match[1].trim() : null;
+  };
+
   // Fonction de rafraîchissement avec débounce
   const debouncedRefresh = useCallback(() => {
     if (refreshTimeout) {
@@ -717,14 +724,7 @@ const OrdersManagement = () => {
                                   #{order.orderNumber}
                                 </p>
                                 <div className="flex items-center gap-2">
-                                  <p className="text-xs text-slate-500">
-                                    ID: {order.id}
-                                  </p>
-                                  {order.notes && (
-                                    <Badge variant="outline" className="text-xs px-1 py-0 h-4">
-                                      Note
-                                    </Badge>
-                                  )}
+                                  
                                 </div>
                               </div>
                             </div>
@@ -768,10 +768,32 @@ const OrdersManagement = () => {
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 text-slate-400">
-                                <Users className="h-4 w-4" />
-                                <span className="text-sm">Pas de vendeur</span>
-                              </div>
+                              (() => {
+                                const parsedVendorName = extractVendorNameFromNotes(order.notes);
+                                if (parsedVendorName) {
+                                  return (
+                                    <div className="flex items-center gap-3">
+                                      <Avatar className="h-8 w-8">
+                                        <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs font-semibold">
+                                          {(parsedVendorName?.[0] || 'V').toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <p className="font-medium text-slate-900 text-sm">
+                                          {parsedVendorName}
+                                        </p>
+                                        
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="flex items-center gap-2 text-slate-400">
+                                    <Users className="h-4 w-4" />
+                                    <span className="text-sm">Pas de vendeur</span>
+                                  </div>
+                                );
+                              })()
                             )}
                           </TableCell>
 

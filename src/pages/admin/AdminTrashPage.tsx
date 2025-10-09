@@ -5,8 +5,7 @@ import { Button } from '../../components/ui/button';
 
 const ELEMENT_TYPES = [
   { value: 'product', label: 'Produits' },
-  // { value: 'user', label: 'Utilisateurs' },
-  // { value: 'article', label: 'Articles' },
+  { value: 'vendor', label: 'Vendeurs' },
 ];
 
 const PAGE_SIZE = 8;
@@ -35,18 +34,21 @@ const AdminTrashPage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        let url = '';
-        if (typeFilter === 'product') url = 'https://printalma-back-dep.onrender.com/products/deleted';
-        // else if (typeFilter === 'user') url = ...
-        // else if (typeFilter === 'article') url = ...
-        const res = await fetch(url, {
-          method: 'GET',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) throw new Error('Erreur lors de la récupération des éléments supprimés');
-        const data = await res.json();
-        setDeletedItems(data);
+        if (typeFilter === 'product') {
+          const res = await fetch('https://printalma-back-dep.onrender.com/products/deleted', {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (!res.ok) throw new Error('Erreur lors de la récupération des éléments supprimés');
+          const data = await res.json();
+          setDeletedItems(data);
+        } else if (typeFilter === 'vendor') {
+          const { authService } = await import('../../services/auth.service');
+          const trash = await authService.getDeletedVendors({ page, limit: PAGE_SIZE, search });
+          const list = Array.isArray(trash?.vendors) ? trash.vendors : (trash?.data?.vendors || trash?.data || []);
+          setDeletedItems(list);
+        }
       } catch (e: any) {
         setError(e.message || 'Erreur lors de la récupération des éléments supprimés');
       } finally {
@@ -54,12 +56,19 @@ const AdminTrashPage: React.FC = () => {
       }
     }
     fetchDeleted();
-  }, [typeFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilter, page, search]);
 
   // 2. Remplace le filtre par type par un filtre par catégorie
   const filtered = deletedItems.filter(item => {
-    if (categoryFilter && (!item.categories || !item.categories.some((cat: any) => cat.name === categoryFilter))) return false;
-    if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (typeFilter === 'product') {
+      if (categoryFilter && (!item.categories || !item.categories.some((cat: any) => cat.name === categoryFilter))) return false;
+      if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    }
+    // vendor
+    const fullName = `${item.firstName || ''} ${item.lastName || ''}`.trim().toLowerCase();
+    if (search && !fullName.includes(search.toLowerCase()) && !(item.email || '').toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -132,14 +141,22 @@ const AdminTrashPage: React.FC = () => {
               onChange={e => { setCategoryFilter(e.target.value); setPage(1); setSelectedIds([]); }}
               className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-sm"
             >
-              <option value="">Toutes les catégories</option>
-              {allCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              {typeFilter === 'product' ? (
+                <>
+                  <option value="">Toutes les catégories</option>
+                  {allCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </>
+              ) : (
+                <>
+                  <option value="">Tous les vendeurs</option>
+                </>
+              )}
             </select>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Rechercher..."
+                placeholder={typeFilter === 'vendor' ? 'Rechercher vendeur (nom, email)...' : 'Rechercher...'}
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
                 className="pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-sm"
@@ -196,7 +213,6 @@ const AdminTrashPage: React.FC = () => {
               ) : paginated.length === 0 ? (
                 <tr><td colSpan={9} className="py-8 text-center text-gray-400">Aucun élément supprimé.</td></tr>
               ) : paginated.map(item => {
-                // Affichage image + couleurs pour les produits
                 const isProduct = typeFilter === 'product';
                 const colorIndex = colorIndexes[item.id] ?? 0;
                 const colorVars = item.colorVariations || [];
@@ -212,57 +228,82 @@ const AdminTrashPage: React.FC = () => {
                       />
                     </td>
                     <td className="px-2 md:px-4 py-2 md:py-3 font-medium text-gray-900 dark:text-white flex items-center gap-2 md:gap-3 min-w-[180px]">
-                      {isProduct && image && (
-                        <img src={image.url} alt={item.name} className="w-10 h-10 md:w-12 md:h-12 rounded-md object-cover border border-gray-200 dark:border-gray-700" />
-                      )}
-                      <div>
-                        <div className="flex flex-wrap items-center gap-1 md:gap-2">
-                          {isProduct && colorVars.length > 1 && (
-                            <div className="flex items-center gap-1">
-                              {colorVars.map((c: any, idx: number) => (
-                                <button
-                                  key={c.id}
-                                  onClick={() => setColorIndexes(prev => ({ ...prev, [item.id]: idx }))}
-                                  className={`w-3 h-3 md:w-4 md:h-4 rounded-full border-2 transition-all ${idx === colorIndex ? 'border-gray-900 scale-110' : 'border-gray-300 hover:border-gray-600'}`}
-                                  style={{ backgroundColor: c.colorCode }}
-                                  title={c.name}
-                                />
-                              ))}
-                            </div>
+                      {isProduct ? (
+                        <>
+                          {image && (
+                            <img src={image.url} alt={item.name} className="w-10 h-10 md:w-12 md:h-12 rounded-md object-cover border border-gray-200 dark:border-gray-700" />
                           )}
-                          <span className="truncate max-w-[100px] md:max-w-none">{item.name}</span>
+                          <div>
+                            <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                              {colorVars.length > 1 && (
+                                <div className="flex items-center gap-1">
+                                  {colorVars.map((c: any, idx: number) => (
+                                    <button
+                                      key={c.id}
+                                      onClick={() => setColorIndexes(prev => ({ ...prev, [item.id]: idx }))}
+                                      className={`w-3 h-3 md:w-4 md:h-4 rounded-full border-2 transition-all ${idx === colorIndex ? 'border-gray-900 scale-110' : 'border-gray-300 hover:border-gray-600'}`}
+                                      style={{ backgroundColor: c.colorCode }}
+                                      title={c.name}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              <span className="truncate max-w-[100px] md:max-w-none">{item.name}</span>
+                            </div>
+                            {color && (
+                              <div className="text-xs text-gray-500 mt-1">{color.name}</div>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div>
+                          <div className="text-sm font-medium">{item.firstName} {item.lastName}</div>
+                          <div className="text-xs text-gray-500">{item.email}</div>
                         </div>
-                        {isProduct && color && (
-                          <div className="text-xs text-gray-500 mt-1">{color.name}</div>
-                        )}
-                      </div>
+                      )}
                     </td>
-                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm min-w-[110px]">{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm min-w-[120px]">{isProduct && item.categories && item.categories.length > 0 ? item.categories.map((cat: any) => cat.name).join(', ') : '-'}</td>
-                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm max-w-[120px] truncate">{isProduct && item.description ? item.description : '-'}</td>
-                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm">{isProduct && typeof item.price === 'number' ? item.price.toLocaleString() + ' FCFA' : '-'}</td>
-                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm">{isProduct && item.sizes && item.sizes.length > 0 ? item.sizes.map((s: any) => s.sizeName).join(', ') : '-'}</td>
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm min-w-[110px]">{isProduct ? (item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-') : (item.deleted_at ? new Date(item.deleted_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-')}</td>
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm min-w-[120px]">{isProduct ? (item.categories && item.categories.length > 0 ? item.categories.map((cat: any) => cat.name).join(', ') : '-') : (item.vendeur_type || '-')}</td>
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm max-w-[120px] truncate">{isProduct ? (item.description ? item.description : '-') : (item.address || '-')}</td>
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm">{isProduct ? (typeof item.price === 'number' ? item.price.toLocaleString() + ' FCFA' : '-') : (item.country || '-')}</td>
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-gray-600 dark:text-gray-400 text-xs md:text-sm">{isProduct ? (item.sizes && item.sizes.length > 0 ? item.sizes.map((s: any) => s.sizeName).join(', ') : '-') : (item.phone || '-')}</td>
                     <td className="px-2 md:px-4 py-2 md:py-3 text-right flex gap-1 md:gap-2 justify-end">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => restoreItem(item.id)}
+                        onClick={async () => {
+                          if (typeFilter === 'product') {
+                            await restoreItem(item.id);
+                          } else {
+                            const { authService } = await import('../../services/auth.service');
+                            setRestoringIds(ids => [...ids, item.id]);
+                            try {
+                              await authService.restoreVendor(item.id);
+                              setDeletedItems(items => items.filter(i => i.id !== item.id));
+                              setSelectedIds(ids => ids.filter(i => i !== item.id));
+                            } finally {
+                              setRestoringIds(ids => ids.filter(i => i !== item.id));
+                            }
+                          }
+                        }}
                         disabled={restoringIds.includes(item.id)}
                         className="flex items-center gap-1"
                       >
                         {restoringIds.includes(item.id) ? '...' : <Undo2 className="h-4 w-4" />}
                         <span className="hidden md:inline">Restaurer</span>
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => { setShowConfirmDelete(true); setToDeleteIds([item.id]); }}
-                        disabled={deletingIds.includes(item.id)}
-                        className="flex items-center gap-1"
-                      >
-                        {deletingIds.includes(item.id) ? '...' : <Trash className="h-4 w-4" />}
-                        <span className="hidden md:inline">Supprimer</span>
-                      </Button>
+                      {isProduct && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => { setShowConfirmDelete(true); setToDeleteIds([item.id]); }}
+                          disabled={deletingIds.includes(item.id)}
+                          className="flex items-center gap-1"
+                        >
+                          {deletingIds.includes(item.id) ? '...' : <Trash className="h-4 w-4" />}
+                          <span className="hidden md:inline">Supprimer</span>
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );

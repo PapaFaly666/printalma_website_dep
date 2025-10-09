@@ -68,6 +68,7 @@ interface ClientsTableProps {
   }>;
   onUpdateCommission?: (vendeurId: number, commission: number) => Promise<void>;
   onViewDetails?: (client: ClientWithCommission) => void;
+  onSoftDelete?: (clientId: number) => Promise<void>;
 }
 
 export const ClientsTable: React.FC<ClientsTableProps> = ({
@@ -77,7 +78,8 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
   onResetPassword,
   onUnlockClient,
   onUpdateCommission,
-  onViewDetails
+  onViewDetails,
+  onSoftDelete
 }) => {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -182,6 +184,21 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     } catch (error: any) {
       console.error('Erreur lors de la mise à jour de la commission:', error);
       throw error;
+    }
+  };
+
+  const handleSoftDelete = async (client: ClientWithCommission) => {
+    if (!onSoftDelete) return;
+    const confirmed = window.confirm(`Cette action désactive le compte et l'envoie à la corbeille. Continuer avec ${client.firstName} ${client.lastName} ?`);
+    if (!confirmed) return;
+    setActionLoading(client.id);
+    try {
+      await onSoftDelete(client.id);
+      showSuccessToast(`Vendeur envoyé à la corbeille: ${client.firstName} ${client.lastName}`);
+    } catch (error: any) {
+      alert(error?.message || 'Erreur lors de la mise en corbeille');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -383,6 +400,19 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                               <span className="ml-2 text-xs text-gray-500">
                                 (Envoie un email)
                               </span>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        {onSoftDelete && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleSoftDelete(client)}
+                              className="text-red-600"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Mettre en corbeille
                             </DropdownMenuItem>
                           </>
                         )}

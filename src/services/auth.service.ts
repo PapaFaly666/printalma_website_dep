@@ -317,6 +317,37 @@ class AuthService {
     return this.request<VendorsStatsResponse>(API_ENDPOINTS.AUTH.VENDORS_STATS);
   }
 
+  /**
+   * Soft delete d'un vendeur (admin)
+   */
+  async softDeleteVendor(vendorId: number): Promise<{ success: boolean; message: string } & any> {
+    return this.request<{ success: boolean; message: string } & any>(`/auth/admin/vendors/${vendorId}/soft-delete`, {
+      method: 'PUT'
+    });
+  }
+
+  /**
+   * Restaurer un vendeur supprimé (admin)
+   */
+  async restoreVendor(vendorId: number): Promise<{ success: boolean; message: string } & any> {
+    return this.request<{ success: boolean; message: string } & any>(`/auth/admin/vendors/${vendorId}/restore`, {
+      method: 'PUT'
+    });
+  }
+
+  /**
+   * Lister les vendeurs en corbeille (admin)
+   */
+  async getDeletedVendors(filters: { page?: number; limit?: number; search?: string; vendeur_type?: string } = {}): Promise<any> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', String(filters.page));
+    if (filters.limit) params.append('limit', String(filters.limit));
+    if (filters.search) params.append('search', filters.search);
+    if (filters.vendeur_type) params.append('vendeur_type', filters.vendeur_type);
+    const qs = params.toString();
+    return this.request<any>(`/auth/admin/vendors/trash${qs ? `?${qs}` : ''}`);
+  }
+
   // ========== 🆕 NOUVEAUX ENDPOINTS PROFIL VENDEUR ÉTENDU ==========
 
   /**

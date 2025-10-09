@@ -88,6 +88,12 @@ const ClientManagement: React.FC = () => {
     setSelectedClientForDetails(null);
   };
 
+  const handleSoftDeleteVendor = async (vendorId: number) => {
+    const { authService } = await import('../services/auth.service');
+    await authService.softDeleteVendor(vendorId);
+    await refreshClients();
+  };
+
   const handleRefreshAll = () => {
     refreshClients();
     refreshStats();
@@ -319,6 +325,7 @@ const ClientManagement: React.FC = () => {
                 onUnlockClient={handleUnlockClient}
                 onUpdateCommission={handleUpdateCommission}
                 onViewDetails={handleViewDetails}
+                onSoftDelete={handleSoftDeleteVendor}
               />
               
               {/* Pagination */}
