@@ -137,6 +137,15 @@ const AdminTrashPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <select
+              value={typeFilter}
+              onChange={e => { setTypeFilter(e.target.value); setCategoryFilter(''); setSearch(''); setPage(1); setSelectedIds([]); }}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-sm"
+            >
+              {ELEMENT_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+            <select
               value={categoryFilter}
               onChange={e => { setCategoryFilter(e.target.value); setPage(1); setSelectedIds([]); }}
               className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-sm"
