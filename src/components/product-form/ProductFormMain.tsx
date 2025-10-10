@@ -35,6 +35,7 @@ import { ProductImage, Delimitation, StockBySizeColor } from '../../types/produc
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../../contexts/CategoryContext';
+import { fetchCategoryChildren, fetchCategoryVariations, updateProductCategories } from '../../services/categoryAdminService';
 import { ProductService } from '../../services/productService';
 
 // 🔧 Configuration backend centralisée (basée sur per.md) - Compatible tous environnements
@@ -165,10 +166,16 @@ const ColorVariationsStep: React.FC<{
 
 const CategoriesStep: React.FC<{
   categoryId: number | null;
+  subCategoryId: number | null;
+  variationId: number | null;
+  uiSubCategories: Array<{ id: number; name: string }>;
+  uiVariations: Array<{ id: number; name: string }>;
   sizes: string[];
   onCategoryChange: (categoryId: number | null) => void;
+  onSubCategoryChange: (subCategoryId: number | null) => void;
+  onVariationChange: (variationId: number | null) => void;
   onSizesUpdate: (sizes: string[]) => void;
-}> = ({ categoryId, sizes, onCategoryChange, onSizesUpdate }) => {
+}> = ({ categoryId, subCategoryId, variationId, uiSubCategories, uiVariations, sizes, onCategoryChange, onSubCategoryChange, onVariationChange, onSizesUpdate }) => {
   return (
     <Card>
       <CardHeader>
@@ -183,6 +190,36 @@ const CategoriesStep: React.FC<{
           value={categoryId || undefined}
           onChange={onCategoryChange}
         />
+
+        {/* Sélecteurs dépendants Sous-catégorie / Variation */}
+        <div className="grid gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Sous‑catégorie</label>
+            <select
+              className="w-full border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-gray-900"
+              value={subCategoryId || ''}
+              onChange={(e) => onSubCategoryChange(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">— Sélectionner —</option>
+              {uiSubCategories.map((sc) => (
+                <option key={sc.id} value={sc.id}>{sc.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Variation</label>
+            <select
+              className="w-full border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-gray-900"
+              value={variationId || ''}
+              onChange={(e) => onVariationChange(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">— Sélectionner —</option>
+              {uiVariations.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {/* Gestion des tailles */}
         <CategoriesAndSizesPanel
@@ -533,6 +570,91 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   
   // Créer un objet de refs pour chaque canvas
   const canvasRefs = useRef<Record<string, DelimitationCanvasHandle | null>>({});
+
+  // --- Dépendances Catégorie/Sous-catégorie/Variation (chargement dynamique) ---
+  const prevCategoryIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    const catId: number | null = (formData as any)?.categoryId || null;
+    const prev = prevCategoryIdRef.current;
+    // Si la catégorie a changé, reset sous-catégorie/variation
+    if (catId !== prev) {
+      if (prev !== null) {
+        updateFormData('subCategoryId' as any, null);
+        updateFormData('variationId' as any, null);
+        updateFormData('__uiSubCategories' as any, []);
+        updateFormData('__uiVariations' as any, []);
+      }
+      prevCategoryIdRef.current = catId;
+    }
+
+    if (!catId) {
+      updateFormData('__uiSubCategories' as any, []);
+      updateFormData('__uiVariations' as any, []);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const [children, variations] = await Promise.all([
+          fetchCategoryChildren(catId),
+          fetchCategoryVariations(catId)
+        ]);
+        if (cancelled) return;
+        updateFormData('__uiSubCategories' as any, (children as any)?.data || []);
+        // Ne pas écraser les variations si une sous-catégorie est déjà sélectionnée
+        const hasSub = !!(formData as any)?.subCategoryId;
+        if (!hasSub) {
+          const vList = ((variations as any)?.data || []) as any[];
+          updateFormData('__uiVariations' as any, vList);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        updateFormData('__uiSubCategories' as any, []);
+        // Garder les variations actuelles seulement si une sous-catégorie est sélectionnée
+        const hasSub = !!(formData as any)?.subCategoryId;
+        if (!hasSub) updateFormData('__uiVariations' as any, []);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [formData.categoryId]);
+
+  useEffect(() => {
+    const subId: number | null = (formData as any)?.subCategoryId || null;
+    const catId: number | null = (formData as any)?.categoryId || null;
+    const baseId = subId || catId;
+    if (!baseId) {
+      updateFormData('__uiVariations' as any, []);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const v = await fetchCategoryVariations(baseId);
+        if (cancelled) return;
+        const vList = ((v as any)?.data || []) as any[];
+        if (vList.length > 0) {
+          updateFormData('__uiVariations' as any, vList);
+        } else {
+          // Fallback: certains backends renvoient les variations via /children pour une sous‑catégorie
+          const childAsVar = await fetchCategoryChildren(baseId);
+          if (cancelled) return;
+          updateFormData('__uiVariations' as any, ((childAsVar as any)?.data || []) as any[]);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        try {
+          // Fallback si /variations échoue: tenter /children
+          const childAsVar = await fetchCategoryChildren(baseId);
+          if (cancelled) return;
+          updateFormData('__uiVariations' as any, ((childAsVar as any)?.data || []) as any[]);
+        } catch {
+          updateFormData('__uiVariations' as any, []);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [(formData as any)?.subCategoryId, (formData as any)?.categoryId]);
   
   // Étapes du processus
   const steps = [
@@ -1673,8 +1795,49 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         return (
           <CategoriesStep
             categoryId={formData.categoryId || null}
+            subCategoryId={(formData as any).subCategoryId || null}
+            variationId={(formData as any).variationId || null}
+            uiSubCategories={(formData as any).__uiSubCategories || []}
+            uiVariations={(formData as any).__uiVariations || []}
             sizes={formData.sizes}
-            onCategoryChange={(categoryId: number | null) => updateFormData('categoryId', categoryId)}
+            onCategoryChange={async (categoryId: number | null) => {
+              updateFormData('categoryId', categoryId);
+              // reset
+              updateFormData('subCategoryId' as any, null);
+              updateFormData('variationId' as any, null);
+              if (!categoryId) {
+                updateFormData('__uiSubCategories' as any, []);
+                updateFormData('__uiVariations' as any, []);
+                return;
+              }
+              try {
+                const [children, variations] = await Promise.all([
+                  fetchCategoryChildren(categoryId),
+                  fetchCategoryVariations(categoryId)
+                ]);
+                updateFormData('__uiSubCategories' as any, (children as any)?.data || []);
+                updateFormData('__uiVariations' as any, (variations as any)?.data || []);
+              } catch (e) {
+                updateFormData('__uiSubCategories' as any, []);
+                updateFormData('__uiVariations' as any, []);
+              }
+            }}
+            onSubCategoryChange={async (subCategoryId: number | null) => {
+              updateFormData('subCategoryId' as any, subCategoryId);
+              updateFormData('variationId' as any, null);
+              try {
+                const baseId = subCategoryId || (formData.categoryId || null);
+                if (!baseId) {
+                  updateFormData('__uiVariations' as any, []);
+                  return;
+                }
+                const v = await fetchCategoryVariations(baseId);
+                updateFormData('__uiVariations' as any, (v as any)?.data || []);
+              } catch (e) {
+                updateFormData('__uiVariations' as any, []);
+              }
+            }}
+            onVariationChange={(variationId: number | null) => updateFormData('variationId' as any, variationId)}
             onSizesUpdate={(sizes: string[]) => updateFormData('sizes', sizes)}
           />
         );

@@ -1,9 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import { SmartColorImageUploader } from './SmartColorImageUploader';
 import { colorManagementService } from '../services/colorManagementService';
+import { fetchCategoryVariations, updateProductCategories } from '../services/categoryAdminService';
 
 export const ProductFormMain = ({ product }) => {
   const [productData, setProductData] = useState(product);
+  const [categoryId, setCategoryId] = useState(product.categoryId || null);
+  const [subCategoryId, setSubCategoryId] = useState(product.subCategoryId || null);
+  const [variationId, setVariationId] = useState(product.variationId || null);
+  const [variations, setVariations] = useState([]);
+  const [savingCats, setSavingCats] = useState(false);
 
   // Gestionnaire d'upload d'image
   const handleImageUploaded = useCallback((uploadedImage, colorVariation) => {
@@ -42,6 +48,22 @@ export const ProductFormMain = ({ product }) => {
       console.error('❌ Erreur upload nouvelle couleur:', error);
     }
   }, [product.id, handleImageUploaded]);
+
+  // Charger les variations dès qu'on change de (sous-)catégorie ou catégorie
+  const loadVariations = useCallback(async (sourceCategoryId) => {
+    if (!sourceCategoryId) { setVariations([]); return; }
+    try {
+      const res = await fetchCategoryVariations(sourceCategoryId);
+      setVariations(res?.data || []);
+    } catch (e) {
+      setVariations([]);
+    }
+  }, []);
+
+  // Quand subCategory change, charger ses variations, sinon celles de category
+  React.useEffect(() => {
+    loadVariations(subCategoryId || categoryId);
+  }, [subCategoryId, categoryId, loadVariations]);
 
   return (
     <div className="product-form-main">
@@ -134,6 +156,83 @@ export const ProductFormMain = ({ product }) => {
         >
           Nettoyer le Cache
         </button>
+
+        {/* Sélecteurs dépendants Catégorie / Sous-catégorie / Variation */}
+        <div className="mt-6 grid gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Catégorie</label>
+            <select
+              className="form-input"
+              value={categoryId || ''}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : null;
+                setCategoryId(val);
+                setSubCategoryId(null);
+                setVariationId(null);
+              }}
+            >
+              <option value="">— Sélectionner —</option>
+              {(productData.categories || []).map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Sous-catégorie</label>
+            <select
+              className="form-input"
+              value={subCategoryId || ''}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : null;
+                setSubCategoryId(val);
+                setVariationId(null);
+              }}
+            >
+              <option value="">— Sélectionner —</option>
+              {/* Placeholder: remplacez par vos sous-catégories selon votre modèle */}
+              {(productData.subCategories || []).filter((sc) => !categoryId || sc.parentId === categoryId).map((sc) => (
+                <option key={sc.id} value={sc.id}>{sc.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Variation</label>
+            <select
+              className="form-input"
+              value={variationId || ''}
+              onChange={(e) => setVariationId(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">— Sélectionner —</option>
+              {variations.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={savingCats}
+              onClick={async () => {
+                try {
+                  setSavingCats(true);
+                  await updateProductCategories(product.id, {
+                    categoryId: categoryId || null,
+                    subCategoryId: subCategoryId || null,
+                    variationId: variationId || null,
+                  });
+                  console.log('✅ Catégories mises à jour');
+                } catch (e) {
+                  console.error('❌ Erreur de mise à jour des catégories', e);
+                } finally {
+                  setSavingCats(false);
+                }
+              }}
+            >
+              Enregistrer catégories
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   );

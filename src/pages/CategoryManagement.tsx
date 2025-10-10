@@ -62,6 +62,7 @@ import { CreateCategoryStructureForm } from '../components/categories/CreateCate
 import { CategoryTree } from '../components/categories/CategoryTree';
 import categoryService from '../services/categoryService';
 import { Category as HierarchicalCategory } from '../types/category.types';
+import { fetchCategoryUsage, reassignCategory } from '../services/categoryAdminService';
 
 const CategoryManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -94,6 +95,7 @@ const CategoryManagement: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [showProductsView, setShowProductsView] = useState(false);
   
   // États de chargement pour les opérations
@@ -109,6 +111,15 @@ const CategoryManagement: React.FC = () => {
   
   // Modal de confirmation de suppression
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [reassignTargetCategoryId, setReassignTargetCategoryId] = useState<number | null>(null);
+  const [reassignType, setReassignType] = useState<'category' | 'subcategory' | 'both'>('both');
+  const [reassignLoading, setReassignLoading] = useState(false);
+  const [categoryUsage, setCategoryUsage] = useState<{
+    productsWithCategory: number;
+    productsWithSubCategory: number;
+    subcategoriesCount: number;
+    variationsCount: number;
+  } | null>(null);
   
   // État pour la confirmation de suppression de produit
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
@@ -231,7 +242,27 @@ const CategoryManagement: React.FC = () => {
   const openDeleteModal = (category: Category) => {
     setCurrentCategory(category);
     setDeleteConfirmationText(''); // Reset confirmation text
-    setIsDeleteModalOpen(true);
+    // Avant d'ouvrir la suppression, vérifier l'usage
+    fetchCategoryUsage(category.id as number)
+      .then((res) => {
+        const data = (res as any)?.data;
+        const totalUse = (data?.productsWithCategory || 0) + (data?.productsWithSubCategory || 0);
+        if (totalUse > 0) {
+          setCategoryUsage({
+            productsWithCategory: data?.productsWithCategory || 0,
+            productsWithSubCategory: data?.productsWithSubCategory || 0,
+            subcategoriesCount: data?.subcategoriesCount || 0,
+            variationsCount: data?.variationsCount || 0,
+          });
+          setIsReassignModalOpen(true);
+        } else {
+          setIsDeleteModalOpen(true);
+        }
+      })
+      .catch(() => {
+        // En cas d'erreur, fallback sur le modal suppression classique
+        setIsDeleteModalOpen(true);
+      });
   };
 
   // Gestion de la suppression
@@ -254,6 +285,30 @@ const CategoryManagement: React.FC = () => {
       }
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Réaffectation des produits avant suppression
+  const handleReassignThenDelete = async () => {
+    if (!currentCategory || !reassignTargetCategoryId) {
+      toast.error('Veuillez sélectionner une catégorie cible.');
+      return;
+    }
+    setReassignLoading(true);
+    try {
+      await reassignCategory(currentCategory.id as number, {
+        targetCategoryId: reassignTargetCategoryId,
+        reassignType,
+        reassignVariations: 'keep'
+      });
+      toast.success('Produits réaffectés');
+      setIsReassignModalOpen(false);
+      // Après réaffectation, ouvrir le modal de suppression normal
+      setIsDeleteModalOpen(true);
+    } catch (e: any) {
+      toast.error(e?.message || 'Réaffectation impossible');
+    } finally {
+      setReassignLoading(false);
     }
   };
 
@@ -1498,6 +1553,81 @@ const CategoryManagement: React.FC = () => {
                 setDeleteConfirmationText('');
               }}
               disabled={isDeleting}
+            >
+              Annuler
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de réaffectation avant suppression */}
+      <Dialog open={isReassignModalOpen} onOpenChange={(open) => !reassignLoading && setIsReassignModalOpen(open)}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+              Catégorie utilisée: réaffecter les produits
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              La catégorie "{currentCategory?.name}" est utilisée par des produits. Réaffectez-les vers une autre catégorie avant suppression.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-sm">
+              <div>Produits avec cette catégorie: <strong>{categoryUsage?.productsWithCategory || 0}</strong></div>
+              <div>Produits avec cette sous-catégorie: <strong>{categoryUsage?.productsWithSubCategory || 0}</strong></div>
+              <div>Sous-catégories: <strong>{categoryUsage?.subcategoriesCount || 0}</strong> • Variations: <strong>{categoryUsage?.variationsCount || 0}</strong></div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Catégorie cible</Label>
+              <Select
+                value={reassignTargetCategoryId ? String(reassignTargetCategoryId) : ''}
+                onValueChange={(v) => setReassignTargetCategoryId(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories
+                    .filter(c => c.id !== currentCategory?.id)
+                    .map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Type de réaffectation</Label>
+              <Select value={reassignType} onValueChange={(v) => setReassignType(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="category">Catégorie seulement</SelectItem>
+                  <SelectItem value="subcategory">Sous-catégorie seulement</SelectItem>
+                  <SelectItem value="both">Catégorie et sous-catégorie</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row-reverse gap-2 sm:gap-0">
+            <Button
+              type="button"
+              className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black w-full sm:w-auto"
+              onClick={handleReassignThenDelete}
+              disabled={reassignLoading || !reassignTargetCategoryId}
+            >
+              {reassignLoading ? 'Réaffectation...' : 'Réaffecter puis supprimer'}
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="border-gray-200 dark:border-gray-700 dark:text-gray-300 w-full sm:w-auto"
+              onClick={() => setIsReassignModalOpen(false)}
+              disabled={reassignLoading}
             >
               Annuler
             </Button>
