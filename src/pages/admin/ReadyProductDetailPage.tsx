@@ -60,11 +60,27 @@ interface ReadyProduct {
     totalDesigns: number;
     lastUpdated: string | null;
   };
-  categories: Array<{
+
+  // ✅ NEW: FK-based category system
+  categoryId?: number | null;
+  subCategoryId?: number | null;
+  variationId?: number | null;
+  category?: {
     id: number;
     name: string;
-    description: string | null;
-  }>;
+    level: number;
+  } | null;
+  subCategory?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+  variation?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+
   sizes: Array<{
     id: number;
     productId: number;
@@ -353,15 +369,32 @@ const ReadyProductDetailPage: React.FC = () => {
               <CardTitle>Catégories et tailles</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {product.categories.length > 0 && (
+              {/* ✅ NEW: FK-based category hierarchy display */}
+              {(product.category || product.subCategory || product.variation) && (
                 <div>
-                  <span className="text-sm text-gray-600">Catégories:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {product.categories.map(cat => (
-                      <Badge key={cat.id} variant="secondary" className="text-xs">
-                        {cat.name}
+                  <span className="text-sm text-gray-600">Hiérarchie de catégories:</span>
+                  <div className="flex flex-wrap gap-1 mt-1 items-center">
+                    {product.category && (
+                      <>
+                        <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700">
+                          {product.category.name}
+                        </Badge>
+                        {product.subCategory && <span className="text-gray-400 text-xs">›</span>}
+                      </>
+                    )}
+                    {product.subCategory && (
+                      <>
+                        <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700">
+                          {product.subCategory.name}
+                        </Badge>
+                        {product.variation && <span className="text-gray-400 text-xs">›</span>}
+                      </>
+                    )}
+                    {product.variation && (
+                      <Badge variant="secondary" className="text-xs bg-green-50 text-green-700">
+                        {product.variation.name}
                       </Badge>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}

@@ -21,8 +21,17 @@ import {
 } from 'lucide-react';
 import { ordersService, Order, OrderStatus, OrdersResponse } from '../../services/ordersService';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+
+// ✅ Fonction de formatage de date native pour remplacer date-fns
+const formatDate = (date: Date) => {
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+};
 
 const statusConfig = {
   PENDING: { label: 'En attente', icon: Clock, color: 'bg-yellow-100 text-yellow-800' },
@@ -256,7 +265,7 @@ export const VendorSalesPage: React.FC = () => {
                               Client: {order.user?.username || 'N/A'} ({order.user?.email})
                             </CardDescription>
                             <CardDescription>
-                              {format(new Date(order.createdAt), 'PPP à HH:mm', { locale: fr })}
+                              {formatDate(new Date(order.createdAt))}
                             </CardDescription>
                           </div>
                           <Badge className={statusConfig[order.status].color}>

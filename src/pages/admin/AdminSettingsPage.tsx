@@ -130,7 +130,7 @@ const AdminSettingsPage: React.FC = () => {
               <Separator />
               <div>
                 <Label className="text-sm">Membre depuis</Label>
-                <p className="text-sm text-gray-900 dark:text-white">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'N/A'}</p>
+                <p className="text-sm text-gray-900 dark:text-white">{user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : 'N/A'}</p>
               </div>
             </CardContent>
           </Card>

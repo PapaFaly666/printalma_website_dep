@@ -447,12 +447,6 @@ const VendorSales: React.FC = () => {
                                 <User className="h-4 w-4" />
                                 <span>{order.user.username || order.user.email}</span>
                               </div>
-                              {order.phoneNumber && (
-                                <div className="flex items-center space-x-2">
-                                  <Phone className="h-4 w-4" />
-                                  <span>{order.phoneNumber}</span>
-                                </div>
-                              )}
                               {order.shippingAddress && (
                                 <div className="flex items-center space-x-2">
                                   <MapPin className="h-4 w-4" />

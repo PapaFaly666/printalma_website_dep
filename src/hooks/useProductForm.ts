@@ -35,11 +35,25 @@ export const useProductForm = () => {
     field: K,
     value: ProductFormData[K]
   ) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
+    // Debug pour categories
+    if (field === 'categories') {
+      console.log('🔍 [DEBUG useProductForm updateFormData] Updating categories field with:', value);
+    }
+
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+
+      // Debug pour categories
+      if (field === 'categories') {
+        console.log('🔍 [DEBUG useProductForm updateFormData] New formData will be:', updated);
+      }
+
+      return updated;
+    });
+
     // Clear error when field is updated
     if (errors[field as keyof ProductFormErrors]) {
       setErrors(prev => ({
@@ -142,8 +156,25 @@ export const useProductForm = () => {
       newErrors.stock = 'Le stock ne peut pas être négatif';
     }
 
-    if (!formData.categoryId) {
+    // ✅ Accepter soit categoryId (ancien système) soit categories (nouveau système)
+    // Note: categoryId peut être undefined ici car il est extrait dans handleSubmit AVANT l'appel à submitForm
+    const hasCategoryId = formData.categoryId !== undefined && formData.categoryId !== null;
+    const hasCategories = formData.categories && formData.categories.length > 0;
+
+    console.log('🔍 [DEBUG VALIDATION] Catégories:', {
+      categoryId: formData.categoryId,
+      hasCategoryId,
+      categories: formData.categories,
+      categoriesLength: formData.categories?.length,
+      hasCategories
+    });
+
+    // ✅ CORRECTION: Accepter si AU MOINS UN des deux systèmes a des données
+    if (!hasCategoryId && !hasCategories) {
       newErrors.categories = 'Sélectionnez une catégorie';
+      console.log('❌ [DEBUG VALIDATION] Validation échouée: aucune catégorie');
+    } else {
+      console.log('✅ [DEBUG VALIDATION] Validation passée -', hasCategoryId ? 'via categoryId' : 'via categories array');
     }
 
     if (formData.colorVariations.length === 0) {
@@ -177,6 +208,39 @@ export const useProductForm = () => {
       // Envoyer categoryId au lieu du tableau categories
       console.log(`🔍 [DEBUG] Catégorie sélectionnée (ID):`, formData.categoryId);
 
+      // ✅ GÉNÉRATION DU CHAMP categories (OBLIGATOIRE selon selection.md)
+      // Le backend attend un array de strings (noms de catégories)
+      const categoriesArray: string[] = [];
+
+      // Construire le array de noms depuis formData.categories (format "Category > SubCategory > Variation")
+      if (formData.categories && Array.isArray(formData.categories) && formData.categories.length > 0) {
+        // Si categories existe et contient le format UI complet, extraire seulement le nom de la catégorie principale
+        const categoryString = formData.categories[0];
+        const parts = categoryString.split(' > ').map(p => p.trim());
+
+        // Prendre le premier niveau comme catégorie principale
+        if (parts.length > 0 && parts[0]) {
+          categoriesArray.push(parts[0]);
+          console.log('✅ [DEBUG] Catégorie extraite depuis UI format:', parts[0]);
+        }
+      } else if (formData.categoryId && availableCategories && availableCategories.length > 0) {
+        // Fallback: Trouver le nom de la catégorie depuis categoryId
+        const foundCategory = availableCategories.find(cat => cat.id === formData.categoryId);
+        if (foundCategory && foundCategory.name) {
+          categoriesArray.push(foundCategory.name);
+          console.log('✅ [DEBUG] Catégorie extraite depuis categoryId:', foundCategory.name);
+        }
+      }
+
+      // Validation finale du champ categories
+      if (categoriesArray.length === 0) {
+        toast.error('❌ Erreur: Au moins une catégorie est requise');
+        setLoading(false);
+        return false;
+      }
+
+      console.log('📋 [DEBUG] Champ categories généré (array de strings):', categoriesArray);
+
       // Transformer les données du formulaire pour l'API selon la nouvelle documentation
       const apiPayload: CreateProductPayload = {
         name: formData.name,
@@ -185,7 +249,12 @@ export const useProductForm = () => {
         suggestedPrice: formData.suggestedPrice, // ✅ AJOUTÉ: Champ prix suggéré
         stock: formData.stock,
         status: formData.status,
-        categoryId: formData.categoryId, // ✅ Envoyer l'ID de catégorie au lieu du nom
+        // ✅ OBLIGATOIRE: Array de noms de catégories (strings) selon selection.md
+        categories: categoriesArray,
+        // ✅ CORRECTION: Envoyer les 3 niveaux de catégories selon cate.md
+        categoryId: formData.categoryId, // Catégorie principale (level 0)
+        subCategoryId: (formData as any).subCategoryId || null, // Sous-catégorie (level 1)
+        variationId: (formData as any).variationId || null, // Variation (level 2)
         sizes: normalizeSizes(formData.sizes || []), // Normalized array of strings
         genre: formData.genre || 'UNISEXE', // ← NOUVEAU: Ajout du champ genre
         isReadyProduct: false, // ← NOUVEAU: Force isReadyProduct: false pour les mockups
@@ -227,6 +296,12 @@ export const useProductForm = () => {
       console.log('🔍 [DEBUG] Genre dans apiPayload:', apiPayload.genre);
       console.log('🔍 [DEBUG] Prix suggéré:', formData.suggestedPrice);
       console.log('🔍 [DEBUG] Prix suggéré sera envoyé:', apiPayload.suggestedPrice);
+      // ✅ NOUVEAU: Vérifier les 3 niveaux de catégories
+      console.log('🏷️ [CATEGORIES] Hiérarchie envoyée:', {
+        categoryId: apiPayload.categoryId,
+        subCategoryId: apiPayload.subCategoryId,
+        variationId: apiPayload.variationId
+      });
       console.log('🔍 [DEBUG] Stock par variation (format objet stockBySize):', apiPayload.colorVariations?.map(c => ({
         name: c.name,
         stockBySize: c.stockBySize

@@ -26,7 +26,8 @@ import { useProductForm } from '../../hooks/useProductForm';
 import { ProductFormFields } from './ProductFormFields';
 import { ColorVariationsPanel } from './ColorVariationsPanel';
 import { CategoriesAndSizesPanel } from './CategoriesAndSizesPanel';
-import { CategorySelector } from './CategorySelector';
+// ❌ RETIRÉ: Ancien système de catégories - remplacé par CategoriesAndSizesPanel
+// import { CategorySelector } from './CategorySelector';
 import { StockManagementPanel } from './StockManagementPanel';
 import { DelimitationCanvas, DelimitationCanvasHandle } from './DelimitationCanvas';
 import { DesignUploadInterface } from './DesignUploadInterface';
@@ -35,7 +36,8 @@ import { ProductImage, Delimitation, StockBySizeColor } from '../../types/produc
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../../contexts/CategoryContext';
-import { fetchCategoryChildren, fetchCategoryVariations, updateProductCategories } from '../../services/categoryAdminService';
+import { updateProductCategories } from '../../services/categoryAdminService';
+import categoryRealApi from '../../services/categoryRealApi';
 import { ProductService } from '../../services/productService';
 
 // 🔧 Configuration backend centralisée (basée sur per.md) - Compatible tous environnements
@@ -95,6 +97,84 @@ async function testBackendConnection() {
     return false;
   }
 }
+
+/**
+ * 🔧 Fonction pour extraire les IDs (categoryId, subCategoryId, variationId)
+ * depuis le format UI: ["Category > SubCategory > Variation"]
+ *
+ * Basée sur selection.md
+ */
+const extractCategoryIds = async (categories: string[]) => {
+  // Si aucune catégorie sélectionnée
+  if (categories.length === 0) {
+    return { categoryId: null, subCategoryId: null, variationId: null };
+  }
+
+  // Prendre la première catégorie (normalement il n'y en a qu'une)
+  const categoryString = categories[0];
+
+  // Extraire les noms depuis le format "Parent > Child > Variation"
+  const parts = categoryString.split(' > ').map(p => p.trim());
+
+  if (parts.length !== 3) {
+    console.warn('⚠️ Format de catégorie invalide:', categoryString);
+    console.warn('   Format attendu: "Category > SubCategory > Variation"');
+    return { categoryId: null, subCategoryId: null, variationId: null };
+  }
+
+  const [categoryName, subCategoryName, variationName] = parts;
+
+  try {
+    console.log('🔍 Extraction des IDs depuis:', { categoryName, subCategoryName, variationName });
+
+    // 1. Trouver la catégorie par nom
+    const allCategories = await categoryRealApi.getCategories();
+    const category = allCategories.find(c => c.name === categoryName);
+
+    if (!category) {
+      console.error('❌ Catégorie introuvable:', categoryName);
+      return { categoryId: null, subCategoryId: null, variationId: null };
+    }
+
+    console.log('✅ Catégorie trouvée:', { id: category.id, name: category.name });
+
+    // 2. Trouver la sous-catégorie par nom
+    const allSubCategories = await categoryRealApi.getSubCategories(category.id);
+    const subCategory = allSubCategories.find(sc => sc.name === subCategoryName);
+
+    if (!subCategory) {
+      console.error('❌ Sous-catégorie introuvable:', subCategoryName);
+      return { categoryId: category.id, subCategoryId: null, variationId: null };
+    }
+
+    console.log('✅ Sous-catégorie trouvée:', { id: subCategory.id, name: subCategory.name });
+
+    // 3. Trouver la variation par nom
+    const allVariations = await categoryRealApi.getVariations(subCategory.id);
+    const variation = allVariations.find(v => v.name === variationName);
+
+    if (!variation) {
+      console.error('❌ Variation introuvable:', variationName);
+      return { categoryId: category.id, subCategoryId: subCategory.id, variationId: null };
+    }
+
+    console.log('✅ Variation trouvée:', { id: variation.id, name: variation.name });
+
+    const result = {
+      categoryId: category.id,
+      subCategoryId: subCategory.id,
+      variationId: variation.id
+    };
+
+    console.log('✅ IDs extraits avec succès:', result);
+
+    return result;
+
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'extraction des IDs:', error);
+    return { categoryId: null, subCategoryId: null, variationId: null };
+  }
+};
 
 // Composants d'étapes
 const BasicInfoStep: React.FC<{
@@ -171,11 +251,30 @@ const CategoriesStep: React.FC<{
   uiSubCategories: Array<{ id: number; name: string }>;
   uiVariations: Array<{ id: number; name: string }>;
   sizes: string[];
+  categories: string[]; // ✅ AJOUTÉ
+  loadingSubCategories: boolean;
+  loadingVariations: boolean;
   onCategoryChange: (categoryId: number | null) => void;
   onSubCategoryChange: (subCategoryId: number | null) => void;
   onVariationChange: (variationId: number | null) => void;
+  onCategoriesUpdate: (categories: string[]) => void; // ✅ AJOUTÉ
   onSizesUpdate: (sizes: string[]) => void;
-}> = ({ categoryId, subCategoryId, variationId, uiSubCategories, uiVariations, sizes, onCategoryChange, onSubCategoryChange, onVariationChange, onSizesUpdate }) => {
+}> = ({
+  categoryId,
+  subCategoryId,
+  variationId,
+  uiSubCategories,
+  uiVariations,
+  sizes,
+  categories, // ✅ AJOUTÉ
+  loadingSubCategories,
+  loadingVariations,
+  onCategoryChange,
+  onSubCategoryChange,
+  onVariationChange,
+  onCategoriesUpdate, // ✅ AJOUTÉ
+  onSizesUpdate
+}) => {
   return (
     <Card>
       <CardHeader>
@@ -185,47 +284,91 @@ const CategoriesStep: React.FC<{
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Sélecteur de catégorie - Liaison uniquement */}
-        <CategorySelector
+        {/* ❌ RETIRÉ: Ancien sélecteur de catégorie - remplacé par CategoriesAndSizesPanel */}
+        {/* <CategorySelector
           value={categoryId || undefined}
           onChange={onCategoryChange}
-        />
+        /> */}
 
         {/* Sélecteurs dépendants Sous-catégorie / Variation */}
         <div className="grid gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Sous‑catégorie</label>
-            <select
-              className="w-full border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-gray-900"
-              value={subCategoryId || ''}
-              onChange={(e) => onSubCategoryChange(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">— Sélectionner —</option>
-              {uiSubCategories.map((sc) => (
-                <option key={sc.id} value={sc.id}>{sc.name}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium mb-1">
+              Sous‑catégorie {!categoryId && <span className="text-gray-400 text-xs">(Sélectionnez d'abord une catégorie)</span>}
+            </label>
+            <div className="relative">
+              <select
+                className="w-full border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                value={subCategoryId || ''}
+                onChange={(e) => onSubCategoryChange(e.target.value ? Number(e.target.value) : null)}
+                disabled={!categoryId || loadingSubCategories}
+              >
+                <option value="">— {loadingSubCategories ? 'Chargement...' : uiSubCategories.length === 0 ? 'Aucune sous-catégorie' : 'Sélectionner'} —</option>
+                {uiSubCategories.map((sc) => (
+                  <option key={sc.id} value={sc.id}>{sc.name}</option>
+                ))}
+              </select>
+              {loadingSubCategories && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 dark:border-gray-100"></div>
+                </div>
+              )}
+            </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Variation</label>
-            <select
-              className="w-full border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-gray-900"
-              value={variationId || ''}
-              onChange={(e) => onVariationChange(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">— Sélectionner —</option>
-              {uiVariations.map((v) => (
-                <option key={v.id} value={v.id}>{v.name}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium mb-1">
+              Variation {!categoryId && <span className="text-gray-400 text-xs">(Optionnel)</span>}
+            </label>
+            <div className="relative">
+              <select
+                className="w-full border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                value={variationId || ''}
+                onChange={(e) => onVariationChange(e.target.value ? Number(e.target.value) : null)}
+                disabled={!categoryId || loadingVariations}
+              >
+                <option value="">— {loadingVariations ? 'Chargement...' : uiVariations.length === 0 ? 'Aucune variation' : 'Sélectionner'} —</option>
+                {uiVariations.map((v) => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
+              {loadingVariations && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 dark:border-gray-100"></div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Gestion des tailles */}
+        {/* Aperçu hiérarchique (Breadcrumb) */}
+        {categoryId && (
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 text-sm">
+              <strong className="text-gray-700 dark:text-gray-300">Hiérarchie sélectionnée:</strong>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">Catégorie</Badge>
+                {subCategoryId && (
+                  <>
+                    <span className="text-gray-400">›</span>
+                    <Badge variant="secondary">Sous-catégorie</Badge>
+                  </>
+                )}
+                {variationId && (
+                  <>
+                    <span className="text-gray-400">›</span>
+                    <Badge variant="secondary">Variation</Badge>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ Gestion des catégories ET tailles - Système à 3 niveaux */}
         <CategoriesAndSizesPanel
-          categories={[]} // Pas utilisé car on utilise CategorySelector
+          categories={categories || []} // ✅ Format: ["Category > SubCategory > Variation"]
           sizes={sizes}
-          onCategoriesUpdate={() => {}} // Désactivé
+          onCategoriesUpdate={onCategoriesUpdate} // ✅ Réactivé
           onSizesUpdate={onSizesUpdate}
         />
       </CardContent>
@@ -553,7 +696,11 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   const [currentStep, setCurrentStep] = useState(1);
   const [showPreview, setShowPreview] = useState(false);
   const [previewImagesLoaded, setPreviewImagesLoaded] = useState<Set<string>>(new Set());
-  
+
+  // États de chargement pour les catégories
+  const [loadingSubCategories, setLoadingSubCategories] = useState(false);
+  const [loadingVariations, setLoadingVariations] = useState(false);
+
   // État pour gérer un design par image
   const [designsByImageId, setDesignsByImageId] = useState<Record<string, string>>({});
   
@@ -590,30 +737,54 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     if (!catId) {
       updateFormData('__uiSubCategories' as any, []);
       updateFormData('__uiVariations' as any, []);
+      setLoadingSubCategories(false);
+      setLoadingVariations(false);
       return;
     }
 
     let cancelled = false;
     (async () => {
       try {
-        const [children, variations] = await Promise.all([
-          fetchCategoryChildren(catId),
-          fetchCategoryVariations(catId)
-        ]);
+        setLoadingSubCategories(true);
+        setLoadingVariations(false);
+
+        // Charger les sous-catégories via l'endpoint réel: GET /sub-categories?categoryId=X
+        const subCategories = await categoryRealApi.getSubCategories(catId);
+
         if (cancelled) return;
-        updateFormData('__uiSubCategories' as any, (children as any)?.data || []);
-        // Ne pas écraser les variations si une sous-catégorie est déjà sélectionnée
+
+        // Transformer les données pour correspondre au format attendu par l'UI
+        const childrenData = subCategories.map(sc => ({
+          id: sc.id,
+          name: sc.name,
+          level: 1, // SubCategory est toujours niveau 1
+          parentId: sc.categoryId
+        }));
+
+        updateFormData('__uiSubCategories' as any, childrenData);
+        setLoadingSubCategories(false);
+
+        // Reset variations quand la catégorie change (elles seront chargées via la sous-catégorie)
         const hasSub = !!(formData as any)?.subCategoryId;
         if (!hasSub) {
-          const vList = ((variations as any)?.data || []) as any[];
-          updateFormData('__uiVariations' as any, vList);
+          updateFormData('__uiVariations' as any, []);
         }
+
+        console.log('✅ Chargement catégorie terminé:', {
+          categoryId: catId,
+          subCategories: childrenData.length
+        });
       } catch (e) {
         if (cancelled) return;
+        console.error('❌ Erreur chargement catégorie:', e);
         updateFormData('__uiSubCategories' as any, []);
+        setLoadingSubCategories(false);
+
         // Garder les variations actuelles seulement si une sous-catégorie est sélectionnée
         const hasSub = !!(formData as any)?.subCategoryId;
-        if (!hasSub) updateFormData('__uiVariations' as any, []);
+        if (!hasSub) {
+          updateFormData('__uiVariations' as any, []);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -621,40 +792,47 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
 
   useEffect(() => {
     const subId: number | null = (formData as any)?.subCategoryId || null;
-    const catId: number | null = (formData as any)?.categoryId || null;
-    const baseId = subId || catId;
-    if (!baseId) {
-      updateFormData('__uiVariations' as any, []);
+
+    // Charger les variations uniquement si une sous-catégorie est sélectionnée
+    if (!subId) {
       return;
     }
+
     let cancelled = false;
     (async () => {
       try {
-        const v = await fetchCategoryVariations(baseId);
+        setLoadingVariations(true);
+        console.log(`🔄 Chargement des variations (cate.md) pour sous-catégorie ${subId}...`);
+
+        // 1) Source principale: GET /variations?subCategoryId=ID
+        const variations = await categoryRealApi.getVariations(subId);
         if (cancelled) return;
-        const vList = ((v as any)?.data || []) as any[];
-        if (vList.length > 0) {
-          updateFormData('__uiVariations' as any, vList);
-        } else {
-          // Fallback: certains backends renvoient les variations via /children pour une sous‑catégorie
-          const childAsVar = await fetchCategoryChildren(baseId);
-          if (cancelled) return;
-          updateFormData('__uiVariations' as any, ((childAsVar as any)?.data || []) as any[]);
+
+        if (Array.isArray(variations) && variations.length > 0) {
+          const uiList = variations.map(v => ({ id: v.id, name: v.name }));
+          updateFormData('__uiVariations' as any, uiList);
+          setLoadingVariations(false);
+          console.log(`✅ ${uiList.length} variation(s) chargée(s) via /variations?subCategoryId=${subId}`);
+          return;
         }
+
+        // 2) Fallback: GET /sub-categories/:id (variations incluses)
+        console.log('⚠️ Aucune variation via /variations, tentative via /sub-categories/:id...');
+        const sub = await categoryRealApi.getSubCategoryById(subId);
+          if (cancelled) return;
+        const fallbackList = (sub.variations || []).map(v => ({ id: v.id, name: v.name }));
+        updateFormData('__uiVariations' as any, fallbackList);
+          setLoadingVariations(false);
+        console.log(`✅ ${fallbackList.length} variation(s) chargée(s) via /sub-categories/${subId}`);
       } catch (e) {
-        if (cancelled) return;
-        try {
-          // Fallback si /variations échoue: tenter /children
-          const childAsVar = await fetchCategoryChildren(baseId);
           if (cancelled) return;
-          updateFormData('__uiVariations' as any, ((childAsVar as any)?.data || []) as any[]);
-        } catch {
+        console.error(`❌ Erreur chargement variations (cate.md) pour sous-catégorie ${subId}:`, e);
           updateFormData('__uiVariations' as any, []);
-        }
+          setLoadingVariations(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [(formData as any)?.subCategoryId, (formData as any)?.categoryId]);
+  }, [(formData as any)?.subCategoryId]);
   
   // Étapes du processus
   const steps = [
@@ -868,7 +1046,20 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         break;
       
       case 3:
-        if (!formData.categoryId) errors.push('Une catégorie est requise');
+        // ✅ Accepter soit categoryId (ancien système) soit categories (nouveau système)
+        console.log('🔍 [DEBUG validateStep] Validation étape 3:', {
+          categoryId: formData.categoryId,
+          categories: formData.categories,
+          categoriesLength: formData.categories?.length
+        });
+
+        if (!formData.categoryId && (!formData.categories || formData.categories.length === 0)) {
+          errors.push('Une catégorie est requise');
+          console.log('❌ [DEBUG validateStep] Validation échouée: aucune catégorie');
+        } else {
+          console.log('✅ [DEBUG validateStep] Validation passée pour les catégories');
+        }
+
         if (formData.sizes.length === 0) errors.push('Au moins une taille requise');
         break;
 
@@ -1388,6 +1579,36 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         toast.error(e.message || 'Erreur lors de la sauvegarde');
       }
     } else {
+      // ✅ EXTRACTION DES IDS depuis le format "Category > SubCategory > Variation"
+      console.log('📋 Catégories sélectionnées:', formData.categories);
+
+      const { categoryId, subCategoryId, variationId } =
+        await extractCategoryIds(formData.categories || []);
+
+      console.log('📋 IDs extraits:', { categoryId, subCategoryId, variationId });
+
+      // ✅ Mettre à jour formData avec les IDs extraits
+      if (categoryId) {
+        updateFormData('categoryId', categoryId);
+        (formData as any).categoryId = categoryId; // Update immédiat pour submitForm
+      }
+      if (subCategoryId) {
+        (formData as any).subCategoryId = subCategoryId;
+      }
+      if (variationId) {
+        (formData as any).variationId = variationId;
+      }
+
+      // Debug: Vérifier l'état de formData juste avant submitForm
+      console.log('🔍 [DEBUG handleSubmit] formData juste avant submitForm:', {
+        categoryId: (formData as any).categoryId,
+        subCategoryId: (formData as any).subCategoryId,
+        variationId: (formData as any).variationId,
+        categories: formData.categories,
+        categoriesLength: formData.categories?.length
+      });
+
+      // Appeler submitForm avec les IDs maintenant disponibles
       await submitForm();
     }
   };
@@ -1800,44 +2021,24 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
             uiSubCategories={(formData as any).__uiSubCategories || []}
             uiVariations={(formData as any).__uiVariations || []}
             sizes={formData.sizes}
-            onCategoryChange={async (categoryId: number | null) => {
+            categories={formData.categories || []} // ✅ AJOUTÉ
+            loadingSubCategories={loadingSubCategories}
+            loadingVariations={loadingVariations}
+            onCategoryChange={(categoryId: number | null) => {
               updateFormData('categoryId', categoryId);
-              // reset
-              updateFormData('subCategoryId' as any, null);
-              updateFormData('variationId' as any, null);
-              if (!categoryId) {
-                updateFormData('__uiSubCategories' as any, []);
-                updateFormData('__uiVariations' as any, []);
-                return;
-              }
-              try {
-                const [children, variations] = await Promise.all([
-                  fetchCategoryChildren(categoryId),
-                  fetchCategoryVariations(categoryId)
-                ]);
-                updateFormData('__uiSubCategories' as any, (children as any)?.data || []);
-                updateFormData('__uiVariations' as any, (variations as any)?.data || []);
-              } catch (e) {
-                updateFormData('__uiSubCategories' as any, []);
-                updateFormData('__uiVariations' as any, []);
-              }
+              // Les useEffect se chargent automatiquement du reste
             }}
-            onSubCategoryChange={async (subCategoryId: number | null) => {
+            onSubCategoryChange={(subCategoryId: number | null) => {
               updateFormData('subCategoryId' as any, subCategoryId);
               updateFormData('variationId' as any, null);
-              try {
-                const baseId = subCategoryId || (formData.categoryId || null);
-                if (!baseId) {
-                  updateFormData('__uiVariations' as any, []);
-                  return;
-                }
-                const v = await fetchCategoryVariations(baseId);
-                updateFormData('__uiVariations' as any, (v as any)?.data || []);
-              } catch (e) {
-                updateFormData('__uiVariations' as any, []);
-              }
+              // Le useEffect se charge automatiquement du chargement des variations
             }}
             onVariationChange={(variationId: number | null) => updateFormData('variationId' as any, variationId)}
+            onCategoriesUpdate={(categories: string[]) => {
+              console.log('🔍 [DEBUG ProductFormMain] onCategoriesUpdate called with:', categories);
+              updateFormData('categories', categories);
+              console.log('🔍 [DEBUG ProductFormMain] formData.categories after update:', formData.categories);
+            }}
             onSizesUpdate={(sizes: string[]) => updateFormData('sizes', sizes)}
           />
         );

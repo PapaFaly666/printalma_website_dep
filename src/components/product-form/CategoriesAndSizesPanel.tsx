@@ -17,8 +17,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import categoryService from '../../services/categoryService';
-import { Category as HierarchicalCategory } from '../../types/category.types';
+import categoryRealApi from '../../services/categoryRealApi';
 
 interface CategoriesAndSizesPanelProps {
   categories: string[];
@@ -234,39 +233,72 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [hierarchicalCategories, setHierarchicalCategories] = useState<CategoryForDisplay[]>([]);
 
-  // Charger les catégories depuis la BD
+  // Charger les catégories depuis les endpoints réels (cate.md)
   useEffect(() => {
     const loadCategories = async () => {
       setLoadingCategories(true);
       try {
-        const hierarchy = await categoryService.getCategoryHierarchy();
+        // 1) Charger toutes les catégories (niveau 0)
+        const categories = await categoryRealApi.getCategories().catch((e) => {
+          console.warn('⚠️ getCategories error:', e);
+          return [] as any[];
+        });
 
-        // Transformer la structure pour l'affichage
-        const transformed: CategoryForDisplay[] = hierarchy
-          .filter(cat => cat.level === 0) // Parents seulement
-          .map(parent => ({
+        if (!Array.isArray(categories)) {
+          console.warn('⚠️ categories non-array, valeur:', categories);
+          setHierarchicalCategories([]);
+          return;
+        }
+
+        // 2) Pour chaque catégorie, charger les sous-catégories (niveau 1)
+        const transformed: CategoryForDisplay[] = [];
+
+        for (const parent of categories) {
+          const displayParent: CategoryForDisplay = {
             id: parent.id,
             name: parent.name,
             icon: getCategoryIcon(parent.name),
-            children: (parent.subcategories || [])
-              .filter(child => child.level === 1)
-              .map(child => ({
-                id: child.id,
-                name: child.name,
-                variations: (child.subcategories || [])
-                  .filter(variation => variation.level === 2)
-                  .map(variation => ({
-                    id: variation.id,
-                    name: variation.name,
-                    sizes: variation.sizes || []
-                  }))
-              }))
-          }));
+            children: []
+          };
+
+          try {
+            const subsRaw = await categoryRealApi.getSubCategories(parent.id).catch((e) => {
+              console.warn('⚠️ getSubCategories error for', parent.id, e);
+              return [] as any[];
+            });
+            const subs = Array.isArray(subsRaw) ? subsRaw : [];
+            for (const sub of subs) {
+              const displayChild: ChildCategoryForDisplay = {
+                id: sub.id,
+                name: sub.name,
+                variations: []
+              };
+
+              try {
+                const varsRaw = await categoryRealApi.getVariations(sub.id).catch((e) => {
+                  console.warn('⚠️ getVariations error for sub', sub.id, e);
+                  return [] as any[];
+                });
+                const vars = Array.isArray(varsRaw) ? varsRaw : [];
+                displayChild.variations = vars.map(v => ({ id: v.id, name: v.name }));
+              } catch (e) {
+                console.warn('⚠️ Erreur chargement variations pour sous-catégorie', sub.id, e);
+                displayChild.variations = [];
+              }
+
+              displayParent.children.push(displayChild);
+            }
+          } catch (e) {
+            console.warn('⚠️ Erreur chargement sous-catégories pour catégorie', parent.id, e);
+          }
+
+          transformed.push(displayParent);
+        }
 
         setHierarchicalCategories(transformed);
-        console.log('📦 Catégories chargées:', transformed);
+        console.log('📦 Catégories (cate.md) chargées:', transformed);
       } catch (error) {
-        console.error('❌ Erreur chargement catégories:', error);
+        console.error('❌ Erreur chargement catégories (cate.md):', error);
       } finally {
         setLoadingCategories(false);
       }
@@ -309,6 +341,16 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
   // Fonction pour sélectionner/désélectionner une variation (multi-sélection)
   const toggleVariation = (parentName: string, childName: string, variationName: string, allVariationsOfChild: VariationForDisplay[]) => {
     const fullCategoryName = `${parentName} > ${childName} > ${variationName}`;
+
+    console.log('🔍 [DEBUG toggleVariation]', {
+      parentName,
+      childName,
+      variationName,
+      fullCategoryName,
+      selectedParent,
+      selectedChildName,
+      currentCategories: categories
+    });
 
     // Si on change de sous-catégorie, on reset tout
     if (selectedParent !== parentName || selectedChildName !== childName) {

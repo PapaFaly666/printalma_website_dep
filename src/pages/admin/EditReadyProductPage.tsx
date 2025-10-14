@@ -72,11 +72,27 @@ interface ReadyProduct {
     totalDesigns: number;
     lastUpdated: string | null;
   };
-  categories: Array<{
+
+  // ✅ NEW: FK-based category system
+  categoryId?: number | null;
+  subCategoryId?: number | null;
+  variationId?: number | null;
+  category?: {
     id: number;
     name: string;
-    description: string | null;
-  }>;
+    level: number;
+  } | null;
+  subCategory?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+  variation?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+
   sizes: Array<{
     id: number;
     productId: number;
@@ -107,7 +123,11 @@ const EditReadyProductPage: React.FC = () => {
     price: 0,
     stock: 0,
     status: 'draft' as 'draft' | 'published',
-    categories: [] as string[],
+    // ✅ NEW: FK-based category fields
+    categoryId: null as number | null,
+    subCategoryId: null as number | null,
+    variationId: null as number | null,
+    categories: [] as string[], // ✅ AJOUTÉ: Champ obligatoire pour ProductFormData
     sizes: [] as string[],
     colorVariations: [] as any[]
   });
@@ -156,7 +176,11 @@ const EditReadyProductPage: React.FC = () => {
           price: product.price,
           stock: product.stock,
           status: product.status.toLowerCase() as 'draft' | 'published',
-          categories: product.categories.map(cat => cat.name),
+          // ✅ NEW: Use FK-based category fields
+          categoryId: product.categoryId || null,
+          subCategoryId: product.subCategoryId || null,
+          variationId: product.variationId || null,
+          categories: [], // ✅ AJOUTÉ: Initialisé vide pour les produits prêts
           sizes: product.sizes.map(size => size.sizeName),
           colorVariations: product.colorVariations.map(variation => ({
             id: variation.id,
@@ -189,16 +213,18 @@ const EditReadyProductPage: React.FC = () => {
   const formStats = React.useMemo(() => {
     const totalImages = formData.colorVariations.reduce((total, color) => total + color.images.length, 0);
     const totalColorVariations = formData.colorVariations.length;
-    const totalCategories = formData.categories.length;
-    
+    // ✅ NEW: Count category selection (at least categoryId required)
+    const hasCategory = formData.categoryId !== null;
+
     const errors: string[] = [];
-    
+
     if (!formData.name.trim()) errors.push('Nom du produit requis');
     if (!formData.description.trim()) errors.push('Description requise');
     if (formData.price <= 0) errors.push('Prix doit être supérieur à 0');
-    if (formData.categories.length === 0) errors.push('Au moins une catégorie requise');
+    // ✅ NEW: Validate FK-based category
+    if (!formData.categoryId) errors.push('Au moins une catégorie requise');
     if (formData.colorVariations.length === 0) errors.push('Au moins une variation de couleur requise');
-    
+
     // Vérifier que chaque variation a au moins une image
     formData.colorVariations.forEach((color, index) => {
       if (!color.name.trim()) errors.push(`Variation ${index + 1}: nom requis`);
@@ -208,7 +234,7 @@ const EditReadyProductPage: React.FC = () => {
     return {
       totalImages,
       totalColorVariations,
-      totalCategories,
+      hasCategory,
       errors,
       isComplete: errors.length === 0
     };
@@ -365,7 +391,8 @@ const EditReadyProductPage: React.FC = () => {
         break;
       
       case 3:
-        if (formData.categories.length === 0) stepErrors.push('Au moins une catégorie requise');
+        // ✅ NEW: Validate FK-based category
+        if (!formData.categoryId) stepErrors.push('Au moins une catégorie requise');
         break;
     }
     
@@ -407,7 +434,10 @@ const EditReadyProductPage: React.FC = () => {
         price: formData.price,
         stock: formData.stock,
         status: formData.status.toLowerCase(), // Garder en minuscules pour la cohérence
-        categories: formData.categories,
+        // ✅ NEW: Use FK-based category fields
+        categoryId: formData.categoryId,
+        subCategoryId: formData.subCategoryId,
+        variationId: formData.variationId,
         sizes: formData.sizes,
         isReadyProduct: true, // Toujours true pour les produits prêts
         colorVariations: formData.colorVariations.map(variation => ({
@@ -491,7 +521,11 @@ const EditReadyProductPage: React.FC = () => {
         price: originalProduct.price,
         stock: originalProduct.stock,
         status: originalProduct.status.toLowerCase() as 'draft' | 'published',
-        categories: originalProduct.categories.map(cat => cat.name),
+        // ✅ NEW: Reset FK-based category fields
+        categoryId: originalProduct.categoryId || null,
+        subCategoryId: originalProduct.subCategoryId || null,
+        variationId: originalProduct.variationId || null,
+        categories: [], // ✅ AJOUTÉ: Réinitialisé vide
         sizes: originalProduct.sizes.map(size => size.sizeName),
         colorVariations: originalProduct.colorVariations.map(variation => ({
           id: variation.id,
@@ -634,8 +668,8 @@ const EditReadyProductPage: React.FC = () => {
                       <div className="text-sm text-gray-600">Couleurs</div>
                     </div>
                     <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{formStats.totalCategories}</div>
-                      <div className="text-sm text-gray-600">Catégories</div>
+                      <div className="text-2xl font-bold text-purple-600">{formStats.hasCategory ? '✓' : '✗'}</div>
+                      <div className="text-sm text-gray-600">Catégorie</div>
                     </div>
                   </div>
 
@@ -850,9 +884,11 @@ const EditReadyProductPage: React.FC = () => {
                 <p className="product-price">{formData.price ? `${formData.price} FCFA` : 'Non défini'}</p>
               </div>
               <div>
-                <h4 className="product-title mb-2">Catégories</h4>
+                <h4 className="product-title mb-2">Catégorie</h4>
                 <p className="product-description">
-                  {formData.categories.length > 0 ? formData.categories.join(', ') : 'Aucune'}
+                  {formData.categoryId ? `ID: ${formData.categoryId}` : 'Aucune'}
+                  {formData.subCategoryId && ` → Sous-catégorie: ${formData.subCategoryId}`}
+                  {formData.variationId && ` → Variation: ${formData.variationId}`}
                 </p>
               </div>
             </div>

@@ -59,6 +59,7 @@ import {
 import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { CreateCategoryStructureForm } from '../components/categories/CreateCategoryStructureForm';
+import { CreateCategoryRealForm } from '../components/categories/CreateCategoryRealForm';
 import { CategoryTree } from '../components/categories/CategoryTree';
 import categoryService from '../services/categoryService';
 import { Category as HierarchicalCategory } from '../types/category.types';
@@ -1407,12 +1408,13 @@ const CategoryManagement: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <CreateCategoryStructureForm
+            {/* Utilisation du nouveau formulaire basé sur cate.md avec les vrais endpoints */}
+            <CreateCategoryRealForm
               onSuccess={() => {
                 setIsAddModalOpen(false);
                 loadHierarchy();
                 refreshData();
-                toast.success('Catégorie créée avec succès !');
+                toast.success('✅ Catégorie créée avec succès !');
               }}
               onCancel={() => setIsAddModalOpen(false)}
             />

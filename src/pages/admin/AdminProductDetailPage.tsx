@@ -37,12 +37,27 @@ interface AdminProductDetail {
   description: string;
   createdAt: string;
   updatedAt: string;
-  
-  categories: Array<{
+
+  // ✅ NEW: FK-based category system
+  categoryId?: number | null;
+  subCategoryId?: number | null;
+  variationId?: number | null;
+  category?: {
     id: number;
     name: string;
-  }>;
-  
+    level: number;
+  } | null;
+  subCategory?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+  variation?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+
   sizes: Array<{
     id: number;
     sizeName: string;
@@ -480,19 +495,36 @@ export const AdminProductDetailPage: React.FC = () => {
                   <Card className="border-gray-200">
                     <CardContent className="p-6">
                       <div className="space-y-4">
-                        {product.categories && product.categories.length > 0 && (
+                        {/* ✅ NEW: FK-based category hierarchy display */}
+                        {(product.category || product.subCategory || product.variation) && (
                           <div>
-                            <h4 className="font-semibold text-gray-900 mb-2">Catégories</h4>
-                            <div className="flex flex-wrap gap-2">
-                              {product.categories.map((category) => (
-                                <Badge key={category.id} variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">
-                                  {category.name}
+                            <h4 className="font-semibold text-gray-900 mb-2">Hiérarchie de catégories</h4>
+                            <div className="flex flex-wrap gap-2 items-center">
+                              {product.category && (
+                                <>
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                                    {product.category.name}
+                                  </Badge>
+                                  {product.subCategory && <span className="text-gray-400">›</span>}
+                                </>
+                              )}
+                              {product.subCategory && (
+                                <>
+                                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300">
+                                    {product.subCategory.name}
+                                  </Badge>
+                                  {product.variation && <span className="text-gray-400">›</span>}
+                                </>
+                              )}
+                              {product.variation && (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                  {product.variation.name}
                                 </Badge>
-                              ))}
+                              )}
                             </div>
                           </div>
                         )}
-                        
+
                         {product.sizes && product.sizes.length > 0 && (
                           <div>
                             <h4 className="font-semibold text-gray-900 mb-2">Tailles</h4>

@@ -40,7 +40,12 @@ export interface CreateProductPayload {
   suggestedPrice?: number;
   stock?: number; // Optionnel avec valeur par défaut 0
   status?: string;
-  categoryId?: number; // ID de la catégorie à lier (au lieu de créer une nouvelle)
+  // ✅ OBLIGATOIRE: Array de noms de catégories (strings) selon selection.md
+  categories?: string[]; // Ex: ["T-Shirts"] - Array de noms de catégories (OBLIGATOIRE selon backend DTO)
+  // ✅ CORRECTION selon cate.md : Système à 3 niveaux hiérarchiques
+  categoryId?: number; // Niveau 0 - Catégorie principale (ex: Vêtements)
+  subCategoryId?: number; // Niveau 1 - Sous-catégorie (ex: T-Shirts)
+  variationId?: number; // Niveau 2 - Variation (ex: Col V)
   sizes?: string[]; // Array de noms de tailles
   genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Genre du produit
   isReadyProduct?: boolean; // Indique si c'est un produit prêt (true) ou un mockup (false)

@@ -283,7 +283,7 @@ const AdminAccountPage: React.FC = () => {
                   Membre depuis
                 </Label>
                 <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
+                  {user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : 'N/A'}
                 </p>
               </div>
             </CardContent>

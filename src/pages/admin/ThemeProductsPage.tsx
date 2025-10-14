@@ -41,7 +41,27 @@ interface Product {
   isReadyProduct: boolean;
   mainImage?: string;
   addedToThemeAt?: string;
-  categories: any[];
+
+  // ✅ NEW: FK-based category system
+  categoryId?: number | null;
+  subCategoryId?: number | null;
+  variationId?: number | null;
+  category?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+  subCategory?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+  variation?: {
+    id: number;
+    name: string;
+    level: number;
+  } | null;
+
   colorVariations: Array<{
     id: number;
     name: string;
@@ -322,18 +342,21 @@ const ProductCardWithColorSlider: React.FC<{
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="text-xs bg-black text-white border-black"
             >
               ✅ Produit prêt
             </Badge>
-            {product.categories && product.categories.length > 0 && product.categories[0] && (
-              <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
-                {typeof product.categories[0] === 'string' 
-                  ? product.categories[0].split(' > ').pop() || product.categories[0]
-                  : product.categories[0]?.name || 'Catégorie'
-                }
+            {/* ✅ NEW: FK-based category display */}
+            {product.category && (
+              <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
+                {product.category.name}
+              </Badge>
+            )}
+            {product.subCategory && (
+              <Badge variant="outline" className="text-xs border-purple-300 text-purple-700 bg-purple-50">
+                {product.subCategory.name}
               </Badge>
             )}
           </div>
@@ -594,18 +617,21 @@ const ProductCardWithRemove: React.FC<{
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="text-xs bg-black text-white border-black"
             >
               ✅ Produit prêt
             </Badge>
-            {product.categories && product.categories.length > 0 && product.categories[0] && (
-              <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
-                {typeof product.categories[0] === 'string' 
-                  ? product.categories[0].split(' > ').pop() || product.categories[0]
-                  : product.categories[0]?.name || 'Catégorie'
-                }
+            {/* ✅ NEW: FK-based category display */}
+            {product.category && (
+              <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
+                {product.category.name}
+              </Badge>
+            )}
+            {product.subCategory && (
+              <Badge variant="outline" className="text-xs border-purple-300 text-purple-700 bg-purple-50">
+                {product.subCategory.name}
               </Badge>
             )}
           </div>
