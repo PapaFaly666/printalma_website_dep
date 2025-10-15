@@ -123,6 +123,48 @@ class CategoryService {
   }
 
   /**
+   * Mettre à jour une sous-catégorie (avec régénération automatique des mockups)
+   */
+  async updateSubCategory(id: number, data: Partial<CreateCategoryDto>): Promise<{
+    success: boolean;
+    message: string;
+    data: Category & { productCount?: number };
+  }> {
+    try {
+      const response = await axios.patch(`${API_BASE}/sub-categories/${id}`, data, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error === 'DUPLICATE_SUBCATEGORY') {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Mettre à jour une variation (avec régénération automatique des mockups)
+   */
+  async updateVariation(id: number, data: Partial<CreateCategoryDto>): Promise<{
+    success: boolean;
+    message: string;
+    data: Category & { productCount?: number };
+  }> {
+    try {
+      const response = await axios.patch(`${API_BASE}/variations/${id}`, data, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error === 'DUPLICATE_VARIATION') {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Supprimer une catégorie (avec vérification des contraintes)
    */
   async deleteCategory(id: number): Promise<{

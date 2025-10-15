@@ -218,21 +218,64 @@ const CategoryManagement: React.FC = () => {
       toast.error('Erreur', { description: 'Le nom de la catégorie ne peut pas être vide.' });
       return;
     }
-    
+
     setIsEditing(true);
-    
+
     try {
-      const result = await editCategory(
-        currentCategory.id as number, 
-        newCategoryName, 
-        newCategoryDescription
+      // Utiliser directement categoryService pour obtenir la réponse complète avec productCount
+      const result = await categoryService.updateCategory(
+        currentCategory.id as number,
+        {
+          name: newCategoryName,
+          description: newCategoryDescription
+        }
       );
-      
-      if (result) {
-        setIsEditModalOpen(false);
-        setCurrentCategory(null);
-        setNewCategoryName('');
-        setNewCategoryDescription('');
+
+      // Extraire le nombre de produits affectés
+      const productCount = result.data.productCount || 0;
+
+      // Afficher un message de succès approprié
+      if (productCount > 0) {
+        toast.success('✅ Catégorie mise à jour avec succès', {
+          description: `📦 ${productCount} mockup(s) régénéré(s) automatiquement`
+        });
+      } else {
+        toast.success('✅ Catégorie mise à jour avec succès');
+      }
+
+      // Rafraîchir les données
+      await Promise.all([
+        loadHierarchy(),
+        refreshData()
+      ]);
+
+      // Fermer le modal et réinitialiser les champs
+      setIsEditModalOpen(false);
+      setCurrentCategory(null);
+      setNewCategoryName('');
+      setNewCategoryDescription('');
+    } catch (error: any) {
+      // Gestion des erreurs spécifiques
+      if (error.message?.includes('401') || error.message?.includes('Non autorisé')) {
+        toast.error('Erreur d\'authentification', {
+          description: 'Session expirée. Veuillez vous reconnecter.'
+        });
+      } else if (error.message?.includes('403') || error.message?.includes('Forbidden')) {
+        toast.error('Erreur de permissions', {
+          description: 'Vous n\'avez pas les permissions pour cette action.'
+        });
+      } else if (error.message?.includes('404')) {
+        toast.error('Erreur', {
+          description: 'Catégorie non trouvée.'
+        });
+      } else if (error.message?.includes('409') || error.message?.includes('DUPLICATE_CATEGORY')) {
+        toast.error('Erreur', {
+          description: 'Une catégorie avec ce nom existe déjà.'
+        });
+      } else {
+        toast.error('Erreur', {
+          description: error.message || 'Impossible de modifier la catégorie. Veuillez réessayer.'
+        });
       }
     } finally {
       setIsEditing(false);
@@ -1434,6 +1477,12 @@ const CategoryManagement: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {isEditing && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
+                <p className="text-sm font-medium">⏳ Mise à jour en cours...</p>
+                <p className="text-xs mt-1">ℹ️ Les mockups liés seront automatiquement régénérés</p>
+              </div>
+            )}
             <div className="grid gap-2">
               <label htmlFor="editCategoryName" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
                 Nom de la catégorie *

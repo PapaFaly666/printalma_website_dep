@@ -132,7 +132,7 @@ export class AdminFundsService {
    */
   async getAllFundsRequests(filters?: AdminFundsRequestFilters): Promise<PaginatedAdminFundsResponse> {
     try {
-      let url = '/api/admin/funds-requests';
+      let url = '/admin/funds-requests'; // ✅ Sans /api selon selection.md
       const params = new URLSearchParams();
 
       if (filters) {
@@ -170,7 +170,7 @@ export class AdminFundsService {
    */
   async getAdminFundsStatistics(): Promise<AdminFundsStatistics> {
     try {
-      const response = await this.apiCall<AdminFundsStatistics>('/api/admin/funds-requests/statistics');
+      const response = await this.apiCall<AdminFundsStatistics>('/admin/funds-requests/statistics'); // ✅ Sans /api selon selection.md
       return response.data;
     } catch (error) {
       if (error instanceof Error && error.message === 'DEVELOPMENT_MODE_FALLBACK') {
@@ -222,7 +222,7 @@ export class AdminFundsService {
    */
   async batchProcessRequests(requestIds: number[], action: ProcessFundsRequest): Promise<FundsRequest[]> {
     try {
-      const response = await this.apiCall<FundsRequest[]>('/api/admin/funds-requests/batch-process', {
+      const response = await this.apiCall<FundsRequest[]>('/admin/funds-requests/batch-process', { // ✅ Sans /api selon selection.md
         method: 'PATCH',
         body: JSON.stringify({
           requestIds,

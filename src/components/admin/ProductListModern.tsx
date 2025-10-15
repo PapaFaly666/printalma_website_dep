@@ -83,6 +83,30 @@ interface Category {
   description: string | null;
 }
 
+interface SubCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  categoryId: number;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Variation {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  subCategoryId: number;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Size {
   id: number;
   productId: number;
@@ -109,6 +133,11 @@ interface Product {
   submittedForValidationAt?: string | null;
   isDelete?: boolean; // Added for soft delete
   genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Added for genre
+  // Relations pour sous-catégories et variations (backend fournit les objets complets via Prisma)
+  subCategoryId?: number | null;
+  variationId?: number | null;
+  subCategory?: SubCategory | null;
+  variation?: Variation | null;
 }
 
 // Composant pour gérer l'affichage d'une image avec fallback
@@ -629,6 +658,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </Badge>
               )}
             </div>
+
+            {/* Sous-catégorie (relations Prisma) */}
+            {product.subCategory && (
+              <div className="flex items-center gap-1">
+                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                  {product.subCategory.name}
+                </Badge>
+              </div>
+            )}
+
+            {/* Variation (relations Prisma) */}
+            {product.variation && (
+              <div className="flex items-center gap-1">
+                <Badge variant="outline" className="text-xs border-orange-400 text-orange-700 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-600">
+                  {product.variation.name}
+                </Badge>
+              </div>
+            )}
 
             {/* Genre */}
             {product.genre && (

@@ -245,34 +245,14 @@ const ColorVariationsStep: React.FC<{
 };
 
 const CategoriesStep: React.FC<{
-  categoryId: number | null;
-  subCategoryId: number | null;
-  variationId: number | null;
-  uiSubCategories: Array<{ id: number; name: string }>;
-  uiVariations: Array<{ id: number; name: string }>;
   sizes: string[];
-  categories: string[]; // ✅ AJOUTÉ
-  loadingSubCategories: boolean;
-  loadingVariations: boolean;
-  onCategoryChange: (categoryId: number | null) => void;
-  onSubCategoryChange: (subCategoryId: number | null) => void;
-  onVariationChange: (variationId: number | null) => void;
-  onCategoriesUpdate: (categories: string[]) => void; // ✅ AJOUTÉ
+  categories: string[];
+  onCategoriesUpdate: (categories: string[]) => void;
   onSizesUpdate: (sizes: string[]) => void;
 }> = ({
-  categoryId,
-  subCategoryId,
-  variationId,
-  uiSubCategories,
-  uiVariations,
   sizes,
-  categories, // ✅ AJOUTÉ
-  loadingSubCategories,
-  loadingVariations,
-  onCategoryChange,
-  onSubCategoryChange,
-  onVariationChange,
-  onCategoriesUpdate, // ✅ AJOUTÉ
+  categories,
+  onCategoriesUpdate,
   onSizesUpdate
 }) => {
   return (
@@ -284,91 +264,11 @@ const CategoriesStep: React.FC<{
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* ❌ RETIRÉ: Ancien sélecteur de catégorie - remplacé par CategoriesAndSizesPanel */}
-        {/* <CategorySelector
-          value={categoryId || undefined}
-          onChange={onCategoryChange}
-        /> */}
-
-        {/* Sélecteurs dépendants Sous-catégorie / Variation */}
-        <div className="grid gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Sous‑catégorie {!categoryId && <span className="text-gray-400 text-xs">(Sélectionnez d'abord une catégorie)</span>}
-            </label>
-            <div className="relative">
-              <select
-                className="w-full border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                value={subCategoryId || ''}
-                onChange={(e) => onSubCategoryChange(e.target.value ? Number(e.target.value) : null)}
-                disabled={!categoryId || loadingSubCategories}
-              >
-                <option value="">— {loadingSubCategories ? 'Chargement...' : uiSubCategories.length === 0 ? 'Aucune sous-catégorie' : 'Sélectionner'} —</option>
-                {uiSubCategories.map((sc) => (
-                  <option key={sc.id} value={sc.id}>{sc.name}</option>
-                ))}
-              </select>
-              {loadingSubCategories && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 dark:border-gray-100"></div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Variation {!categoryId && <span className="text-gray-400 text-xs">(Optionnel)</span>}
-            </label>
-            <div className="relative">
-              <select
-                className="w-full border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                value={variationId || ''}
-                onChange={(e) => onVariationChange(e.target.value ? Number(e.target.value) : null)}
-                disabled={!categoryId || loadingVariations}
-              >
-                <option value="">— {loadingVariations ? 'Chargement...' : uiVariations.length === 0 ? 'Aucune variation' : 'Sélectionner'} —</option>
-                {uiVariations.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
-              {loadingVariations && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 dark:border-gray-100"></div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Aperçu hiérarchique (Breadcrumb) */}
-        {categoryId && (
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2 text-sm">
-              <strong className="text-gray-700 dark:text-gray-300">Hiérarchie sélectionnée:</strong>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">Catégorie</Badge>
-                {subCategoryId && (
-                  <>
-                    <span className="text-gray-400">›</span>
-                    <Badge variant="secondary">Sous-catégorie</Badge>
-                  </>
-                )}
-                {variationId && (
-                  <>
-                    <span className="text-gray-400">›</span>
-                    <Badge variant="secondary">Variation</Badge>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ✅ Gestion des catégories ET tailles - Système à 3 niveaux */}
+        {/* ✅ Gestion des catégories ET tailles - Système à 3 niveaux simplifié */}
         <CategoriesAndSizesPanel
           categories={categories || []} // ✅ Format: ["Category > SubCategory > Variation"]
           sizes={sizes}
-          onCategoriesUpdate={onCategoriesUpdate} // ✅ Réactivé
+          onCategoriesUpdate={onCategoriesUpdate}
           onSizesUpdate={onSizesUpdate}
         />
       </CardContent>
@@ -2015,25 +1915,8 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       case 3:
         return (
           <CategoriesStep
-            categoryId={formData.categoryId || null}
-            subCategoryId={(formData as any).subCategoryId || null}
-            variationId={(formData as any).variationId || null}
-            uiSubCategories={(formData as any).__uiSubCategories || []}
-            uiVariations={(formData as any).__uiVariations || []}
             sizes={formData.sizes}
-            categories={formData.categories || []} // ✅ AJOUTÉ
-            loadingSubCategories={loadingSubCategories}
-            loadingVariations={loadingVariations}
-            onCategoryChange={(categoryId: number | null) => {
-              updateFormData('categoryId', categoryId);
-              // Les useEffect se chargent automatiquement du reste
-            }}
-            onSubCategoryChange={(subCategoryId: number | null) => {
-              updateFormData('subCategoryId' as any, subCategoryId);
-              updateFormData('variationId' as any, null);
-              // Le useEffect se charge automatiquement du chargement des variations
-            }}
-            onVariationChange={(variationId: number | null) => updateFormData('variationId' as any, variationId)}
+            categories={formData.categories || []}
             onCategoriesUpdate={(categories: string[]) => {
               console.log('🔍 [DEBUG ProductFormMain] onCategoriesUpdate called with:', categories);
               updateFormData('categories', categories);

@@ -3,6 +3,8 @@ import { ChevronDown, ChevronRight, Edit, Trash2, Package, FolderOpen, FileText 
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { toast } from 'sonner';
 import categoryService from '../../services/categoryService';
 import { Category } from '../../types/category.types';
@@ -16,6 +18,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
 
 interface CategoryTreeProps {
   categories: Category[];
@@ -69,13 +79,22 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [editName, setEditName] = useState(category.name);
+  const [editDescription, setEditDescription] = useState(category.description || '');
 
-  const hasChildren = category.subcategories && category.subcategories.length > 0;
+  // Support both property names: subcategories and subCategories (backend uses subCategories)
+  const children = category.subcategories || (category as any).subCategories || (category as any).variations || [];
+  const hasChildren = children && children.length > 0;
 
   const getIconAndColor = () => {
-    switch (category.level) {
+    // Use level from category or infer from hierarchy depth
+    const categoryLevel = category.level ?? level;
+
+    switch (categoryLevel) {
       case 0:
         return {
           icon: <Package className="h-5 w-5" />,
@@ -118,9 +137,93 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     }
   };
 
-  const childCount = category.subcategories?.length || 0;
+  const handleEdit = async () => {
+    if (!editName.trim()) {
+      toast.error('Erreur', { description: 'Le nom ne peut pas être vide.' });
+      return;
+    }
+
+    setIsEditing(true);
+
+    try {
+      // Déterminer le type et l'endpoint approprié
+      const categoryLevel = category.level ?? level;
+      let result;
+
+      if (categoryLevel === 0) {
+        // Catégorie principale
+        result = await categoryService.updateCategory(category.id, {
+          name: editName,
+          description: editDescription
+        });
+      } else if (categoryLevel === 1) {
+        // Sous-catégorie
+        result = await categoryService.updateSubCategory(category.id, {
+          name: editName,
+          description: editDescription
+        });
+      } else {
+        // Variation
+        result = await categoryService.updateVariation(category.id, {
+          name: editName,
+          description: editDescription
+        });
+      }
+
+      // Extraire le nombre de produits affectés
+      const productCount = result.data.productCount || 0;
+
+      // Afficher un message de succès approprié
+      const typeLabel = categoryLevel === 0 ? 'Catégorie' : categoryLevel === 1 ? 'Sous-catégorie' : 'Variation';
+
+      if (productCount > 0) {
+        toast.success(`✅ ${typeLabel} mise à jour avec succès`, {
+          description: `📦 ${productCount} mockup(s) régénéré(s) automatiquement`
+        });
+      } else {
+        toast.success(`✅ ${typeLabel} mise à jour avec succès`);
+      }
+
+      // Rafraîchir la hiérarchie
+      onRefresh();
+
+      // Fermer le modal
+      setShowEditDialog(false);
+    } catch (error: any) {
+      // Gestion des erreurs spécifiques
+      if (error.message?.includes('401') || error.message?.includes('Non autorisé')) {
+        toast.error('Erreur d\'authentification', {
+          description: 'Session expirée. Veuillez vous reconnecter.'
+        });
+      } else if (error.message?.includes('403') || error.message?.includes('Forbidden')) {
+        toast.error('Erreur de permissions', {
+          description: 'Vous n\'avez pas les permissions pour cette action.'
+        });
+      } else if (error.message?.includes('404')) {
+        toast.error('Erreur', {
+          description: 'Élément non trouvé.'
+        });
+      } else if (error.message?.includes('409') || error.message?.includes('DUPLICATE')) {
+        toast.error('Erreur', {
+          description: 'Un élément avec ce nom existe déjà.'
+        });
+      } else {
+        toast.error('Erreur', {
+          description: error.message || 'Impossible de modifier. Veuillez réessayer.'
+        });
+      }
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const childCount = children.length || 0;
+
+  // Determine what to call the children based on the level
+  const childrenLabel = level === 0 ? 'sous-catégorie(s)' : level === 1 ? 'variation(s)' : 'élément(s)';
+
   const deleteMessage = childCount > 0
-    ? `Supprimer "${category.name}" et ses ${childCount} sous-catégorie(s) ?`
+    ? `Supprimer "${category.name}" et ses ${childCount} ${childrenLabel} ?`
     : `Supprimer "${category.name}" ?`;
 
   const { icon, colorClass, bgClass } = getIconAndColor();
@@ -185,17 +288,19 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
 
           {/* Actions */}
           <div className={`flex items-center gap-1 transition-opacity duration-150 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-            {onEdit && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onEdit(category)}
-                title="Modifier"
-                className="h-8 w-8 hover:bg-gray-200 dark:hover:bg-gray-600"
-              >
-                <Edit className="h-3.5 w-3.5" />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setEditName(category.name);
+                setEditDescription(category.description || '');
+                setShowEditDialog(true);
+              }}
+              title="Modifier"
+              className="h-8 w-8 hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -211,7 +316,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
         {/* Children */}
         {expanded && hasChildren && (
           <div className={level === 0 ? 'border-t border-gray-200 dark:border-gray-700' : ''}>
-            {category.subcategories!.map(child => (
+            {children.map((child: any) => (
               <CategoryNode
                 key={child.id}
                 category={child}
@@ -252,6 +357,84 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => !isEditing && setShowEditDialog(open)}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+              Modifier {level === 0 ? 'la catégorie' : level === 1 ? 'la sous-catégorie' : 'la variation'}
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              Modifiez les informations
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {isEditing && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
+                <p className="text-sm font-medium">⏳ Mise à jour en cours...</p>
+                <p className="text-xs mt-1">ℹ️ Les mockups liés seront automatiquement régénérés</p>
+              </div>
+            )}
+            <div className="grid gap-2">
+              <label htmlFor="editName" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
+                Nom *
+              </label>
+              <Input
+                id="editName"
+                placeholder="Nom"
+                className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                disabled={isEditing}
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="editDescription" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
+                Description (optionnelle)
+              </label>
+              <Textarea
+                id="editDescription"
+                placeholder="Description"
+                className="resize-none bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                rows={3}
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                disabled={isEditing}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row-reverse gap-2 sm:gap-0">
+            <Button
+              type="button"
+              className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black w-full sm:w-auto"
+              onClick={handleEdit}
+              disabled={isEditing}
+            >
+              {isEditing ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Mise à jour...</span>
+                </span>
+              ) : (
+                'Enregistrer'
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-gray-200 dark:border-gray-700 dark:text-gray-300 w-full sm:w-auto"
+              onClick={() => setShowEditDialog(false)}
+              disabled={isEditing}
+            >
+              Annuler
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
