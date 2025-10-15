@@ -11,7 +11,7 @@ const initialFormData: ProductFormData = {
   price: 0,
   suggestedPrice: undefined,
   stock: 0,
-  status: 'draft',
+  status: 'published',
   description: '',
   categoryId: undefined, // ID de la catégorie sélectionnée
   categories: [], // Garde pour compatibilité mais utilise categoryId maintenant
@@ -152,10 +152,7 @@ export const useProductForm = () => {
       newErrors.price = 'Le prix doit être supérieur à 0';
     }
 
-    if (formData.stock < 0) {
-      newErrors.stock = 'Le stock ne peut pas être négatif';
-    }
-
+  
     // ✅ Accepter soit categoryId (ancien système) soit categories (nouveau système)
     // Note: categoryId peut être undefined ici car il est extrait dans handleSubmit AVANT l'appel à submitForm
     const hasCategoryId = formData.categoryId !== undefined && formData.categoryId !== null;

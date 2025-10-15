@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit, Trash2, Package, FolderOpen, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
@@ -36,15 +36,18 @@ interface CategoryTreeProps {
 export const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, onRefresh, onEdit }) => {
   if (categories.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="rounded-full bg-blue-50 dark:bg-blue-950/20 p-4 mb-4">
-          <Package className="h-12 w-12 text-blue-500" />
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="relative mb-6">
+          <div className="w-24 h-24 bg-gradient-to-br from-[#049BE5]/10 to-blue-500/10 dark:from-[#049BE5]/20 dark:to-blue-500/20 rounded-2xl flex items-center justify-center shadow-xl">
+            <span className="text-4xl">📂</span>
+          </div>
+          <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#049BE5] rounded-full animate-pulse"></div>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
           Aucune catégorie
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Créez votre première structure pour commencer
+        <p className="text-gray-600 dark:text-gray-400 text-lg max-w-md">
+          Commencez par créer votre première catégorie pour organiser vos produits
         </p>
       </div>
     );
@@ -97,25 +100,21 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     switch (categoryLevel) {
       case 0:
         return {
-          icon: <Package className="h-5 w-5" />,
           colorClass: 'text-blue-600 dark:text-blue-400',
           bgClass: 'bg-blue-50 dark:bg-blue-950/30'
         };
       case 1:
         return {
-          icon: <FolderOpen className="h-5 w-5" />,
           colorClass: 'text-green-600 dark:text-green-400',
           bgClass: 'bg-green-50 dark:bg-green-950/30'
         };
       case 2:
         return {
-          icon: <FileText className="h-4 w-4" />,
           colorClass: 'text-orange-600 dark:text-orange-400',
           bgClass: 'bg-orange-50 dark:bg-orange-950/30'
         };
       default:
         return {
-          icon: <FileText className="h-4 w-4" />,
           colorClass: 'text-gray-600 dark:text-gray-400',
           bgClass: 'bg-gray-50 dark:bg-gray-950/30'
         };
@@ -226,68 +225,66 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     ? `Supprimer "${category.name}" et ses ${childCount} ${childrenLabel} ?`
     : `Supprimer "${category.name}" ?`;
 
-  const { icon, colorClass, bgClass } = getIconAndColor();
+  const { colorClass, bgClass } = getIconAndColor();
 
   return (
     <>
       <div
-        className={`group ${level === 0 ? 'border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800' : ''}`}
+        className={`group ${level === 0 ? 'border border-[#049BE5]/20 rounded-xl overflow-hidden bg-gradient-to-br from-white to-[#049BE5]/2 dark:from-gray-800 dark:to-[#049BE5]/5 shadow-lg hover:shadow-xl transition-all duration-300' : ''}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         <div
-          className={`flex items-center gap-3 p-3.5 transition-all duration-200 ${
+          className={`flex items-center gap-4 p-4 transition-all duration-300 ${
             level === 0
-              ? 'hover:bg-gray-50 dark:hover:bg-gray-750'
+              ? 'hover:bg-[#049BE5]/5 dark:hover:bg-[#049BE5]/10'
               : level === 1
-              ? 'bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-              : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750'
+              ? 'bg-gradient-to-r from-gray-50/50 to-white/50 dark:from-gray-800/50 dark:to-gray-900/50 hover:from-[#049BE5]/5 hover:to-transparent dark:hover:from-[#049BE5]/10'
+              : 'bg-white dark:bg-gray-800 hover:bg-gradient-to-r hover:from-[#049BE5]/3 hover:to-transparent dark:hover:from-[#049BE5]/6'
           }`}
-          style={{ paddingLeft: `${level * 32 + 14}px` }}
+          style={{ paddingLeft: `${level * 28 + 16}px` }}
         >
           {/* Expand/Collapse Button */}
           {hasChildren ? (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="flex-shrink-0 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+              className="flex-shrink-0 p-2 hover:bg-[#049BE5]/10 dark:hover:bg-[#049BE5]/20 rounded-lg transition-all duration-200 group-hover:scale-110"
             >
               {expanded ? (
-                <ChevronDown className="h-4 w-4 text-gray-500" />
+                <ChevronDown className="h-4 w-4 text-[#049BE5] dark:text-[#049BE5]" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-gray-500" />
+                <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 group-hover:text-[#049BE5]" />
               )}
             </button>
           ) : (
-            <div className="w-6" />
+            <div className="w-8" />
           )}
 
-          {/* Icon */}
-          <div className={`flex-shrink-0 p-1.5 rounded ${bgClass}`}>
-            <div className={colorClass}>{icon}</div>
-          </div>
+          {/* Category Level Indicator */}
+          <div className={`flex-shrink-0 w-3 h-3 rounded-full transition-all duration-300 ${bgClass} ${level === 0 ? 'shadow-lg shadow-[#049BE5]/30' : 'shadow-sm'}`}></div>
 
           {/* Category Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h4 className="font-medium text-gray-900 dark:text-white truncate">
+            <div className="flex items-center gap-3">
+              <h4 className={`font-semibold text-gray-900 dark:text-white truncate transition-all duration-200 ${level === 0 ? 'text-lg' : level === 1 ? 'text-base' : 'text-sm'}`}>
                 {category.name}
               </h4>
               {hasChildren && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  ({childCount})
+                <span className="text-xs px-2 py-1 bg-[#049BE5]/10 text-[#049BE5] dark:bg-[#049BE5]/20 dark:text-[#049BE5] rounded-full font-medium">
+                  {childCount}
                 </span>
               )}
             </div>
 
             {category.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1 opacity-80">
                 {category.description}
               </p>
             )}
           </div>
 
           {/* Actions */}
-          <div className={`flex items-center gap-1 transition-opacity duration-150 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+          <div className={`flex items-center gap-2 transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}`}>
             <Button
               variant="ghost"
               size="icon"
@@ -297,25 +294,25 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
                 setShowEditDialog(true);
               }}
               title="Modifier"
-              className="h-8 w-8 hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="h-9 w-9 hover:bg-[#049BE5]/10 hover:text-[#049BE5] dark:hover:bg-[#049BE5]/20 rounded-lg transition-all duration-200 hover:scale-110"
             >
-              <Edit className="h-3.5 w-3.5" />
+              <Edit className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowDeleteDialog(true)}
               title="Supprimer"
-              className="h-8 w-8 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+              className="h-9 w-9 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 rounded-lg transition-all duration-200 hover:scale-110"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         {/* Children */}
         {expanded && hasChildren && (
-          <div className={level === 0 ? 'border-t border-gray-200 dark:border-gray-700' : ''}>
+          <div className={`${level === 0 ? 'border-t border-[#049BE5]/10' : ''} bg-gradient-to-b from-transparent to-[#049BE5]/2 dark:to-[#049BE5]/5`}>
             {children.map((child: any) => (
               <CategoryNode
                 key={child.id}

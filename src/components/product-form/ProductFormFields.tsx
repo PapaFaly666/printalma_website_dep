@@ -99,44 +99,7 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             </p>
           </div>
           
-          {/* Stock séparé */}
-          <div className="space-y-2">
-            <Label htmlFor="stock" className="text-sm font-medium">
-              📦 Stock
-            </Label>
-            <Input
-              id="stock"
-              type="number"
-              value={formData.stock}
-              onChange={(e) => onUpdate('stock', parseInt(e.target.value) || 0)}
-              placeholder="0"
-              min="0"
-              className={errors.stock ? 'border-red-500' : ''}
-            />
-            {errors.stock && (
-              <p className="text-sm text-red-500">{errors.stock}</p>
-            )}
-          </div>
-
-          {/* Statut */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Statut de publication</Label>
-            <div className="flex items-center space-x-3">
-              <span className={formData.status === 'draft' ? 'text-gray-600' : 'text-gray-400'}>
-                Brouillon
-              </span>
-              <Switch
-                checked={formData.status === 'published'}
-                onCheckedChange={(checked) => 
-                  onUpdate('status', checked ? 'published' : 'draft')
-                }
-              />
-              <span className={formData.status === 'published' ? 'text-green-600' : 'text-gray-400'}>
-                Publié
-              </span>
-            </div>
-          </div>
-
+  
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium">

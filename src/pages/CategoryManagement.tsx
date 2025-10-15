@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  PlusCircle, Edit, Trash2, RefreshCcw, Loader2, Tag, CheckCircle, XCircle, Search, Box, ShoppingBag,
-  Package, ArrowUpDown, ChevronDown, ArrowLeft, Filter, Eye, DollarSign, ChevronRight, Grid3X3, List, X
+  PlusCircle, Trash2, RefreshCcw, Loader2, Tag, Search, Package, ArrowLeft, Filter, Eye,
+  Grid3X3, List, X
 } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -29,7 +29,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "../components/ui/card";
 import { Textarea } from "../components/ui/textarea";
 import { toast } from "sonner";
@@ -37,8 +36,6 @@ import { Category } from '../schemas/category.schema';
 import { useCategories } from '../contexts/CategoryContext';
 import { useProducts } from '@/hooks/useProducts';
 import { Label } from "../components/ui/label";
-import { ScrollArea } from "../components/ui/scroll-area";
-import { Separator } from "../components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -58,7 +55,6 @@ import {
 } from "../components/ui/pagination";
 import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { CreateCategoryStructureForm } from '../components/categories/CreateCategoryStructureForm';
 import { CreateCategoryRealForm } from '../components/categories/CreateCategoryRealForm';
 import { CategoryTree } from '../components/categories/CategoryTree';
 import categoryService from '../services/categoryService';
@@ -68,13 +64,11 @@ import { fetchCategoryUsage, reassignCategory } from '../services/categoryAdminS
 const CategoryManagement: React.FC = () => {
   const navigate = useNavigate();
   // Utiliser le contexte de catégorie au lieu des états locaux
-  const { 
-    categories, 
-    loading, 
-    error, 
-    refreshCategories: refreshData, 
+  const {
+    categories,
+    error,
+    refreshCategories: refreshData,
     addCategory,
-    editCategory,
     removeCategory
   } = useCategories();
 
@@ -85,12 +79,7 @@ const CategoryManagement: React.FC = () => {
     deleteProduct: removeProduct 
   } = useProducts();
 
-  // Fonction pour compter les produits par catégorie
-  const countProductsByCategory = (categoryId: number | undefined) => {
-    if (!categoryId || loadingProducts) return 0;
-    return products.filter(product => product.categoryId === categoryId).length;
-  };
-
+  
   // États locaux
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -100,7 +89,6 @@ const CategoryManagement: React.FC = () => {
   const [showProductsView, setShowProductsView] = useState(false);
   
   // États de chargement pour les opérations
-  const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -132,6 +120,11 @@ const CategoryManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [statusFilter, setStatusFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [priceFilter, setPriceFilter] = useState('all');
+  const [featuredFilter, setFeaturedFilter] = useState('all');
+  const [colorsFilter, setColorsFilter] = useState('all');
+  const [imageFilter, setImageFilter] = useState('all');
   
   // Add state for product color management
   const [productColorImages, setProductColorImages] = useState<Record<number, { selectedColor?: number }>>({});
@@ -183,35 +176,8 @@ const CategoryManagement: React.FC = () => {
     }
   };
 
-  // Gestion du formulaire d'ajout
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) {
-      toast.error('Erreur', { description: 'Le nom de la catégorie ne peut pas être vide.' });
-      return;
-    }
-    
-    setIsAdding(true);
-    
-    try {
-      const result = await addCategory(newCategoryName, newCategoryDescription);
-      if (result) {
-        setIsAddModalOpen(false);
-        setNewCategoryName('');
-        setNewCategoryDescription('');
-      }
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
-  // Ouvrir le modal d'édition
-  const openEditModal = (category: Category) => {
-    setCurrentCategory(category);
-    setNewCategoryName(category.name);
-    setNewCategoryDescription(category.description || '');
-    setIsEditModalOpen(true);
-  };
-
+  
+  
   // Gestion du formulaire d'édition
   const handleEditCategory = async () => {
     if (!currentCategory || !newCategoryName.trim()) {
@@ -282,33 +248,7 @@ const CategoryManagement: React.FC = () => {
     }
   };
 
-  // Ouvrir le modal de suppression
-  const openDeleteModal = (category: Category) => {
-    setCurrentCategory(category);
-    setDeleteConfirmationText(''); // Reset confirmation text
-    // Avant d'ouvrir la suppression, vérifier l'usage
-    fetchCategoryUsage(category.id as number)
-      .then((res) => {
-        const data = (res as any)?.data;
-        const totalUse = (data?.productsWithCategory || 0) + (data?.productsWithSubCategory || 0);
-        if (totalUse > 0) {
-          setCategoryUsage({
-            productsWithCategory: data?.productsWithCategory || 0,
-            productsWithSubCategory: data?.productsWithSubCategory || 0,
-            subcategoriesCount: data?.subcategoriesCount || 0,
-            variationsCount: data?.variationsCount || 0,
-          });
-          setIsReassignModalOpen(true);
-        } else {
-          setIsDeleteModalOpen(true);
-        }
-      })
-      .catch(() => {
-        // En cas d'erreur, fallback sur le modal suppression classique
-        setIsDeleteModalOpen(true);
-      });
-  };
-
+  
   // Gestion de la suppression
   const handleDeleteCategory = async () => {
     if (!currentCategory || !isDeleteConfirmationValid()) return;
@@ -362,65 +302,16 @@ const CategoryManagement: React.FC = () => {
     return products.filter(product => product.categoryId === categoryId);
   };
 
-  // Ouvrir la vue des produits
-  const openProductsView = (category: Category) => {
-    setCurrentCategory(category);
-    setShowProductsView(true);
-  };
-
+  
   // Revenir à la liste des catégories
   const backToCategories = () => {
     setShowProductsView(false);
     setCurrentCategory(null);
   };
 
-  // Filtrer les catégories par le terme de recherche
-  const filteredCategories = categories.filter(category =>
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (category.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-  );
+    
   
-  // Améliorer le composant de chargement pour les catégories
-  const renderLoading = () => (
-    <div className="flex flex-col items-center justify-center py-24">
-      <div className="relative w-20 h-20">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Tag className="h-8 w-8 text-gray-300 dark:text-gray-600" />
-        </div>
-        <div className="absolute inset-0 border-t-2 border-primary rounded-full animate-spin"></div>
-      </div>
-      <p className="text-gray-500 dark:text-gray-400 text-lg font-medium mt-6">Chargement des catégories...</p>
-      <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">Veuillez patienter</p>
-    </div>
-  );
-
-  // Améliorer le rendu pour le chargement des produits
-  const renderProductSkeleton = () => (
-    <div className="space-y-6 animate-pulse">
-      {/* Skeleton pour les stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {Array(5).fill(0).map((_, i) => (
-          <div key={i} className="bg-gray-100 dark:bg-gray-800 shadow-sm rounded-lg h-24 p-4 border border-gray-200 dark:border-gray-700">
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16 mb-3"></div>
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
-          </div>
-        ))}
-      </div>
-
-      {/* Skeleton pour les contrôles */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
-        <div className="p-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64"></div>
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
-          </div>
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-          <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-        </div>
-      </div>
-    </div>
-  );
-
+  
   // Améliorer l'animation de chargement pour les listes de produits
   const renderProductsLoading = () => (
     <div className="space-y-6">
@@ -551,11 +442,11 @@ const CategoryManagement: React.FC = () => {
   // Fonction pour filtrer les produits
   const filterProducts = (products: any[]) => {
     // Filtrage par recherche
-    let filtered = products.filter(product => 
+    let filtered = products.filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-    
+
     // Filtrage par statut
     if (statusFilter !== 'all') {
       filtered = filtered.filter(product => {
@@ -567,7 +458,7 @@ const CategoryManagement: React.FC = () => {
         return true;
       });
     }
-    
+
     // Filtrage par stock
     if (stockFilter !== 'all') {
       filtered = filtered.filter(product => {
@@ -581,7 +472,77 @@ const CategoryManagement: React.FC = () => {
         return true;
       });
     }
-    
+
+    // Filtrage par catégorie
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        if (categoryFilter === 'with-category') {
+          return product.categoryId !== undefined && product.categoryId !== null;
+        } else if (categoryFilter === 'no-category') {
+          return product.categoryId === undefined || product.categoryId === null;
+        }
+        return true;
+      });
+    }
+
+    // Filtrage par prix
+    if (priceFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        const price = product.price || 0;
+        if (priceFilter === 'low') {
+          return price < 5000;
+        } else if (priceFilter === 'medium') {
+          return price >= 5000 && price < 15000;
+        } else if (priceFilter === 'high') {
+          return price >= 15000;
+        }
+        return true;
+      });
+    }
+
+    // Filtrage par popularité
+    if (featuredFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        if (featuredFilter === 'featured') {
+          return product.featured === true;
+        } else if (featuredFilter === 'regular') {
+          return product.featured !== true;
+        }
+        return true;
+      });
+    }
+
+    // Filtrage par nombre de couleurs
+    if (colorsFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        const colorCount = product.colors ? product.colors.length : 0;
+        if (colorsFilter === 'no-colors') {
+          return colorCount === 0;
+        } else if (colorsFilter === 'single-color') {
+          return colorCount === 1;
+        } else if (colorsFilter === 'multiple-colors') {
+          return colorCount > 1;
+        }
+        return true;
+      });
+    }
+
+    // Filtrage par présence d'images
+    if (imageFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        const hasImages = product.imageUrl ||
+                          product.views?.[0]?.imageUrl ||
+                          (product.colors && product.colors.some((color: any) => color.imageUrl));
+
+        if (imageFilter === 'with-images') {
+          return hasImages === true;
+        } else if (imageFilter === 'no-images') {
+          return hasImages !== true;
+        }
+        return true;
+      });
+    }
+
     return filtered;
   };
   
@@ -594,7 +555,7 @@ const CategoryManagement: React.FC = () => {
   // Réinitialiser la page lors du changement de filtres
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, stockFilter]);
+  }, [searchTerm, statusFilter, stockFilter, categoryFilter, priceFilter, featuredFilter, colorsFilter, imageFilter]);
   
   // Statistiques des produits pour une catégorie
   const getCategoryProductStats = (categoryId: number | undefined) => {
@@ -639,7 +600,7 @@ const CategoryManagement: React.FC = () => {
   }, [showProductsView, currentCategory, products]);
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto pt-8 pb-12 space-y-8 px-4 sm:px-6">
+    <div className="w-full min-h-screen pt-8 pb-12 space-y-8 px-4 sm:px-6">
       {showProductsView && currentCategory ? (
         <>
           {/* En-tête pour la vue des produits */}
@@ -669,18 +630,15 @@ const CategoryManagement: React.FC = () => {
             </div>
 
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={handleRefreshData}
                 variant="outline"
-                className="border-gray-200 dark:border-gray-700 relative"
+                className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white relative"
                 disabled={isRefreshing}
               >
                 {isRefreshing ? (
                   <>
-                    <svg className="animate-spin h-4 w-4 mr-2 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     <span>Actualisation...</span>
                   </>
                 ) : (
@@ -691,9 +649,9 @@ const CategoryManagement: React.FC = () => {
                 )}
               </Button>
 
-              <Button 
+              <Button
                 onClick={() => goToAddProduct(currentCategory.id)}
-                className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black font-medium"
+                className="bg-[#049BE5] hover:bg-[#0378B1] text-white font-medium"
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Créer un produit
@@ -701,65 +659,101 @@ const CategoryManagement: React.FC = () => {
             </div>
           </div>
           
-          {/* Cartes de statistiques */}
+          {/* Cartes de statistiques modernisées */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {getCategoryProductStats(currentCategory.id).total}
-              </h3>
+            <div className="relative bg-gradient-to-br from-[#049BE5]/10 to-[#049BE5]/5 dark:from-[#049BE5]/20 dark:to-[#049BE5]/10 shadow-lg rounded-xl p-5 border border-[#049BE5]/20 hover:border-[#049BE5]/40 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] overflow-hidden group">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-[#049BE5]/10 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-[#049BE5] animate-pulse"></div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total</p>
+                </div>
+                <h3 className="text-3xl font-bold bg-gradient-to-r from-[#049BE5] to-blue-600 bg-clip-text text-transparent">
+                  {getCategoryProductStats(currentCategory.id).total}
+                </h3>
+              </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Publiés</p>
-              <h3 className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-                {getCategoryProductStats(currentCategory.id).published}
-              </h3>
+
+            <div className="relative bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 shadow-lg rounded-xl p-5 border border-green-200/50 hover:border-green-400/50 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] overflow-hidden group">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-green-100 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Publiés</p>
+                </div>
+                <h3 className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  {getCategoryProductStats(currentCategory.id).published}
+                </h3>
+              </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Brouillons</p>
-              <h3 className="text-2xl font-bold text-gray-500 dark:text-gray-400 mt-1">
-                {getCategoryProductStats(currentCategory.id).draft}
-              </h3>
+
+            <div className="relative bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-slate-900/50 shadow-lg rounded-xl p-5 border border-gray-200/50 hover:border-gray-400/50 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] overflow-hidden group">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-gray-200 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-gray-500 animate-pulse"></div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Brouillons</p>
+                </div>
+                <h3 className="text-3xl font-bold text-gray-600 dark:text-gray-400">
+                  {getCategoryProductStats(currentCategory.id).draft}
+                </h3>
+              </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Rupture</p>
-              <h3 className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-                {getCategoryProductStats(currentCategory.id).outOfStock}
-              </h3>
+
+            <div className="relative bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 shadow-lg rounded-xl p-5 border border-red-200/50 hover:border-red-400/50 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] overflow-hidden group">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-red-100 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Rupture</p>
+                </div>
+                <h3 className="text-3xl font-bold text-red-600 dark:text-red-400">
+                  {getCategoryProductStats(currentCategory.id).outOfStock}
+                </h3>
+              </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Stock faible</p>
-              <h3 className="text-2xl font-bold text-amber-500 dark:text-amber-400 mt-1">
-                {getCategoryProductStats(currentCategory.id).lowStock}
-              </h3>
+
+            <div className="relative bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 shadow-lg rounded-xl p-5 border border-amber-200/50 hover:border-amber-400/50 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] overflow-hidden group">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-amber-100 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Stock faible</p>
+                </div>
+                <h3 className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                  {getCategoryProductStats(currentCategory.id).lowStock}
+                </h3>
+              </div>
             </div>
           </div>
           
-          {/* Section principale avec onglets */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-            <div className="p-4 sm:p-6">
+          {/* Section principale avec onglets modernisée */}
+          <div className="relative bg-gradient-to-br from-white to-[#049BE5]/2 dark:from-gray-800 dark:to-[#049BE5]/5 border border-[#049BE5]/15 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-500 hover:border-[#049BE5]/25">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#049BE5] via-blue-500 to-[#049BE5]"></div>
+            <div className="p-6 sm:p-8">
               <Tabs defaultValue="all" className="w-full" onValueChange={setStatusFilter}>
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-                  <TabsList className="bg-gray-100 dark:bg-gray-900 p-1">
-                    <TabsTrigger value="all" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">Tous</TabsTrigger>
-                    <TabsTrigger value="published" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">Publiés</TabsTrigger>
-                    <TabsTrigger value="draft" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">Brouillons</TabsTrigger>
-                    <TabsTrigger value="out-of-stock" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">En rupture</TabsTrigger>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-6 mb-8">
+                  <TabsList className="relative bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-1.5 border border-[#049BE5]/20 shadow-lg rounded-xl">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#049BE5]/5 to-blue-500/5 rounded-xl"></div>
+                    <TabsTrigger value="all" className="relative data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-[#049BE5] data-[state=active]:shadow-md data-[state=active]:border border-transparent data-[state=active]:border-[#049BE5]/30 rounded-lg font-medium transition-all duration-200">Tous</TabsTrigger>
+                    <TabsTrigger value="published" className="relative data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-[#049BE5] data-[state=active]:shadow-md data-[state=active]:border border-transparent data-[state=active]:border-[#049BE5]/30 rounded-lg font-medium transition-all duration-200">Publiés</TabsTrigger>
+                    <TabsTrigger value="draft" className="relative data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-[#049BE5] data-[state=active]:shadow-md data-[state=active]:border border-transparent data-[state=active]:border-[#049BE5]/30 rounded-lg font-medium transition-all duration-200">Brouillons</TabsTrigger>
+                    <TabsTrigger value="out-of-stock" className="relative data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-[#049BE5] data-[state=active]:shadow-md data-[state=active]:border border-transparent data-[state=active]:border-[#049BE5]/30 rounded-lg font-medium transition-all duration-200">En rupture</TabsTrigger>
                   </TabsList>
 
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
+                  <div className="flex items-center gap-3 bg-white dark:bg-gray-900 p-2 rounded-xl shadow-lg border border-[#049BE5]/10">
+                    <Button
+                      variant="ghost"
                       size="icon"
-                      className={viewMode === 'grid' ? 'bg-gray-100 dark:bg-gray-900' : ''}
+                      className={viewMode === 'grid' ? 'bg-[#049BE5] text-white shadow-lg' : 'hover:bg-[#049BE5]/10 hover:text-[#049BE5] rounded-lg transition-all duration-200'}
                       onClick={() => setViewMode('grid')}
                     >
                       <Grid3X3 className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="ghost"
                       size="icon"
-                      className={viewMode === 'list' ? 'bg-gray-100 dark:bg-gray-900' : ''}
+                      className={viewMode === 'list' ? 'bg-[#049BE5] text-white shadow-lg' : 'hover:bg-[#049BE5]/10 hover:text-[#049BE5] rounded-lg transition-all duration-200'}
                       onClick={() => setViewMode('list')}
                     >
                       <List className="h-4 w-4" />
@@ -767,48 +761,140 @@ const CategoryManagement: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Barre de filtres et recherche */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                {/* Barre de filtres et recherche modernisée */}
+                <div className="flex flex-col lg:flex-row gap-4 mb-8">
+                  <div className="relative flex-1 group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#049BE5]/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#049BE5] group-hover:scale-110 transition-transform duration-300" />
                     <Input
                       placeholder="Rechercher un produit..."
-                      className="pl-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                      className="relative pl-12 bg-white dark:bg-gray-900 border-[#049BE5]/20 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
 
-                  <div className="flex gap-2">
-                    <Select
-                      value={stockFilter}
-                      onValueChange={setStockFilter}
-                    >
-                      <SelectTrigger className="w-auto min-w-[150px] border-gray-200 dark:border-gray-700 dark:bg-gray-900 gap-1">
-                        <Filter className="h-4 w-4 mr-1" />
-                        <SelectValue placeholder="Stock" />
-                      </SelectTrigger>
-                      <SelectContent className="dark:bg-gray-800">
-                        <SelectItem value="all" className="dark:text-gray-100">Tous les stocks</SelectItem>
-                        <SelectItem value="in-stock" className="dark:text-gray-100">En stock</SelectItem>
-                        <SelectItem value="low-stock" className="dark:text-gray-100">Stock faible</SelectItem>
-                        <SelectItem value="out-of-stock" className="dark:text-gray-100">Rupture</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="flex flex-wrap gap-3">
+                    <div className="relative group">
+                      <Select value={stockFilter} onValueChange={setStockFilter}>
+                        <SelectTrigger className="w-auto min-w-[160px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12">
+                          <div className="flex items-center gap-2">
+                            <Filter className="h-4 w-4 text-[#049BE5] group-hover:scale-110 transition-transform duration-300" />
+                            <SelectValue placeholder="Stock" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                          <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Tous les stocks</SelectItem>
+                          <SelectItem value="in-stock" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">En stock</SelectItem>
+                          <SelectItem value="low-stock" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Stock faible</SelectItem>
+                          <SelectItem value="out-of-stock" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Rupture</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                    {(searchTerm || stockFilter !== 'all') && (
+                    <div className="relative group">
+                      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger className="w-auto min-w-[160px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12">
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-[#049BE5] group-hover:scale-110 transition-transform duration-300" />
+                            <SelectValue placeholder="Catégorie" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                          <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Toutes catégories</SelectItem>
+                          <SelectItem value="with-category" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Avec catégorie</SelectItem>
+                          <SelectItem value="no-category" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Sans catégorie</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="relative group">
+                      <Select value={priceFilter} onValueChange={setPriceFilter}>
+                        <SelectTrigger className="w-auto min-w-[160px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12">
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-[#049BE5] group-hover:scale-110 transition-transform duration-300" />
+                            <SelectValue placeholder="Prix" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                          <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Tous les prix</SelectItem>
+                          <SelectItem value="low" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">- de 5 000 FCFA</SelectItem>
+                          <SelectItem value="medium" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">5 000 - 15 000 FCFA</SelectItem>
+                          <SelectItem value="high" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">+ de 15 000 FCFA</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {(searchTerm || stockFilter !== 'all' || categoryFilter !== 'all' || priceFilter !== 'all' || featuredFilter !== 'all' || colorsFilter !== 'all' || imageFilter !== 'all') && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
                         onClick={() => {
                           setSearchTerm('');
                           setStockFilter('all');
+                          setCategoryFilter('all');
+                          setPriceFilter('all');
+                          setFeaturedFilter('all');
+                          setColorsFilter('all');
+                          setImageFilter('all');
                         }}
-                        className="border border-gray-200 dark:border-gray-700"
+                        className="bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 hover:bg-[#049BE5]/10 hover:text-[#049BE5] rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12 w-12"
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     )}
+                  </div>
+                </div>
+
+                {/* Filtres avancés supplémentaires */}
+                <div className="flex flex-wrap gap-3">
+                  <div className="relative group">
+                    <Select value={featuredFilter} onValueChange={setFeaturedFilter}>
+                      <SelectTrigger className="w-auto min-w-[140px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#049BE5] group-hover:scale-110 transition-transform duration-300">⭐</span>
+                          <SelectValue placeholder="Popularité" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                        <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Tous</SelectItem>
+                        <SelectItem value="featured" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">⭐ Populaires</SelectItem>
+                        <SelectItem value="regular" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">📦 Standards</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="relative group">
+                    <Select value={colorsFilter} onValueChange={setColorsFilter}>
+                      <SelectTrigger className="w-auto min-w-[140px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#049BE5] group-hover:scale-110 transition-transform duration-300">🎨</span>
+                          <SelectValue placeholder="Couleurs" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                        <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Toutes les couleurs</SelectItem>
+                        <SelectItem value="no-colors" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">🔴 Sans couleur</SelectItem>
+                        <SelectItem value="single-color" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">🔵 Une seule couleur</SelectItem>
+                        <SelectItem value="multiple-colors" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">🌈 Plusieurs couleurs</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="relative group">
+                    <Select value={imageFilter} onValueChange={setImageFilter}>
+                      <SelectTrigger className="w-auto min-w-[140px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#049BE5] group-hover:scale-110 transition-transform duration-300">🖼️</span>
+                          <SelectValue placeholder="Images" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                        <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Tous</SelectItem>
+                        <SelectItem value="with-images" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">✅ Avec images</SelectItem>
+                        <SelectItem value="no-images" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">❌ Sans images</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -830,17 +916,22 @@ const CategoryManagement: React.FC = () => {
                           </div>
                           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Aucun produit trouvé</h3>
                           <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md">
-                            {searchTerm || stockFilter !== 'all' || statusFilter !== 'all'
+                            {searchTerm || stockFilter !== 'all' || statusFilter !== 'all' || featuredFilter !== 'all' || colorsFilter !== 'all' || imageFilter !== 'all'
                               ? "Aucun produit ne correspond à vos critères de recherche. Essayez de modifier vos filtres."
                               : "Cette catégorie ne contient actuellement aucun produit."}
                           </p>
-                          {(searchTerm || stockFilter !== 'all' || statusFilter !== 'all') ? (
+                          {(searchTerm || stockFilter !== 'all' || statusFilter !== 'all' || featuredFilter !== 'all' || colorsFilter !== 'all' || imageFilter !== 'all') ? (
                             <Button
                               variant="outline"
                               onClick={() => {
                                 setSearchTerm('');
                                 setStockFilter('all');
                                 setStatusFilter('all');
+                                setCategoryFilter('all');
+                                setPriceFilter('all');
+                                setFeaturedFilter('all');
+                                setColorsFilter('all');
+                                setImageFilter('all');
                               }}
                             >
                               Réinitialiser les filtres
@@ -902,17 +993,16 @@ const CategoryManagement: React.FC = () => {
                                                 product.colors[selectedColor] && 
                                                 product.colors[selectedColor].imageUrl) {
                                               return (
-                                                <img 
-                                                  src={product.colors[selectedColor].imageUrl} 
-                                                  alt={product.name} 
+                                                <img
+                                                  src={product.colors[selectedColor].imageUrl}
+                                                  alt={product.name}
                                                   className="h-full w-full object-cover"
                                                   onError={(e) => {
-                                                    (e.target as HTMLImageElement).onerror = null;
-                                                    (e.target as HTMLImageElement).src = '';
-                                                    (e.target as HTMLImageElement).parentElement!.innerHTML = 
-                                                      `<div class="h-full w-full flex items-center justify-center">
-                                                        <span class="text-gray-400 text-xs">Photo</span>
-                                                      </div>`;
+                                                    const img = e.target as HTMLImageElement;
+                                                    img.onerror = null;
+                                                    img.style.display = 'none';
+                                                    const parent = img.parentElement!;
+                                                    parent.innerHTML = '<span class="text-gray-400 text-xs">Photo</span>';
                                                   }}
                                                 />
                                               );
@@ -921,17 +1011,16 @@ const CategoryManagement: React.FC = () => {
                                             // Default image behavior
                                             if (product.imageUrl || product.views?.[0]?.imageUrl) {
                                               return (
-                                                <img 
-                                                  src={product.imageUrl || product.views?.[0]?.imageUrl} 
-                                                  alt={product.name} 
+                                                <img
+                                                  src={product.imageUrl || product.views?.[0]?.imageUrl}
+                                                  alt={product.name}
                                                   className="h-full w-full object-cover"
                                                   onError={(e) => {
-                                                    (e.target as HTMLImageElement).onerror = null;
-                                                    (e.target as HTMLImageElement).src = '';
-                                                    (e.target as HTMLImageElement).parentElement!.innerHTML = 
-                                                      `<div class="h-full w-full flex items-center justify-center">
-                                                        <span class="text-gray-400 text-xs">Photo</span>
-                                                      </div>`;
+                                                    const img = e.target as HTMLImageElement;
+                                                    img.onerror = null;
+                                                    img.style.display = 'none';
+                                                    const parent = img.parentElement!;
+                                                    parent.innerHTML = '<span class="text-gray-400 text-xs">Photo</span>';
                                                   }}
                                                 />
                                               );
@@ -1115,17 +1204,16 @@ const CategoryManagement: React.FC = () => {
                                           product.colors[selectedColor] && 
                                           product.colors[selectedColor].imageUrl) {
                                         return (
-                                          <img 
-                                            src={product.colors[selectedColor].imageUrl} 
-                                            alt={product.name} 
+                                          <img
+                                            src={product.colors[selectedColor].imageUrl}
+                                            alt={product.name}
                                             className="h-full w-full object-cover"
                                             onError={(e) => {
-                                              (e.target as HTMLImageElement).onerror = null;
-                                              (e.target as HTMLImageElement).src = '';
-                                              (e.target as HTMLImageElement).parentElement!.innerHTML = 
-                                                `<div class="h-full w-full flex items-center justify-center">
-                                                  <span class="text-gray-400 dark:text-gray-500 text-sm">Image non disponible</span>
-                                                </div>`;
+                                              const img = e.target as HTMLImageElement;
+                                              img.onerror = null;
+                                              img.style.display = 'none';
+                                              const parent = img.parentElement!;
+                                              parent.innerHTML = '<span class="text-gray-400 dark:text-gray-500 text-sm">Image non disponible</span>';
                                             }}
                                           />
                                         );
@@ -1134,17 +1222,16 @@ const CategoryManagement: React.FC = () => {
                                       // Default image behavior
                                       if (product.imageUrl || product.views?.[0]?.imageUrl) {
                                         return (
-                                          <img 
-                                            src={product.imageUrl || product.views?.[0]?.imageUrl} 
-                                            alt={product.name} 
+                                          <img
+                                            src={product.imageUrl || product.views?.[0]?.imageUrl}
+                                            alt={product.name}
                                             className="h-full w-full object-cover"
                                             onError={(e) => {
-                                              (e.target as HTMLImageElement).onerror = null;
-                                              (e.target as HTMLImageElement).src = '';
-                                              (e.target as HTMLImageElement).parentElement!.innerHTML = 
-                                                `<div class="h-full w-full flex items-center justify-center">
-                                                  <span class="text-gray-400 dark:text-gray-500 text-sm">Image non disponible</span>
-                                                </div>`;
+                                              const img = e.target as HTMLImageElement;
+                                              img.onerror = null;
+                                              img.style.display = 'none';
+                                              const parent = img.parentElement!;
+                                              parent.innerHTML = '<span class="text-gray-400 dark:text-gray-500 text-sm">Image non disponible</span>';
                                             }}
                                           />
                                         );
@@ -1360,73 +1447,203 @@ const CategoryManagement: React.FC = () => {
         </>
       ) : (
         <>
-          {/* En-tête */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Catégories</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Gérez la structure hiérarchique de vos catégories
-              </p>
-            </div>
+          {/* En-tête modernisé */}
+          <div className="relative bg-gradient-to-r from-[#049BE5] to-blue-600 rounded-2xl p-8 mb-8 shadow-2xl overflow-hidden">
+            <div className="absolute inset-0 bg-black/10"></div>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full -ml-16 -mb-16"></div>
 
-            <div className="flex gap-2">
-              <Button
-                onClick={handleRefreshData}
-                variant="outline"
-                size="sm"
-                className="border-gray-200 dark:border-gray-700"
-                disabled={isRefreshing}
-              >
-                <RefreshCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
+            <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+              <div className="text-white">
+                <h1 className="text-3xl font-bold mb-2 drop-shadow-lg">Catégories</h1>
+                <p className="text-white/90 text-lg drop-shadow">
+                  Gérez votre structure de catégories
+                </p>
+              </div>
 
               <Button
                 onClick={() => setIsAddModalOpen(true)}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
+                size="lg"
+                className="bg-white text-[#049BE5] hover:bg-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300 font-semibold px-6 py-3 rounded-xl hover:scale-105"
               >
-                <PlusCircle className="mr-2 h-4 w-4" />
+                <PlusCircle className="mr-2 h-5 w-5" />
                 Nouvelle catégorie
               </Button>
             </div>
           </div>
 
-          {/* Message d'erreur */}
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-lg">
-              <p>{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefreshData}
-                className="mt-2 text-red-700 dark:text-red-400 border-red-300 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30"
-              >
-                <RefreshCcw className="mr-2 h-3 w-3" />
-                Réessayer
-              </Button>
+          {/* Filtres pour tous les produits */}
+          {!showProductsView && products.length > 0 && (
+            <div className="relative bg-white dark:bg-gray-800 border border-[#049BE5]/15 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-500">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#049BE5] via-blue-500 to-[#049BE5]"></div>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-3 h-3 rounded-full bg-[#049BE5] animate-pulse"></div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Filtres globaux des produits
+                  </h2>
+                  <Badge variant="outline" className="bg-[#049BE5]/10 text-[#049BE5] border-[#049BE5]/20">
+                    {products.length} produits
+                  </Badge>
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-4">
+                  <div className="relative flex-1 group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#049BE5]/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#049BE5] group-hover:scale-110 transition-transform duration-300" />
+                    <Input
+                      placeholder="Rechercher tous les produits..."
+                      className="relative pl-12 bg-white dark:bg-gray-900 border-[#049BE5]/20 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <div className="relative group">
+                      <Select value={stockFilter} onValueChange={setStockFilter}>
+                        <SelectTrigger className="w-auto min-w-[140px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12">
+                          <div className="flex items-center gap-2">
+                            <Filter className="h-4 w-4 text-[#049BE5] group-hover:scale-110 transition-transform duration-300" />
+                            <SelectValue placeholder="Stock" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                          <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Tous les stocks</SelectItem>
+                          <SelectItem value="in-stock" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">En stock</SelectItem>
+                          <SelectItem value="low-stock" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Stock faible</SelectItem>
+                          <SelectItem value="out-of-stock" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Rupture</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="relative group">
+                      <Select value={priceFilter} onValueChange={setPriceFilter}>
+                        <SelectTrigger className="w-auto min-w-[140px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12">
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-[#049BE5] group-hover:scale-110 transition-transform duration-300" />
+                            <SelectValue placeholder="Prix" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                          <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Tous les prix</SelectItem>
+                          <SelectItem value="low" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">- de 5 000 FCFA</SelectItem>
+                          <SelectItem value="medium" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">5 000 - 15 000 FCFA</SelectItem>
+                          <SelectItem value="high" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">+ de 15 000 FCFA</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {(searchTerm || stockFilter !== 'all' || priceFilter !== 'all' || featuredFilter !== 'all' || colorsFilter !== 'all' || imageFilter !== 'all') && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setSearchTerm('');
+                          setStockFilter('all');
+                          setPriceFilter('all');
+                          setFeaturedFilter('all');
+                          setColorsFilter('all');
+                          setImageFilter('all');
+                        }}
+                        className="bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 hover:bg-[#049BE5]/10 hover:text-[#049BE5] rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-12 w-12"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filtres avancés supplémentaires */}
+                <div className="flex flex-wrap gap-3 mt-3">
+                  <div className="relative group">
+                    <Select value={featuredFilter} onValueChange={setFeaturedFilter}>
+                      <SelectTrigger className="w-auto min-w-[130px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#049BE5] group-hover:scale-110 transition-transform duration-300">⭐</span>
+                          <SelectValue placeholder="Popularité" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                        <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Tous</SelectItem>
+                        <SelectItem value="featured" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">⭐ Populaires</SelectItem>
+                        <SelectItem value="regular" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">📦 Standards</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="relative group">
+                    <Select value={colorsFilter} onValueChange={setColorsFilter}>
+                      <SelectTrigger className="w-auto min-w-[130px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#049BE5] group-hover:scale-110 transition-transform duration-300">🎨</span>
+                          <SelectValue placeholder="Couleurs" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                        <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Toutes les couleurs</SelectItem>
+                        <SelectItem value="no-colors" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">🔴 Sans couleur</SelectItem>
+                        <SelectItem value="single-color" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">🔵 Une seule couleur</SelectItem>
+                        <SelectItem value="multiple-colors" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">🌈 Plusieurs couleurs</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="relative group">
+                    <Select value={imageFilter} onValueChange={setImageFilter}>
+                      <SelectTrigger className="w-auto min-w-[130px] bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40 focus:border-[#049BE5] focus:ring-[#049BE5]/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 h-10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#049BE5] group-hover:scale-110 transition-transform duration-300">🖼️</span>
+                          <SelectValue placeholder="Images" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-gray-800 border-[#049BE5]/20 rounded-xl shadow-lg">
+                        <SelectItem value="all" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">Tous</SelectItem>
+                        <SelectItem value="with-images" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">✅ Avec images</SelectItem>
+                        <SelectItem value="no-images" className="dark:text-gray-100 hover:bg-[#049BE5]/5 transition-colors">❌ Sans images</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Vue Hiérarchique Unique */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                  <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl">Catégories</CardTitle>
-                  <CardDescription className="text-sm mt-0.5">
-                    Structure hiérarchique parent/enfant/variation
-                  </CardDescription>
-                </div>
+          {/* Message d'erreur modernisé */}
+          {error && (
+            <div className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-6 rounded-2xl shadow-lg border-[#049BE5]/20 flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center">
+                <span className="text-red-600 dark:text-red-400 text-xl">⚠️</span>
               </div>
-            </CardHeader>
-            <CardContent className="pt-6">
+              <div>
+                <p className="font-medium">Erreur</p>
+                <p className="text-sm opacity-90">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Vue Hiérarchique Modernisée */}
+          <div className="relative bg-white dark:bg-gray-800 border border-[#049BE5]/15 hover:border-[#049BE5]/25 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-500">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#049BE5] via-blue-500 to-[#049BE5]"></div>
+            <div className="p-8 border-b border-[#049BE5]/10 bg-gradient-to-r from-white to-[#049BE5]/3 dark:from-gray-800 dark:to-[#049BE5]/8">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-3 h-3 rounded-full bg-[#049BE5] animate-pulse"></div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Structure hiérarchique
+                </h2>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-lg">
+                Visualisez et organisez vos catégories, sous-catégories et variations
+              </p>
+            </div>
+            <div className="p-8">
               {loadingHierarchy ? (
                 <div className="flex flex-col items-center justify-center py-16">
-                  <Loader2 className="h-10 w-10 animate-spin text-blue-500 mb-3" />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">Chargement...</span>
+                  <div className="relative">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#049BE5]" />
+                    <div className="absolute inset-0 h-8 w-8 animate-ping bg-[#049BE5]/20 rounded-full"></div>
+                  </div>
+                  <span className="mt-4 text-gray-500 dark:text-gray-400 font-medium">Chargement de la hiérarchie...</span>
                 </div>
               ) : (
                 <CategoryTree
@@ -1434,12 +1651,12 @@ const CategoryManagement: React.FC = () => {
                   onRefresh={loadHierarchy}
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </>
       )}
       
-      {/* Modal d'ajout de catégorie avec structure hiérarchique */}
+      {/* Modal d'ajout de catégorie simplifié */}
       <Dialog open={isAddModalOpen} onOpenChange={(open) => setIsAddModalOpen(open)}>
         <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
           <DialogHeader>
@@ -1447,11 +1664,10 @@ const CategoryManagement: React.FC = () => {
               Nouvelle Catégorie
             </DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400">
-              Ajoutez une catégorie et ses sous-catégories
+              Ajoutez une nouvelle catégorie
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {/* Utilisation du nouveau formulaire basé sur cate.md avec les vrais endpoints */}
             <CreateCategoryRealForm
               onSuccess={() => {
                 setIsAddModalOpen(false);
@@ -1472,17 +1688,8 @@ const CategoryManagement: React.FC = () => {
             <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
               Modifier la catégorie
             </DialogTitle>
-            <DialogDescription className="text-gray-500 dark:text-gray-400">
-              Modifiez les informations de la catégorie
-            </DialogDescription>
-          </DialogHeader>
+            </DialogHeader>
           <div className="grid gap-4 py-4">
-            {isEditing && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
-                <p className="text-sm font-medium">⏳ Mise à jour en cours...</p>
-                <p className="text-xs mt-1">ℹ️ Les mockups liés seront automatiquement régénérés</p>
-              </div>
-            )}
             <div className="grid gap-2">
               <label htmlFor="editCategoryName" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
                 Nom de la catégorie *
@@ -1514,26 +1721,23 @@ const CategoryManagement: React.FC = () => {
           <DialogFooter className="flex flex-col sm:flex-row-reverse gap-2 sm:gap-0">
             <Button
               type="button"
-              className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black w-full sm:w-auto"
+              className="bg-[#049BE5] hover:bg-[#0378B1] text-white w-full sm:w-auto"
               onClick={handleEditCategory}
               disabled={isEditing}
             >
               {isEditing ? (
                 <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
                   <span>Mise à jour...</span>
                 </span>
               ) : (
                 'Enregistrer'
               )}
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="border-gray-200 dark:border-gray-700 dark:text-gray-300 w-full sm:w-auto"
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#049BE5]/30 text-[#049BE5] hover:bg-[#049BE5]/10 w-full sm:w-auto"
               onClick={() => setIsEditModalOpen(false)}
               disabled={isEditing}
             >
@@ -1550,10 +1754,7 @@ const CategoryManagement: React.FC = () => {
             <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
               Supprimer la catégorie ?
             </DialogTitle>
-            <DialogDescription className="text-gray-500 dark:text-gray-400">
-              Cette action est irréversible. Tous les produits associés à cette catégorie seront affectés.
-            </DialogDescription>
-          </DialogHeader>
+              </DialogHeader>
           <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 my-2">
             <p className="text-sm">
               Pour confirmer la suppression, veuillez saisir le nom exact de la catégorie <strong>"{currentCategory?.name}"</strong> ci-dessous.
@@ -1585,20 +1786,17 @@ const CategoryManagement: React.FC = () => {
             >
               {isDeleting ? (
                 <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
                   <span>Suppression...</span>
                 </span>
               ) : (
                 'Supprimer définitivement'
               )}
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="border-gray-200 dark:border-gray-700 dark:text-gray-300 w-full sm:w-auto"
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#049BE5]/30 text-[#049BE5] hover:bg-[#049BE5]/10 w-full sm:w-auto"
               onClick={() => {
                 setIsDeleteModalOpen(false);
                 setDeleteConfirmationText('');
@@ -1618,10 +1816,7 @@ const CategoryManagement: React.FC = () => {
             <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
               Catégorie utilisée: réaffecter les produits
             </DialogTitle>
-            <DialogDescription className="text-gray-500 dark:text-gray-400">
-              La catégorie "{currentCategory?.name}" est utilisée par des produits. Réaffectez-les vers une autre catégorie avant suppression.
-            </DialogDescription>
-          </DialogHeader>
+                </DialogHeader>
 
           <div className="space-y-4">
             <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-sm">
@@ -1667,16 +1862,16 @@ const CategoryManagement: React.FC = () => {
           <DialogFooter className="flex flex-col sm:flex-row-reverse gap-2 sm:gap-0">
             <Button
               type="button"
-              className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black w-full sm:w-auto"
+              className="bg-[#049BE5] hover:bg-[#0378B1] text-white w-full sm:w-auto"
               onClick={handleReassignThenDelete}
               disabled={reassignLoading || !reassignTargetCategoryId}
             >
               {reassignLoading ? 'Réaffectation...' : 'Réaffecter puis supprimer'}
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="border-gray-200 dark:border-gray-700 dark:text-gray-300 w-full sm:w-auto"
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#049BE5]/30 text-[#049BE5] hover:bg-[#049BE5]/10 w-full sm:w-auto"
               onClick={() => setIsReassignModalOpen(false)}
               disabled={reassignLoading}
             >
@@ -1693,10 +1888,7 @@ const CategoryManagement: React.FC = () => {
             <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
               Supprimer ce produit ?
             </DialogTitle>
-            <DialogDescription className="text-gray-500 dark:text-gray-400">
-              Cette action est irréversible. Le produit sera définitivement supprimé.
-            </DialogDescription>
-          </DialogHeader>
+                  </DialogHeader>
           
           <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 my-2">
             <p className="text-sm">
@@ -1714,20 +1906,17 @@ const CategoryManagement: React.FC = () => {
             >
               {isDeleting ? (
                 <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
                   <span>Suppression...</span>
                 </span>
               ) : (
                 'Supprimer définitivement'
               )}
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="border-gray-200 dark:border-gray-700 dark:text-gray-300 w-full sm:w-auto"
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#049BE5]/30 text-[#049BE5] hover:bg-[#049BE5]/10 w-full sm:w-auto"
               onClick={() => {
                 setIsDeleteProductModalOpen(false);
                 setProductToDelete(null);

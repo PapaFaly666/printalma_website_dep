@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import {
   Package2,
   Search,
@@ -56,6 +57,7 @@ import {
 } from '../../services/stockService';
 
 export default function AdminStockManagement() {
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<ProductStock[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<ProductStock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +155,17 @@ export default function AdminStockManagement() {
     // Charger l'historique
     loadStockHistory(product.id);
   };
+
+  // Gérer le productId depuis l'URL
+  useEffect(() => {
+    const productId = searchParams.get('productId');
+    if (productId && products.length > 0) {
+      const targetProduct = products.find(p => p.id === parseInt(productId));
+      if (targetProduct) {
+        handleProductClick(targetProduct);
+      }
+    }
+  }, [searchParams, products]);
 
   // Charger l'historique de stock
   const loadStockHistory = async (productId: number, page: number = 1) => {

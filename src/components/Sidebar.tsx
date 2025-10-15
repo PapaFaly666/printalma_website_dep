@@ -878,16 +878,16 @@ const NavItem = ({
     onClick,
     textColor = ""
 }: NavItemProps) => {
-    const iconColor = active ? "text-black dark:text-white" : textColor || "text-gray-600 dark:text-gray-400";
+    const iconColor = active ? "text-[#049BE5]" : textColor || "text-gray-600 dark:text-gray-400 group-hover:text-[#049BE5]";
 
     const navButton = (
         <Button
             variant="ghost"
             className={cn(
-                "w-full justify-start gap-3 px-3 py-2 h-auto",
-                active && "bg-gray-100 dark:bg-gray-800",
+                "w-full justify-start gap-3 px-3 py-2 h-auto group",
+                active && "bg-[#049BE5]/10",
                 collapsed ? "px-3" : "pl-3 pr-2",
-                active ? "hover:bg-gray-200 dark:hover:bg-gray-700" : "hover:bg-gray-100 dark:hover:bg-gray-800/80"
+                "hover:bg-[#049BE5]/20"
             )}
             onClick={onClick}
         >
@@ -898,7 +898,7 @@ const NavItem = ({
             {!collapsed && (
                 <span className={cn(
                     "flex-1 text-left text-sm font-medium",
-                    active ? "text-black dark:text-white" : textColor || "text-gray-700 dark:text-gray-300"
+                    active ? "text-[#049BE5]" : textColor || "text-gray-700 dark:text-gray-300 group-hover:text-[#049BE5]"
                 )}>
                     {label}
                 </span>

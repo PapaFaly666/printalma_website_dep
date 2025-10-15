@@ -372,10 +372,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
       exit={{ opacity: 0, y: -20 }}
       className="group"
     >
-      <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40">
         <div className="relative">
           {/* Image principale */}
-          <div className="relative aspect-square bg-gray-50 dark:bg-gray-800 overflow-hidden">
+          <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-[#049BE5]/5 dark:from-gray-800 dark:to-[#049BE5]/10 overflow-hidden">
             {currentImage ? (
               (() => {
                 // Vérifier si on a un design et des délimitations
@@ -430,10 +430,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
             {/* Navigation des images */}
             {currentColor?.images.length > 1 && (
               <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-white" onClick={prevImage}>
+                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[#049BE5] text-[#049BE5] hover:text-white" onClick={prevImage}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-white" onClick={nextImage}>
+                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[#049BE5] text-[#049BE5] hover:text-white" onClick={nextImage}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -468,7 +468,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             {/* Menu d'actions */}
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
               <div className="relative">
-                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-white" onClick={() => setShowActions(!showActions)}>
+                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[#049BE5] text-[#049BE5] hover:text-white" onClick={() => setShowActions(!showActions)}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
                 
@@ -548,7 +548,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <Button
                 size="sm"
                 variant="secondary"
-                className="absolute bottom-3 right-12 h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-3 right-12 h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[#049BE5] text-[#049BE5] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={handleEditClick}
                 title="Modifier"
               >
@@ -559,9 +559,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Navigation couleurs */}
           {product.colorVariations.length > 1 && (
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#049BE5]/80 to-transparent p-4">
               <div className="flex items-center justify-center gap-3">
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-white/20 rounded-full" onClick={prevColor}>
+                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-[#049BE5]/80 rounded-full" onClick={prevColor}>
                   <ChevronLeft className="h-3 w-3" />
                 </Button>
                 
@@ -581,7 +581,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   ))}
                 </div>
                 
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-white/20 rounded-full" onClick={nextColor}>
+                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-[#049BE5]/80 rounded-full" onClick={nextColor}>
                   <ChevronRight className="h-3 w-3" />
                 </Button>
               </div>
@@ -607,17 +607,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <div className="font-bold text-gray-900 dark:text-white">
                 {product.price.toLocaleString()} FCFA
               </div>
-              
+
               {/* Prix suggéré si différent du prix de base - pourcentage supprimé */}
               {product.suggestedPrice && product.suggestedPrice !== product.price && (
                 <div className="text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Prix suggéré: </span>
-                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                  <span className="font-semibold text-[#049BE5] dark:text-[#049BE5]/80">
                     {product.suggestedPrice.toLocaleString()} FCFA
                   </span>
                 </div>
               )}
-              
+
               {/* Affichage spécial si prix suggéré identique */}
               {product.suggestedPrice && product.suggestedPrice === product.price && (
                 <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
@@ -626,9 +626,53 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </div>
               )}
             </div>
-            <Badge variant={product.stock === 0 ? "destructive" : product.stock < 10 ? "secondary" : "outline"}>
-              Stock: {product.stock}
-            </Badge>
+            {/* Bouton pour voir le stock */}
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white text-xs px-2 py-1 h-auto"
+                onClick={() => window.open(`/admin/stock?productId=${product.id}`, '_blank')}
+              >
+                <Package className="h-3 w-3 mr-1" />
+                Voir stock
+              </Button>
+              {/* Indicateur de stock par couleur - sans les chiffres */}
+              <div className="flex flex-wrap gap-1 justify-end">
+                {product.colorVariations.slice(0, 3).map((color: any) => {
+                  // Calcul du stock pour cette couleur (somme de tous les stocks par taille)
+                  const colorStock = color.sizes ?
+                    Object.values(color.sizes).reduce((sum: number, stock: any) => sum + (typeof stock === 'number' ? stock : 0), 0) :
+                    (color.stock || 0);
+
+                  let indicatorColor = 'bg-green-500';
+
+                  if (colorStock === 0) {
+                    indicatorColor = 'bg-red-500';
+                  } else if (colorStock < 10) {
+                    indicatorColor = 'bg-yellow-500';
+                  }
+
+                  return (
+                    <div
+                      key={color.id}
+                      className="flex items-center gap-1"
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full ${indicatorColor}`}
+                        style={{ backgroundColor: color.colorCode }}
+                        title={color.name}
+                      />
+                    </div>
+                  );
+                })}
+                {product.colorVariations.length > 3 && (
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-gray-300 text-gray-500 text-xs">
+                    +{product.colorVariations.length - 3}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Couleur actuelle */}
@@ -686,20 +730,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
             {/* Tailles */}
             <div className="flex items-center gap-1">
-              {(product.sizes || []).slice(0, 3).map(size => (
+              {(product.sizes || []).slice(0, 2).map(size => (
                 <Badge key={size.id} variant="outline" className="text-xs">
                   {size.sizeName}
                 </Badge>
               ))}
-              {product.sizes && product.sizes.length > 3 && (
+              {product.sizes && product.sizes.length > 2 && (
                 <Badge variant="outline" className="text-xs">
-                  +{(product.sizes || []).length - 3}
+                  +{(product.sizes || []).length - 2}
                 </Badge>
               )}
             </div>
           </div>
 
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 pt-3 border-t border-[#049BE5]/10">
             Créé le {new Date(product.createdAt).toLocaleDateString('fr-FR')}
           </div>
         </CardContent>
@@ -707,7 +751,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* 🎯 Indicateur visuel pour produits prêts à publier */}
       {readyToPublish && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/50 rounded-lg hover:shadow-md transition-all duration-300">
           <div className="flex items-center gap-2 text-green-800">
             <Rocket className="w-4 h-4" />
             <span className="text-sm font-medium">Ce produit est prêt à être publié !</span>
@@ -720,14 +764,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* 🕐 Indicateur pour produits en attente de validation avec workflow AUTO */}
       {product.status === 'PENDING' && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center gap-2 text-blue-800">
+        <div className="mt-4 p-3 bg-gradient-to-r from-[#049BE5]/10 to-blue-50 border border-[#049BE5]/30 rounded-lg hover:shadow-md transition-all duration-300">
+          <div className="flex items-center gap-2 text-[#049BE5]">
             <Clock className="w-4 h-4" />
             <span className="text-sm font-medium">
               Workflow AUTO-PUBLISH activé
             </span>
           </div>
-          <p className="text-xs text-blue-700 mt-1">
+          <p className="text-xs text-[#049BE5] mt-1">
             ⚡ Dès validation admin → Publication automatique immédiate
           </p>
         </div>
@@ -735,7 +779,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* 📝 Indicateur pour brouillons avec workflow MANUEL */}
       {product.status === 'DRAFT' && !isDesignValidated && (
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="mt-4 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200/50 rounded-lg hover:shadow-md transition-all duration-300">
           <div className="flex items-center gap-2 text-yellow-800">
             <Edit3 className="w-4 h-4" />
             <span className="text-sm font-medium">
@@ -750,7 +794,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* 🆕 Affichage du motif de rejet si le produit a été rejeté */}
       {product.rejectionReason && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="mt-4 p-3 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200/50 rounded-lg hover:shadow-md transition-all duration-300">
           <div className="flex items-center gap-2 text-red-800">
             <X className="w-4 h-4" />
             <span className="text-sm font-medium">Design rejeté</span>
@@ -774,7 +818,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               Êtes-vous sûr de vouloir supprimer <span className="font-medium">"{product.name}"</span> ? Cette action est irréversible.
             </p>
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              <Button variant="outline" className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white" onClick={() => setShowDeleteConfirm(false)}>
                 Annuler
               </Button>
               <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
@@ -796,9 +840,9 @@ const DeletedProductCard: React.FC<{ prod: any }> = ({ prod }) => {
   const currentImage = currentColor?.images[selectedImageIndex];
 
   return (
-    <div className="flex items-center gap-4 py-4 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex items-center gap-4 py-4 border-b border-[#049BE5]/10 hover:bg-[#049BE5]/5 transition-colors duration-200">
       {/* Image principale */}
-      <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800">
+      <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-gray-50 to-[#049BE5]/5 dark:from-gray-800 dark:to-[#049BE5]/10">
         {currentImage ? (
           <img
             src={currentImage.url}
@@ -815,13 +859,13 @@ const DeletedProductCard: React.FC<{ prod: any }> = ({ prod }) => {
           <>
             <button
               onClick={() => setSelectedImageIndex(prev => prev === 0 ? currentColor.images.length - 1 : prev - 1)}
-              className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center"
+              className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-[#049BE5]/80 hover:bg-[#049BE5] text-white rounded-full flex items-center justify-center"
             >
               <ChevronLeft className="w-3 h-3" />
             </button>
             <button
               onClick={() => setSelectedImageIndex(prev => prev === currentColor.images.length - 1 ? 0 : prev + 1)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-[#049BE5]/80 hover:bg-[#049BE5] text-white rounded-full flex items-center justify-center"
             >
               <ChevronRight className="w-3 h-3" />
             </button>
@@ -834,7 +878,7 @@ const DeletedProductCard: React.FC<{ prod: any }> = ({ prod }) => {
         <div className="text-sm text-gray-500 mb-1">
           {prod.price.toLocaleString()} FCFA
           {prod.suggestedPrice && prod.suggestedPrice !== prod.price && (
-            <span className="ml-2 text-blue-600 font-medium">
+            <span className="ml-2 text-[#049BE5] font-medium">
               (suggéré: {prod.suggestedPrice.toLocaleString()})
             </span>
           )}
@@ -979,19 +1023,17 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
   const stats = {
     total: filteredProducts.length,
     published: filteredProducts.filter(p => p.status === 'PUBLISHED').length,
-    draft: filteredProducts.filter(p => p.status === 'DRAFT').length,
-    pending: filteredProducts.filter(p => p.status === 'PENDING').length,
   };
 
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-h-screen space-y-6 bg-gradient-to-br from-gray-50/50 to-[#049BE5]/5 dark:from-gray-900 dark:to-[#049BE5]/10">
       {/* En-tête simplifié */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 px-4 sm:px-6"
       >
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -1004,27 +1046,21 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
             <span className="text-gray-900 dark:text-white font-medium">
               {stats.published} publié{stats.published > 1 ? 's' : ''}
             </span>
-            <span className="text-gray-600 dark:text-gray-400">
-              {stats.draft} brouillon{stats.draft > 1 ? 's' : ''}
-            </span>
-            <span className="text-gray-600 dark:text-gray-400">
-              {stats.pending} en attente
-            </span>
           </div>
         </div>
 
         {showAddButton && (
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
+            <Button variant="outline" size="sm" className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white" onClick={onRefresh} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Actualiser
             </Button>
             {/* Bouton Corbeille */}
-            <Button variant="outline" size="sm" onClick={() => navigate('/admin/trash')}>
+            <Button variant="outline" size="sm" className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white" onClick={() => navigate('/admin/trash')}>
               <Trash2 className="h-4 w-4 mr-2" />
               Corbeille
             </Button>
-            <Button size="sm" className="bg-gray-900 hover:bg-gray-800 text-white" onClick={onAddProduct}>
+            <Button size="sm" className="bg-[#049BE5] hover:bg-[#0378B1] text-white" onClick={onAddProduct}>
               <Plus className="h-4 w-4 mr-2" />
               {addButtonText}
             </Button>
@@ -1033,29 +1069,17 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
       </motion.div>
 
       {/* Cartes de statistiques */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-sm text-gray-500">Produits</div>
-            <div className="text-2xl font-bold">{stats.total}</div>
+      <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 px-4 sm:px-6">
+        <Card className="border-[#049BE5]/20 hover:border-[#049BE5]/40 transition-all duration-300 hover:shadow-lg">
+          <CardContent className="pt-4 bg-gradient-to-br from-white to-[#049BE5]/5 dark:from-gray-900 dark:to-[#049BE5]/10">
+            <div className="text-sm text-[#049BE5] font-medium">Produits</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-sm text-gray-500">Publiés</div>
-            <div className="text-2xl font-bold">{stats.published}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-sm text-gray-500">Brouillons</div>
-            <div className="text-2xl font-bold">{stats.draft}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-sm text-gray-500">En attente</div>
-            <div className="text-2xl font-bold">{stats.pending}</div>
+        <Card className="border-green-200 hover:border-green-400 transition-all duration-300 hover:shadow-lg">
+          <CardContent className="pt-4 bg-gradient-to-br from-white to-green-50 dark:from-gray-900 dark:to-green-900/20">
+            <div className="text-sm text-green-600 dark:text-green-400 font-medium">Publiés</div>
+            <div className="text-2xl font-bold text-green-700 dark:text-green-300">{stats.published}</div>
           </CardContent>
         </Card>
       </div>
@@ -1084,7 +1108,7 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
           )}
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Fermer</Button>
+              <Button variant="outline" className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white">Fermer</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
@@ -1095,7 +1119,7 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-4 bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800"
+        className="flex flex-col sm:flex-row gap-4 bg-white dark:bg-gray-900 p-4 rounded-lg border border-[#049BE5]/20 hover:border-[#049BE5]/30 transition-all duration-300 hover:shadow-lg mx-4 sm:mx-6"
       >
         {/* Recherche */}
         <div className="flex-1">
@@ -1105,7 +1129,7 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
               placeholder="Rechercher un produit..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 border-[#049BE5]/30 focus:border-[#049BE5] focus:ring-[#049BE5]/20"
             />
           </div>
         </div>
@@ -1115,12 +1139,10 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-sm"
+            className="px-3 py-2 border border-[#049BE5]/30 rounded-md bg-white dark:bg-gray-900 text-sm focus:border-[#049BE5] focus:ring-[#049BE5]/20 transition-colors"
           >
-            <option value="ALL">Tous les statuts</option>
+            <option value="ALL">Tous les produits</option>
             <option value="PUBLISHED">Publiés</option>
-            <option value="DRAFT">Brouillons</option>
-            <option value="PENDING">En attente</option>
           </select>
 
           {/* Mode d'affichage supprimé: grid uniquement */}
@@ -1129,66 +1151,71 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
 
       {/* Liste des produits */}
       {loading ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex items-center justify-center py-16"
-        >
-          <div className="text-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Chargement des produits...</p>
-          </div>
-        </motion.div>
+        <div className="px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center justify-center py-16"
+          >
+            <div className="text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">Chargement des produits...</p>
+            </div>
+          </motion.div>
+        </div>
       ) : filteredProducts.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center py-16 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800"
-        >
-          <div className="max-w-md mx-auto">
-            {searchTerm || statusFilter !== 'ALL' ? (
-              <>
-                <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Aucun résultat trouvé
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Essayez de modifier vos filtres ou votre terme de recherche.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setStatusFilter('ALL');
-                  }}
-                >
-                  Réinitialiser les filtres
-                </Button>
-              </>
-            ) : (
-              <>
-                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  {emptyStateTitle}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  {emptyStateDescription}
-                </p>
-                <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={onAddProduct}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {emptyStateButtonText}
-                </Button>
-              </>
-            )}
-          </div>
-        </motion.div>
+        <div className="px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-center py-16 bg-white dark:bg-gray-900 rounded-lg border border-[#049BE5]/20 hover:border-[#049BE5]/30 transition-all duration-300 hover:shadow-lg"
+          >
+            <div className="max-w-md mx-auto">
+              {searchTerm || statusFilter !== 'ALL' ? (
+                <>
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Aucun résultat trouvé
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    Essayez de modifier vos filtres ou votre terme de recherche.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('ALL');
+                    }}
+                  >
+                    Réinitialiser les filtres
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    {emptyStateTitle}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    {emptyStateDescription}
+                  </p>
+                  <Button className="bg-[#049BE5] hover:bg-[#0378B1] text-white" onClick={onAddProduct}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {emptyStateButtonText}
+                  </Button>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className={'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}
+          className={'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-4 sm:px-6'}
         >
           <AnimatePresence>
             {filteredProducts.map((product, index) => (
