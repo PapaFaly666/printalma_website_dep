@@ -483,8 +483,8 @@ export default function Sidebar() {
                             icon={<Package size={18} />}
                             label="Produits"
                             collapsed={collapsed && !isMobile}
-                            active={activeItem === 'vendor-products-admin'}
-                            onClick={() => handleNavigation('vendor-products-admin')}
+                            active={activeItem === 'product-validation'}
+                            onClick={() => handleNavigation('product-validation')}
                             badge=""
                             textColor=""
                         />
