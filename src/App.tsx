@@ -103,7 +103,7 @@ import { ProductListModernPage } from './pages/admin/ProductListModernPage';
 // import { ProductListModern } from './components/admin/ProductListModern'; // unused
 
 // Admin Design Validation
-import { AdminDesignValidation } from './pages/admin/AdminDesignValidation';
+import AdminDesignValidation from './pages/admin/AdminDesignValidation';
 import AdminProductValidation from './pages/admin/AdminProductValidation';
 import AutoValidationDashboard from './pages/admin/AutoValidationDashboard';
 import AdminWizardValidation from './pages/admin/AdminWizardValidation';

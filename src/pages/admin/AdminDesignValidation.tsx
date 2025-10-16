@@ -1,45 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Check, 
-  X, 
-  Eye, 
-  Clock,
-  User,
-  Calendar,
-  Tag,
-  DollarSign,
-  Search,
-  Filter,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  MessageSquare,
-  AlertTriangle,
-  AlertCircle,
-  TrendingUp,
-  Info
+import React, { useEffect, useState } from 'react';
+import {
+  Check, X, Eye, Package, Calendar, Tag, DollarSign, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle, Filter, Palette
 } from 'lucide-react';
+import { designService, Design } from '../../services/designService';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+} from '../../components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '../../components/ui/select';
 import { Label } from '../../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../../components/ui/dialog';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../components/ui/table';
 import { toast } from 'sonner';
-import { designService, Design } from '../../services/designService';
-import { NotificationBanner } from '../../components/ui/notification-banner';
-import AutoValidationControls from '../../components/admin/AutoValidationControls';
-import { autoValidationService } from '../../services/autoValidationService';
 
 interface DesignWithValidation extends Design {
   vendor: {
@@ -84,125 +67,143 @@ interface ApiResponse<T> {
   data: T;
 }
 
-export const AdminDesignValidation: React.FC = () => {
+const AdminDesignValidation: React.FC = () => {
   const [designs, setDesigns] = useState<DesignWithValidation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [validating, setValidating] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'submittedAt' | 'createdAt' | 'price'>('submittedAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  
-  // 🆕 NOUVEAU: Filtre par statut (utiliser Select au lieu des cards)
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'VALIDATED' | 'REJECTED'>('PENDING');
-
-  // 🆕 Filtres supplémentaires: par vendeur et par nombre de designs
-  const [vendorFilter, setVendorFilter] = useState<string>('ALL');
-  const [minDesignsFilter, setMinDesignsFilter] = useState<number>(0);
-  
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalPending, setTotalPending] = useState(0);
-  
-  // Stats
-  const [validationStats, setValidationStats] = useState({
-    totalDesigns: 0,
-    pendingValidation: 0,
+  const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [filters, setFilters] = useState({
+    status: 'PENDING' as 'PENDING' | 'VALIDATED' | 'REJECTED' | 'ALL',
+    vendor: ''
+  });
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 20,
+    hasNext: false,
+    hasPrevious: false
+  });
+  const [stats, setStats] = useState({
+    pending: 0,
     validated: 0,
     rejected: 0,
-    draft: 0,
-    avgValidationTime: 0,
-    todaySubmissions: 0
+    total: 0
   });
-  
+
   // Modal states
   const [selectedDesign, setSelectedDesign] = useState<DesignWithValidation | null>(null);
-  const [showValidationModal, setShowValidationModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [validatorNote, setValidatorNote] = useState('');
+  const [validation, setValidation] = useState<{ approved: boolean | null, reason: string }>({
+    approved: null,
+    reason: ''
+  });
 
-  // 🆕 État pour la fiche vendeur
-  const [showVendorModal, setShowVendorModal] = useState(false);
-  const [selectedVendor, setSelectedVendor] = useState<DesignWithValidation['vendor'] | null>(null);
-
-  const ITEMS_PER_PAGE = 10;
-
-  useEffect(() => {
-    loadAllDesigns();
-    loadValidationStats();
-  }, [currentPage, searchTerm, sortBy, sortOrder, statusFilter]);
-
-  // 🆕 NOUVELLE MÉTHODE: Charger tous les designs avec filtres
-  const loadAllDesigns = async () => {
+  const fetchDesigns = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const response = await designService.getAllDesigns({
-        page: currentPage,
-        limit: ITEMS_PER_PAGE,
-        search: searchTerm,
-        status: statusFilter,
-        sortBy: sortBy === 'submittedAt' ? 'createdAt' : sortBy,
-        sortOrder
+        page: pagination.currentPage,
+        limit: 20,
+        search: filters.vendor.trim() || undefined,
+        status: filters.status === 'ALL' ? undefined : filters.status,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
       });
-      
+
       const transformedDesigns = (response.designs || []).map(design => ({
         ...design,
         submittedForValidationAt: design.submittedForValidationAt || design.createdAt || new Date().toISOString()
       }));
-      
+
       setDesigns(transformedDesigns);
-      setTotalPages(response.pagination?.totalPages || 1);
-      setTotalPending(response.stats?.pending || 0);
-      
-      setValidationStats(prev => ({
-        ...prev,
-        totalDesigns: response.stats?.total || 0,
-        pendingValidation: response.stats?.pending || 0,
-        validated: response.stats?.validated || 0,
-        rejected: response.stats?.rejected || 0
-      }));
-      
-    } catch (error) {
-      console.error('Erreur chargement designs:', error);
+
+      if (response.pagination) {
+        const currentPage = response.pagination.currentPage || 1;
+        const totalPages = response.pagination.totalPages || 1;
+        setPagination(prev => ({
+          ...prev,
+          currentPage,
+          totalPages,
+          totalItems: response.pagination.totalItems || 0,
+          itemsPerPage: response.pagination.itemsPerPage || 20,
+          hasNext: currentPage < totalPages,
+          hasPrevious: currentPage > 1
+        }));
+      }
+
+      if (response.stats) {
+        setStats({
+          pending: response.stats.pending || 0,
+          validated: response.stats.validated || 0,
+          rejected: response.stats.rejected || 0,
+          total: response.stats.total || 0
+        });
+      }
+    } catch (e: any) {
+      if (e.message.includes('401') || e.message.includes('Unauthorized')) {
+        toast.error('Session expirée ou droits insuffisants. Veuillez vous reconnecter en tant qu\'admin.');
+      } else {
+        toast.error(e.message || 'Erreur de chargement');
+      }
+
       setDesigns([]);
-      setTotalPages(1);
-      setTotalPending(0);
+      setStats({
+        pending: 0,
+        validated: 0,
+        rejected: 0,
+        total: 0
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const loadValidationStats = async () => {
-    try {
-      const stats = await designService.getValidationStats();
-      setValidationStats({
-        totalDesigns: stats?.totalDesigns || 0,
-        pendingValidation: stats?.pendingValidation || 0,
-        validated: stats?.validated || 0,
-        rejected: stats?.rejected || 0,
-        draft: stats?.draft || 0,
-        avgValidationTime: stats?.avgValidationTime || 0,
-        todaySubmissions: stats?.todaySubmissions || 0
-      });
-    } catch (error) {
-      console.error('Erreur chargement stats validation:', error);
-    }
-  };
+  useEffect(() => {
+    fetchDesigns();
+  }, [pagination.currentPage]);
 
-  const handleValidateDesign = async (designId: number, isValid: boolean) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (pagination.currentPage === 1) {
+        fetchDesigns();
+      } else {
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [filters.vendor]);
+
+  useEffect(() => {
+    if (pagination.currentPage === 1) {
+      fetchDesigns();
+    } else {
+      setPagination(prev => ({ ...prev, currentPage: 1 }));
+    }
+  }, [filters.status]);
+
+  const handleValidate = async () => {
+    if (!selectedDesign || validation.approved === null) {
+      toast.error('Données de validation incomplètes');
+      return;
+    }
+
+    if (!validation.approved && !validation.reason.trim()) {
+      toast.error('Veuillez entrer une raison de rejet.');
+      return;
+    }
+
+    setProcessing(true);
     try {
-      setValidating(designId);
-      
-      // Appel API selon la nouvelle spécification
-      const response = await fetch(`https://printalma-back-dep.onrender.com/api/designs/${designId}/validate`, {
+
+      const response = await fetch(`https://printalma-back-dep.onrender.com/api/designs/${selectedDesign.id}/validate`, {
         method: 'PUT',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-        action: isValid ? 'VALIDATE' : 'REJECT',
-        rejectionReason: isValid ? undefined : rejectionReason
+          action: validation.approved ? 'VALIDATE' : 'REJECT',
+          rejectionReason: validation.approved ? undefined : validation.reason
         })
       });
 
@@ -212,14 +213,13 @@ export const AdminDesignValidation: React.FC = () => {
       }
 
       const result = await response.json();
-      
-      // Afficher les résultats de la cascade selon la documentation
-      if (isValid) {
+
+      if (validation.approved) {
         const { cascadeResults } = result;
         const publishedCount = cascadeResults?.publishedProducts || 0;
         const draftCount = cascadeResults?.draftProducts || 0;
         const totalAffected = cascadeResults?.affectedProducts || 0;
-        
+
         toast.success('Design validé avec succès !', {
           description: `${totalAffected} produit(s) mis à jour: ${publishedCount} publié(s) automatiquement, ${draftCount} en brouillon pour publication manuelle.`,
           duration: 8000
@@ -227,89 +227,47 @@ export const AdminDesignValidation: React.FC = () => {
       } else {
         const { cascadeResults } = result;
         const affectedProducts = cascadeResults?.affectedProducts || 0;
-        
+
         toast.success('Design rejeté', {
           description: `${affectedProducts} produit(s) remis en brouillon. Le vendeur a été notifié du motif de rejet.`,
           duration: 6000
         });
       }
 
-      // Fermer le modal et recharger
-      setShowValidationModal(false);
       setSelectedDesign(null);
-      setRejectionReason('');
-      setValidatorNote('');
-      
-      // Auto-valider les produits vendeur si le design a été validé
-      if (isValid) {
-        try {
-          // Utiliser le service pour auto-valider les produits associés à ce design
-          const autoResult = await autoValidationService.autoValidateProductsForDesign(designId);
-          
-          if (autoResult.success && autoResult.data.updatedProducts.length > 0) {
-            toast.success('✅ Produits auto-validés !', {
-              description: `${autoResult.data.updatedProducts.length} produit(s) vendeur automatiquement validé(s) (isValidated = true) suite à la validation du design.`,
-              duration: 6000
-            });
-          } else {
-            // Fallback: essayer l'auto-validation globale
-            const globalResult = await autoValidationService.autoValidateAllProducts();
-            if (globalResult.success && globalResult.data.updatedProducts.length > 0) {
-              toast.success('✅ Auto-validation globale déclenchée !', {
-                description: `${globalResult.data.updatedProducts.length} produit(s) vendeur mis à jour avec isValidated = true.`,
-                duration: 5000
-              });
-            }
-          }
-        } catch (error) {
-          console.log('Info: Auto-validation des produits non disponible, les produits devront être validés manuellement.');
-        }
-      }
-      
-      // Recharger les listes pour refléter les changements
-      await Promise.all([
-        loadAllDesigns(),
-        loadValidationStats()
-      ]);
-      
-    } catch (error) {
-      console.error('Erreur validation design:', error);
-      
-      // Gestion d'erreurs selon la documentation
-      let errorMessage = 'Une erreur inattendue s\'est produite';
-      if (error instanceof Error) {
-        if (error.message.includes('400')) {
-          errorMessage = 'Données invalides. Vérifiez votre saisie.';
-        } else if (error.message.includes('403')) {
-          errorMessage = 'Accès non autorisé. Vérifiez vos permissions.';
-        } else if (error.message.includes('404')) {
-          errorMessage = 'Design non trouvé.';
-        } else if (error.message.includes('409')) {
-          errorMessage = 'Design déjà validé. Rechargement des données...';
-          await loadAllDesigns();
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      toast.error('Erreur lors de la validation', {
-        description: errorMessage
-      });
+      setValidation({ approved: null, reason: '' });
+      await fetchDesigns();
+    } catch (e: any) {
+      console.error('Erreur lors de la validation:', e);
+      toast.error(e.message || 'Erreur lors de la validation');
     } finally {
-      setValidating(null);
+      setProcessing(false);
     }
   };
 
-  const openValidationModal = (design: DesignWithValidation) => {
-    setSelectedDesign(design);
-    setShowValidationModal(true);
-    setRejectionReason('');
-    setValidatorNote('');
+  const handleCloseModal = () => {
+    setSelectedDesign(null);
+    setValidation({ approved: null, reason: '' });
   };
 
-  const openVendorModal = (vendor: DesignWithValidation['vendor']) => {
-    setSelectedVendor(vendor);
-    setShowVendorModal(true);
+  const getDesignStatus = (design: DesignWithValidation | null) => {
+    if (!design) return 'PENDING';
+    if (design.isPublished) return 'VALIDATED';
+    if (design.isDraft) return 'REJECTED';
+    return 'PENDING';
+  };
+
+  
+  const getStatusLabel = (status: string) => {
+    switch(status) {
+      case 'PENDING':
+        return 'En attente';
+      case 'VALIDATED':
+        return 'Validé';
+      case 'REJECTED':
+        return 'Rejeté';
+      default: return 'Inconnu';
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -322,452 +280,557 @@ export const AdminDesignValidation: React.FC = () => {
     });
   };
 
-  if (loading) {
+  const getDesignActions = (design: DesignWithValidation) => {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          </div>
-  );
-  }
-
-  // 🧮 Construire la liste des vendeurs et le nombre de designs (basé sur les données chargées)
-  const vendorCounts = designs.reduce<Record<string, number>>((acc, d) => {
-    const key = d.vendor ? String(d.vendor.id) : 'unknown';
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
-
-  const vendorOptions = Array.from(
-    new Map(
-      designs.map(d => [String(d.vendor ? d.vendor.id : 'unknown'), d.vendor])
-    ).entries()
-  ).map(([id, v]) => ({
-    id,
-    label: v ? `${v.firstName || ''} ${v.lastName || ''}`.trim() || v.email || `Vendeur ${id}` : `Vendeur ${id}`
-  }));
-
-  // 🧹 Appliquer les filtres locaux (vendeur et nombre de designs)
-  const filteredDesigns = designs.filter(d => {
-    const vendorId = String(d.vendor ? d.vendor.id : 'unknown');
-    const vendorMatch = vendorFilter === 'ALL' || vendorId === vendorFilter;
-    const countMatch = (vendorCounts[vendorId] || 0) >= (minDesignsFilter || 0);
-    return vendorMatch && countMatch;
-  });
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          setSelectedDesign(design);
+        }}
+        className="rounded-lg border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900 transition-colors"
+      >
+        <Eye className="h-3 w-3 mr-1" />
+        Voir
+      </Button>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
-        <div className="mb-8">
-          <NotificationBanner type="admin" className="mb-6" />
-          
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-                Validation des Designs
-              </h1>
-          
-          {/* Statistiques (non interactives) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Clock className="w-8 h-8 text-yellow-500 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">En attente</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{validationStats.pendingValidation}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Check className="w-8 h-8 text-green-500 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Validés</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{validationStats.validated}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <X className="w-8 h-8 text-red-500 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Rejetés</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{validationStats.rejected}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-black">Validation des designs</h1>
+            <p className="text-gray-600 mt-1">Examiner et valider les designs créés par les vendeurs</p>
           </div>
-          
-          {/* Status filter as Select */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Statut</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="PENDING">En attente</option>
-                  <option value="VALIDATED">Validés</option>
-                  <option value="REJECTED">Rejetés</option>
-                  <option value="ALL">Tous</option>
-                </select>
+          <Button
+            variant="outline"
+            onClick={fetchDesigns}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
+
+        {/* Stats Cards - Design professionnel */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">En attente</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.pending}</p>
+              </div>
+              <div className="bg-yellow-50 p-3 rounded-lg">
+                <AlertTriangle className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Validés</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.validated}</p>
+              </div>
+              <div className="bg-green-50 p-3 rounded-lg">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Rejetés</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.rejected}</p>
+              </div>
+              <div className="bg-red-50 p-3 rounded-lg">
+                <XCircle className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Total</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+              </div>
+              <div className="bg-purple-50 p-3 rounded-lg">
+                <Palette className="h-6 w-6 text-purple-600" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-6 shadow-md">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Rechercher par nom de design ou vendeur..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        {/* Filtres - Design épuré */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-semibold text-gray-700">Filtres</span>
+            </div>
+
+            <div className="flex flex-wrap gap-4 flex-1">
+              <div className="min-w-40">
+                <Select
+                  value={filters.status}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as any }))}
+                >
+                  <SelectTrigger className="w-full rounded-lg border-gray-200 focus:border-gray-300">
+                    <SelectValue placeholder="Statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PENDING">En attente</SelectItem>
+                    <SelectItem value="VALIDATED">Validés</SelectItem>
+                    <SelectItem value="REJECTED">Rejetés</SelectItem>
+                    <SelectItem value="ALL">Tous les statuts</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="min-w-64 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Rechercher par vendeur..."
+                  value={filters.vendor}
+                  onChange={(e) => setFilters(prev => ({ ...prev, vendor: e.target.value }))}
+                  className="pl-10 rounded-lg border-gray-200 focus:border-gray-300"
                 />
               </div>
             </div>
-            
-            <div className="flex gap-4">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="submittedAt">Date de soumission</option>
-                <option value="createdAt">Date de création</option>
-                <option value="price">Prix</option>
-              </select>
-              
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="desc">Plus récent</option>
-                <option value="asc">Plus ancien</option>
-              </select>
-            </div>
           </div>
 
-          {/* Ligne de filtres avancés */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filtrer par vendeur</label>
-              <select
-                value={vendorFilter}
-                onChange={(e) => setVendorFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="ALL">Tous les vendeurs</option>
-                {vendorOptions.map(opt => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.label}
-                    {vendorCounts[opt.id] !== undefined ? ` (${vendorCounts[opt.id]})` : ''}
-                  </option>
-                ))}
-              </select>
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">
+                {designs?.length || 0} design{(designs?.length || 0) > 1 ? 's' : ''}
+              </span>
+              {filters.status !== 'ALL' && (
+                <span className="ml-2">
+                  • Statut: <span className="font-medium">{getStatusLabel(filters.status)}</span>
+                </span>
+              )}
+              {filters.vendor.trim() && (
+                <span className="ml-2">
+                  • Vendeur: <span className="font-medium">{filters.vendor}</span>
+                </span>
+              )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre minimum de designs (par vendeur)</label>
-              <input
-                type="number"
-                min={0}
-                value={minDesignsFilter}
-                onChange={(e) => setMinDesignsFilter(Number(e.target.value) || 0)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="0"
-              />
-            </div>
+            {(filters.status !== 'ALL' || filters.vendor.trim()) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilters({ status: 'ALL', vendor: '' })}
+                className="text-xs h-8 px-3 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              >
+                ✕ Réinitialiser les filtres
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Contrôles d'auto-validation */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-6 shadow-md">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-xl">🤖</span>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Auto-validation des Produits Vendeur
-            </h3>
-          </div>
-          <AutoValidationControls 
-            onValidationComplete={(result) => {
-              // Recharger les statistiques après auto-validation
-              loadValidationStats();
-            }}
-            className="w-full"
-          />
-        </div>
-
-        {/* Liste des designs */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          {filteredDesigns && filteredDesigns.length > 0 ? (
+        {/* Tableau - Design minimaliste */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <RefreshCw className="h-5 w-5 animate-spin text-gray-400 mr-3" />
+              <p className="text-gray-600 font-medium">Chargement...</p>
+            </div>
+          ) : designs && designs.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-gray-100 bg-gray-50/50">
+                    <TableHead className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
                       Design
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
                       Vendeur
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
                       Prix
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
                       Produits associés
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Soumis le
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Statut
+                    </TableHead>
+                    <TableHead className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Date
+                    </TableHead>
+                    <TableHead className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wide">
                       Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredDesigns.map((design) => {
-                    const getDesignStatus = () => {
-                      if ((design as any).validationStatus) {
-                        return (design as any).validationStatus;
-                      }
-                      if (design.isPublished) return 'VALIDATED';
-                      if (design.isDraft) return 'REJECTED';
-                      return 'PENDING';
-                    };
-
-                    const designStatus = getDesignStatus();
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100">
+                  {designs.map((design) => {
+                    const status = getDesignStatus(design);
 
                     return (
-                    <tr key={design.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-16 w-16">
-                            <img
-                              src={design.imageUrl || design.thumbnailUrl || '/placeholder-design.png'}
-                              alt={design.name || 'Design sans nom'}
-                              className="h-16 w-16 rounded-lg object-cover"
-                            />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {design.name || 'Design sans nom'}
+                      <TableRow key={design.id} className="hover:bg-gray-50/80 transition-colors">
+                        <TableCell className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center overflow-hidden border border-gray-100">
+                              {design.imageUrl || design.thumbnailUrl ? (
+                                <img
+                                  src={design.imageUrl || design.thumbnailUrl}
+                                  alt={design.name || 'Design'}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = '<svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <Palette className="w-6 h-6 text-gray-400" />
+                              )}
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {design.category || 'Catégorie non spécifiée'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={design.vendor?.profile_photo_url || '/placeholder-avatar.png'}
-                            alt={design.vendor?.firstName || 'Avatar'}
-                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                          />
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {design.vendor?.firstName || 'N/A'} {design.vendor?.lastName || ''}
-                        </div>
-                            {design.vendor?.shop_name && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                  {design.vendor.shop_name}
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900 mb-1">
+                                {design.name || 'Design sans nom'}
                               </div>
-                            )}
+                              <div className="text-xs text-gray-500 max-w-xs truncate">
+                                {design.category || 'Catégorie non spécifiée'}
+                              </div>
                             </div>
-                        </div>
-                      </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {designStatus === 'PENDING' && (
-                            <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-                              ⏳ En attente
-                            </Badge>
-                          )}
-                          {designStatus === 'VALIDATED' && (
-                            <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-                              ✅ Validé
-                            </Badge>
-                          )}
-                          {designStatus === 'REJECTED' && (
-                            <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
-                              ❌ Rejeté
-                            </Badge>
-                          )}
-                        </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {new Intl.NumberFormat('fr-FR', { 
-                            style: 'currency', 
-                            currency: 'XOF', 
-                            maximumFractionDigits: 0 
-                          }).format(design.price || 0)}
-                      </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {design.associatedProducts || 0}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {formatDate(design.submittedForValidationAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-2">
-                          <button
-                              onClick={() => { setSelectedDesign(design); setShowValidationModal(true); }}
-                              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
                           </div>
-                      </td>
-                    </tr>
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {design.vendor ?
+                              `${design.vendor.firstName} ${design.vendor.lastName}` :
+                              'Vendeur inconnu'
+                            }
+                          </div>
+                          {design.vendor?.shop_name && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {design.vendor.shop_name}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {design.price ? design.price.toLocaleString() : '0'} FCFA
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {design.associatedProducts || 0}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                          <Badge className={`font-medium ${
+                            status === 'PENDING'
+                              ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                            status === 'VALIDATED'
+                              ? 'bg-green-50 text-green-700 border-green-200' :
+                            status === 'REJECTED'
+                              ? 'bg-red-50 text-red-700 border-red-200' :
+                            'bg-gray-50 text-gray-700 border-gray-200'
+                          }`}>
+                            {getStatusLabel(status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-700">
+                            {design.submittedForValidationAt ? new Date(design.submittedForValidationAt).toLocaleDateString('fr-FR') : 'Date inconnue'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 whitespace-nowrap text-right">
+                          {getDesignActions(design)}
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400">
-                {statusFilter === 'PENDING' ? 'Aucun design en attente de validation' : 'Aucun design trouvé'}
+            <div className="text-center py-16">
+              <Palette className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-700 font-medium mb-2">
+                {filters.status === 'ALL' && !filters.vendor.trim() ?
+                  'Aucun design trouvé' :
+                  'Aucun design ne correspond aux filtres'}
+              </p>
+              <p className="text-gray-500 text-sm">
+                {filters.status === 'ALL' && !filters.vendor.trim() ?
+                  'Les nouveaux designs apparaîtront ici' :
+                  'Essayez de modifier les filtres de recherche'}
               </p>
             </div>
           )}
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center space-x-2 mt-6">
-              <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
-            >
-              Précédent
-              </button>
-            
-            <span className="px-4 py-2 text-gray-700 dark:text-gray-300">
-              Page {currentPage} sur {totalPages}
-            </span>
-            
-              <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
-                  >
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-8">
+            <p className="text-sm text-gray-700">
+              Page {pagination.currentPage} sur {pagination.totalPages} ({pagination.totalItems} designs)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!pagination.hasPrevious}
+                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+              >
+                Précédent
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!pagination.hasNext}
+                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+              >
                 Suivant
-              </button>
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* Modal de détails + validation/rejet */}
-      {showValidationModal && selectedDesign && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-screen overflow-y-auto"
-          >
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                  Détails du design
-              </h3>
+        {/* Modal de validation - Design professionnel */}
+        <Dialog open={!!selectedDesign} onOpenChange={handleCloseModal}>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-50" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+            <DialogHeader className="pb-4 border-b border-gray-100 bg-white px-6 py-4">
+              <DialogTitle className="text-xl font-semibold text-gray-900">Détails du design</DialogTitle>
+              <DialogDescription className="text-gray-600 font-medium">
+                {selectedDesign?.name || 'Design sans nom'} • Créé par {selectedDesign?.vendor ? `${selectedDesign.vendor.firstName} ${selectedDesign.vendor.lastName}` : 'Vendeur inconnu'}
+              </DialogDescription>
+            </DialogHeader>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Aperçu visuel */}
-                <div className="w-full bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img
-                    src={selectedDesign.imageUrl || selectedDesign.thumbnailUrl || '/placeholder-design.png'}
-                    alt={selectedDesign.name || 'Design'}
-                    className="max-h-96 w-full object-contain"
-                  />
+            {selectedDesign && (() => {
+              const status = getDesignStatus(selectedDesign);
+
+              return (
+                <div className="space-y-6 p-6">
+                  {/* Statut */}
+                  <div className="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm">
+                    <Badge className={`font-medium ${
+                      status === 'PENDING'
+                        ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                      status === 'VALIDATED'
+                        ? 'bg-green-100 text-green-700 border-green-200' :
+                      status === 'REJECTED'
+                        ? 'bg-red-100 text-red-700 border-red-200' :
+                      'bg-gray-100 text-gray-700 border-gray-200'
+                    }`}>
+                      {getStatusLabel(status)}
+                    </Badge>
+                    <span className="text-sm text-gray-600">
+                      {status === 'PENDING' ? 'En attente de validation' : status === 'VALIDATED' ? 'Design validé et publié' : 'Design rejeté'}
+                    </span>
+                  </div>
+
+                  {/* Design preview and info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Design image */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Aperçu du design</h3>
+                      <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                        {selectedDesign.imageUrl || selectedDesign.thumbnailUrl ? (
+                          <img
+                            src={selectedDesign.imageUrl || selectedDesign.thumbnailUrl}
+                            alt={selectedDesign.name || 'Design'}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <Palette className="w-16 h-16" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Design information */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-900">Informations du design</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nom du design</p>
+                          <p className="text-sm text-gray-900 font-medium mt-1">
+                            {selectedDesign.name || 'Nom non défini'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Catégorie</p>
+                          <p className="text-sm text-gray-700 mt-1">
+                            {selectedDesign.category || 'Non spécifiée'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Prix</p>
+                          <p className="text-lg font-bold text-gray-900 mt-1">
+                            {selectedDesign.price ? selectedDesign.price.toLocaleString() : '0'} FCFA
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Produits associés</p>
+                          <p className="text-sm text-gray-900 font-medium mt-1">
+                            {selectedDesign.associatedProducts || 0} produit(s)
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date de soumission</p>
+                          <p className="text-sm text-gray-700 mt-1">
+                            {formatDate(selectedDesign.submittedForValidationAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vendor information */}
+                  {selectedDesign.vendor && (
+                    <div className="bg-white rounded-xl p-6 shadow-sm">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Informations vendeur</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nom du vendeur</p>
+                            <p className="text-sm text-gray-900 font-medium mt-1">
+                              {selectedDesign.vendor.firstName} {selectedDesign.vendor.lastName}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              {selectedDesign.vendor.email}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Boutique</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              {selectedDesign.vendor.shop_name || 'Non spécifiée'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Téléphone</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              {selectedDesign.vendor.phone || 'Non spécifié'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Champ de raison de rejet */}
+                  {validation.approved === false && (
+                    <div className="bg-white rounded-xl p-6 shadow-sm">
+                      <Label htmlFor="rejection-reason" className="text-sm font-semibold text-gray-900 block mb-2">
+                        Raison du rejet <span className="text-red-500">*</span>
+                      </Label>
+                      <Textarea
+                        id="rejection-reason"
+                        value={validation.reason}
+                        onChange={(e) => setValidation({...validation, reason: e.target.value})}
+                        placeholder="Expliquez en détail pourquoi ce design est rejeté..."
+                        className="min-h-[100px] resize-none border-gray-200 rounded-lg focus:border-red-300 focus:ring-red-100"
+                      />
+                    </div>
+                  )}
                 </div>
+              );
+            })()}
 
-                {/* Informations */}
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Nom:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedDesign.name || 'Sans nom'}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Catégorie:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedDesign.category || 'Non spécifiée'}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Prix:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(selectedDesign.price || 0)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Produits associés:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedDesign.associatedProducts || 0}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Soumis le:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{formatDate(selectedDesign.submittedForValidationAt)}</p>
-                  </div>
-                </div>
-              </div>
+            <DialogFooter className="flex gap-3 pt-4 border-t border-gray-100">
+              <Button
+                variant="outline"
+                onClick={handleCloseModal}
+                className="rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+              >
+                Fermer
+              </Button>
 
-              {/* Zone de rejet/validation */}
-              {selectedDesign && (
-                <div className="mt-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Motif de rejet (obligatoire uniquement pour le rejet)
-                    </label>
-                    <textarea
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      rows={4}
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="Expliquez pourquoi ce design est rejeté..."
-                    />
-                  </div>
+              {/* Boutons de validation selon le statut */}
+              {selectedDesign && (() => {
+                const currentStatus = getDesignStatus(selectedDesign);
+                return (
+                  <>
+                    {currentStatus === 'PENDING' ? (
+                      <>
+                        <Button
+                          onClick={() => setValidation({ approved: true, reason: '' })}
+                          className="rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium shadow-sm"
+                          disabled={processing}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Valider
+                        </Button>
+                        <Button
+                          onClick={() => setValidation({ approved: false, reason: '' })}
+                          className="rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium shadow-sm"
+                          disabled={processing}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Rejeter
+                        </Button>
+                      </>
+                    ) : currentStatus === 'REJECTED' ? (
+                      <Button
+                        onClick={() => setValidation({ approved: true, reason: '' })}
+                        className="rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium shadow-sm"
+                        disabled={processing}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Réviser la validation
+                      </Button>
+                    ) : null}
 
-                  <div className="flex justify-end gap-3">
-                    <button
-                      onClick={() => setShowValidationModal(false)}
-                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      Fermer
-                    </button>
-                    <button
-                      onClick={() => handleValidateDesign(selectedDesign.id as number, false)}
-                      disabled={validating === selectedDesign.id}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                    >
-                      Rejeter
-                    </button>
-                    <button
-                      onClick={() => handleValidateDesign(selectedDesign.id as number, true)}
-                      disabled={validating === selectedDesign.id}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                    >
-                      Valider
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      )}
+                    {/* Bouton de confirmation */}
+                    {validation.approved !== null && (
+                      <Button
+                        onClick={handleValidate}
+                        disabled={processing || (validation.approved === false && !validation.reason.trim())}
+                        className={`rounded-xl font-medium shadow-sm ${
+                          validation.approved
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'bg-red-600 hover:bg-red-700 text-white'
+                        }`}
+                      >
+                        {processing ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Traitement...
+                          </>
+                        ) : (
+                          validation.approved ? 'Confirmer la validation' : 'Confirmer le rejet'
+                        )}
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
-}; 
+};
+
+export default AdminDesignValidation; 
