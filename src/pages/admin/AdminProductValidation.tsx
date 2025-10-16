@@ -77,7 +77,7 @@ const AdminProductValidation: React.FC = () => {
         page: pagination.currentPage,
         limit: 20,
         status: filters.status === 'ALL' ? undefined : filters.status,
-        productType: 'WIZARD', // Forcer uniquement les produits WIZARD
+        productType: 'WIZARD' as const, // Forcer uniquement les produits WIZARD
         vendor: filters.vendor.trim() || undefined
       };
 
