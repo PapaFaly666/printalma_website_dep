@@ -133,6 +133,26 @@ const CategoryManagement: React.FC = () => {
   // États pour la gestion hiérarchique des catégories
   const [hierarchicalCategories, setHierarchicalCategories] = useState<HierarchicalCategory[]>([]);
   const [loadingHierarchy, setLoadingHierarchy] = useState(false);
+
+  // États pour la gestion des sous-catégories et variations
+  const [showAddSubCategoryModal, setShowAddSubCategoryModal] = useState(false);
+  const [showAddVariationModal, setShowAddVariationModal] = useState(false);
+  const [selectedParentCategory, setSelectedParentCategory] = useState<Category | null>(null);
+  const [selectedParentSubCategory, setSelectedParentSubCategory] = useState<Category | null>(null);
+
+  // Formulaires pour sous-catégories et variations
+  const [newSubCategory, setNewSubCategory] = useState({
+    name: '',
+    description: ''
+  });
+
+  const [newVariation, setNewVariation] = useState({
+    name: ''
+  });
+
+  // Liste des variations à ajouter
+  const [variationsToAdd, setVariationsToAdd] = useState<string[]>([]);
+  const [currentVariationInput, setCurrentVariationInput] = useState('');
   
   const handleDeleteConfirmationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDeleteConfirmationText(e.target.value);
@@ -142,6 +162,91 @@ const CategoryManagement: React.FC = () => {
     return currentCategory && deleteConfirmationText === currentCategory.name;
   };
 
+  // Fonctions pour gérer les sous-catégories
+  const handleAddSubCategory = (parentCategory: Category) => {
+    setSelectedParentCategory(parentCategory);
+    setShowAddSubCategoryModal(true);
+    setNewSubCategory({ name: '', description: '' });
+  };
+
+  const handleSaveSubCategory = () => {
+    if (!selectedParentCategory || !newSubCategory.name.trim()) return;
+
+    // Logique frontend - à connecter avec le backend plus tard
+    const newSubCategoryData = {
+      name: newSubCategory.name,
+      description: newSubCategory.description,
+      parentId: selectedParentCategory.id,
+      level: 1 // Niveau sous-catégorie
+    };
+
+    console.log('Nouvelle sous-catégorie:', newSubCategoryData);
+    // TODO: Appeler l'API pour créer la sous-catégorie
+    // TODO: Recharger la hiérarchie après création
+
+    // Pour l'instant, on ferme simplement le modal
+    setShowAddSubCategoryModal(false);
+    setNewSubCategory({ name: '', description: '' });
+    setSelectedParentCategory(null);
+
+    // Afficher un message de succès temporaire
+    console.log('Sous-catégorie ajoutée avec succès (mode temporaire)');
+  };
+
+  // Fonctions pour gérer les variations
+  const handleAddVariation = (parentSubCategory: Category) => {
+    setSelectedParentSubCategory(parentSubCategory);
+    setShowAddVariationModal(true);
+    setVariationsToAdd([]);
+    setCurrentVariationInput('');
+  };
+
+  // Fonctions pour gérer l'ajout multiple de variations
+  const handleAddVariationToList = () => {
+    if (currentVariationInput.trim()) {
+      setVariationsToAdd([...variationsToAdd, currentVariationInput.trim()]);
+      setCurrentVariationInput('');
+    }
+  };
+
+  const handleRemoveVariationFromList = (index: number) => {
+    setVariationsToAdd(variationsToAdd.filter((_, i) => i !== index));
+  };
+
+  const handleSaveAllVariations = () => {
+    if (!selectedParentSubCategory || variationsToAdd.length === 0) return;
+
+    // Logique frontend - à connecter avec le backend plus tard
+    variationsToAdd.forEach(variationName => {
+      const newVariationData = {
+        name: variationName,
+        parentId: selectedParentSubCategory.id,
+        level: 2 // Niveau variation
+      };
+      console.log('Nouvelle variation:', newVariationData);
+    });
+
+    // TODO: Appeler l'API pour créer toutes les variations
+    // TODO: Recharger la hiérarchie après création
+
+    // Afficher un message de succès temporaire
+    console.log(`${variationsToAdd.length} variation(s) ajoutée(s) avec succès (mode temporaire)`);
+
+    // Fermer le modal et réinitialiser
+    setShowAddVariationModal(false);
+    setVariationsToAdd([]);
+    setCurrentVariationInput('');
+    setSelectedParentSubCategory(null);
+  };
+
+  const handleVariationInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddVariationToList();
+    }
+  };
+
+  
   // Charger la hiérarchie des catégories
   const loadHierarchy = async () => {
     setLoadingHierarchy(true);
@@ -1649,6 +1754,8 @@ const CategoryManagement: React.FC = () => {
                 <CategoryTree
                   categories={hierarchicalCategories}
                   onRefresh={loadHierarchy}
+                  onAddSubCategory={handleAddSubCategory}
+                  onAddVariation={handleAddVariation}
                 />
               )}
             </div>
@@ -1922,6 +2029,159 @@ const CategoryManagement: React.FC = () => {
                 setProductToDelete(null);
               }}
               disabled={isDeleting}
+            >
+              Annuler
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal d'ajout de sous-catégorie */}
+      <Dialog open={showAddSubCategoryModal} onOpenChange={setShowAddSubCategoryModal}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+              Ajouter une sous-catégorie
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              Ajoutez une nouvelle sous-catégorie à "{selectedParentCategory?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="subCategoryName" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
+                Nom de la sous-catégorie *
+              </Label>
+              <Input
+                id="subCategoryName"
+                placeholder="Nom de la sous-catégorie"
+                className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                value={newSubCategory.name}
+                onChange={(e) => setNewSubCategory({ ...newSubCategory, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="subCategoryDescription" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
+                Description (optionnelle)
+              </Label>
+              <Textarea
+                id="subCategoryDescription"
+                placeholder="Description de la sous-catégorie"
+                className="resize-none bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                rows={3}
+                value={newSubCategory.description}
+                onChange={(e) => setNewSubCategory({ ...newSubCategory, description: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row-reverse gap-2 sm:gap-0">
+            <Button
+              type="button"
+              className="bg-[#049BE5] hover:bg-[#0378B1] text-white w-full sm:w-auto"
+              onClick={handleSaveSubCategory}
+              disabled={!newSubCategory.name.trim()}
+            >
+              Ajouter la sous-catégorie
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#049BE5]/30 text-[#049BE5] hover:bg-[#049BE5]/10 w-full sm:w-auto"
+              onClick={() => {
+                setShowAddSubCategoryModal(false);
+                setNewSubCategory({ name: '', description: '' });
+                setSelectedParentCategory(null);
+              }}
+            >
+              Annuler
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal d'ajout de variation */}
+      <Dialog open={showAddVariationModal} onOpenChange={setShowAddVariationModal}>
+        <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+              Ajouter des variations
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              Ajoutez plusieurs variations à "{selectedParentSubCategory?.name}" en appuyant sur Entrée
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="variationInput" className="text-gray-700 dark:text-gray-200 text-sm font-medium">
+                Nom de la variation
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="variationInput"
+                  placeholder="Tapez un nom et appuyez sur Entrée"
+                  className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 flex-1"
+                  value={currentVariationInput}
+                  onChange={(e) => setCurrentVariationInput(e.target.value)}
+                  onKeyDown={handleVariationInputKeyDown}
+                />
+                <Button
+                  type="button"
+                  onClick={handleAddVariationToList}
+                  disabled={!currentVariationInput.trim()}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Ajouter
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Appuyez sur Entrée pour ajouter rapidement plusieurs variations
+              </p>
+            </div>
+
+            {/* Liste des variations à ajouter */}
+            {variationsToAdd.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-gray-700 dark:text-gray-200 text-sm font-medium">
+                  Variations à ajouter ({variationsToAdd.length})
+                </Label>
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {variationsToAdd.map((variation, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 p-2 rounded border">
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{variation}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveVariationFromList(index)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 h-6 w-6 p-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row-reverse gap-2 sm:gap-0">
+            <Button
+              type="button"
+              className="bg-[#049BE5] hover:bg-[#0378B1] text-white w-full sm:w-auto"
+              onClick={handleSaveAllVariations}
+              disabled={variationsToAdd.length === 0}
+            >
+              Ajouter {variationsToAdd.length} variation(s)
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#049BE5]/30 text-[#049BE5] hover:bg-[#049BE5]/10 w-full sm:w-auto"
+              onClick={() => {
+                setShowAddVariationModal(false);
+                setVariationsToAdd([]);
+                setCurrentVariationInput('');
+                setSelectedParentSubCategory(null);
+              }}
             >
               Annuler
             </Button>

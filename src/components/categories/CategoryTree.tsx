@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Trash2, Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
@@ -31,9 +31,11 @@ interface CategoryTreeProps {
   categories: Category[];
   onRefresh: () => void;
   onEdit?: (category: Category) => void;
+  onAddSubCategory?: (category: Category) => void;
+  onAddVariation?: (category: Category) => void;
 }
 
-export const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, onRefresh, onEdit }) => {
+export const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, onRefresh, onEdit, onAddSubCategory, onAddVariation }) => {
   if (categories.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -61,6 +63,8 @@ export const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, onRefres
           category={category}
           onRefresh={onRefresh}
           onEdit={onEdit}
+          onAddSubCategory={onAddSubCategory}
+          onAddVariation={onAddVariation}
         />
       ))}
     </div>
@@ -72,13 +76,17 @@ interface CategoryNodeProps {
   level?: number;
   onRefresh: () => void;
   onEdit?: (category: Category) => void;
+  onAddSubCategory?: (category: Category) => void;
+  onAddVariation?: (category: Category) => void;
 }
 
 const CategoryNode: React.FC<CategoryNodeProps> = ({
   category,
   level = 0,
   onRefresh,
-  onEdit
+  onEdit,
+  onAddSubCategory,
+  onAddVariation
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -285,6 +293,25 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
 
           {/* Actions */}
           <div className={`flex items-center gap-2 transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}`}>
+            {/* Bouton d'ajout pour les catégories principales et sous-catégories */}
+            {(level === 0 || level === 1) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (level === 0 && onAddSubCategory) {
+                    onAddSubCategory(category);
+                  } else if (level === 1 && onAddVariation) {
+                    onAddVariation(category);
+                  }
+                }}
+                title={level === 0 ? "Ajouter une sous-catégorie" : "Ajouter une variation"}
+                className="h-9 w-9 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950/50 rounded-lg transition-all duration-200 hover:scale-110"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+
             <Button
               variant="ghost"
               size="icon"
@@ -320,6 +347,8 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
                 level={level + 1}
                 onRefresh={onRefresh}
                 onEdit={onEdit}
+                onAddSubCategory={onAddSubCategory}
+                onAddVariation={onAddVariation}
               />
             ))}
           </div>
