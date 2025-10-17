@@ -32,7 +32,7 @@ import {
 } from "../components/ui/card";
 import { Textarea } from "../components/ui/textarea";
 import { toast } from "sonner";
-import { Category } from '../schemas/category.schema';
+import { Category } from '../types/category.types';
 import { useCategories } from '../contexts/CategoryContext';
 import { useProducts } from '@/hooks/useProducts';
 import subcategoryService from '../services/subcategoryService';
