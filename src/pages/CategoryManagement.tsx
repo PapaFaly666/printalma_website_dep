@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { Category } from '../schemas/category.schema';
 import { useCategories } from '../contexts/CategoryContext';
 import { useProducts } from '@/hooks/useProducts';
+import subcategoryService from '../services/subcategoryService';
 import { Label } from "../components/ui/label";
 import {
   Select,
@@ -169,28 +170,48 @@ const CategoryManagement: React.FC = () => {
     setNewSubCategory({ name: '', description: '' });
   };
 
-  const handleSaveSubCategory = () => {
+  const handleSaveSubCategory = async () => {
     if (!selectedParentCategory || !newSubCategory.name.trim()) return;
 
-    // Logique frontend - à connecter avec le backend plus tard
-    const newSubCategoryData = {
-      name: newSubCategory.name,
-      description: newSubCategory.description,
-      parentId: selectedParentCategory.id,
-      level: 1 // Niveau sous-catégorie
-    };
+    setIsEditing(true);
 
-    console.log('Nouvelle sous-catégorie:', newSubCategoryData);
-    // TODO: Appeler l'API pour créer la sous-catégorie
-    // TODO: Recharger la hiérarchie après création
+    try {
+      // Préparer les données pour l'API
+      const newSubCategoryData = {
+        name: newSubCategory.name.trim(),
+        description: newSubCategory.description?.trim() || '',
+        categoryId: selectedParentCategory.id, // Utiliser categoryId comme attendu par le backend
+        level: 1 // Niveau sous-catégorie
+      };
 
-    // Pour l'instant, on ferme simplement le modal
-    setShowAddSubCategoryModal(false);
-    setNewSubCategory({ name: '', description: '' });
-    setSelectedParentCategory(null);
+      // Appeler le service pour créer la sous-catégorie
+      const result = await subcategoryService.createSubCategoryWithNotification(
+        newSubCategoryData,
+        // Callback de succès
+        (subcategory) => {
+          console.log('Sous-catégorie créée avec succès:', subcategory);
+        },
+        // Callback d'erreur
+        (error) => {
+          console.error('Erreur lors de la création de la sous-catégorie:', error);
+        }
+      );
 
-    // Afficher un message de succès temporaire
-    console.log('Sous-catégorie ajoutée avec succès (mode temporaire)');
+      if (result) {
+        // Recharger les données des catégories
+        refreshData();
+
+        // Fermer le modal et réinitialiser le formulaire
+        setShowAddSubCategoryModal(false);
+        setNewSubCategory({ name: '', description: '' });
+        setSelectedParentCategory(null);
+      }
+    } catch (error) {
+      console.error('Erreur inattendue:', error);
+      toast.error('Erreur lors de la création de la sous-catégorie');
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   // Fonctions pour gérer les variations
@@ -213,30 +234,48 @@ const CategoryManagement: React.FC = () => {
     setVariationsToAdd(variationsToAdd.filter((_, i) => i !== index));
   };
 
-  const handleSaveAllVariations = () => {
+  const handleSaveAllVariations = async () => {
     if (!selectedParentSubCategory || variationsToAdd.length === 0) return;
 
-    // Logique frontend - à connecter avec le backend plus tard
-    variationsToAdd.forEach(variationName => {
-      const newVariationData = {
-        name: variationName,
+    setIsEditing(true);
+
+    try {
+      // Préparer les données pour l'API
+      const variationsData = variationsToAdd.map(variationName => ({
+        name: variationName.trim(),
         parentId: selectedParentSubCategory.id,
         level: 2 // Niveau variation
-      };
-      console.log('Nouvelle variation:', newVariationData);
-    });
+      }));
 
-    // TODO: Appeler l'API pour créer toutes les variations
-    // TODO: Recharger la hiérarchie après création
+      // Appeler le service pour créer les variations en lot
+      const result = await subcategoryService.createVariationsBatchWithNotification(
+        variationsData,
+        // Callback de succès
+        (batchResult) => {
+          console.log('Variations créées avec succès:', batchResult);
+        },
+        // Callback d'erreur
+        (error) => {
+          console.error('Erreur lors de la création des variations:', error);
+        }
+      );
 
-    // Afficher un message de succès temporaire
-    console.log(`${variationsToAdd.length} variation(s) ajoutée(s) avec succès (mode temporaire)`);
+      if (result) {
+        // Recharger les données des catégories
+        refreshData();
 
-    // Fermer le modal et réinitialiser
-    setShowAddVariationModal(false);
-    setVariationsToAdd([]);
-    setCurrentVariationInput('');
-    setSelectedParentSubCategory(null);
+        // Fermer le modal et réinitialiser
+        setShowAddVariationModal(false);
+        setVariationsToAdd([]);
+        setCurrentVariationInput('');
+        setSelectedParentSubCategory(null);
+      }
+    } catch (error) {
+      console.error('Erreur inattendue:', error);
+      toast.error('Erreur lors de la création des variations');
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   const handleVariationInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -2079,9 +2118,16 @@ const CategoryManagement: React.FC = () => {
               type="button"
               className="bg-[#049BE5] hover:bg-[#0378B1] text-white w-full sm:w-auto"
               onClick={handleSaveSubCategory}
-              disabled={!newSubCategory.name.trim()}
+              disabled={!newSubCategory.name.trim() || isEditing}
             >
-              Ajouter la sous-catégorie
+              {isEditing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Création en cours...
+                </>
+              ) : (
+                'Ajouter la sous-catégorie'
+              )}
             </Button>
             <Button
               type="button"
@@ -2168,9 +2214,16 @@ const CategoryManagement: React.FC = () => {
               type="button"
               className="bg-[#049BE5] hover:bg-[#0378B1] text-white w-full sm:w-auto"
               onClick={handleSaveAllVariations}
-              disabled={variationsToAdd.length === 0}
+              disabled={variationsToAdd.length === 0 || isEditing}
             >
-              Ajouter {variationsToAdd.length} variation(s)
+              {isEditing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Création en cours...
+                </>
+              ) : (
+                `Ajouter ${variationsToAdd.length} variation(s)`
+              )}
             </Button>
             <Button
               type="button"
