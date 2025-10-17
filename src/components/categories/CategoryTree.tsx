@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit, Trash2, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Trash2, Plus, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
@@ -33,9 +33,10 @@ interface CategoryTreeProps {
   onEdit?: (category: Category) => void;
   onAddSubCategory?: (category: Category) => void;
   onAddVariation?: (category: Category) => void;
+  onDelete?: (category: Category) => void;
 }
 
-export const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, onRefresh, onEdit, onAddSubCategory, onAddVariation }) => {
+export const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, onRefresh, onEdit, onAddSubCategory, onAddVariation, onDelete }) => {
   if (categories.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -65,6 +66,7 @@ export const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, onRefres
           onEdit={onEdit}
           onAddSubCategory={onAddSubCategory}
           onAddVariation={onAddVariation}
+          onDelete={onDelete}
         />
       ))}
     </div>
@@ -78,6 +80,7 @@ interface CategoryNodeProps {
   onEdit?: (category: Category) => void;
   onAddSubCategory?: (category: Category) => void;
   onAddVariation?: (category: Category) => void;
+  onDelete?: (category: Category) => void;
 }
 
 const CategoryNode: React.FC<CategoryNodeProps> = ({
@@ -86,7 +89,8 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   onRefresh,
   onEdit,
   onAddSubCategory,
-  onAddVariation
+  onAddVariation,
+  onDelete
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -129,18 +133,9 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     }
   };
 
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    try {
-      await categoryService.deleteCategory(category.id);
-      toast.success('✅ Catégorie supprimée avec succès');
-      onRefresh();
-    } catch (error: any) {
-      console.error('Error deleting category:', error);
-      toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteDialog(false);
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(category);
     }
   };
 
@@ -255,8 +250,9 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
           {/* Expand/Collapse Button */}
           {hasChildren ? (
             <button
-              onClick={() => setExpanded(!expanded)}
-              className="flex-shrink-0 p-2 hover:bg-[#049BE5]/10 dark:hover:bg-[#049BE5]/20 rounded-lg transition-all duration-200 group-hover:scale-110"
+              onClick={() => !isDeleting && setExpanded(!expanded)}
+              className="flex-shrink-0 p-2 hover:bg-[#049BE5]/10 dark:hover:bg-[#049BE5]/20 rounded-lg transition-all duration-200 group-hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isDeleting}
             >
               {expanded ? (
                 <ChevronDown className="h-4 w-4 text-[#049BE5] dark:text-[#049BE5]" />
@@ -307,6 +303,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
                 }}
                 title={level === 0 ? "Ajouter une sous-catégorie" : "Ajouter une variation"}
                 className="h-9 w-9 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950/50 rounded-lg transition-all duration-200 hover:scale-110"
+                disabled={isDeleting}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -322,6 +319,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
               }}
               title="Modifier"
               className="h-9 w-9 hover:bg-[#049BE5]/10 hover:text-[#049BE5] dark:hover:bg-[#049BE5]/20 rounded-lg transition-all duration-200 hover:scale-110"
+              disabled={isDeleting}
             >
               <Edit className="h-4 w-4" />
             </Button>
@@ -331,8 +329,13 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
               onClick={() => setShowDeleteDialog(true)}
               title="Supprimer"
               className="h-9 w-9 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 rounded-lg transition-all duration-200 hover:scale-110"
+              disabled={isDeleting}
             >
-              <Trash2 className="h-4 w-4" />
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
@@ -349,6 +352,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
                 onEdit={onEdit}
                 onAddSubCategory={onAddSubCategory}
                 onAddVariation={onAddVariation}
+                onDelete={onDelete}
               />
             ))}
           </div>

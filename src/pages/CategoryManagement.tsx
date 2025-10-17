@@ -36,6 +36,8 @@ import { Category } from '../types/category.types';
 import { useCategories } from '../contexts/CategoryContext';
 import { useProducts } from '@/hooks/useProducts';
 import subcategoryService from '../services/subcategoryService';
+import categoryDeleteService, { determineCategoryElementType } from '../services/categoryDeleteService';
+import DeleteConfirmDialog from '../components/categories/DeleteConfirmDialog';
 import { Label } from "../components/ui/label";
 import {
   Select,
@@ -110,6 +112,18 @@ const CategoryManagement: React.FC = () => {
     subcategoriesCount: number;
     variationsCount: number;
   } | null>(null);
+
+  // États pour la suppression améliorée
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [elementToDelete, setElementToDelete] = useState<{
+    id: number;
+    name: string;
+    type: 'category' | 'subcategory' | 'variation';
+  } | null>(null);
+  const [deleteUsageInfo, setDeleteUsageInfo] = useState<{
+    productsCount: number;
+  } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   
   // État pour la confirmation de suppression de produit
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
@@ -283,6 +297,61 @@ const CategoryManagement: React.FC = () => {
       e.preventDefault();
       handleAddVariationToList();
     }
+  };
+
+  // Fonctions pour la suppression améliorée
+  const handleDeleteElement = (element: Category) => {
+    const elementType = determineCategoryElementType(element);
+
+    setElementToDelete({
+      id: element.id,
+      name: element.name,
+      type: elementType
+    });
+
+    setDeleteUsageInfo(null);
+    setDeleteError(null);
+    setShowDeleteConfirmDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!elementToDelete) return;
+
+    setDeleteError(null);
+
+    try {
+      await categoryDeleteService.deleteWithNotification(
+        elementToDelete.type,
+        elementToDelete.id,
+        elementToDelete.name,
+        // Callback succès
+        () => {
+          refreshData();
+          setShowDeleteConfirmDialog(false);
+          setElementToDelete(null);
+        },
+        // Callback erreur
+        (result) => {
+          if (result.details?.productsCount && result.details.productsCount > 0) {
+            setDeleteUsageInfo({
+              productsCount: result.details.productsCount
+            });
+          } else {
+            setDeleteError(result.message || result.error || 'Erreur lors de la suppression');
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Erreur inattendue lors de la suppression:', error);
+      setDeleteError('Erreur lors de la suppression');
+    }
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteConfirmDialog(false);
+    setElementToDelete(null);
+    setDeleteUsageInfo(null);
+    setDeleteError(null);
   };
 
   
@@ -1795,6 +1864,7 @@ const CategoryManagement: React.FC = () => {
                   onRefresh={loadHierarchy}
                   onAddSubCategory={handleAddSubCategory}
                   onAddVariation={handleAddVariation}
+                  onDelete={handleDeleteElement}
                 />
               )}
             </div>
@@ -2241,6 +2311,17 @@ const CategoryManagement: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialogue de confirmation de suppression amélioré */}
+      <DeleteConfirmDialog
+        isOpen={showDeleteConfirmDialog}
+        onClose={handleCloseDeleteDialog}
+        onConfirm={handleConfirmDelete}
+        element={elementToDelete || { id: 0, name: '', type: 'category' }}
+        usageInfo={deleteUsageInfo}
+        loading={isDeleting}
+        error={deleteError}
+      />
     </div>
   );
 };
