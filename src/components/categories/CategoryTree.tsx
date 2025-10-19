@@ -8,6 +8,7 @@ import { Textarea } from '../ui/textarea';
 import { toast } from 'sonner';
 import categoryService from '../../services/categoryService';
 import { Category } from '../../types/category.types';
+import { ProductCountBadge } from '../category/ProductCountBadge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -278,6 +279,11 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
                   {childCount}
                 </span>
               )}
+              {/* Badge de comptage des produits liés */}
+              <ProductCountBadge
+                id={category.id}
+                type={level === 0 ? 'category' : level === 1 ? 'subcategory' : 'variation'}
+              />
             </div>
 
             {category.description && (

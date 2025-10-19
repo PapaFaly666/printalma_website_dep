@@ -38,6 +38,7 @@ import { useProducts } from '@/hooks/useProducts';
 import subcategoryService from '../services/subcategoryService';
 import categoryDeleteService, { determineCategoryElementType } from '../services/categoryDeleteService';
 import DeleteConfirmDialog from '../components/categories/DeleteConfirmDialog';
+import { ProductCountBadge, DeleteCategoryButton } from '../components/category';
 import { Label } from "../components/ui/label";
 import {
   Select,

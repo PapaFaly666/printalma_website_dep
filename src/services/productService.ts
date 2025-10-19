@@ -363,11 +363,12 @@ export class ProductService {
           value: variation.value || variation.name,      // ← Valeur (ex: "Rouge")
           price: variation.price,
           stock: variation.stock,
-          colorCode: variation.colorCode
+          colorCode: variation.colorCode,
+          images: variation.images || []  // ✅ CONSERVER les images
         }));
       };
 
-      // ✅ CONSTRUCTION DU PAYLOAD CORRECT
+      // ✅ CONSTRUCTION DU PAYLOAD CORRECT SELON DOCUMENTATION BACKEND
       const backendProductData = {
         name: productData.name,
         description: productData.description,
@@ -378,13 +379,22 @@ export class ProductService {
 
         // ✅ CATÉGORIES CORRECTES
         categoryId: parseInt(productData.categoryId),
-        subcategoryId: productData.subcategoryId,
+        subCategoryId: productData.subcategoryId, // ✅ CORRECTION: subCategoryId avec C majuscule
 
-        // ✅ VARIATIONS AU FORMAT CORRECT
-        variations: prepareVariationsForAPI(productData.variations || []),
-
-        // ✅ SUPPRIMER colorVariations (format incorrect pour l'API)
-        // colorVariations: [...]  ← ❌ FORMAT INCORRECT À SUPPRIMER
+        // ✅ CORRECTION: colorVariations au lieu de variations
+        colorVariations: prepareVariationsForAPI(productData.variations || []).map(variation => ({
+          variationId: variation.variationId, // ✅ AJOUTER variationId pour le backend
+          name: variation.value, // Le nom de la couleur
+          colorCode: variation.colorCode,
+          price: variation.price,
+          stock: variation.stock,
+          // ✅ RÉINTÉGRER les fileId pour que le backend puisse faire le mapping
+          images: (variation.images || []).map(img => ({
+            fileId: img.fileId, // ✅ Garder le fileId pour le mapping backend
+            view: img.view || 'Front',
+            delimitations: img.delimitations || []
+          }))
+        })),
 
         // ✅ AUTRES CHAMPS
         genre: productData.genre,
@@ -393,34 +403,54 @@ export class ProductService {
       };
 
       console.log('🔧 [FINAL] Payload pour API:', backendProductData);
-      console.log('🔧 [FINAL] Variations formatées:', backendProductData.variations);
+      console.log('🔧 [FINAL] ColorVariations formatées:', backendProductData.colorVariations);
 
       console.log('🔧 [DEBUG] backendProductData final:', {
         name: backendProductData.name,
         categoryId: backendProductData.categoryId,
-        subcategoryId: backendProductData.subcategoryId,
-        variationsCount: backendProductData.variations?.length || 0
+        subCategoryId: backendProductData.subCategoryId,
+        colorVariationsCount: backendProductData.colorVariations?.length || 0
       });
       
       console.log('🔍 [DEBUG] Structure backendProductData:', JSON.stringify(backendProductData, null, 2));
       console.log('🔍 [DEBUG] Genre dans backendProductData:', backendProductData.genre);
       
-      // ✅ FORMDATA SIMPLE ET CORRECT
+      // ✅ FORMDATA AVEC NOMMAGE CORRECT DES FICHIERS
       const formData = new FormData();
+
+      // ✅ CRÉER UN MAPPING DES FILEID VERS LES FICHIERS
+      const fileMap: { [key: string]: File } = {};
+
+      // Parcourir les variations pour extraire les fileId et associer les fichiers
+      productData.variations?.forEach((variation: any) => {
+        variation.images?.forEach((img: any) => {
+          const fileId = img.fileId;
+          // Associer le fichier correspondant (premier fichier disponible pour ce fileId)
+          const file = imageFiles.find(f => f.name.includes(fileId)) || imageFiles[0];
+          if (file && !fileMap[fileId]) { // Éviter les doublons
+            fileMap[fileId] = file;
+            console.log(`📎 [MAPPING] fileId: ${fileId} -> fichier: ${file.name}`);
+          }
+        });
+      });
+
+      // ✅ AJOUT DES FICHIERS AVEC LEUR FILEID COMME NOM DE CHAMP
+      Object.entries(fileMap).forEach(([fileId, file]) => {
+        console.log(`📎 [FINAL] Ajout fichier avec fileId ${fileId}:`, file.name);
+        formData.append(fileId, file); // ✅ Nommer avec le fileId au lieu de "images"
+      });
 
       // CRITICAL: productData doit être un string JSON
       formData.append('productData', JSON.stringify(backendProductData));
-
-      // ✅ AJOUT DES IMAGES (format simple)
-      imageFiles.forEach((file: File, index: number) => {
-        console.log(`📎 [FINAL] Ajout image ${index}:`, file.name);
-        formData.append('images', file);
-      });
       
       console.log('🔍 [DEBUG] FormData contents:');
       for (const [key, value] of formData.entries()) {
         if (value instanceof File) {
-          console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
+          if (key === 'productData') {
+            console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
+          } else {
+            console.log(`  ${key} (fileId): File(${value.name}, ${value.size} bytes)`);
+          }
         } else {
           console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) + '...' : value}`);
         }
