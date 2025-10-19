@@ -102,11 +102,12 @@ async function testBackendConnection() {
  * 🔧 Fonction pour extraire les IDs (categoryId, subCategoryId, variationId)
  * depuis le format UI: ["Category > SubCategory > Variation"]
  *
- * Basée sur selection.md
+ * Basée sur la documentation API - Version améliorée
  */
 const extractCategoryIds = async (categories: string[]) => {
   // Si aucune catégorie sélectionnée
   if (categories.length === 0) {
+    console.warn('⚠️ Aucune catégorie sélectionnée');
     return { categoryId: null, subCategoryId: null, variationId: null };
   }
 
@@ -119,42 +120,89 @@ const extractCategoryIds = async (categories: string[]) => {
   if (parts.length !== 3) {
     console.warn('⚠️ Format de catégorie invalide:', categoryString);
     console.warn('   Format attendu: "Category > SubCategory > Variation"');
+    console.warn('   Format reçu:', parts.length, 'parties:', parts);
     return { categoryId: null, subCategoryId: null, variationId: null };
   }
 
   const [categoryName, subCategoryName, variationName] = parts;
 
   try {
-    console.log('🔍 Extraction des IDs depuis:', { categoryName, subCategoryName, variationName });
+    console.log('🔍 [EXTRACT] Extraction des IDs depuis:', { categoryName, subCategoryName, variationName });
+    console.log('🌐 [EXTRACT] URL Backend:', BACKEND_URL);
 
-    // 1. Trouver la catégorie par nom
-    const allCategories = await categoryRealApi.getCategories();
-    const category = allCategories.find(c => c.name === categoryName);
+    // 1. Trouver la catégorie par nom via API
+    const categoriesResponse = await fetch(`${BACKEND_URL}/categories`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!categoriesResponse.ok) {
+      throw new Error(`Erreur chargement catégories: ${categoriesResponse.status}`);
+    }
+
+    const allCategories = await categoriesResponse.json();
+    console.log('📋 [EXTRACT] Catégories disponibles:', allCategories.map(c => ({ id: c.id, name: c.name })));
+
+    const category = allCategories.find((c: any) => c.name === categoryName);
 
     if (!category) {
       console.error('❌ Catégorie introuvable:', categoryName);
+      console.error('   Catégories disponibles:', allCategories.map((c: any) => c.name));
       return { categoryId: null, subCategoryId: null, variationId: null };
     }
 
     console.log('✅ Catégorie trouvée:', { id: category.id, name: category.name });
 
-    // 2. Trouver la sous-catégorie par nom
-    const allSubCategories = await categoryRealApi.getSubCategories(category.id);
-    const subCategory = allSubCategories.find(sc => sc.name === subCategoryName);
+    // 2. Trouver la sous-catégorie par nom via API
+    const subCategoriesResponse = await fetch(`${BACKEND_URL}/sub-categories?categoryId=${category.id}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!subCategoriesResponse.ok) {
+      throw new Error(`Erreur chargement sous-catégories: ${subCategoriesResponse.status}`);
+    }
+
+    const allSubCategories = await subCategoriesResponse.json();
+    console.log('📋 [EXTRACT] Sous-catégories disponibles:', allSubCategories.map((sc: any) => ({ id: sc.id, name: sc.name })));
+
+    const subCategory = allSubCategories.find((sc: any) => sc.name === subCategoryName);
 
     if (!subCategory) {
       console.error('❌ Sous-catégorie introuvable:', subCategoryName);
+      console.error('   Sous-catégories disponibles:', allSubCategories.map((sc: any) => sc.name));
       return { categoryId: category.id, subCategoryId: null, variationId: null };
     }
 
     console.log('✅ Sous-catégorie trouvée:', { id: subCategory.id, name: subCategory.name });
 
-    // 3. Trouver la variation par nom
-    const allVariations = await categoryRealApi.getVariations(subCategory.id);
-    const variation = allVariations.find(v => v.name === variationName);
+    // 3. Trouver la variation par nom via API
+    const variationsResponse = await fetch(`${BACKEND_URL}/variations?subCategoryId=${subCategory.id}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!variationsResponse.ok) {
+      throw new Error(`Erreur chargement variations: ${variationsResponse.status}`);
+    }
+
+    const allVariations = await variationsResponse.json();
+    console.log('📋 [EXTRACT] Variations disponibles:', allVariations.map((v: any) => ({ id: v.id, name: v.name })));
+
+    const variation = allVariations.find((v: any) => v.name === variationName);
 
     if (!variation) {
       console.error('❌ Variation introuvable:', variationName);
+      console.error('   Variations disponibles:', allVariations.map((v: any) => v.name));
       return { categoryId: category.id, subCategoryId: subCategory.id, variationId: null };
     }
 
@@ -166,13 +214,39 @@ const extractCategoryIds = async (categories: string[]) => {
       variationId: variation.id
     };
 
-    console.log('✅ IDs extraits avec succès:', result);
+    console.log('✅ [EXTRACT] IDs extraits avec succès:', result);
 
     return result;
 
   } catch (error) {
     console.error('❌ Erreur lors de l\'extraction des IDs:', error);
     return { categoryId: null, subCategoryId: null, variationId: null };
+  }
+};
+
+/**
+ * 🧪 Fonction de test pour valider le système d'affectation des catégories
+ * Peut être utilisée dans la console du navigateur pour tester
+ */
+export const testCategoryExtraction = async (testCategoryString: string) => {
+  console.log('🧪 [TEST] Test d\'extraction de catégories...');
+  console.log('📝 [TEST] Input:', testCategoryString);
+
+  try {
+    const result = await extractCategoryIds([testCategoryString]);
+    console.log('✅ [TEST] Résultat:', result);
+
+    // Validation du résultat
+    if (result.categoryId && result.subCategoryId && result.variationId) {
+      console.log('🎉 [TEST] SUCCÈS - Tous les IDs extraits');
+    } else {
+      console.warn('⚠️ [TEST] ÉCHEC - IDs manquants');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('❌ [TEST] Erreur:', error);
+    return null;
   }
 };
 
@@ -946,18 +1020,27 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         break;
       
       case 3:
-        // ✅ Accepter soit categoryId (ancien système) soit categories (nouveau système)
+        // ✅ Validation améliorée des catégories avec extraction des IDs
         console.log('🔍 [DEBUG validateStep] Validation étape 3:', {
           categoryId: formData.categoryId,
           categories: formData.categories,
           categoriesLength: formData.categories?.length
         });
 
-        if (!formData.categoryId && (!formData.categories || formData.categories.length === 0)) {
+        if (!formData.categories || formData.categories.length === 0) {
           errors.push('Une catégorie est requise');
-          console.log('❌ [DEBUG validateStep] Validation échouée: aucune catégorie');
+          console.log('❌ [DEBUG validateStep] Validation échouée: aucune catégorie sélectionnée');
         } else {
-          console.log('✅ [DEBUG validateStep] Validation passée pour les catégories');
+          // Validation du format "Category > SubCategory > Variation"
+          const categoryString = formData.categories[0];
+          const parts = categoryString.split(' > ').map(p => p.trim());
+
+          if (parts.length !== 3) {
+            errors.push('Format de catégorie invalide. Format attendu: "Catégorie > Sous-catégorie > Variation"');
+            console.log('❌ [DEBUG validateStep] Format invalide:', categoryString);
+          } else {
+            console.log('✅ [DEBUG validateStep] Format de catégorie valide:', categoryString);
+          }
         }
 
         if (formData.sizes.length === 0) errors.push('Au moins une taille requise');
@@ -1060,7 +1143,8 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   
   // Envoie tous les champs attendus, pas juste les modifiés
   const allowedFields = [
-    'name', 'description', 'price', 'suggestedPrice', 'stock', 'status', 'categories', 'sizes', 'genre', 'colorVariations'
+    'name', 'description', 'price', 'suggestedPrice', 'stock', 'status',
+    'categoryId', 'subCategoryId', 'variationId', 'categories', 'sizes', 'genre', 'colorVariations'
   ];
   const payload: any = {};
   for (const key of allowedFields) {
@@ -1098,6 +1182,21 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     console.error('❌ Erreur normalisation sizes:', error);
   }
   
+  // ✅ Validation et formatage des IDs de catégories (priorité haute)
+  console.log('🔧 [PAYLOAD] Traitement des IDs de catégories...');
+  if (payload.categoryId !== undefined && payload.categoryId !== null) {
+    payload.categoryId = parseInt(payload.categoryId);
+    console.log('✅ [PAYLOAD] categoryId formaté:', payload.categoryId);
+  }
+  if (payload.subCategoryId !== undefined && payload.subCategoryId !== null) {
+    payload.subCategoryId = parseInt(payload.subCategoryId);
+    console.log('✅ [PAYLOAD] subCategoryId formaté:', payload.subCategoryId);
+  }
+  if (payload.variationId !== undefined && payload.variationId !== null) {
+    payload.variationId = parseInt(payload.variationId);
+    console.log('✅ [PAYLOAD] variationId formaté:', payload.variationId);
+  }
+
   // Force status en MAJUSCULES
   if (payload.status && typeof payload.status === 'string') {
     payload.status = payload.status.toUpperCase();
@@ -1182,6 +1281,127 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   
   console.log('🔧 Payload final keys:', Object.keys(payload));
   return payload;
+};
+
+/**
+ * 🔧 FONCTION DE NORMALISATION POUR LA CRÉATION DE PRODUIT
+ * Corrige le format des catégories selon la documentation API
+ */
+const normalizeProductDataForCreation = (formData: any) => {
+  console.log('🔧 [NORMALIZATION] Début de la normalisation des données produit...');
+  console.log('🔍 [NORMALIZATION] Données brutes reçues:', {
+    name: formData.name,
+    categories: formData.categories,
+    categoryId: formData.categoryId,
+    subCategoryId: formData.subCategoryId,
+    variationId: formData.variationId
+  });
+
+  // Utiliser les IDs extraits ou extraire depuis le format "Category > SubCategory > Variation"
+  let categoryId = formData.categoryId;
+  let subCategoryId = formData.subCategoryId;
+  let variationId = formData.variationId;
+
+  // Si les IDs ne sont pas définis, essayer de les extraire depuis categories
+  if ((!categoryId || !subCategoryId || !variationId) && formData.categories && formData.categories.length > 0) {
+    console.log('🔄 [NORMALIZATION] Extraction des IDs depuis le format catégories...');
+
+    const categoryString = formData.categories[0];
+    const parts = categoryString.split(' > ').map(p => p.trim());
+
+    if (parts.length === 3) {
+      console.log('📋 [NORMALIZATION] Format détecté, parties:', parts);
+      // Les IDs seront extraits plus tard dans handleSubmit via extractCategoryIds
+    } else {
+      console.warn('⚠️ [NORMALIZATION] Format de catégorie invalide:', categoryString);
+    }
+  }
+
+  // Étape 1: Construire les données de base normalisées
+  const normalizedData: any = {
+    name: formData.name,
+    description: formData.description,
+    price: formData.price,
+    suggestedPrice: formData.suggestedPrice,
+    stock: formData.stock,
+    status: formData.status || 'DRAFT',
+    genre: formData.genre || 'UNISEXE',
+    isReadyProduct: true,
+    sizes: formData.sizes || []
+  };
+
+  // Étape 2: Ajouter les IDs de catégories avec les bons noms de champs
+  if (categoryId) {
+    normalizedData.categoryId = parseInt(categoryId);
+    console.log('✅ [NORMALIZATION] categoryId ajouté:', normalizedData.categoryId);
+  }
+
+  if (subCategoryId) {
+    normalizedData.subcategoryId = parseInt(subCategoryId);
+    console.log('✅ [NORMALIZATION] subcategoryId ajouté:', normalizedData.subcategoryId);
+  }
+
+  if (variationId) {
+    normalizedData.variationId = parseInt(variationId);
+    console.log('✅ [NORMALIZATION] variationId ajouté:', normalizedData.variationId);
+  }
+
+  // Étape 3: Préparer les variations de couleur (colorVariations)
+  if (formData.colorVariations && Array.isArray(formData.colorVariations)) {
+    console.log('🎨 [NORMALIZATION] Traitement des variations de couleur:', formData.colorVariations.length);
+
+    // Garder colorVariations pour la compatibilité
+    normalizedData.colorVariations = formData.colorVariations.map((colorVar: any) => ({
+      name: colorVar.name,
+      colorCode: colorVar.colorCode,
+      images: colorVar.images || [],
+      stock: colorVar.stock || {}
+    }));
+
+    // Créer le tableau variations pour l'API
+    normalizedData.variations = formData.colorVariations.map((colorVar: any) => {
+      const variation: any = {
+        value: colorVar.name,
+        colorCode: colorVar.colorCode,
+        images: colorVar.images || []
+      };
+
+      // Ajouter l'ID de variation si disponible
+      if (variationId) {
+        variation.variationId = parseInt(variationId);
+      }
+
+      // Ajouter le prix spécifique à cette variation si différent
+      if (colorVar.price && colorVar.price !== formData.price) {
+        variation.price = colorVar.price;
+      }
+
+      // Calculer le stock total pour cette variation
+      if (colorVar.stock && typeof colorVar.stock === 'object') {
+        variation.stock = Object.values(colorVar.stock).reduce((sum: number, stock: any) => sum + (stock || 0), 0);
+      }
+
+      return variation;
+    });
+
+    console.log('✅ [NORMALIZATION] Variations préparées:', normalizedData.variations.length);
+  }
+
+  // Nettoyer les champs indésirables
+  delete normalizedData.categories; // Supprimer le format string
+  delete normalizedData.subCategoryId; // Supprimer l'ancien format
+  delete normalizedData.variationId; // Supprimer l'ancien format
+
+  console.log('🎯 [NORMALIZATION] Données final normalisées:', {
+    name: normalizedData.name,
+    categoryId: normalizedData.categoryId,
+    subcategoryId: normalizedData.subcategoryId,
+    variationId: normalizedData.variationId,
+    hasVariations: normalizedData.variations?.length > 0,
+    variationsCount: normalizedData.variations?.length || 0
+  });
+
+  return normalizedData;
 };
 
   // Upload une image couleur locale sur le backend et retourne { url, publicId }
@@ -1479,37 +1699,188 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
         toast.error(e.message || 'Erreur lors de la sauvegarde');
       }
     } else {
-      // ✅ EXTRACTION DES IDS depuis le format "Category > SubCategory > Variation"
-      console.log('📋 Catégories sélectionnées:', formData.categories);
+      // ✅ CRÉATION DE PRODUIT - EXTRACTION DES IDS depuis le format "Category > SubCategory > Variation"
+      console.log('📋 [SUBMIT] Création de produit - Catégories sélectionnées:', formData.categories);
 
+      // Étape 1: Extraire les IDs depuis le format UI
       const { categoryId, subCategoryId, variationId } =
         await extractCategoryIds(formData.categories || []);
 
-      console.log('📋 IDs extraits:', { categoryId, subCategoryId, variationId });
+      console.log('📋 [SUBMIT] IDs extraits:', { categoryId, subCategoryId, variationId });
 
-      // ✅ Mettre à jour formData avec les IDs extraits
-      if (categoryId) {
-        updateFormData('categoryId', categoryId);
-        (formData as any).categoryId = categoryId; // Update immédiat pour submitForm
-      }
-      if (subCategoryId) {
-        (formData as any).subCategoryId = subCategoryId;
-      }
-      if (variationId) {
-        (formData as any).variationId = variationId;
+      // Étape 2: Validation des IDs extraits
+      if (!categoryId || !subCategoryId) {
+        console.error('❌ [SUBMIT] IDs manquants - Création impossible');
+        toast.error('❌ Veuillez sélectionner une catégorie et sous-catégorie valides');
+        return;
       }
 
-      // Debug: Vérifier l'état de formData juste avant submitForm
-      console.log('🔍 [DEBUG handleSubmit] formData juste avant submitForm:', {
-        categoryId: (formData as any).categoryId,
-        subCategoryId: (formData as any).subCategoryId,
-        variationId: (formData as any).variationId,
-        categories: formData.categories,
-        categoriesLength: formData.categories?.length
+      // Étape 3: Préparer les données avec les IDs extraits
+      const formDataWithIds = {
+        ...formData,
+        categoryId: categoryId,
+        subCategoryId: subCategoryId,
+        variationId: variationId
+      };
+
+      console.log('🔍 [SUBMIT] FormData avec IDs:', {
+        categoryId: formDataWithIds.categoryId,
+        subCategoryId: formDataWithIds.subCategoryId,
+        variationId: formDataWithIds.variationId,
+        name: formDataWithIds.name,
+        price: formDataWithIds.price
       });
 
-      // Appeler submitForm avec les IDs maintenant disponibles
-      await submitForm();
+      // Étape 4: Normaliser les données pour l'API selon la documentation
+      const normalizedData = normalizeProductDataForCreation(formDataWithIds);
+
+      console.log('🎯 [SUBMIT] Données normalisées pour création:', {
+        name: normalizedData.name,
+        categoryId: normalizedData.categoryId,
+        subcategoryId: normalizedData.subcategoryId,
+        variationId: normalizedData.variationId,
+        hasVariations: normalizedData.variations?.length > 0
+      });
+
+      // Étape 5: Validation finale avant création
+      if (!normalizedData.categoryId || !normalizedData.subcategoryId) {
+        console.error('❌ [SUBMIT] Données normalisées invalides');
+        toast.error('❌ Erreur dans la préparation des données de catégorie');
+        return;
+      }
+
+      // Étape 6: Créer le produit avec les données normalisées
+      try {
+        console.log('🚀 [SUBMIT] Création du produit avec les données normalisées...');
+
+        // 🔧 SOLUTION DIRECTE : Mettre à jour le formData local ET le state
+        console.log('🔄 [SUBMIT] Mise à jour directe des données...');
+
+        // Mettre à jour le formData local avec les bons IDs
+        const finalFormData = {
+          ...formData,
+          categoryId: categoryId,
+          subCategoryId: subCategoryId,
+          variationId: variationId
+        };
+
+        console.log('✅ [SUBMIT] FormData final préparé:', {
+          categoryId: finalFormData.categoryId,
+          subCategoryId: finalFormData.subCategoryId,
+          variationId: finalFormData.variationId
+        });
+
+        // Mettre à jour le state pour la cohérence (mais ne pas attendre)
+        updateFormData('categoryId', categoryId);
+
+        // Utiliser le service directement avec les données normalisées
+        console.log('🎯 [SUBMIT] Appel direct du service avec les données normalisées...');
+
+        // Construire le payload final selon la documentation
+        const finalPayload = {
+          name: finalFormData.name,
+          description: finalFormData.description,
+          price: finalFormData.price,
+          suggestedPrice: finalFormData.suggestedPrice,
+          stock: finalFormData.stock,
+          status: finalFormData.status,
+
+          // ✅ FORMAT CORRECT : Convertir categoryId en string pour compatibilité
+          categoryId: finalFormData.categoryId.toString(),
+          subcategoryId: finalFormData.subCategoryId ? parseInt(finalFormData.subCategoryId.toString()) : undefined,
+
+          // ✅ VARIATIONS
+          variations: finalFormData.colorVariations.map((color: any): any => ({
+            variationId: finalFormData.variationId ? parseInt(finalFormData.variationId.toString()) : null,
+            value: color.name,
+            colorCode: color.colorCode,
+            price: finalFormData.price,
+            stock: color.stock && typeof color.stock === 'object'
+              ? Object.values(color.stock).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0)
+              : 0,
+            images: color.images.map((image: any) => ({
+              fileId: image.id,
+              view: image.view,
+              delimitations: (image.delimitations || []).map((delim: any) => ({
+                x: delim.x,
+                y: delim.y,
+                width: delim.width,
+                height: delim.height,
+                rotation: delim.rotation || 0,
+                name: delim.name
+              }))
+            }))
+          })),
+
+          // Autres champs
+          sizes: finalFormData.sizes || [],
+          genre: finalFormData.genre || 'UNISEXE',
+          isReadyProduct: false
+        };
+
+        // Importer directement le service pour contourner le state
+        const { ProductService } = await import('../../services/productService');
+
+        // 🔧 CORRECTION : Extraire correctement les fichiers depuis les variations
+        const files: File[] = [];
+        console.log('🔍 [SUBMIT] Extraction des fichiers depuis les variations...');
+
+        if (finalPayload.variations && Array.isArray(finalPayload.variations)) {
+          finalPayload.variations.forEach((variation: any, variationIndex: number) => {
+            console.log(`🎨 [SUBMIT] Variation ${variationIndex}: ${variation.value}, images: ${variation.images?.length}`);
+
+            if (variation.images && Array.isArray(variation.images)) {
+              variation.images.forEach((image: any, imageIndex: number) => {
+                // Chercher le fichier dans le formData original
+                const originalColor = finalFormData.colorVariations.find((c: any) => c.name === variation.value);
+                if (originalColor && originalColor.images && originalColor.images[imageIndex]) {
+                  const originalImage = originalColor.images[imageIndex];
+                  if (originalImage.file && originalImage.file instanceof File) {
+                    files.push(originalImage.file);
+                    console.log(`📎 [SUBMIT] Fichier trouvé: ${originalImage.file.name} (${originalImage.file.size} bytes)`);
+                  } else {
+                    console.warn(`⚠️ [SUBMIT] Pas de fichier pour image ${imageIndex} de variation ${variationIndex}`);
+                  }
+                } else {
+                  console.warn(`⚠️ [SUBMIT] Variation originale non trouvée pour ${variation.value}`);
+                }
+              });
+            }
+          });
+        } else {
+          console.warn('⚠️ [SUBMIT] Aucune variation trouvée dans finalPayload');
+        }
+
+        console.log(`✅ [SUBMIT] Total fichiers extraits: ${files.length}`);
+
+        console.log('🎯 [SUBMIT] Payload final pour API:', {
+          name: finalPayload.name,
+          categoryId: finalPayload.categoryId,
+          subcategoryId: finalPayload.subcategoryId,
+          hasVariations: finalPayload.variations?.length > 0
+        });
+
+        // Appeler l'API directement
+        const result = await ProductService.createProduct(finalPayload, files);
+
+        if (result.success) {
+          console.log('✅ [SUBMIT] Produit créé avec succès !');
+          console.log('🏷️ [SUBMIT] Vérification des catégories:', {
+            productId: result.data.id,
+            categoryId: result.data.categoryId,
+            categoryName: result.data.category?.name
+          });
+          toast.success('Produit créé avec succès !');
+          resetForm();
+          navigate('/admin/products');
+        } else {
+          throw new Error(result.error || 'Erreur lors de la création');
+        }
+
+      } catch (error) {
+        console.error('❌ [SUBMIT] Erreur lors de la création du produit:', error);
+        toast.error(`❌ Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      }
     }
   };
 

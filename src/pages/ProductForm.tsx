@@ -575,7 +575,7 @@ export default function ProductForm() {
                 price: product.price,
                 stock: product.stock,
                 status: product.status,
-                categories: product.categoryId ? [String(product.categoryId)] : [],
+                categoryId: product.categoryId ? String(product.categoryId) : '',
                 sizes: product.sizes.map(String),
             };
 

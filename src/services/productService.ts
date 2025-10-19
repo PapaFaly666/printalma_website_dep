@@ -7,6 +7,16 @@ export interface Product extends Omit<SchemaProduct, 'colors' | 'sizes'> {
   id: number;
   suggestedPrice?: number;
   genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE';
+  categoryId?: number;
+  subcategoryId?: number;
+  category?: {
+    id: number;
+    name: string;
+  };
+  subcategory?: {
+    id: number;
+    name: string;
+  };
   colorVariations?: Array<{
     id: number;
     name: string;
@@ -40,20 +50,17 @@ export interface CreateProductPayload {
   suggestedPrice?: number;
   stock?: number; // Optionnel avec valeur par défaut 0
   status?: string;
-  // ✅ OBLIGATOIRE: Array de noms de catégories (strings) selon selection.md
-  categories?: string[]; // Ex: ["T-Shirts"] - Array de noms de catégories (OBLIGATOIRE selon backend DTO)
-  // ✅ CORRECTION selon cate.md : Système à 3 niveaux hiérarchiques
-  categoryId?: number; // Niveau 0 - Catégorie principale (ex: Vêtements)
-  subCategoryId?: number; // Niveau 1 - Sous-catégorie (ex: T-Shirts)
-  variationId?: number; // Niveau 2 - Variation (ex: Col V)
-  sizes?: string[]; // Array de noms de tailles
-  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Genre du produit
-  isReadyProduct?: boolean; // Indique si c'est un produit prêt (true) ou un mockup (false)
-  colorVariations?: Array<{
-    name: string;
-    colorCode: string;
-    stockBySize?: { [size: string]: number }; // Stock par taille pour cette couleur (format objet)
-    images: Array<{
+  // ✅ CATÉGORIES: Format correct selon l'API
+  categoryId: string; // Niveau 0 - Catégorie principale (ex: Vêtements) - string pour compatibilité
+  subcategoryId?: number; // Niveau 1 - Sous-catégorie (ex: T-Shirts) - note: subcategoryId sans 'C' majuscule
+  // ✅ VARIATIONS: Format correct selon l'API
+  variations?: Array<{
+    variationId?: number; // Niveau 2 - Variation (ex: Col V)
+    value: string; // Valeur de la variation (ex: "Rouge")
+    price?: number;
+    stock?: number;
+    colorCode?: string;
+    images?: Array<{
       fileId?: string;
       view: string;
       delimitations?: Array<{
@@ -66,6 +73,9 @@ export interface CreateProductPayload {
       }>;
     }>;
   }>;
+  sizes?: string[]; // Array de noms de tailles
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Genre du produit
+  isReadyProduct?: boolean; // Indique si c'est un produit prêt (true) ou un mockup (false)
 }
 
 export interface ProductFile {
@@ -336,70 +346,75 @@ export class ProductService {
         throw new Error('Le nom du produit est requis');
       }
       
-      if (!productData.categories || productData.categories.length === 0) {
-        throw new Error('Au moins une catégorie est requise');
+      if (!productData.categoryId) {
+        throw new Error('Une catégorie est requise');
       }
       
       if (!imageFiles || imageFiles.length === 0) {
         throw new Error('Au moins une image est requise pour créer un produit');
       }
       
-      // Construire la structure en passant par un payload nettoyé/normalisé
-      const cleaned = prepareProductPayload(productData as any);
-      const backendProductData = {
-        name: (cleaned.name || '').trim(),
-        description: cleaned.description || '',
-        price: Number(cleaned.price) || 0,
-        suggestedPrice: typeof cleaned.suggestedPrice === 'number' ? cleaned.suggestedPrice : undefined,
-        stock: Number(cleaned.stock) || 0,
-        status: cleaned.status || 'draft',
-        categories: cleaned.categories,
-        sizes: cleaned.sizes || [],
-        genre: cleaned.genre || 'UNISEXE',
-        isReadyProduct: cleaned.isReadyProduct ?? false,
-        colorVariations: (cleaned.colorVariations || []).map((color: any, colorIndex: number) => ({
-          name: color.name || `Couleur ${colorIndex + 1}`,
-          colorCode: color.colorCode || '#000000',
-          images: (color.images || []).map((image: any, imageIndex: number) => ({
-            fileId: image.fileId || `image_${colorIndex}_${imageIndex}`,
-            view: image.view || 'Front',
-            delimitations: (image.delimitations || []).map((delim: any) => ({
-              x: Number(delim.x) || 0,
-              y: Number(delim.y) || 0,
-              width: Number(delim.width) || 0,
-              height: Number(delim.height) || 0,
-              rotation: Number(delim.rotation) || 0,
-              name: delim.name || undefined,
-              coordinateType: 'PERCENTAGE'
-            }))
-          }))
-        }))
+      // ✅ SOLUTION FINALE : Construire la structure CORRECTE selon la documentation
+      const prepareVariationsForAPI = (variations: any[]) => {
+        if (!variations || variations.length === 0) return [];
+
+        return variations.map((variation: any) => ({
+          variationId: parseInt(variation.variationId),  // ← ID numérique requis
+          value: variation.value || variation.name,      // ← Valeur (ex: "Rouge")
+          price: variation.price,
+          stock: variation.stock,
+          colorCode: variation.colorCode
+        }));
       };
+
+      // ✅ CONSTRUCTION DU PAYLOAD CORRECT
+      const backendProductData = {
+        name: productData.name,
+        description: productData.description,
+        price: productData.price,
+        suggestedPrice: productData.suggestedPrice,
+        stock: productData.stock || 0,
+        status: productData.status || 'published',
+
+        // ✅ CATÉGORIES CORRECTES
+        categoryId: parseInt(productData.categoryId),
+        subcategoryId: productData.subcategoryId,
+
+        // ✅ VARIATIONS AU FORMAT CORRECT
+        variations: prepareVariationsForAPI(productData.variations || []),
+
+        // ✅ SUPPRIMER colorVariations (format incorrect pour l'API)
+        // colorVariations: [...]  ← ❌ FORMAT INCORRECT À SUPPRIMER
+
+        // ✅ AUTRES CHAMPS
+        genre: productData.genre,
+        isReadyProduct: productData.isReadyProduct || false,
+        sizes: productData.sizes || []
+      };
+
+      console.log('🔧 [FINAL] Payload pour API:', backendProductData);
+      console.log('🔧 [FINAL] Variations formatées:', backendProductData.variations);
+
+      console.log('🔧 [DEBUG] backendProductData final:', {
+        name: backendProductData.name,
+        categoryId: backendProductData.categoryId,
+        subcategoryId: backendProductData.subcategoryId,
+        variationsCount: backendProductData.variations?.length || 0
+      });
       
       console.log('🔍 [DEBUG] Structure backendProductData:', JSON.stringify(backendProductData, null, 2));
       console.log('🔍 [DEBUG] Genre dans backendProductData:', backendProductData.genre);
       
-      // Créer FormData selon le format EXACT de la documentation
+      // ✅ FORMDATA SIMPLE ET CORRECT
       const formData = new FormData();
-      
+
       // CRITICAL: productData doit être un string JSON
       formData.append('productData', JSON.stringify(backendProductData));
-      
-      // CRITICAL: Fichiers doivent être nommés exactement "file_${fileId}"
-      let globalImageCounter = 0;
-      backendProductData.colorVariations.forEach((color) => {
-        color.images.forEach((image) => {
-          const fileId = image.fileId;
-          const file = imageFiles?.[globalImageCounter];
-          globalImageCounter += 1;
-          if (file) {
-            const fieldName = `file_${fileId}`;
-            formData.append(fieldName, file);
-            console.log(`📎 [DEBUG] Ajout fichier: ${fieldName} -> ${file.name}`);
-          } else {
-            console.warn(`⚠️ [WARN] Fichier manquant pour ${fileId}`);
-          }
-        });
+
+      // ✅ AJOUT DES IMAGES (format simple)
+      imageFiles.forEach((file: File, index: number) => {
+        console.log(`📎 [FINAL] Ajout image ${index}:`, file.name);
+        formData.append('images', file);
       });
       
       console.log('🔍 [DEBUG] FormData contents:');

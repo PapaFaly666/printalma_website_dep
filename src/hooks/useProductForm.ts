@@ -202,64 +202,61 @@ export const useProductForm = () => {
 
     setLoading(true);
     try {
-      // Envoyer categoryId au lieu du tableau categories
-      console.log(`🔍 [DEBUG] Catégorie sélectionnée (ID):`, formData.categoryId);
+      console.log('🚀 [SUBMIT FORM] Début de la soumission du produit...');
+      console.log('🔍 [DEBUG] FormData reçu:', {
+        name: formData.name,
+        categoryId: formData.categoryId,
+        subCategoryId: (formData as any).subCategoryId,
+        variationId: (formData as any).variationId,
+        categories: formData.categories
+      });
 
-      // ✅ GÉNÉRATION DU CHAMP categories (OBLIGATOIRE selon selection.md)
-      // Le backend attend un array de strings (noms de catégories)
-      const categoriesArray: string[] = [];
+      // 🔧 CORRECTION CRITIQUE : Utiliser les IDs corrects depuis formData
+      // Les IDs devraient déjà être extraits et ajoutés dans ProductFormMain.handleSubmit()
+      const categoryId = formData.categoryId ? parseInt(formData.categoryId.toString()) : null;
+      const subCategoryId = (formData as any).subCategoryId ? parseInt((formData as any).subCategoryId.toString()) : null;
+      const variationId = (formData as any).variationId ? parseInt((formData as any).variationId.toString()) : null;
 
-      // Construire le array de noms depuis formData.categories (format "Category > SubCategory > Variation")
-      if (formData.categories && Array.isArray(formData.categories) && formData.categories.length > 0) {
-        // Si categories existe et contient le format UI complet, extraire seulement le nom de la catégorie principale
-        const categoryString = formData.categories[0];
-        const parts = categoryString.split(' > ').map(p => p.trim());
-
-        // Prendre le premier niveau comme catégorie principale
-        if (parts.length > 0 && parts[0]) {
-          categoriesArray.push(parts[0]);
-          console.log('✅ [DEBUG] Catégorie extraite depuis UI format:', parts[0]);
+      console.log('🔧 [NORMALIZATION] IDs parsés:', {
+        categoryId,
+        subCategoryId,
+        variationId,
+        types: {
+          categoryId: typeof categoryId,
+          subCategoryId: typeof subCategoryId,
+          variationId: typeof variationId
         }
-      } else if (formData.categoryId && availableCategories && availableCategories.length > 0) {
-        // Fallback: Trouver le nom de la catégorie depuis categoryId
-        const foundCategory = availableCategories.find(cat => cat.id === formData.categoryId);
-        if (foundCategory && foundCategory.name) {
-          categoriesArray.push(foundCategory.name);
-          console.log('✅ [DEBUG] Catégorie extraite depuis categoryId:', foundCategory.name);
-        }
-      }
+      });
 
-      // Validation finale du champ categories
-      if (categoriesArray.length === 0) {
-        toast.error('❌ Erreur: Au moins une catégorie est requise');
+      // Validation des IDs obligatoires
+      if (!categoryId) {
+        toast.error('❌ Catégorie requise pour la création du produit');
         setLoading(false);
         return false;
       }
 
-      console.log('📋 [DEBUG] Champ categories généré (array de strings):', categoriesArray);
-
-      // Transformer les données du formulaire pour l'API selon la nouvelle documentation
+      // ✅ CONSTRUCTION DU PAYLOAD CORRECT selon la documentation API
       const apiPayload: CreateProductPayload = {
         name: formData.name,
         description: formData.description,
         price: formData.price,
-        suggestedPrice: formData.suggestedPrice, // ✅ AJOUTÉ: Champ prix suggéré
+        suggestedPrice: formData.suggestedPrice,
         stock: formData.stock,
         status: formData.status,
-        // ✅ OBLIGATOIRE: Array de noms de catégories (strings) selon selection.md
-        categories: categoriesArray,
-        // ✅ CORRECTION: Envoyer les 3 niveaux de catégories selon cate.md
-        categoryId: formData.categoryId, // Catégorie principale (level 0)
-        subCategoryId: (formData as any).subCategoryId || null, // Sous-catégorie (level 1)
-        variationId: (formData as any).variationId || null, // Variation (level 2)
-        sizes: normalizeSizes(formData.sizes || []), // Normalized array of strings
-        genre: formData.genre || 'UNISEXE', // ← NOUVEAU: Ajout du champ genre
-        isReadyProduct: false, // ← NOUVEAU: Force isReadyProduct: false pour les mockups
-        colorVariations: formData.colorVariations.map(color => ({
-          name: color.name,
+
+        // ✅ FORMAT CORRECT : IDs pour les catégories
+        categoryId: categoryId.toString(), // ← string requis pour compatibilité
+        subcategoryId: subCategoryId, // ← nombre entier requis (note: subcategoryId sans 'C' majuscule)
+
+        // ✅ VARIATIONS avec structure correcte
+        variations: formData.colorVariations.map(color => ({
+          variationId: variationId, // ← ID de la variation (peut être null)
+          value: color.name, // ← Nom de la couleur comme valeur
           colorCode: color.colorCode,
-          // ✅ Envoyer stockBySize comme objet (format backend mockup)
-          stockBySize: color.stock || {},
+          price: formData.price, // ← Prix par défaut
+          stock: color.stock && typeof color.stock === 'object'
+            ? Object.values(color.stock).reduce((sum: number, qty: any) => sum + (qty || 0), 0)
+            : 0,
           images: color.images.map(image => ({
             fileId: image.id,
             view: image.view,
@@ -272,8 +269,31 @@ export const useProductForm = () => {
               name: delim.name
             }))
           }))
-        }))
+        })),
+
+        // Autres champs
+        sizes: normalizeSizes(formData.sizes || []),
+        genre: formData.genre || 'UNISEXE',
+        isReadyProduct: false // Pour les mockups admin
       };
+
+      // Supprimer les anciens champs qui ne sont plus nécessaires
+      // Note: ces champs n'existent plus dans le nouvel interface CreateProductPayload
+
+      console.log('🎯 [SUBMIT FORM] Payload final pour création:', {
+        name: apiPayload.name,
+        categoryId: apiPayload.categoryId,
+        subcategoryId: apiPayload.subcategoryId,
+        hasVariations: apiPayload.variations?.length > 0,
+        variationsCount: apiPayload.variations?.length || 0,
+        genre: apiPayload.genre
+      });
+
+      console.log('🏷️ [CATEGORIES] Hiérarchie CORRIGÉE envoyée:', {
+        categoryId: apiPayload.categoryId,     // ✅ Nombre entier
+        subcategoryId: apiPayload.subcategoryId, // ✅ Nombre entier
+        variationId: variationId                // ✅ Nombre entier (si applicable)
+      });
 
       // Préparer les fichiers
       const files: File[] = [];
@@ -285,71 +305,33 @@ export const useProductForm = () => {
         });
       });
 
-      console.log('📋 Données préparées pour l\'API:', {
-        payload: apiPayload,
-        filesCount: files.length
+      console.log('📋 [SUBMIT FORM] Données préparées pour l\'API:', {
+        payloadName: apiPayload.name,
+        filesCount: files.length,
+        variationsCount: apiPayload.variations?.length || 0
       });
-      console.log('🔍 [DEBUG] Genre dans formData:', formData.genre);
-      console.log('🔍 [DEBUG] Genre dans apiPayload:', apiPayload.genre);
-      console.log('🔍 [DEBUG] Prix suggéré:', formData.suggestedPrice);
-      console.log('🔍 [DEBUG] Prix suggéré sera envoyé:', apiPayload.suggestedPrice);
-      // ✅ NOUVEAU: Vérifier les 3 niveaux de catégories
-      console.log('🏷️ [CATEGORIES] Hiérarchie envoyée:', {
-        categoryId: apiPayload.categoryId,
-        subCategoryId: apiPayload.subCategoryId,
-        variationId: apiPayload.variationId
-      });
-      console.log('🔍 [DEBUG] Stock par variation (format objet stockBySize):', apiPayload.colorVariations?.map(c => ({
-        name: c.name,
-        stockBySize: c.stockBySize
-      })));
 
-      // Appeler l'API avec le nouveau format
+      // Appeler l'API avec le format corrigé
       const result = await ProductService.createProduct(apiPayload, files);
 
       if (result.success) {
         const createdProduct = result.data;
-        console.log('✅ [DEBUG] Produit créé:', createdProduct);
+        console.log('✅ [SUBMIT FORM] Produit créé avec succès:', createdProduct);
 
-        // ✅ IMPORTANT: Enregistrer les stocks en base de données
-        if (createdProduct?.id && formData.colorVariations.length > 0) {
-          try {
-            // Préparer les stocks pour l'API stockService
-            const stocksToSave: { colorId: number; sizeName: string; stock: number }[] = [];
+        // Vérifier que les catégories sont correctement liées
+        console.log('🏷️ [SUBMIT FORM] Vérification des catégories dans le produit créé:', {
+          productId: createdProduct.id,
+          categoryId: createdProduct.categoryId,
+          subcategoryId: createdProduct.subcategoryId,
+          categoryName: createdProduct.category?.name,
+          subcategoryName: createdProduct.subcategory?.name
+        });
 
-            formData.colorVariations.forEach((color, colorIndex) => {
-              // Trouver l'ID de la couleur créée dans la réponse du backend
-              const createdColor = createdProduct.colorVariations?.[colorIndex];
-
-              if (createdColor?.id && color.stock) {
-                // Pour chaque taille ayant du stock
-                Object.entries(color.stock).forEach(([sizeName, stockQty]) => {
-                  if (stockQty > 0) {
-                    stocksToSave.push({
-                      colorId: createdColor.id,
-                      sizeName,
-                      stock: stockQty
-                    });
-                  }
-                });
-              }
-            });
-
-            if (stocksToSave.length > 0) {
-              console.log('📦 [DEBUG] Enregistrement des stocks:', stocksToSave);
-              await updateProductStocks(createdProduct.id, stocksToSave);
-              console.log('✅ [DEBUG] Stocks enregistrés avec succès en base de données');
-            }
-          } catch (stockError) {
-            console.error('❌ [ERROR] Erreur lors de l\'enregistrement des stocks:', stockError);
-            toast.warning('Produit créé mais erreur lors de l\'enregistrement des stocks');
-          }
-        }
-
-        toast.success(result.message || 'Produit créé avec succès !');
+        toast.success('Produit créé avec succès !');
         setFormData(initialFormData);
         return true;
       } else {
+        console.error('❌ [SUBMIT FORM] Erreur lors de la création:', result.error);
         const errorMessage = ProductService.handleApiError(new Error(result.error || 'Erreur inconnue'));
         toast.error(errorMessage);
         return false;

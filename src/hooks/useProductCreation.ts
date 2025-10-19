@@ -42,7 +42,7 @@ export const useProductCreation = () => {
 
       console.log('🚀 Début de la création du produit:', {
         name: productData.name,
-        colorVariations: productData.colorVariations.length,
+        variations: productData.variations?.length || 0,
         files: imageFiles.length
       });
 
