@@ -246,7 +246,7 @@ export const useProductForm = () => {
 
         // ✅ FORMAT CORRECT : IDs pour les catégories
         categoryId: categoryId.toString(), // ← string requis pour compatibilité
-        subcategoryId: subCategoryId, // ← nombre entier requis (note: subcategoryId sans 'C' majuscule)
+        subCategoryId: subCategoryId, // ← nombre entier requis (note: subCategoryId avec 'C' majuscule)
 
         // ✅ VARIATIONS avec structure correcte
         variations: formData.colorVariations.map(color => ({
@@ -283,7 +283,7 @@ export const useProductForm = () => {
       console.log('🎯 [SUBMIT FORM] Payload final pour création:', {
         name: apiPayload.name,
         categoryId: apiPayload.categoryId,
-        subcategoryId: apiPayload.subcategoryId,
+        subCategoryId: apiPayload.subCategoryId,
         hasVariations: apiPayload.variations?.length > 0,
         variationsCount: apiPayload.variations?.length || 0,
         genre: apiPayload.genre
@@ -291,7 +291,7 @@ export const useProductForm = () => {
 
       console.log('🏷️ [CATEGORIES] Hiérarchie CORRIGÉE envoyée:', {
         categoryId: apiPayload.categoryId,     // ✅ Nombre entier
-        subcategoryId: apiPayload.subcategoryId, // ✅ Nombre entier
+        subCategoryId: apiPayload.subCategoryId, // ✅ Nombre entier
         variationId: variationId                // ✅ Nombre entier (si applicable)
       });
 
@@ -322,9 +322,9 @@ export const useProductForm = () => {
         console.log('🏷️ [SUBMIT FORM] Vérification des catégories dans le produit créé:', {
           productId: createdProduct.id,
           categoryId: createdProduct.categoryId,
-          subcategoryId: createdProduct.subcategoryId,
+          subCategoryId: createdProduct.subCategoryId,
           categoryName: createdProduct.category?.name,
-          subcategoryName: createdProduct.subcategory?.name
+          subCategoryName: createdProduct.subCategory?.name
         });
 
         toast.success('Produit créé avec succès !');

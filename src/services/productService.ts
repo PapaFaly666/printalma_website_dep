@@ -8,12 +8,12 @@ export interface Product extends Omit<SchemaProduct, 'colors' | 'sizes'> {
   suggestedPrice?: number;
   genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE';
   categoryId?: number;
-  subcategoryId?: number;
+  subCategoryId?: number; // ✅ camelCase correct
   category?: {
     id: number;
     name: string;
   };
-  subcategory?: {
+  subCategory?: {    // ✅ camelCase correct
     id: number;
     name: string;
   };
@@ -50,9 +50,10 @@ export interface CreateProductPayload {
   suggestedPrice?: number;
   stock?: number; // Optionnel avec valeur par défaut 0
   status?: string;
-  // ✅ CATÉGORIES: Format correct selon l'API
-  categoryId: string; // Niveau 0 - Catégorie principale (ex: Vêtements) - string pour compatibilité
-  subcategoryId?: number; // Niveau 1 - Sous-catégorie (ex: T-Shirts) - note: subcategoryId sans 'C' majuscule
+  // ✅ CATÉGORIES: Format correct selon l'API (camelCase NestJS)
+  categoryId: number | string; // Niveau 0 - Catégorie principale (accepte les deux formats)
+  subCategoryId?: number; // Niveau 1 - Sous-catégorie (ex: T-Shirts) - IMPORTANT: camelCase avec C majuscule
+  categories?: string[]; // ✅ Ajout du champ categories pour le backend
   // ✅ VARIATIONS: Format correct selon l'API
   variations?: Array<{
     variationId?: number; // Niveau 2 - Variation (ex: Col V)
@@ -332,7 +333,47 @@ export class ProductService {
     }
   }
 
-  // CRÉER un produit (POST /products) - FORMAT EXACT SELON DOCUMENTATION BACKEND
+  /**
+   * Upload des images vers Cloudinary
+   * Retourne les informations Cloudinary (public_id, secure_url, etc.)
+   */
+  static async uploadImagesToCloudinary(images: File[]): Promise<Array<{
+    secure_url: string;
+    public_id: string;
+    resource_type: string;
+    width: number;
+    height: number;
+  }>> {
+    console.log(`📤 [Cloudinary] Upload de ${images.length} images...`);
+
+    const uploadPromises = images.map(async (image, index) => {
+      const formData = new FormData();
+      formData.append('file', image);
+
+      console.log(`📤 [Cloudinary] Upload image ${index + 1}/${images.length}: ${image.name}`);
+
+      const response = await fetch(`${API_BASE}/cloudinary/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Upload Cloudinary échoué pour ${image.name}: ${errorData.message || response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log(`✅ [Cloudinary] Image ${index + 1} uploadée: ${result.public_id}`);
+      return result;
+    });
+
+    const results = await Promise.all(uploadPromises);
+    console.log('✅ [Cloudinary] Toutes les images uploadées avec succès');
+    return results;
+  }
+
+  // CRÉER un produit (POST /products) - ENVOI DES FICHIERS RÉELS AU BACKEND
   static async createProduct(productData: CreateProductPayload, imageFiles?: File[]): Promise<ServiceResponse<Product>> {
     try {
       console.log('🔄 [ProductService] Création du produit...');
@@ -340,127 +381,85 @@ export class ProductService {
       console.log('🔍 [DEBUG] Images reçues:', imageFiles?.length || 0);
       console.log('🔍 [DEBUG] Genre reçu:', productData.genre);
       console.log('🔍 [DEBUG] Genre sera envoyé:', productData.genre || 'UNISEXE');
-      
+
       // Validation des données obligatoires
       if (!productData.name || productData.name.trim() === '') {
         throw new Error('Le nom du produit est requis');
       }
-      
+
       if (!productData.categoryId) {
         throw new Error('Une catégorie est requise');
       }
-      
+
       if (!imageFiles || imageFiles.length === 0) {
         throw new Error('Au moins une image est requise pour créer un produit');
       }
-      
-      // ✅ SOLUTION FINALE : Construire la structure CORRECTE selon la documentation
-      const prepareVariationsForAPI = (variations: any[]) => {
-        if (!variations || variations.length === 0) return [];
 
-        return variations.map((variation: any) => ({
-          variationId: parseInt(variation.variationId),  // ← ID numérique requis
-          value: variation.value || variation.name,      // ← Valeur (ex: "Rouge")
-          price: variation.price,
-          stock: variation.stock,
-          colorCode: variation.colorCode,
-          images: variation.images || []  // ✅ CONSERVER les images
-        }));
-      };
-
-      // ✅ CONSTRUCTION DU PAYLOAD CORRECT SELON DOCUMENTATION BACKEND
+      // ✅ ÉTAPE 1: Formater les données pour le backend
       const backendProductData = {
         name: productData.name,
         description: productData.description,
-        price: productData.price,
-        suggestedPrice: productData.suggestedPrice,
-        stock: productData.stock || 0,
+        price: Number(productData.price),
+        suggestedPrice: Number(productData.suggestedPrice),
+        stock: Number(productData.stock || 0),
         status: productData.status || 'published',
 
-        // ✅ CATÉGORIES CORRECTES
-        categoryId: parseInt(productData.categoryId),
-        subCategoryId: productData.subcategoryId, // ✅ CORRECTION: subCategoryId avec C majuscule
+        // ✅ CATÉGORIES CORRECTES (camelCase NestJS)
+        categoryId: typeof productData.categoryId === 'string' ? parseInt(productData.categoryId) : productData.categoryId,
+        subCategoryId: productData.subCategoryId,
 
-        // ✅ CORRECTION: colorVariations au lieu de variations
-        colorVariations: prepareVariationsForAPI(productData.variations || []).map(variation => ({
-          variationId: variation.variationId, // ✅ AJOUTER variationId pour le backend
-          name: variation.value, // Le nom de la couleur
-          colorCode: variation.colorCode,
-          price: variation.price,
-          stock: variation.stock,
-          // ✅ RÉINTÉGRER les fileId pour que le backend puisse faire le mapping
-          images: (variation.images || []).map(img => ({
-            fileId: img.fileId, // ✅ Garder le fileId pour le mapping backend
-            view: img.view || 'Front',
-            delimitations: img.delimitations || []
-          }))
-        })),
+        // ✅ REQUIS: categories (array de strings)
+        categories: productData.categories && Array.isArray(productData.categories) && productData.categories.length > 0
+          ? productData.categories
+          : ["Produit"],
+
+        // ✅ CONSTRUCTION DES colorVariations AVEC fileId UNIQUE
+        colorVariations: this.buildColorVariationsWithFileIds(productData.variations || [], imageFiles),
 
         // ✅ AUTRES CHAMPS
-        genre: productData.genre,
+        genre: productData.genre || 'UNISEXE',
         isReadyProduct: productData.isReadyProduct || false,
         sizes: productData.sizes || []
       };
 
       console.log('🔧 [FINAL] Payload pour API:', backendProductData);
-      console.log('🔧 [FINAL] ColorVariations formatées:', backendProductData.colorVariations);
+      console.log('🔧 [FINAL] colorVariations formatées:', backendProductData.colorVariations);
 
-      console.log('🔧 [DEBUG] backendProductData final:', {
-        name: backendProductData.name,
-        categoryId: backendProductData.categoryId,
-        subCategoryId: backendProductData.subCategoryId,
-        colorVariationsCount: backendProductData.colorVariations?.length || 0
-      });
-      
-      console.log('🔍 [DEBUG] Structure backendProductData:', JSON.stringify(backendProductData, null, 2));
-      console.log('🔍 [DEBUG] Genre dans backendProductData:', backendProductData.genre);
-      
-      // ✅ FORMDATA AVEC NOMMAGE CORRECT DES FICHIERS
+      // ✅ ÉTAPE 2: Créer FormData et envoyer les FICHIERS RÉELS au backend
+      // Le backend s'occupera de l'upload sur Cloudinary
+      console.log('📤 [ProductService] Envoi des fichiers au backend...');
+
       const formData = new FormData();
 
-      // ✅ CRÉER UN MAPPING DES FILEID VERS LES FICHIERS
-      const fileMap: { [key: string]: File } = {};
-
-      // Parcourir les variations pour extraire les fileId et associer les fichiers
-      productData.variations?.forEach((variation: any) => {
-        variation.images?.forEach((img: any) => {
-          const fileId = img.fileId;
-          // Associer le fichier correspondant (premier fichier disponible pour ce fileId)
-          const file = imageFiles.find(f => f.name.includes(fileId)) || imageFiles[0];
-          if (file && !fileMap[fileId]) { // Éviter les doublons
-            fileMap[fileId] = file;
-            console.log(`📎 [MAPPING] fileId: ${fileId} -> fichier: ${file.name}`);
-          }
-        });
-      });
-
-      // ✅ AJOUT DES FICHIERS AVEC LEUR FILEID COMME NOM DE CHAMP
-      Object.entries(fileMap).forEach(([fileId, file]) => {
-        console.log(`📎 [FINAL] Ajout fichier avec fileId ${fileId}:`, file.name);
-        formData.append(fileId, file); // ✅ Nommer avec le fileId au lieu de "images"
-      });
-
-      // CRITICAL: productData doit être un string JSON
+      // Ajouter les données du produit en JSON
       formData.append('productData', JSON.stringify(backendProductData));
-      
-      console.log('🔍 [DEBUG] FormData contents:');
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          if (key === 'productData') {
-            console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
-          } else {
-            console.log(`  ${key} (fileId): File(${value.name}, ${value.size} bytes)`);
-          }
-        } else {
-          console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) + '...' : value}`);
+
+      // ✅ ÉTAPE 3: Ajouter les fichiers image réels au FormData
+      // Utiliser les fichiers originaux, le backend s'occupera de l'upload Cloudinary
+      imageFiles.forEach((file: File, index: number) => {
+        // Utiliser le fileId correspondant depuis colorVariations
+        const fileId = this.getFileIdForIndex(backendProductData.colorVariations, index);
+        if (fileId) {
+          formData.append(`file_${fileId}`, file);
+          console.log(`📎 [ProductService] Ajout du fichier: ${file.name} (fileId: ${fileId})`);
         }
-      }
-      
-      // Appel API selon la documentation
-      const response = await fetch(`${API_BASE}/products`, { method: 'POST', credentials: 'include', body: formData });
+      });
+
+      console.log('📦 [ProductService] FormData créé avec fichiers réels pour le backend');
+
+      const response = await fetch(`${API_BASE}/products`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData // Pas de Content-Type, laissé à FormData
+      });
+
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || `Erreur HTTP ${response.status}`);
-      
+
+      if (!response.ok) {
+        console.error('❌ [ProductService] Erreur backend:', data);
+        throw new Error(data.message || `Erreur HTTP ${response.status}`);
+      }
+
       if (data.success && data.data) {
         console.log('✅ [ProductService] Produit créé avec succès');
         return {
@@ -470,8 +469,8 @@ export class ProductService {
         };
       } else if (data.id) {
         console.log('✅ [ProductService] Produit créé avec succès (format direct)');
-      return {
-        success: true,
+        return {
+          success: true,
           data: this.transformProduct(data),
           message: 'Produit créé avec succès'
         };
@@ -485,6 +484,55 @@ export class ProductService {
         error: error instanceof Error ? error.message : 'Erreur inconnue'
       };
     }
+  }
+
+  // ✅ FONCTION UTILITAIRE: Construire colorVariations avec fileId unique
+  private static buildColorVariationsWithFileIds(variations: any[], imageFiles: File[]): any[] {
+    if (!variations || variations.length === 0) return [];
+
+    let fileIndex = 0;
+
+    return variations.map((variation: any) => ({
+      name: variation.value || variation.name,
+      colorCode: variation.colorCode,
+      price: Number(variation.price),
+      stock: Number(variation.stock),
+      images: variation.images?.map((img: any) => {
+        // Générer un fileId unique pour cette image
+        const fileId = `img_${Date.now()}_${fileIndex}`;
+
+        // Avancer l'index des fichiers
+        const currentFileIndex = fileIndex;
+        fileIndex++;
+
+        return {
+          fileId: fileId,           // ✅ ID unique pour faire correspondre avec le fichier
+          view: img.view || 'Front',
+          delimitations: img.delimitations || [],
+          // Garder une référence au fichier original pour debug
+          _fileName: imageFiles[currentFileIndex]?.name || 'unknown',
+          _fileIndex: currentFileIndex
+        };
+      }) || []
+    }));
+  }
+
+  // ✅ FONCTION UTILITAIRE: Obtenir le fileId pour un index de fichier donné
+  private static getFileIdForIndex(colorVariations: any[], fileIndex: number): string | null {
+    let currentIndex = 0;
+
+    for (const variation of colorVariations) {
+      if (variation.images) {
+        for (const image of variation.images) {
+          if (currentIndex === fileIndex) {
+            return image.fileId;
+          }
+          currentIndex++;
+        }
+      }
+    }
+
+    return null;
   }
 
   // SUPPRIMER un produit (DELETE /api/products/:id)

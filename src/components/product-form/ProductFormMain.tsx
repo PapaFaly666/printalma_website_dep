@@ -1327,7 +1327,11 @@ const normalizeProductDataForCreation = (formData: any) => {
     status: formData.status || 'DRAFT',
     genre: formData.genre || 'UNISEXE',
     isReadyProduct: true,
-    sizes: formData.sizes || []
+    sizes: formData.sizes || [],
+    // ✅ REQUIS: categories (array de strings)
+    categories: formData.categories && Array.isArray(formData.categories) && formData.categories.length > 0
+      ? formData.categories
+      : ["Produit"] // Valeur par défaut si pas de catégories
   };
 
   // Étape 2: Ajouter les IDs de catégories avec les bons noms de champs
@@ -1337,8 +1341,8 @@ const normalizeProductDataForCreation = (formData: any) => {
   }
 
   if (subCategoryId) {
-    normalizedData.subcategoryId = parseInt(subCategoryId);
-    console.log('✅ [NORMALIZATION] subcategoryId ajouté:', normalizedData.subcategoryId);
+    normalizedData.subCategoryId = parseInt(subCategoryId);
+    console.log('✅ [NORMALIZATION] subCategoryId ajouté:', normalizedData.subCategoryId);
   }
 
   if (variationId) {
@@ -1387,16 +1391,15 @@ const normalizeProductDataForCreation = (formData: any) => {
     console.log('✅ [NORMALIZATION] Variations préparées:', normalizedData.variations.length);
   }
 
-  // Nettoyer les champs indésirables
-  delete normalizedData.categories; // Supprimer le format string
-  delete normalizedData.subCategoryId; // Supprimer l'ancien format
-  delete normalizedData.variationId; // Supprimer l'ancien format
+  // ✅ NE PLUS SUPPRIMER categories - c'est un champ REQUIS par le backend!
+  // Le backend attend categories comme array de strings (ex: ["Mugs", "Accessoires"])
 
   console.log('🎯 [NORMALIZATION] Données final normalisées:', {
     name: normalizedData.name,
     categoryId: normalizedData.categoryId,
-    subcategoryId: normalizedData.subcategoryId,
+    subCategoryId: normalizedData.subCategoryId,
     variationId: normalizedData.variationId,
+    categories: normalizedData.categories,
     hasVariations: normalizedData.variations?.length > 0,
     variationsCount: normalizedData.variations?.length || 0
   });
@@ -1737,13 +1740,13 @@ const normalizeProductDataForCreation = (formData: any) => {
       console.log('🎯 [SUBMIT] Données normalisées pour création:', {
         name: normalizedData.name,
         categoryId: normalizedData.categoryId,
-        subcategoryId: normalizedData.subcategoryId,
+        subCategoryId: normalizedData.subCategoryId,
         variationId: normalizedData.variationId,
         hasVariations: normalizedData.variations?.length > 0
       });
 
       // Étape 5: Validation finale avant création
-      if (!normalizedData.categoryId || !normalizedData.subcategoryId) {
+      if (!normalizedData.categoryId || !normalizedData.subCategoryId) {
         console.error('❌ [SUBMIT] Données normalisées invalides');
         toast.error('❌ Erreur dans la préparation des données de catégorie');
         return;
@@ -1785,15 +1788,20 @@ const normalizeProductDataForCreation = (formData: any) => {
           stock: finalFormData.stock,
           status: finalFormData.status,
 
-          // ✅ FORMAT CORRECT : Convertir categoryId en string pour compatibilité
-          categoryId: finalFormData.categoryId.toString(),
-          subcategoryId: finalFormData.subCategoryId ? parseInt(finalFormData.subCategoryId.toString()) : undefined,
+          // ✅ FORMAT CORRECT : Utiliser le camelCase correct pour le backend NestJS + types number
+          categoryId: parseInt(finalFormData.categoryId.toString()),
+          subCategoryId: finalFormData.subCategoryId ? parseInt(finalFormData.subCategoryId.toString()) : undefined,
 
-          // ✅ VARIATIONS
+          // ✅ REQUIS: categories (array de strings)
+          categories: finalFormData.categories && Array.isArray(finalFormData.categories) && finalFormData.categories.length > 0
+            ? finalFormData.categories
+            : ["Produit"],
+
+          // ✅ VARIATIONS DE COULEUR (pas de variationId ici!)
           variations: finalFormData.colorVariations.map((color: any): any => ({
-            variationId: finalFormData.variationId ? parseInt(finalFormData.variationId.toString()) : null,
-            value: color.name,
-            colorCode: color.colorCode,
+            // ❌ SUPPRIMÉ: variationId ne doit PAS être dans les variations de couleur
+            value: color.name,        // Nom de la couleur (ex: "Rouge", "Noir")
+            colorCode: color.colorCode, // Code hex (ex: "#FF0000")
             price: finalFormData.price,
             stock: color.stock && typeof color.stock === 'object'
               ? Object.values(color.stock).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0)
@@ -1856,7 +1864,7 @@ const normalizeProductDataForCreation = (formData: any) => {
         console.log('🎯 [SUBMIT] Payload final pour API:', {
           name: finalPayload.name,
           categoryId: finalPayload.categoryId,
-          subcategoryId: finalPayload.subcategoryId,
+          subCategoryId: finalPayload.subCategoryId,
           hasVariations: finalPayload.variations?.length > 0
         });
 
