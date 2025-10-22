@@ -25,6 +25,8 @@ interface VendorProductFromAPI {
   adminValidated?: boolean | null; // null = pas concerné, false = en attente, true = validé
   // ✅ Statut de validation et motif de rejet (exposés côté vendor)
   validationStatus?: string;
+  // ✅ Cacher les badges de validation pour les pages publiques
+  hideValidationBadges?: boolean;
   rejectionReason?: string | null;
   adminProduct?: {
     id: number;
@@ -103,6 +105,7 @@ interface SimpleProductPreviewProps {
   showDelimitations?: boolean;
   onProductClick?: (product: VendorProductFromAPI) => void; // ✅ Callback pour clic sur la card
   showDetailImages?: boolean; // ✅ Mode affichage détails pour wizard
+  hideValidationBadges?: boolean; // ✅ Cacher les badges de validation pour les pages publiques
 }
 
 // Interface pour les métriques d'image (comme dans useFabricCanvas)
@@ -123,7 +126,8 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
   onColorChange,
   showDelimitations = false,
   onProductClick,
-  showDetailImages = false
+  showDetailImages = false,
+  hideValidationBadges = false
 }) => {
   // 🆕 Accès au contexte d'authentification
   const { user } = useAuth();
@@ -653,31 +657,35 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       }`}
       onClick={handleCardClick}
     >
-      {/* ✅ Badge type de produit et validation WIZARD */}
-      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-        <span className={`px-2 py-1 rounded text-xs font-medium ${
-          isWizardProduct
-            ? 'bg-purple-100 text-purple-800 border border-purple-200'
-            : 'bg-blue-100 text-blue-800 border border-blue-200'
-        }`}>
-          {product.adminValidated === true
-            ? (isWizardProduct ? '🎨 Personnalisé' : '🎯 Design')
-            : '⏳ En attente de validation'}
-        </span>
+      {/* ✅ Badge type de produit et validation WIZARD - caché pour les pages publiques */}
+      {!hideValidationBadges && (
+        <>
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+            <span className={`px-2 py-1 rounded text-xs font-medium ${
+              isWizardProduct
+                ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                : 'bg-blue-100 text-blue-800 border border-blue-200'
+            }`}>
+              {product.adminValidated === true
+                ? (isWizardProduct ? '🎨 Personnalisé' : '🎯 Design')
+                : '⏳ En attente de validation'}
+            </span>
 
-        {/* Badge de validation WIZARD supprimé pour éviter la redondance */}
-      </div>
-
-      {/* ✅ Motif de rejet si présent */}
-      {product.rejectionReason && (
-        <div className="absolute top-2 right-2 z-10 max-w-[65%]">
-          <div
-            className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 border border-red-200 shadow-sm overflow-hidden text-ellipsis whitespace-nowrap"
-            title={`Motif du rejet: ${product.rejectionReason}`}
-          >
-            Rejeté: {product.rejectionReason}
+            {/* Badge de validation WIZARD supprimé pour éviter la redondance */}
           </div>
-        </div>
+
+          {/* ✅ Motif de rejet si présent */}
+          {product.rejectionReason && (
+            <div className="absolute top-2 right-2 z-10 max-w-[65%]">
+              <div
+                className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 border border-red-200 shadow-sm overflow-hidden text-ellipsis whitespace-nowrap"
+                title={`Motif du rejet: ${product.rejectionReason}`}
+              >
+                Rejeté: {product.rejectionReason}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ✅ Image du produit selon le type */}

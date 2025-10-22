@@ -1,34 +1,104 @@
-import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Heart, Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-
-interface Article {
-  id: number;
-  title: string;
-  price: string;
-  image: string;
-}
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Search, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import vendorProductsService, { VendorProduct } from '../services/vendorProductsService';
+import { ProductCardWithDesign } from '../components/ProductCardWithDesign';
 
 const FilteredArticlesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const selectedCategory = searchParams.get('category');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('product');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Mock data - 9 products per page
-  const mockProducts: Article[] = Array.from({ length: 9 }, (_, i) => ({
-    id: i + 1,
-    title: `Produit ${i + 1}`,
-    price: 'PRIX',
-    image: '/placeholder-product.jpg'
-  }));
+  // États pour les produits de l'API
+  const [products, setProducts] = useState<VendorProduct[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    hasMore: false
+  });
 
   const themes = ['Amour', 'Otaku', 'Sport', 'HipHop', 'Anniversaire', 'Drôle'];
 
+  // Charger les produits depuis l'API
+  useEffect(() => {
+    const loadProducts = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const searchQuery = selectedCategory || searchTerm || '';
+        const itemsPerPage = 9;
+        const offset = (currentPage - 1) * itemsPerPage;
+
+        console.log('🔍 [FilteredArticlesPage] Recherche:', {
+          category: selectedCategory,
+          searchTerm,
+          searchQuery,
+          page: currentPage,
+          offset
+        });
+
+        const response = await vendorProductsService.searchProducts({
+          search: searchQuery,
+          limit: itemsPerPage,
+          offset
+        });
+
+        if (response.success) {
+          setProducts(response.data);
+          setPagination({
+            total: response.pagination.total,
+            hasMore: response.pagination.hasMore
+          });
+          console.log('✅ [FilteredArticlesPage] Produits chargés:', response.data.length);
+        } else {
+          setError(response.message);
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error('❌ [FilteredArticlesPage] Erreur:', err);
+        setError('Erreur lors du chargement des produits');
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [selectedCategory, searchTerm, currentPage]);
+
+  // Calcul de la pagination
+  const itemsPerPage = 9;
+  const totalPages = Math.ceil(pagination.total / itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header avec catégorie sélectionnée */}
+      {selectedCategory && (
+        <div className="bg-white border-b border-gray-200 py-4">
+          <div className="w-full px-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {selectedCategory}
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Découvrez nos produits personnalisables
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="w-full px-6 py-4">
         <div className="flex gap-6">
           {/* Sidebar */}
@@ -199,42 +269,173 @@ const FilteredArticlesPage: React.FC = () => {
             </div>
 
             {/* Products Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-              {mockProducts.map((product) => (
-                <div key={product.id} className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-shadow border border-gray-200">
-                  <div className="relative bg-gradient-to-br from-pink-500 to-pink-600 aspect-square flex items-center justify-center">
-                    {/* Placeholder X pattern */}
-                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
-                      <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
-                    </svg>
-                    <button className="absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 shadow-md">
-                      <Heart className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-bold italic text-base mb-0.5">{product.title}</h3>
-                    <p className="text-sm font-bold">{product.price} <span className="text-xs font-normal">FCFA</span></p>
-                  </div>
+            <div className="mb-8">
+              {/* Loader */}
+              {loading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                  <span className="ml-3 text-gray-600">Chargement des produits...</span>
                 </div>
-              ))}
+              )}
+
+              {/* Error */}
+              {error && !loading && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                  <p className="font-medium">Erreur</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* No results */}
+              {!loading && !error && products.length === 0 && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                  <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 font-medium">Aucun produit trouvé</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedCategory
+                      ? `Aucun produit pour la catégorie "${selectedCategory}"`
+                      : 'Essayez une autre recherche'}
+                  </p>
+                </div>
+              )}
+
+              {/* Products */}
+              {!loading && !error && products.length > 0 && (
+                <>
+                  <div className="mb-4 text-sm text-gray-600">
+                    {pagination.total} produit{pagination.total > 1 ? 's' : ''} trouvé{pagination.total > 1 ? 's' : ''}
+                    {selectedCategory && ` pour "${selectedCategory}"`}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {products.map((product) => (
+                      <ProductCardWithDesign
+                        key={product.id}
+                        product={product}
+                        onClick={() => {
+                          // Navigation vers la page détails du produit
+                          console.log('Navigation vers détail produit:', product.id);
+                          navigate(`/vendor-product-detail/${product.id}`);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-center gap-3 mb-8">
-              <button className="p-2 hover:bg-gray-100 rounded disabled:opacity-50" disabled>
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button className="w-8 h-8 rounded-full bg-black text-white font-medium text-sm">1</button>
-              <button className="w-8 h-8 rounded hover:bg-gray-100 font-medium text-sm">2</button>
-              <button className="w-8 h-8 rounded hover:bg-gray-100 font-medium text-sm">3</button>
-              <button className="w-8 h-8 rounded hover:bg-gray-100 font-medium text-sm">4</button>
-              <span className="px-1 text-gray-500">...</span>
-              <button className="px-3 py-1.5 text-sm hover:bg-gray-100 rounded font-normal">Derniere page</button>
-              <button className="p-2 hover:bg-gray-100 rounded">
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+            {!loading && !error && products.length > 0 && totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mb-8">
+                {/* Previous button */}
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                {/* Page numbers */}
+                {(() => {
+                  const pages = [];
+                  const maxVisible = 5;
+
+                  if (totalPages <= maxVisible) {
+                    // Show all pages if total is less than max
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => handlePageChange(i)}
+                          className={`w-8 h-8 rounded font-medium text-sm transition-colors ${
+                            currentPage === i
+                              ? 'bg-black text-white'
+                              : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+                  } else {
+                    // Show first page
+                    pages.push(
+                      <button
+                        key={1}
+                        onClick={() => handlePageChange(1)}
+                        className={`w-8 h-8 rounded font-medium text-sm transition-colors ${
+                          currentPage === 1
+                            ? 'bg-black text-white'
+                            : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        1
+                      </button>
+                    );
+
+                    // Show ellipsis if needed
+                    if (currentPage > 3) {
+                      pages.push(
+                        <span key="ellipsis-start" className="px-1 text-gray-500">...</span>
+                      );
+                    }
+
+                    // Show pages around current page
+                    const start = Math.max(2, currentPage - 1);
+                    const end = Math.min(totalPages - 1, currentPage + 1);
+
+                    for (let i = start; i <= end; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => handlePageChange(i)}
+                          className={`w-8 h-8 rounded font-medium text-sm transition-colors ${
+                            currentPage === i
+                              ? 'bg-black text-white'
+                              : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+
+                    // Show ellipsis if needed
+                    if (currentPage < totalPages - 2) {
+                      pages.push(
+                        <span key="ellipsis-end" className="px-1 text-gray-500">...</span>
+                      );
+                    }
+
+                    // Show last page
+                    pages.push(
+                      <button
+                        key={totalPages}
+                        onClick={() => handlePageChange(totalPages)}
+                        className={`w-8 h-8 rounded font-medium text-sm transition-colors ${
+                          currentPage === totalPages
+                            ? 'bg-black text-white'
+                            : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        {totalPages}
+                      </button>
+                    );
+                  }
+
+                  return pages;
+                })()}
+
+                {/* Next button */}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
 
             {/* Tags Section */}
             <div className="mb-8">
@@ -274,9 +475,6 @@ const FilteredArticlesPage: React.FC = () => {
                         <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
                         <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
                       </svg>
-                      <button className="absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 shadow-md">
-                        <Heart className="w-4 h-4 text-gray-600" />
-                      </button>
                     </div>
                   </div>
                 ))}

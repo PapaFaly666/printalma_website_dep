@@ -23,6 +23,7 @@ import ProductAnalytics from './pages/ProductAnalytics';
 import DeletedProducts from './pages/DeletedProducts';
 import ClientManagement from './pages/ClientManagement';
 import { CategoryProvider } from './contexts/CategoryContext';
+import CartProvider from './contexts/CartContext';
 import VendorDashboard from './pages/VendorDashboard';
 // import VendorProductList from './pages/vendor/VendorProductList'; // unused
 import { VendorProductsPage } from './pages/vendor/VendorProductsPage';
@@ -124,6 +125,7 @@ import { VendorValidationDemo } from './pages/vendor/VendorValidationDemo';
 
 // 🆕 Page de détails des produits vendeurs
 import VendorProductDetails from './pages/VendorProductDetails';
+import PublicVendorProductDetailPage from './pages/PublicVendorProductDetailPage';
 
 // Page publique pour afficher les produits d'un thème
 import PublicThemeProductsPage from './pages/ThemeProductsPage';
@@ -185,7 +187,8 @@ function App() {
         <AuthProvider>
           <AuthPersistenceWrapper>
             <CategoryProvider>
-            <Wrapper>
+              <CartProvider>
+                <Wrapper>
               <Routes>
                 {/* Routes publiques */}
                 <Route path='/login' element={
@@ -215,6 +218,7 @@ function App() {
                 <Route path="/product-details" element={<DetailsProduct />} />
                 <Route path="/product/:id" element={<ModernProductDetail />} />
                 <Route path="/vendor-product/:id" element={<VendorProductDetails />} />
+                <Route path="/vendor-product-detail/:id" element={<PublicVendorProductDetailPage />} />
                 <Route path='/filtered-articles' element={<FilteredArticlesPage />} />
                 <Route path='/best-sellers' element={<BestSellersPage />} />
                 <Route path='/vendez-vos-oeuvres' element={<SellDesignPage />} />
@@ -380,7 +384,8 @@ function App() {
                 {/* Confirmation de changement d'email */}
                 <Route path='/confirm-email-change' element={<ConfirmEmailChange />} />
               </Routes>
-            </Wrapper>
+                </Wrapper>
+              </CartProvider>
             </CategoryProvider>
           </AuthPersistenceWrapper>
         </AuthProvider>

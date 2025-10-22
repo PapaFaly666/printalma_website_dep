@@ -168,11 +168,95 @@ class CategoryRealApi {
    * GET /categories/hierarchy
    */
   async getCategoryHierarchy(): Promise<CategoryHierarchy[]> {
-    const response = await axios.get<ApiResponse<CategoryHierarchy[]>>(
-      `${API_BASE}/categories/hierarchy`,
-      { withCredentials: true }
-    );
-    return response.data.data;
+    try {
+      const response = await axios.get(
+        `${API_BASE}/categories/hierarchy`,
+        { withCredentials: true }
+      );
+
+      console.log('🔍 [getCategoryHierarchy] Response brute:', response.data);
+
+      let data: any[] = [];
+
+      // Gérer différents formats de réponse
+      // Format 1: { success: true, data: [...] }
+      if (response.data?.success && response.data?.data) {
+        console.log('✅ Format 1 détecté: { success, data }');
+        data = Array.isArray(response.data.data) ? response.data.data : [];
+      }
+      // Format 2: { data: [...] }
+      else if (response.data?.data) {
+        console.log('✅ Format 2 détecté: { data }');
+        data = Array.isArray(response.data.data) ? response.data.data : [];
+      }
+      // Format 3: [...] (tableau direct)
+      else if (Array.isArray(response.data)) {
+        console.log('✅ Format 3 détecté: tableau direct');
+        data = response.data;
+      }
+      // Format inconnu
+      else {
+        console.warn('⚠️ Format de réponse inconnu:', typeof response.data);
+        console.warn('   Contenu:', response.data);
+        return [];
+      }
+
+      // Vérifier si les données sont déjà hiérarchiques ou plates
+      if (data.length > 0) {
+        const firstItem = data[0];
+        const hasSubCategories = firstItem.subCategories !== undefined;
+        const hasChildren = firstItem.children !== undefined;
+
+        if (hasSubCategories || hasChildren) {
+          console.log('✅ Données déjà hiérarchiques');
+          return data;
+        } else {
+          console.log('🔨 Données plates détectées, construction de la hiérarchie...');
+          return this.buildHierarchyFromFlat(data);
+        }
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error('❌ Erreur getCategoryHierarchy:', error);
+
+      // 🔄 FALLBACK: Si /hierarchy n'existe pas, utiliser /categories
+      if (error.response?.status === 404) {
+        console.warn('⚠️ Endpoint /hierarchy non trouvé, fallback sur /categories');
+        try {
+          const fallbackResponse = await axios.get(
+            `${API_BASE}/categories`,
+            { withCredentials: true }
+          );
+
+          console.log('🔄 [FALLBACK] Response /categories:', fallbackResponse.data);
+
+          let fallbackData: any[] = [];
+
+          // Même logique de parsing
+          if (fallbackResponse.data?.success && fallbackResponse.data?.data) {
+            fallbackData = Array.isArray(fallbackResponse.data.data) ? fallbackResponse.data.data : [];
+          } else if (fallbackResponse.data?.data) {
+            fallbackData = Array.isArray(fallbackResponse.data.data) ? fallbackResponse.data.data : [];
+          } else if (Array.isArray(fallbackResponse.data)) {
+            fallbackData = fallbackResponse.data;
+          }
+
+          // Toujours construire la hiérarchie depuis /categories car c'est une liste plate
+          if (fallbackData.length > 0) {
+            console.log('🔨 Construction de la hiérarchie depuis /categories...');
+            return this.buildHierarchyFromFlat(fallbackData);
+          }
+
+          return [];
+        } catch (fallbackError) {
+          console.error('❌ Erreur fallback /categories:', fallbackError);
+          return [];
+        }
+      }
+
+      return [];
+    }
   }
 
   /**
@@ -363,6 +447,311 @@ class CategoryRealApi {
     });
   }
 
+  /**
+   * 🔧 Helper: Reconstruire la hiérarchie manuellement depuis une liste plate
+   * Utile si le backend ne retourne pas encore une structure hiérarchique
+   */
+  private buildHierarchyFromFlat(flatCategories: any[]): CategoryHierarchy[] {
+    console.log('🔨 [buildHierarchyFromFlat] Construction hiérarchie depuis liste plate');
+
+    // Séparer les catégories par niveau
+    const level0 = flatCategories.filter(c => c.level === 0 || !c.parentId);
+    const level1 = flatCategories.filter(c => c.level === 1 || (c.parentId && c.level !== 2));
+    const level2 = flatCategories.filter(c => c.level === 2);
+
+    // Construire la hiérarchie
+    const hierarchy: CategoryHierarchy[] = level0.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug || this.slugify(cat.name),
+      displayOrder: cat.displayOrder || 0,
+      isActive: cat.isActive !== undefined ? cat.isActive : true,
+      subCategories: level1
+        .filter(sub => sub.parentId === cat.id)
+        .map(sub => ({
+          id: sub.id,
+          name: sub.name,
+          slug: sub.slug || this.slugify(sub.name),
+          categoryId: cat.id,
+          displayOrder: sub.displayOrder || 0,
+          isActive: sub.isActive !== undefined ? sub.isActive : true,
+          variations: level2
+            .filter(v => v.parentId === sub.id)
+            .map(v => ({
+              id: v.id,
+              name: v.name,
+              slug: v.slug || this.slugify(v.name),
+              subCategoryId: sub.id,
+              displayOrder: v.displayOrder || 0,
+              isActive: v.isActive !== undefined ? v.isActive : true
+            }))
+        }))
+    }));
+
+    console.log('✅ Hiérarchie construite:', hierarchy.length, 'catégories racines');
+    return hierarchy;
+  }
+
+  /**
+   * Helper: Générer un slug depuis un nom
+   */
+  private slugify(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  // ==================
+  // Advanced Features (selon documentation)
+  // ==================
+
+  /**
+   * Vérifier si une catégorie peut être supprimée
+   * GET /categories/:id/can-delete
+   */
+  async canDeleteCategory(id: number): Promise<{
+    canDelete: boolean;
+    message: string;
+    productCount?: number;
+    subCategoryCount?: number;
+    blockers?: {
+      products?: string[];
+      subCategories?: string[];
+    };
+  }> {
+    const response = await axios.get(
+      `${API_BASE}/categories/${id}/can-delete`,
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
+  /**
+   * Vérifier si une sous-catégorie peut être supprimée
+   * GET /sub-categories/:id/can-delete
+   */
+  async canDeleteSubCategory(id: number): Promise<{
+    canDelete: boolean;
+    message: string;
+    productCount?: number;
+    variationCount?: number;
+    blockers?: {
+      products?: string[];
+      variations?: string[];
+    };
+  }> {
+    const response = await axios.get(
+      `${API_BASE}/sub-categories/${id}/can-delete`,
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
+  /**
+   * Vérifier si une variation peut être supprimée
+   * GET /variations/:id/can-delete
+   */
+  async canDeleteVariation(id: number): Promise<{
+    canDelete: boolean;
+    message: string;
+    productCount?: number;
+    blockers?: {
+      products?: string[];
+    };
+  }> {
+    const response = await axios.get(
+      `${API_BASE}/variations/${id}/can-delete`,
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
+  /**
+   * Lister les catégories avec pagination et recherche
+   * GET /categories?search=...&isActive=...&includeSubCategories=...&limit=...&offset=...
+   */
+  async getCategoriesWithPagination(params?: {
+    search?: string;
+    isActive?: boolean;
+    includeSubCategories?: boolean;
+    includeVariations?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    items: CategoryResponse[];
+    pagination: {
+      total: number;
+      limit: number;
+      offset: number;
+      hasMore: boolean;
+      totalPages: number;
+      currentPage: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.isActive !== undefined) queryParams.append('isActive', String(params.isActive));
+    if (params?.includeSubCategories) queryParams.append('includeSubCategories', 'true');
+    if (params?.includeVariations) queryParams.append('includeVariations', 'true');
+    if (params?.limit) queryParams.append('limit', String(params.limit));
+    if (params?.offset) queryParams.append('offset', String(params.offset));
+
+    const response = await axios.get(
+      `${API_BASE}/categories?${queryParams.toString()}`,
+      { withCredentials: true }
+    );
+    return response.data.data || response.data;
+  }
+
+  /**
+   * Lister les sous-catégories avec pagination
+   * GET /sub-categories?categoryId=...&search=...&limit=...
+   */
+  async getSubCategoriesWithPagination(params?: {
+    categoryId?: number;
+    search?: string;
+    isActive?: boolean;
+    includeVariations?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    items: SubCategoryResponse[];
+    pagination: {
+      total: number;
+      limit: number;
+      offset: number;
+      hasMore: boolean;
+      totalPages: number;
+      currentPage: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params?.categoryId) queryParams.append('categoryId', String(params.categoryId));
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.isActive !== undefined) queryParams.append('isActive', String(params.isActive));
+    if (params?.includeVariations) queryParams.append('includeVariations', 'true');
+    if (params?.limit) queryParams.append('limit', String(params.limit));
+    if (params?.offset) queryParams.append('offset', String(params.offset));
+
+    const response = await axios.get(
+      `${API_BASE}/sub-categories?${queryParams.toString()}`,
+      { withCredentials: true }
+    );
+    return response.data.data || response.data;
+  }
+
+  /**
+   * Recherche globale dans toute la hiérarchie
+   * GET /categories/search/global?q=...&limit=...
+   */
+  async searchGlobal(query: string, limit: number = 20): Promise<{
+    categories: CategoryResponse[];
+    subCategories: SubCategoryResponse[];
+    variations: VariationResponse[];
+    totalResults: number;
+  }> {
+    const response = await axios.get(
+      `${API_BASE}/categories/search/global?q=${encodeURIComponent(query)}&limit=${limit}`,
+      { withCredentials: true }
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Réordonner plusieurs catégories en lot
+   * POST /categories/bulk/reorder
+   */
+  async bulkReorderCategories(items: Array<{ id: number; displayOrder: number }>): Promise<{
+    success: boolean;
+    message: string;
+    data: { updatedCount: number };
+  }> {
+    const response = await axios.post(
+      `${API_BASE}/categories/bulk/reorder`,
+      { items },
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
+  /**
+   * Réordonner plusieurs sous-catégories en lot
+   * POST /sub-categories/bulk/reorder
+   */
+  async bulkReorderSubCategories(items: Array<{ id: number; displayOrder: number }>): Promise<{
+    success: boolean;
+    message: string;
+    data: { updatedCount: number };
+  }> {
+    const response = await axios.post(
+      `${API_BASE}/sub-categories/bulk/reorder`,
+      { items },
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
+  /**
+   * Réordonner plusieurs variations en lot
+   * POST /variations/bulk/reorder
+   */
+  async bulkReorderVariations(items: Array<{ id: number; displayOrder: number }>): Promise<{
+    success: boolean;
+    message: string;
+    data: { updatedCount: number };
+  }> {
+    const response = await axios.post(
+      `${API_BASE}/variations/bulk/reorder`,
+      { items },
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
+  /**
+   * Activer/Désactiver plusieurs catégories
+   * POST /categories/bulk/toggle-status
+   */
+  async bulkToggleStatusCategories(categoryIds: number[], isActive: boolean): Promise<{
+    success: boolean;
+    message: string;
+    data: { updatedCount: number };
+  }> {
+    const response = await axios.post(
+      `${API_BASE}/categories/bulk/toggle-status`,
+      { categoryIds, isActive },
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
+  /**
+   * Créer plusieurs variations en lot
+   * POST /categories/variations/batch
+   */
+  async createVariationsBatch(variations: Array<{
+    name: string;
+    description?: string;
+    parentId: number; // subCategoryId
+  }>): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      created: VariationResponse[];
+      failed: Array<{ name: string; error: string }>;
+    };
+  }> {
+    const response = await axios.post(
+      `${API_BASE}/categories/variations/batch`,
+      { variations },
+      { withCredentials: true }
+    );
+    return response.data;
+  }
+
   // ==================
   // Helpers
   // ==================
@@ -415,6 +804,33 @@ class CategoryRealApi {
     }
 
     return { category, subCategory, variations };
+  }
+
+  /**
+   * Helper: Obtenir le chemin complet d'une variation (breadcrumb)
+   * Exemple: "Vêtements > T-Shirts > Col V"
+   */
+  async getVariationPath(variationId: number): Promise<string> {
+    const variation = await this.getVariationById(variationId);
+    if (!variation.subCategory) {
+      return variation.name;
+    }
+
+    const subCategory = await this.getSubCategoryById(variation.subCategoryId);
+    const category = await this.getCategoryById(subCategory.categoryId);
+
+    return `${category.name} > ${subCategory.name} > ${variation.name}`;
+  }
+
+  /**
+   * Helper: Obtenir le chemin complet d'une sous-catégorie
+   * Exemple: "Vêtements > T-Shirts"
+   */
+  async getSubCategoryPath(subCategoryId: number): Promise<string> {
+    const subCategory = await this.getSubCategoryById(subCategoryId);
+    const category = await this.getCategoryById(subCategory.categoryId);
+
+    return `${category.name} > ${subCategory.name}`;
   }
 }
 

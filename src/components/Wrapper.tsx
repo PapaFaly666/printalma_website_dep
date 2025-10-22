@@ -3,6 +3,8 @@ import NavBar from "./NavBar";
 import { useLocation } from "react-router-dom";
 import { Toaster as SonnerToaster } from "../components/ui/sonner";
 import { useAuth } from "../contexts/AuthContext";
+import CartSidebar from "./CartSidebar";
+import { useCart } from "../contexts/CartContext";
 
 type WrapperProps = {
   children: React.ReactNode;
@@ -11,6 +13,13 @@ type WrapperProps = {
 const Wrapper = ({ children }: WrapperProps) => {
   const location = useLocation();
   const { isSuperAdmin } = useAuth();
+  const {
+    items,
+    isOpen,
+    removeFromCart,
+    updateQuantity,
+    closeCart
+  } = useCart();
 
   // Liste des routes où le NavBar ne doit PAS apparaître
   const hideNavbarRoutes = ["/admin/products","/admin/dashboard","/admin/payment-requests","/login","/admin/product-form","/admin/categories","/admin/clients","/forgot-password","admin/orders","/admin/orders","/admin/add-product","/admin/design-validation","/admin/product-validation","/admin/vendor-products-admin","/admin/vendor-products/create","/admin/vendor-products","/admin/trash","/admin/design-categories","/admin/users"];
@@ -31,11 +40,24 @@ const Wrapper = ({ children }: WrapperProps) => {
   // Cacher la navbar si la route est dans la liste, si c'est une page de détail produit, si c'est une route vendeur, ou si c'est une route de gestion des thèmes
   const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname) || isProductDetailPage || isAdminProductEditPage || isAdminOrderDetailPage || isVendorRoute || isThemeManagementRoute;
 
+  const handleCheckout = () => {
+    // TODO: Implémenter la logique de checkout
+    console.log('Proceeding to checkout...');
+  };
+
   return (
     <div>
       {!shouldHideNavbar && !isSuperAdmin() && <NavBar />}
       <div>{children}</div>
-      <SonnerToaster 
+      <CartSidebar
+        isOpen={isOpen}
+        onClose={closeCart}
+        items={items}
+        onUpdateQuantity={updateQuantity}
+        onRemoveItem={removeFromCart}
+        onCheckout={handleCheckout}
+      />
+      <SonnerToaster
         position="bottom-right"
         theme="system" // s'adapte automatiquement au mode sombre
         richColors={false} // pour un style plus simple en noir et blanc

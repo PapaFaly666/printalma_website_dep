@@ -98,11 +98,56 @@ async function testBackendConnection() {
   }
 }
 
+// ✅ CACHE GLOBAL pour la hiérarchie des catégories (évite les requêtes répétées)
+let categoryHierarchyCache: any[] | null = null;
+let categoryHierarchyCacheTime: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * 🔧 Fonction pour charger la hiérarchie complète des catégories (avec cache)
+ */
+const loadCategoryHierarchy = async (): Promise<any[]> => {
+  const now = Date.now();
+
+  // Utiliser le cache si disponible et valide
+  if (categoryHierarchyCache && (now - categoryHierarchyCacheTime) < CACHE_DURATION) {
+    console.log('📦 [CACHE] Utilisation du cache de hiérarchie');
+    return categoryHierarchyCache;
+  }
+
+  try {
+    console.log('🌐 [API] Chargement de la hiérarchie depuis:', `${BACKEND_URL}/categories/hierarchy`);
+    const hierarchy = await categoryRealApi.getCategoryHierarchy();
+
+    // ✅ VALIDATION: Vérifier que hierarchy est bien un tableau
+    if (!hierarchy) {
+      console.warn('⚠️ [API] Hiérarchie null ou undefined, retour tableau vide');
+      return [];
+    }
+
+    if (!Array.isArray(hierarchy)) {
+      console.warn('⚠️ [API] Hiérarchie n\'est pas un tableau:', typeof hierarchy);
+      console.warn('   Contenu:', hierarchy);
+      return [];
+    }
+
+    // Mettre en cache
+    categoryHierarchyCache = hierarchy;
+    categoryHierarchyCacheTime = now;
+
+    console.log('✅ [CACHE] Hiérarchie mise en cache:', hierarchy.length, 'catégories');
+    return hierarchy;
+  } catch (error) {
+    console.error('❌ [API] Erreur chargement hiérarchie:', error);
+    return [];
+  }
+};
+
 /**
  * 🔧 Fonction pour extraire les IDs (categoryId, subCategoryId, variationId)
  * depuis le format UI: ["Category > SubCategory > Variation"]
  *
- * Basée sur la documentation API - Version améliorée
+ * VERSION OPTIMISÉE - 1 seule requête API avec cache
  */
 const extractCategoryIds = async (categories: string[]) => {
   // Si aucune catégorie sélectionnée
@@ -128,81 +173,43 @@ const extractCategoryIds = async (categories: string[]) => {
 
   try {
     console.log('🔍 [EXTRACT] Extraction des IDs depuis:', { categoryName, subCategoryName, variationName });
-    console.log('🌐 [EXTRACT] URL Backend:', BACKEND_URL);
 
-    // 1. Trouver la catégorie par nom via API
-    const categoriesResponse = await fetch(`${BACKEND_URL}/categories`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    // 1. Charger la hiérarchie complète (1 seule requête API avec cache)
+    const hierarchy = await loadCategoryHierarchy();
 
-    if (!categoriesResponse.ok) {
-      throw new Error(`Erreur chargement catégories: ${categoriesResponse.status}`);
+    if (!hierarchy || hierarchy.length === 0) {
+      console.error('❌ Hiérarchie vide ou non disponible');
+      return { categoryId: null, subCategoryId: null, variationId: null };
     }
 
-    const allCategories = await categoriesResponse.json();
-    console.log('📋 [EXTRACT] Catégories disponibles:', allCategories.map(c => ({ id: c.id, name: c.name })));
-
-    const category = allCategories.find((c: any) => c.name === categoryName);
+    // 2. Trouver la catégorie par nom
+    const category = hierarchy.find((c: any) => c.name === categoryName);
 
     if (!category) {
       console.error('❌ Catégorie introuvable:', categoryName);
-      console.error('   Catégories disponibles:', allCategories.map((c: any) => c.name));
+      console.error('   Catégories disponibles:', hierarchy.map((c: any) => c.name));
       return { categoryId: null, subCategoryId: null, variationId: null };
     }
 
     console.log('✅ Catégorie trouvée:', { id: category.id, name: category.name });
 
-    // 2. Trouver la sous-catégorie par nom via API
-    const subCategoriesResponse = await fetch(`${BACKEND_URL}/sub-categories?categoryId=${category.id}`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!subCategoriesResponse.ok) {
-      throw new Error(`Erreur chargement sous-catégories: ${subCategoriesResponse.status}`);
-    }
-
-    const allSubCategories = await subCategoriesResponse.json();
-    console.log('📋 [EXTRACT] Sous-catégories disponibles:', allSubCategories.map((sc: any) => ({ id: sc.id, name: sc.name })));
-
-    const subCategory = allSubCategories.find((sc: any) => sc.name === subCategoryName);
+    // 3. Trouver la sous-catégorie dans la hiérarchie
+    const subCategory = category.subCategories?.find((sc: any) => sc.name === subCategoryName);
 
     if (!subCategory) {
       console.error('❌ Sous-catégorie introuvable:', subCategoryName);
-      console.error('   Sous-catégories disponibles:', allSubCategories.map((sc: any) => sc.name));
+      console.error('   Sous-catégories disponibles:', category.subCategories?.map((sc: any) => sc.name) || []);
       return { categoryId: category.id, subCategoryId: null, variationId: null };
     }
 
     console.log('✅ Sous-catégorie trouvée:', { id: subCategory.id, name: subCategory.name });
 
-    // 3. Trouver la variation par nom via API
-    const variationsResponse = await fetch(`${BACKEND_URL}/variations?subCategoryId=${subCategory.id}`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!variationsResponse.ok) {
-      throw new Error(`Erreur chargement variations: ${variationsResponse.status}`);
-    }
-
-    const allVariations = await variationsResponse.json();
-    console.log('📋 [EXTRACT] Variations disponibles:', allVariations.map((v: any) => ({ id: v.id, name: v.name })));
-
-    const variation = allVariations.find((v: any) => v.name === variationName);
+    // 4. Trouver la variation dans la hiérarchie
+    const variation = subCategory.variations?.find((v: any) => v.name === variationName);
 
     if (!variation) {
       console.error('❌ Variation introuvable:', variationName);
-      console.error('   Variations disponibles:', allVariations.map((v: any) => v.name));
+      console.error('   Variations disponibles:', subCategory.variations?.map((v: any) => v.name) || []);
       return { categoryId: category.id, subCategoryId: subCategory.id, variationId: null };
     }
 

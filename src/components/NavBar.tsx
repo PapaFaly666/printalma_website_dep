@@ -1,10 +1,21 @@
 import { useState, useEffect, useRef } from "react";
+import { ShoppingCart } from "lucide-react";
+import { useCart } from "../contexts/CartContext";
+import { useNavigate } from "react-router-dom";
 
 const NavBar = () => {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+
+  const { itemCount, openCart } = useCart();
+  const navigate = useNavigate();
+
+  // Debug pour voir les changements du panier
+  useEffect(() => {
+    console.log('🛒 [NavBar] itemCount mis à jour:', itemCount);
+  }, [itemCount]);
 
   // Gérer le scroll pour masquer/afficher le header
   useEffect(() => {
@@ -130,6 +141,22 @@ const NavBar = () => {
               </svg>
             </button>
 
+            {/* Panier */}
+            <button
+              onClick={() => {
+                console.log('🛒 [NavBar] Clic sur l icône panier, itemCount:', itemCount);
+                openCart();
+              }}
+              className="text-gray-700 hover:bg-gray-100 relative flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-md transition-all duration-200"
+            >
+              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-yellow-400 text-gray-900 text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {itemCount > 99 ? '99+' : itemCount}
+                </span>
+              )}
+            </button>
+
             {/* Compte */}
             <div className="hidden md:block relative group">
               <button className="text-gray-700 hover:bg-gray-100 flex items-center space-x-1 lg:space-x-2 px-2 py-1.5 lg:px-3 lg:py-2 xl:px-4 xl:py-2.5 rounded-md transition-all duration-200">
@@ -160,13 +187,6 @@ const NavBar = () => {
               <span className="absolute -top-1 -right-1 h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 bg-pink-500 text-white text-xs lg:text-sm rounded-full flex items-center justify-center font-medium">
                 2
               </span>
-            </button>
-
-            {/* Panier */}
-            <button className="relative text-gray-700 hover:bg-gray-100 h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 xl:h-12 xl:w-12 rounded-md flex items-center justify-center transition-all duration-200">
-              <svg className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
             </button>
 
             {/* Menu mobile */}
