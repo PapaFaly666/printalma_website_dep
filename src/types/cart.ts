@@ -27,7 +27,7 @@ export interface CartItem {
   // Propriétés pour les vraies tailles de la base de données
   selectedSize?: {
     id: number;
-    name: string;
+    sizeName: string;
   };
   sizeId?: number;
   sizeName?: string;

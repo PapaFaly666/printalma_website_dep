@@ -161,14 +161,36 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
 
   // Obtenir la position du design depuis les designPositions (comme SimpleProductPreview)
   const getDesignPosition = () => {
+    // Fonction pour normaliser une position (centrer si extrême)
+    const normalizePosition = (x: number, y: number, source: string) => {
+      const maxReasonableValue = 20; // Valeur maximale raisonnable
+      let normalizedX = x;
+      let normalizedY = y;
+
+      // Si les positions sont extrêmes, centrer le design
+      if (Math.abs(x) > maxReasonableValue || Math.abs(y) > maxReasonableValue) {
+        console.log(`🔧 ProductCardWithDesign - Position extrême détectée (${source}):`, { x, y }, '→ Centrage (0, 0)');
+        normalizedX = 0;
+        normalizedY = 0;
+      }
+
+      return { x: normalizedX, y: normalizedY };
+    };
+
     // 1. Essayer d'abord designPositions depuis l'API
     if (product.designPositions && product.designPositions.length > 0) {
       const designPos = product.designPositions[0];
       console.log('🎨 ProductCardWithDesign - Position depuis designPositions:', designPos.position);
 
+      const { x, y } = normalizePosition(
+        designPos.position.x || 0,
+        designPos.position.y || 0,
+        'designPositions'
+      );
+
       return {
-        x: designPos.position.x || 0,
-        y: designPos.position.y || 0,
+        x,
+        y,
         scale: designPos.position.scale || product.designApplication?.scale || 0.6,
         rotation: designPos.position.rotation || 0,
         constraints: designPos.position.constraints || {},
@@ -183,9 +205,15 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
       if (transform) {
         console.log('🎨 ProductCardWithDesign - Position depuis designTransforms:', transform);
 
+        const { x, y } = normalizePosition(
+          transform.x || 0,
+          transform.y || 0,
+          'designTransforms'
+        );
+
         return {
-          x: transform.x || 0,
-          y: transform.y || 0,
+          x,
+          y,
           scale: transform.scale || product.designApplication?.scale || 0.6,
           rotation: transform.rotation || 0,
           constraints: (transform as any).constraints || {},

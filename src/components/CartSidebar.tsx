@@ -101,13 +101,13 @@ const ProductWithDesign: React.FC<{
         constraints: {},
         source: 'default',
         sizeId: item.selectedSize?.id || item.sizeId,
-        sizeName: item.selectedSize?.name || item.sizeName || item.size
+        sizeName: item.selectedSize?.sizeName || item.sizeName || item.size
       };
     }
 
     // Utiliser la taille pour récupérer la position spécifique à cette taille
     const sizeId = item.selectedSize?.id || item.sizeId;
-    const sizeName = item.selectedSize?.name || item.sizeName || item.size;
+    const sizeName = item.selectedSize?.sizeName || item.sizeName || item.size;
 
     const localStorageData = DesignPositionService.getPosition(item.designId, item.adminProductId, user.id);
     if (localStorageData && localStorageData.position) {
@@ -380,7 +380,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                           <span>{item.color}</span>
                           <span>•</span>
                           <span>
-                            Taille {item.selectedSize?.name || item.sizeName || item.size}
+                            Taille {item.selectedSize?.sizeName || item.sizeName || item.size}
                           </span>
                         </div>
                         <p className="font-semibold text-gray-900">

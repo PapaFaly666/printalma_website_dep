@@ -123,10 +123,10 @@ const normalizeDelimitations = (delimitations: any[], imageWidth: number, imageH
 // Utilitaire pour normaliser les positions de design
 const normalizeDesignPosition = (position: any) => {
   const { x, y, scale, rotation, designWidth, designHeight } = position;
-  
+
   let normalizedX = x;
   let normalizedY = y;
-  
+
   // Vérifier si les valeurs sont valides
   if (typeof normalizedX !== 'number' || isNaN(normalizedX)) {
     normalizedX = 0;
@@ -134,57 +134,86 @@ const normalizeDesignPosition = (position: any) => {
   if (typeof normalizedY !== 'number' || isNaN(normalizedY)) {
     normalizedY = 0;
   }
-  
-  // Si les positions sont trop extrêmes, les centrer
-  const isExtremePosition = Math.abs(normalizedX) > 50 || Math.abs(normalizedY) > 50;
-  
-  if (isExtremePosition) {
-    normalizedX = 0;
-    normalizedY = 0;
-  }
-  
-  return {
+
+  // Pour les nouveautés, TOUJOURS centrer le design (x: 0, y: 0)
+  // Les positions stockées dans la DB sont en pixels absolus et ne correspondent pas
+  // au système de coordonnées relatif attendu par SimpleProductPreview
+  console.log('🔧 [normalizeDesignPosition] Position originale:', { x, y }, '→ Centrage (0, 0)');
+  normalizedX = 0;
+  normalizedY = 0;
+
+  // S'assurer que le scale est dans une plage raisonnable
+  let normalizedScale = scale || 0.8;
+  if (normalizedScale < 0.1) normalizedScale = 0.1;
+  if (normalizedScale > 2) normalizedScale = 2;
+
+  const result = {
     x: normalizedX,
     y: normalizedY,
-    scale: scale || 0.8,
+    scale: normalizedScale,
     rotation: rotation || 0,
     constraints: {
       minScale: 0.1,
       maxScale: 2
     },
-    designWidth: designWidth || 200,
-    designHeight: designHeight || 200
+    designWidth: designWidth || 1200, // Utiliser les dimensions réelles du design
+    designHeight: designHeight || 1200
   };
+
+  console.log('📐 [normalizeDesignPosition] Position normalisée:', {
+    original: { x, y, scale },
+    normalized: result
+  });
+
+  return result;
 };
 
 // Fonction pour adapter les données de l'API new-arrivals vers le format vendor/products
 const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
   const designPositions = item.designPositions;
-  
+
   // Vérifier si designPositions existe et a les propriétés nécessaires
   if (!designPositions || designPositions.length === 0) {
+    console.warn('⚠️ [adaptNewArrival] Pas de designPositions pour le produit:', item.id);
     return null;
   }
-  
+
   const firstDesignPos = designPositions[0];
-  
+
   // Extraire les délimitations de la première image de la première variation de couleur
   const firstImage = item.baseProduct.colorVariations[0]?.images[0];
   const rawDelimitations = firstImage?.delimitations || [];
-  
+
+  console.log('🔍 [adaptNewArrival] Données brutes:', {
+    productId: item.id,
+    designId: firstDesignPos.designId,
+    designUrl: item.designCloudinaryUrl,
+    rawDelimitations: rawDelimitations,
+    firstImageWidth: firstImage?.naturalWidth,
+    firstImageHeight: firstImage?.naturalHeight,
+    firstImageView: firstImage?.view
+  });
+
   // Normaliser les délimitations
-  const normalizedDelimitations = firstImage 
+  const normalizedDelimitations = firstImage
     ? normalizeDelimitations(rawDelimitations, firstImage.naturalWidth, firstImage.naturalHeight)
     : [];
-  
+
+  console.log('📐 [adaptNewArrival] Délimitations normalisées:', normalizedDelimitations);
+
   // Normaliser la position
   const normalizedPosition = normalizeDesignPosition(firstDesignPos.position);
+
+  console.log('📍 [adaptNewArrival] Position normalisée:', normalizedPosition);
   
-  return {
+  const adaptedProduct = {
     id: item.id,
     vendorName: item.name,
+    originalAdminName: item.baseProduct.name,
     price: item.price,
     status: 'PUBLISHED',
+    adminValidated: true, // Pour ne pas afficher "Validation en cours"
+    hideValidationBadges: true, // Pour cacher les badges de validation
     adminProduct: {
       id: item.baseProduct.id,
       name: item.baseProduct.name,
@@ -193,29 +222,29 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
         images: cv.images.map(img => ({
           ...img,
           viewType: img.view,
-          naturalWidth: img.naturalWidth,
-          naturalHeight: img.naturalHeight,
-          delimitations: normalizeDelimitations(img.delimitations, img.naturalWidth, img.naturalHeight).map(delim => ({
-            id: delim.id,
-            name: delim.name,
-            x: delim.x,
-            y: delim.y,
-            width: delim.width,
-            height: delim.height,
-            coordinateType: 'PERCENTAGE' as const
-          }))
+          delimitations: normalizeDelimitations(img.delimitations, img.naturalWidth, img.naturalHeight),
+          url: img.url // Assurer que l'URL est bien présente
         }))
       }))
     },
     designApplication: {
       hasDesign: !!item.designCloudinaryUrl,
       designUrl: item.designCloudinaryUrl,
-      positioning: item.designPositioning,
-      scale: firstDesignPos.position.scale
+      positioning: item.designPositioning || 'CENTER',
+      scale: firstDesignPos.position.scale || 0.8,
+      mode: 'PRESERVED'
     },
     designPositions: [{
       designId: firstDesignPos.designId,
-      position: normalizedPosition,
+      position: {
+        ...normalizedPosition,
+        constraints: normalizedPosition.constraints || {
+          minScale: 0.1,
+          maxScale: 2
+        },
+        designWidth: firstDesignPos.position.designWidth || 200,
+        designHeight: firstDesignPos.position.designHeight || 200
+      },
       createdAt: firstDesignPos.createdAt,
       updatedAt: firstDesignPos.updatedAt
     }],
@@ -225,8 +254,30 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
       name: cv.name,
       colorCode: cv.colorCode
     })),
-    designId: firstDesignPos.designId
+    designId: firstDesignPos.designId,
+    selectedSizes: [], // Les produits nouveautés n'ont pas de tailles spécifiques
+    images: {
+      adminReferences: item.baseProduct.colorVariations.map(cv => ({
+        colorName: cv.name,
+        colorCode: cv.colorCode,
+        adminImageUrl: cv.images[0]?.url || '',
+        imageType: 'admin_reference' as const
+      })),
+      total: item.baseProduct.colorVariations.length,
+      primaryImageUrl: item.baseProduct.colorVariations[0]?.images[0]?.url || ''
+    }
   };
+
+  console.log('✅ [adaptNewArrival] Produit adapté:', {
+    id: adaptedProduct.id,
+    designId: adaptedProduct.designId,
+    hasDesign: adaptedProduct.designApplication.hasDesign,
+    designUrl: adaptedProduct.designApplication.designUrl,
+    firstColorVariation: adaptedProduct.adminProduct.colorVariations[0],
+    firstImage: adaptedProduct.adminProduct.colorVariations[0]?.images[0]
+  });
+
+  return adaptedProduct;
 };
 
 // Composant ProductCard utilisant SimpleProductPreview
@@ -237,6 +288,34 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
   if (!adaptedProduct) {
     return null;
   }
+
+  // Logs de débogage détaillés pour comprendre pourquoi le design ne s'affiche pas
+  const firstColorVariation = adaptedProduct.adminProduct?.colorVariations?.[0];
+  const firstImage = firstColorVariation?.images?.find(img => img.viewType === 'Front') || firstColorVariation?.images?.[0];
+
+  console.log('🎨 [ProductCard] Produit adapté pour nouveautés:', {
+    id: adaptedProduct.id,
+    hasDesign: adaptedProduct.designApplication.hasDesign,
+    designUrl: adaptedProduct.designApplication.designUrl,
+    designId: adaptedProduct.designId,
+    designPositions: adaptedProduct.designPositions,
+    designPosition: adaptedProduct.designPositions?.[0]?.position,
+    adminProductExists: !!adaptedProduct.adminProduct,
+    colorVariations: adaptedProduct.adminProduct?.colorVariations?.length,
+    firstColorVariation: {
+      id: firstColorVariation?.id,
+      name: firstColorVariation?.name,
+      imagesCount: firstColorVariation?.images?.length
+    },
+    firstImage: {
+      url: firstImage?.url,
+      viewType: firstImage?.viewType,
+      hasDelimitations: firstImage?.delimitations?.length > 0,
+      delimitations: firstImage?.delimitations
+    },
+    isTraditionalProduct: !!adaptedProduct.designId && adaptedProduct.designId !== null && adaptedProduct.designId !== 0,
+    currentColorId: adaptedProduct.selectedColors?.[0]?.id
+  });
 
   return (
     <div
@@ -250,10 +329,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
       <div className="absolute inset-0 w-full h-full overflow-hidden">
         <SimpleProductPreview
           product={adaptedProduct}
-          showColorSlider={true}
+          showColorSlider={false}
           showDelimitations={showDelimitations}
           className="w-full h-full"
           onColorChange={() => {}}
+          hideValidationBadges={true}
+          imageObjectFit="cover"
         />
       </div>
 

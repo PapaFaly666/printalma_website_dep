@@ -32,7 +32,7 @@ interface CartContextType {
     // Propriétés pour les vraies tailles de la base de données
     selectedSize?: {
       id: number;
-      name: string;
+      sizeName: string;
     };
     sizeId?: number;
     sizeName?: string;
@@ -94,30 +94,58 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     delimitations?: DelimitationData[];
     selectedSize?: {
       id: number;
-      name: string;
+      sizeName: string;
     };
     sizeId?: number;
     sizeName?: string;
   }) => {
     console.log('🛒 [CartContext] Ajout au panier:', product);
     // Utiliser la vraie taille si disponible, sinon la taille de base
-    const sizeValue = product.selectedSize?.name || product.sizeName || product.size;
+    const sizeValue = product.selectedSize?.sizeName || product.sizeName || product.size;
     const cartItemId = `${product.id}-${product.color}-${sizeValue}`;
     console.log('🛒 [CartContext] CartItem ID:', cartItemId);
     console.log('🛒 [CartContext] Taille utilisée:', sizeValue);
 
     setItems(prevItems => {
       console.log('🛒 [CartContext] Articles précédents:', prevItems.length);
-      const existingItem = prevItems.find(item => item.id === cartItemId);
+
+      // Chercher un article existant avec le même produit, couleur ET taille
+      const existingItem = prevItems.find(item => {
+        const itemSizeValue = item.selectedSize?.sizeName || item.sizeName || item.size;
+        return item.productId === product.id &&
+               item.color === product.color &&
+               itemSizeValue === sizeValue;
+      });
 
       if (existingItem) {
-        // Si le produit existe déjà, augmenter la quantité
-        console.log('🛒 [CartContext] Produit existant, incrémentation quantité');
-        return prevItems.map(item =>
-          item.id === cartItemId
+        // Si le produit existe déjà avec la même taille, augmenter la quantité
+        console.log('🛒 [CartContext] Produit existant trouvé, incrémentation quantité:', {
+          productId: product.id,
+          color: product.color,
+          size: sizeValue,
+          existingQuantity: existingItem.quantity
+        });
+        const updatedItems = prevItems.map(item =>
+          item.id === existingItem.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
+
+        // Afficher tous les articles du panier après la modification
+        console.log('🛒 [CartContext] État du panier après ajout:', updatedItems.map(item => ({
+          id: item.id,
+          productId: item.productId,
+          name: item.name,
+          color: item.color,
+          size: item.size,
+          selectedSize: item.selectedSize,
+          sizeId: item.sizeId,
+          sizeName: item.sizeName,
+          displaySize: item.selectedSize?.sizeName || item.sizeName || item.size,
+          quantity: item.quantity
+        })));
+
+        return updatedItems;
       } else {
         // Sinon, ajouter le nouveau produit
         console.log('🛒 [CartContext] Nouveau produit, ajout au panier');
@@ -143,7 +171,36 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           sizeId: product.sizeId,
           sizeName: product.sizeName
         };
-        return [...prevItems, newItem];
+
+        console.log('🛒 [CartContext] Nouvel article créé:', {
+          id: newItem.id,
+          productId: newItem.productId,
+          name: newItem.name,
+          color: newItem.color,
+          size: newItem.size,
+          selectedSize: newItem.selectedSize,
+          sizeId: newItem.sizeId,
+          sizeName: newItem.sizeName,
+          finalDisplaySize: newItem.selectedSize?.sizeName || newItem.sizeName || newItem.size
+        });
+
+        const updatedItems = [...prevItems, newItem];
+
+        // Afficher tous les articles du panier après la modification
+        console.log('🛒 [CartContext] État du panier après ajout:', updatedItems.map(item => ({
+          id: item.id,
+          productId: item.productId,
+          name: item.name,
+          color: item.color,
+          size: item.size,
+          selectedSize: item.selectedSize,
+          sizeId: item.sizeId,
+          sizeName: item.sizeName,
+          displaySize: item.selectedSize?.sizeName || item.sizeName || item.size,
+          quantity: item.quantity
+        })));
+
+        return updatedItems;
       }
     });
 

@@ -106,6 +106,8 @@ interface SimpleProductPreviewProps {
   onProductClick?: (product: VendorProductFromAPI) => void; // ✅ Callback pour clic sur la card
   showDetailImages?: boolean; // ✅ Mode affichage détails pour wizard
   hideValidationBadges?: boolean; // ✅ Cacher les badges de validation pour les pages publiques
+  imageObjectFit?: 'contain' | 'cover'; // ✅ Contrôle du comportement de l'image (contain par défaut, cover pour remplir)
+  initialColorId?: number; // ✅ ID de couleur initiale pour synchronisation avec le parent
 }
 
 // Interface pour les métriques d'image (comme dans useFabricCanvas)
@@ -127,15 +129,25 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
   showDelimitations = false,
   onProductClick,
   showDetailImages = false,
-  hideValidationBadges = false
+  hideValidationBadges = false,
+  imageObjectFit = 'contain', // Par défaut contain pour conserver le comportement actuel
+  initialColorId // ✅ ID de couleur initiale optionnel pour synchronisation
 }) => {
   // 🆕 Accès au contexte d'authentification
   const { user } = useAuth();
 
   // État pour la couleur sélectionnée - déclaré en premier
+  // ✅ Utiliser initialColorId si fourni, sinon la première couleur disponible
   const [currentColorId, setCurrentColorId] = useState<number>(
-    product.selectedColors[0]?.id || 0
+    initialColorId || product.selectedColors[0]?.id || 0
   );
+
+  // ✅ Synchroniser la couleur lorsque initialColorId change (parent)
+  useEffect(() => {
+    if (initialColorId && initialColorId !== currentColorId) {
+      setCurrentColorId(initialColorId);
+    }
+  }, [initialColorId, currentColorId]);
 
   // ✅ Détecter le type de produit - gérer null et 0 (problème de sérialisation)
   const isWizardProduct = !product.designId || product.designId === null || product.designId === 0;
@@ -235,6 +247,16 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
     );
     const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front')
       || colorVariation?.images[0];
+
+    console.log('🖼️ SimpleProductPreview - Image mockup sélectionnée:', {
+      productId: product.id,
+      colorVariationId: colorVariation?.id,
+      mockupImageUrl: mockupImage?.url,
+      viewType: mockupImage?.viewType,
+      hasDelimitations: !!mockupImage?.delimitations && mockupImage.delimitations.length > 0,
+      delimitationsCount: mockupImage?.delimitations?.length || 0,
+      delimitations: mockupImage?.delimitations
+    });
 
     currentImageUrl = mockupImage?.url || null;
     delimitations = mockupImage?.delimitations || [];
@@ -693,7 +715,7 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
         ref={imgRef}
         src={currentImageUrl}
         alt={getDisplayName()}
-        className="w-full h-full object-contain"
+        className={`w-full h-full ${imageObjectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
         onLoad={() => setImageLoaded(true)}
       />
       
@@ -714,6 +736,20 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       ))}
       
       {/* 🆕 Design superposé UNIQUEMENT pour les produits traditionnels avec design */}
+      {(() => {
+        console.log('🎨 SimpleProductPreview - Vérification conditions design:', {
+          productId: product.id,
+          isTraditionalProduct,
+          hasDesign: product.designApplication.hasDesign,
+          designUrl: product.designApplication.designUrl,
+          imageMetrics: !!imageMetrics,
+          delimitationsCount: delimitations.length,
+          willShowDesign: isTraditionalProduct && product.designApplication.hasDesign && product.designApplication.designUrl && imageMetrics
+        });
+
+        return null; // On retourne null ici pour ne pas casser le rendu
+      })()}
+
       {isTraditionalProduct && product.designApplication.hasDesign && product.designApplication.designUrl && imageMetrics && (
         (() => {
           console.log('🎨 Affichage du design - Conditions vérifiées:', {
