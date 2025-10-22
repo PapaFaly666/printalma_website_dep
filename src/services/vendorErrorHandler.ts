@@ -102,7 +102,7 @@ class VendorErrorHandler {
           title: 'Session expirée',
           message: diagnosis.message,
           primaryAction: 'Se reconnecter',
-          primaryUrl: '/auth/login',
+          primaryUrl: '/login',
           showReactivationForm: false
         };
 

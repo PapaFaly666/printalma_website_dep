@@ -2,11 +2,11 @@ import React from "react";
 
 const ServiceFeatures = () => {
   return (
-    <div className="w-full bg-gray-100 py-12">
-      <div className="w-full px-4 sm:px-8">
+    <div className="w-full bg-gray-100 py-8 sm:py-10 md:py-12 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+      <div className="w-full px-4 sm:px-6 md:px-8">
         <div
-          className="relative w-full flex flex-col md:flex-row justify-between items-center 
-                     rounded-2xl shadow px-8 py-8 space-y-8 md:space-y-0 md:space-x-12 overflow-hidden"
+          className="relative w-full flex flex-col sm:flex-row md:flex-row justify-between items-center
+                     rounded-xl md:rounded-2xl shadow px-4 sm:px-6 md:px-8 py-6 sm:py-8 space-y-6 sm:space-y-0 sm:space-x-4 md:space-x-12 overflow-hidden"
           style={{
             backgroundColor: "#ffffff",
           }}
@@ -24,41 +24,41 @@ const ServiceFeatures = () => {
           ></div>
 
           {/* Contenu */}
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-center w-full space-y-8 md:space-y-0 md:space-x-12">
+          <div className="relative z-10 flex flex-col sm:flex-row md:flex-row justify-between items-center w-full space-y-4 sm:space-y-0 sm:space-x-4 md:space-x-12">
             {/* Disponibilité */}
-            <div className="flex items-center space-x-4">
-              <img src="/24.svg" alt="24h/24" className="w-14 h-14" />
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <img src="/24.svg" alt="24h/24" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14" />
               <div>
-                <h3 className="text-lg font-semibold" style={{ color: "#049BE5" }}>
+                <h3 className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: "#049BE5" }}>
                   Disponibilité
                 </h3>
-                <p className="text-base font-medium" style={{ color: "#049BE5" }}>
+                <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: "#049BE5" }}>
                   24h/24
                 </p>
               </div>
             </div>
 
             {/* Livraison */}
-            <div className="flex items-center space-x-4">
-              <img src="/delivery.svg" alt="Livraison" className="w-14 h-14" />
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <img src="/delivery.svg" alt="Livraison" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14" />
               <div>
-                <h3 className="text-lg font-semibold" style={{ color: "#049BE5" }}>
+                <h3 className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: "#049BE5" }}>
                   Livraison
                 </h3>
-                <p className="text-base font-medium" style={{ color: "#049BE5" }}>
+                <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: "#049BE5" }}>
                   Moins de 72h
                 </p>
               </div>
             </div>
 
             {/* Paiement sécurisé */}
-            <div className="flex items-center space-x-4">
-              <img src="/payement.svg" alt="Paiement" className="w-14 h-14" />
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <img src="/payement.svg" alt="Paiement" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14" />
               <div>
-                <h3 className="text-lg font-semibold" style={{ color: "#049BE5" }}>
+                <h3 className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: "#049BE5" }}>
                   Paiement sécurisé
                 </h3>
-                <p className="text-base font-medium" style={{ color: "#049BE5" }}>
+                <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: "#049BE5" }}>
                   Carte / Mobile money
                 </p>
               </div>

@@ -1,610 +1,289 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  Heart, Filter,
-  Search, X, LayoutGrid, List, SlidersHorizontal,
-  Settings2, Menu, ShoppingBag, Sparkles, Layers,
-  Leaf, Palette, Clock, Globe, Tag, Banknote,
-  ArrowUpDown, CircleUser, Bookmark
-} from 'lucide-react';
-
-interface Category {
-  name: string;
-  icon: React.ReactNode;
-  slug: string;
-}
-
-interface Product {
-  name: string;
-  active: boolean;
-}
+import { Heart, Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Article {
-  id: string; // Assurez-vous que l'id est de type string
+  id: number;
   title: string;
-  description: string;
   price: string;
   image: string;
-  designImage?: string;
-  tags?: string[];
-  categorie: string;
 }
 
-// Article data would come from an API in a real app
-import { article as articleData } from '../data/articleData';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Accordion, AccordionContent } from '../components/ui/accordion';
-import { AccordionItem, AccordionTrigger } from '@radix-ui/react-accordion';
-import { Checkbox } from '../components/ui/checkbox';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
-import { Input } from '../components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
-
 const FilteredArticlesPage: React.FC = () => {
-  // Convertir les id en string
-  const articlesWithStringIds = articleData.map(item => ({
-    ...item,
-    id: String(item.id)
+  const [searchParams] = useSearchParams();
+  const selectedCategory = searchParams.get('category');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState('product');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Mock data - 9 products per page
+  const mockProducts: Article[] = Array.from({ length: 9 }, (_, i) => ({
+    id: i + 1,
+    title: `Produit ${i + 1}`,
+    price: 'PRIX',
+    image: '/placeholder-product.jpg'
   }));
 
-  // Hooks
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedCategory = searchParams.get('category');
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [hoveredArticleId, setHoveredArticleId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-
-  // Filter articles based on selected category and search term
-  const filteredArticles = articlesWithStringIds
-    .filter(item =>
-      (!selectedCategory || item.categorie.toLowerCase() === selectedCategory.toLowerCase()) &&
-      (!searchTerm ||
-        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-
-  // Toggle filter function
-  const toggleFilter = (filterName: string): void => {
-    setActiveFilters(prev =>
-      prev.includes(filterName)
-        ? prev.filter(f => f !== filterName)
-        : [...prev, filterName]
-    );
-  };
-
-  // Handle image hover
-  const handleImageHover = (articleId: string, isEntering: boolean): void => {
-    if (isEntering) {
-      setHoveredArticleId(articleId);
-    } else {
-      setHoveredArticleId(null);
-    }
-  };
-
-  // Get image source based on hover state
-  const getImageSource = (article: Article): string => {
-    if (hoveredArticleId === article.id && article.designImage) {
-      return article.designImage;
-    }
-    return article.image;
-  };
-
-  // Format price function
-  const formatPrice = (price: string): string => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(parseFloat(price.replace('XOF', '').replace('FCFA', '')));
-  };
-
-  // Select category
-  const handleCategorySelect = (slug: string): void => {
-    setSearchParams({ category: slug });
-    setMobileSidebarOpen(false);
-  };
-
-  // Reset all filters
-  const resetFilters = () => {
-    setActiveFilters([]);
-    setSearchTerm('');
-    setSearchParams({});
-  };
-
-  // Modern data with Lucide icons
-  const categories: Category[] = [
-    { name: 'Hommes', icon: <CircleUser size={16} />, slug: 'hommes' },
-    { name: 'Femmes', icon: <CircleUser size={16} />, slug: 'femmes' },
-    { name: 'Enfants', icon: <CircleUser size={16} className="opacity-70" />, slug: 'enfants' },
-    { name: 'Bébés', icon: <CircleUser size={16} className="opacity-50" />, slug: 'bebes' },
-    { name: 'Accessoires', icon: <Tag size={16} />, slug: 'accessoires' },
-    { name: 'Maison & décor', icon: <Globe size={16} />, slug: 'maison' },
-    { name: 'Stickers', icon: <Bookmark size={16} />, slug: 'stickers' }
-  ];
-
-  const products: Product[] = [
-    { name: 'T-shirts', active: true },
-    { name: 'Sweat-shirts', active: false },
-    { name: 'Casquettes et bonnets', active: false },
-    { name: 'Sacs et sacs à dos', active: false },
-    { name: 'Mugs et tasses', active: false }
-  ];
-
-  const filters = [
-    { name: 'Durable', count: 18, icon: <Leaf size={14} /> },
-    { name: 'Brodé', count: 24, icon: <Layers size={14} /> },
-    { name: 'Limitée', count: 7, icon: <Sparkles size={14} /> },
-    { name: 'Nouveauté', count: 12, icon: <Clock size={14} /> }
-  ];
-
-  // Components
-  const FilterPill = ({ name, isActive = false, icon }: { name: string, isActive?: boolean, icon?: React.ReactNode }) => (
-    <Button
-      variant={isActive ? "secondary" : "outline"}
-      size="sm"
-      className={`rounded-full h-8 px-3 gap-1.5 ${isActive ? 'bg-primary/10 text-primary font-medium' : ''}`}
-      onClick={() => toggleFilter(name)}
-    >
-      {icon && <span className="opacity-75">{icon}</span>}
-      {name}
-    </Button>
-  );
-
-  // ArticleCardGrid with shadcn Card
-  const ArticleCardGrid = ({ article }: { article: Article }) => (
-    <Card className="overflow-hidden border-border/40">
-      <div
-        className="relative aspect-square bg-muted overflow-hidden"
-        onMouseEnter={() => handleImageHover(article.id, true)}
-        onMouseLeave={() => handleImageHover(article.id, false)}
-      >
-        <img
-          src={getImageSource(article)}
-          alt={article.title}
-          className="w-full h-full object-cover object-center"
-          loading="lazy"
-        />
-
-        {/* Favorite Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full h-8 w-8"
-        >
-          <Heart className="h-4 w-4" />
-        </Button>
-
-        {/* Tags */}
-        <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
-          {article.tags?.includes('Durable') && (
-            <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-0 flex items-center gap-1">
-              <Leaf size={12} />
-              <span>Durable</span>
-            </Badge>
-          )}
-          {article.tags?.includes('Brodé') && (
-            <Badge variant="outline" className="bg-primary/10 text-primary border-0 flex items-center gap-1">
-              <Layers size={12} />
-              <span>Brodé</span>
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Info Section */}
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-foreground">{article.title}</h3>
-        <p className="text-sm text-muted-foreground mt-1 mb-3 line-clamp-2">{article.description}</p>
-        <div className="mt-auto flex justify-between items-center">
-          <p className="font-bold text-foreground">{formatPrice(article.price)}</p>
-          <Button variant="secondary" size="icon" className="text-primary h-8 w-8">
-            <ShoppingBag size={16} />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  // ArticleCardList with shadcn Card
-  const ArticleCardList = ({ article }: { article: Article }) => (
-    <Card className="overflow-hidden border-border/40">
-      <div className="flex">
-        {/* Image Container */}
-        <div
-          className="relative w-28 sm:w-36 md:w-44 bg-muted overflow-hidden flex-shrink-0"
-          onMouseEnter={() => handleImageHover(article.id, true)}
-          onMouseLeave={() => handleImageHover(article.id, false)}
-        >
-          <div className="absolute inset-0 overflow-hidden">
-            <img
-              src={getImageSource(article)}
-              alt={article.title}
-              className="w-full h-full object-cover object-center"
-              loading="lazy"
-            />
-          </div>
-        </div>
-
-        {/* Information */}
-        <CardContent className="p-4 flex flex-col flex-grow">
-          <div className="flex justify-between items-start">
-            <h3 className="font-semibold text-foreground">{article.title}</h3>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-              <Heart size={16} />
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-1 md:line-clamp-2">
-            {article.description}
-          </p>
-
-          <div className="mt-auto flex items-center justify-between pt-2">
-            <p className="font-bold text-foreground">{formatPrice(article.price)}</p>
-
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                {article.tags?.includes('Durable') && (
-                  <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-0 flex items-center gap-1">
-                    <Leaf size={12} />
-                    <span>Durable</span>
-                  </Badge>
-                )}
-                {article.tags?.includes('Brodé') && (
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-0 flex items-center gap-1">
-                    <Layers size={12} />
-                    <span>Brodé</span>
-                  </Badge>
-                )}
-              </div>
-              <Button variant="secondary" size="icon" className="text-primary h-8 w-8">
-                <ShoppingBag size={16} />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </div>
-    </Card>
-  );
-
-  // Sidebar content - used for both desktop and mobile
-  const SidebarContent = () => (
-    <Accordion
-      type="multiple"
-      defaultValue={['categories', 'products']}
-      className="w-full"
-    >
-      <AccordionItem value="categories">
-        <AccordionTrigger className="py-2">
-          <div className="flex items-center gap-2">
-            <Tag size={16} className="text-primary" />
-            <span>Catégories</span>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent>
-          <div className="pl-2 space-y-1">
-            {categories.map(cat => (
-              <div
-                key={cat.slug}
-                onClick={() => handleCategorySelect(cat.slug)}
-                className={`flex items-center space-x-2 py-2 px-3 rounded-md cursor-pointer ${
-                  selectedCategory === cat.slug
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-foreground/80 hover:bg-muted'
-                }`}
-              >
-                <span className="flex-shrink-0 text-foreground/70">{cat.icon}</span>
-                <span className="text-sm">{cat.name}</span>
-              </div>
-            ))}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-
-      <AccordionItem value="products">
-        <AccordionTrigger className="py-2">
-          <div className="flex items-center gap-2">
-            <ShoppingBag size={16} className="text-primary" />
-            <span>Produits</span>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent>
-          <div className="pl-2 space-y-1">
-            {products.map(prod => (
-              <div
-                key={prod.name}
-                className={`py-2 px-3 rounded-md cursor-pointer text-sm ${
-                  prod.active
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-foreground/80 hover:bg-muted'
-                }`}
-              >
-                {prod.name}
-              </div>
-            ))}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-
-      <AccordionItem value="filters">
-        <AccordionTrigger className="py-2">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal size={16} className="text-primary" />
-            <span>Filtres</span>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent>
-          <div className="pl-2 space-y-1">
-            {filters.map(filter => (
-              <div key={filter.name} className="flex items-center py-1.5">
-                <label className="flex items-center py-1 px-3 rounded-md cursor-pointer text-sm w-full hover:bg-muted">
-                  <Checkbox
-                    checked={activeFilters.includes(filter.name)}
-                    onCheckedChange={() => toggleFilter(filter.name)}
-                    className="mr-2"
-                  />
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">{filter.icon}</span>
-                    <span className="text-foreground/80">{filter.name}</span>
-                  </div>
-                  <Badge variant="outline" className="ml-auto text-xs">
-                    {filter.count}
-                  </Badge>
-                </label>
-              </div>
-            ))}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
-  );
+  const themes = ['Amour', 'Otaku', 'Sport', 'HipHop', 'Anniversaire', 'Drôle'];
 
   return (
-    <div className="bg-background/50 min-h-screen w-full overflow-x-hidden">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b shadow-sm w-full">
-        <div className="container mx-auto flex items-center justify-between px-4 h-16 max-w-full">
-          <div className="flex items-center gap-4">
-            <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu size={20} />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                <SheetHeader className="p-4 border-b">
-                  <SheetTitle className="flex items-center gap-2">
-                    <Filter size={18} className="text-primary" />
-                    <span>Filtres</span>
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="p-4 overflow-y-auto">
-                  <SidebarContent />
+    <div className="min-h-screen bg-gray-50">
+      <div className="w-full px-6 py-4">
+        <div className="flex gap-6">
+          {/* Sidebar */}
+          <aside className="w-48 flex-shrink-0 hidden lg:block">
+            {/* Boutique Header */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-6">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <h2 className="font-bold text-2xl">Boutique</h2>
+              </div>
+
+              {/* Catégories */}
+              <div className="mb-6">
+                <button className="flex items-center justify-between w-full py-2 text-sm font-medium mb-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span className="font-semibold">Catégories</span>
+                  </div>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                <div className="pl-6 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <label className="text-sm cursor-pointer text-gray-700">Hommes</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <label className="text-sm cursor-pointer text-gray-700">Femmes</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <label className="text-sm cursor-pointer text-gray-700">Enfants</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <label className="text-sm cursor-pointer text-gray-700">Bébés</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <label className="text-sm cursor-pointer text-gray-700">Accessoires</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    <label className="text-sm cursor-pointer text-gray-700">Stickers</label>
+                  </div>
                 </div>
-              </SheetContent>
-            </Sheet>
+              </div>
 
-            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <ShoppingBag size={22} className="text-primary" />
-              <span>T-shirts</span>
-            </h1>
-          </div>
+              {/* Produits */}
+              <div>
+                <button className="flex items-center justify-between w-full py-2 text-sm font-medium mb-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <span className="font-semibold">Produits</span>
+                  </div>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                <div className="pl-6 space-y-2 text-sm text-gray-700">
+                  <button className="text-left hover:text-blue-600 block">T-shirt</button>
+                  <button className="text-left hover:text-blue-600 block">Sweat/ Pull</button>
+                  <button className="text-left hover:text-blue-600 block">Casquettes et bonnets</button>
+                  <button className="text-left hover:text-blue-600 block">Sacs et sacs à dos</button>
+                  <button className="text-left hover:text-blue-600 block">Mugs et tasses</button>
+                </div>
+              </div>
+            </div>
+          </aside>
 
-          <div className="flex items-center gap-3">
-            <div className="relative hidden md:block">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-9 h-9 rounded-full bg-muted w-64 text-sm"
-              />
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                  onClick={() => setSearchTerm('')}
-                >
-                  <X size={14} />
-                </Button>
-              )}
+          {/* Main Content */}
+          <main className="flex-1">
+            {/* Filter Bar */}
+            <div className="flex items-center gap-2 mb-6">
+              <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Filtrer par</span>
+              </button>
+
+              <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                <span>Couleurs</span>
+                <span className="text-base">🎨</span>
+              </button>
+
+              <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                <span>Tailles</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </button>
+
+              <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                <span>Prix</span>
+                <span className="text-base">💰</span>
+              </button>
+
+              <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                <span>Matières</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343" />
+                </svg>
+              </button>
             </div>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <SlidersHorizontal size={16} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Trier</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Search and Display controls */}
+            <div className="flex items-center justify-between mb-6">
+              {/* Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Rechercher..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 w-80 text-sm"
+                />
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Settings2 size={16} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Paramètres</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+              {/* Affichage buttons */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-gray-700">Affichage:</label>
+                <button 
+                  onClick={() => setViewMode('product')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+                    viewMode === 'product' 
+                      ? 'bg-yellow-400 text-black' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>Produit</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </button>
+                <span className="text-gray-300">|</span>
+                <button 
+                  onClick={() => setViewMode('design')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+                    viewMode === 'design' 
+                      ? 'bg-yellow-400 text-black' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>Design</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Products Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              {mockProducts.map((product) => (
+                <div key={product.id} className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-shadow border border-gray-200">
+                  <div className="relative bg-gradient-to-br from-pink-500 to-pink-600 aspect-square flex items-center justify-center">
+                    {/* Placeholder X pattern */}
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
+                      <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
+                    </svg>
+                    <button className="absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 shadow-md">
+                      <Heart className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-bold italic text-base mb-0.5">{product.title}</h3>
+                    <p className="text-sm font-bold">{product.price} <span className="text-xs font-normal">FCFA</span></p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <button className="p-2 hover:bg-gray-100 rounded disabled:opacity-50" disabled>
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button className="w-8 h-8 rounded-full bg-black text-white font-medium text-sm">1</button>
+              <button className="w-8 h-8 rounded hover:bg-gray-100 font-medium text-sm">2</button>
+              <button className="w-8 h-8 rounded hover:bg-gray-100 font-medium text-sm">3</button>
+              <button className="w-8 h-8 rounded hover:bg-gray-100 font-medium text-sm">4</button>
+              <span className="px-1 text-gray-500">...</span>
+              <button className="px-3 py-1.5 text-sm hover:bg-gray-100 rounded font-normal">Derniere page</button>
+              <button className="p-2 hover:bg-gray-100 rounded">
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tags Section */}
+            <div className="mb-8">
+              <p className="text-base font-medium text-gray-900 mb-4">Les clients ont également recherché :</p>
+              <div className="flex flex-wrap gap-2">
+                {themes.map((theme) => (
+                  <button
+                    key={theme}
+                    className="px-4 py-2 border border-gray-400 rounded-md text-sm hover:bg-gray-50 transition-colors"
+                  >
+                    {theme}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* History Section */}
+            <div className="mt-12">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xl italic">Historique</span>
+                  <div className="bg-blue-500 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    !
+                  </div>
+                </div>
+                <button className="px-4 py-2 bg-blue-400 text-white rounded-md text-sm font-medium hover:bg-blue-500 flex items-center gap-2 transition-colors">
+                  Supprimer tout
+                  <span className="bg-white text-blue-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <div key={`history-${i}`} className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-shadow border border-gray-200">
+                    <div className="relative bg-gradient-to-br from-pink-500 to-pink-600 aspect-square flex items-center justify-center">
+                      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
+                        <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
+                      </svg>
+                      <button className="absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 shadow-md">
+                        <Heart className="w-4 h-4 text-gray-600" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </main>
         </div>
-      </header>
-
-      <div className="container mx-auto px-4 flex max-w-full">
-        {/* Desktop Sidebar */}
-        <aside className="w-64 flex-shrink-0 pt-6 pr-6 hidden md:block">
-          <SidebarContent />
-        </aside>
-
-        {/* Main content */}
-        <main className="flex-grow pt-6 pb-12 w-full">
-          {/* Mobile search */}
-          <div className="relative mb-4 md:hidden">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-9 h-9 rounded-full bg-muted w-full text-sm"
-            />
-            {searchTerm && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                onClick={() => setSearchTerm('')}
-              >
-                <X size={14} />
-              </Button>
-            )}
-          </div>
-
-          {/* Filter toolbar */}
-          <div className="flex flex-wrap justify-between items-center mb-6 gap-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterPill name="Trier" icon={<ArrowUpDown size={14} />} />
-              <FilterPill name="Tailles" icon={<Layers size={14} />} />
-              <FilterPill name="Prix" icon={<Banknote size={14} />} />
-              <FilterPill name="Couleurs" icon={<Palette size={14} />} />
-              <FilterPill
-                name="Durable"
-                icon={<Leaf size={14} />}
-                isActive={activeFilters.includes('Durable')}
-              />
-              <FilterPill
-                name="Brodé"
-                icon={<Layers size={14} />}
-                isActive={activeFilters.includes('Brodé')}
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground text-sm font-medium">Affichage:</span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={viewMode === 'grid' ? "secondary" : "ghost"}
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setViewMode('grid')}
-                      aria-label="Vue en grille"
-                    >
-                      <LayoutGrid size={16} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Vue en grille</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={viewMode === 'list' ? "secondary" : "ghost"}
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setViewMode('list')}
-                      aria-label="Vue en liste"
-                    >
-                      <List size={16} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Vue en liste</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-
-          {/* Articles information */}
-          <div className="flex justify-between items-center mb-5">
-            <div className="text-sm text-muted-foreground font-medium">
-              {filteredArticles.length} article{filteredArticles.length !== 1 ? 's' : ''}
-              {selectedCategory && ` dans ${categories.find(c => c.slug === selectedCategory)?.name.toLowerCase() || selectedCategory}`}
-              {(activeFilters.length > 0 || searchTerm) && (
-                <Button
-                  variant="link"
-                  className="h-auto p-0 ml-2 text-xs font-semibold text-primary"
-                  onClick={resetFilters}
-                >
-                  Réinitialiser les filtres
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Articles grid or list */}
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6">
-              {filteredArticles.map(item => (
-                <ArticleCardGrid key={item.id} article={item} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {filteredArticles.map(item => (
-                <ArticleCardList key={item.id} article={item} />
-              ))}
-            </div>
-          )}
-
-          {/* Message if no results */}
-          {filteredArticles.length === 0 && (
-            <Card className="p-8 text-center mt-6">
-              <CardContent className="pt-6">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <Search size={32} className="text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-1">Aucun article trouvé</h3>
-                <p className="text-muted-foreground mb-5">Essayez de modifier vos filtres ou votre recherche</p>
-                <Button onClick={resetFilters}>
-                  Réinitialiser tous les filtres
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </main>
-      </div>
-
-      {/* Floating action button (mobile) */}
-      <div className="fixed bottom-6 right-6 md:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg">
-              <Filter size={22} />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
-            <SheetHeader className="p-4 border-b">
-              <SheetTitle className="flex items-center gap-2">
-                <Filter size={18} className="text-primary" />
-                <span>Filtres</span>
-              </SheetTitle>
-            </SheetHeader>
-            <div className="p-4 overflow-y-auto">
-              <SidebarContent />
-            </div>
-          </SheetContent>
-        </Sheet>
       </div>
     </div>
   );

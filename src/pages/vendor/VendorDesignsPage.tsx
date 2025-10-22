@@ -305,7 +305,7 @@ const handleApiCall = async (apiCall: () => Promise<any>) => {
         case 401:
           title = "Session expirée";
           description = "Veuillez vous reconnecter pour continuer.";
-          window.location.href = '/auth/login';
+          window.location.href = '/login';
           break;
         case 403:
           title = "Accès refusé";

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // Mock slides data
 const slides = [
@@ -44,9 +45,20 @@ const slides = [
 ];
 
 const EnhancedCarousel = () => {
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+
+  const handlePersonalize = () => {
+    // Rediriger vers la page des articles filtrés sans catégorie (tous les produits)
+    navigate('/filtered-articles');
+  };
+
+  const handleDiscover = () => {
+    // Rediriger vers la page des articles filtrés sans catégorie (tous les produits)
+    navigate('/filtered-articles');
+  };
 
   // Auto-scroll
   useEffect(() => {
@@ -76,7 +88,7 @@ const EnhancedCarousel = () => {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={`relative w-full h-[40vh] sm:h-[45vh] md:h-[55vh] lg:h-[65vh] min-h-[300px] max-h-[500px] transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'} overflow-hidden`}>
+      <div className={`relative w-full h-[40vh] sm:h-[45vh] md:h-[55vh] lg:h-[65vh] min-h-[280px] sm:min-h-[300px] max-h-[500px] transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'} overflow-hidden`}>
         
         {/* Slides */}
         <div className="relative h-full">
@@ -107,15 +119,15 @@ const EnhancedCarousel = () => {
 
                   {/* Title avec SVG intégré pour le slide Otaku */}
                   <h1 className={`font-redhat flex flex-col sm:flex-row items-center justify-center text-white mb-1 sm:mb-2 md:mb-3 uppercase font-black transition-all duration-1000 ${
-                    index === currentSlide 
-                        ? 'translate-y-0 opacity-100' 
+                    index === currentSlide
+                        ? 'translate-y-0 opacity-100'
                         : 'translate-y-8 opacity-0'
-                  }`} style={{ 
+                  }`} style={{
                     transitionDelay: index === currentSlide ? '200ms' : '0ms',
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                     fontWeight: '900',
                     textShadow: '2px 2px 8px rgba(0,0,0,0.7)',
-                    fontSize: 'clamp(1.2rem, 3.5vw, 3.2rem)',
+                    fontSize: 'clamp(1rem, 4vw, 2.5rem)',
                     gap: '0.3rem',
                     lineHeight: 0.9,
                     letterSpacing: '0.01em'
@@ -123,12 +135,12 @@ const EnhancedCarousel = () => {
                     <span className="text-center">{slide.title}</span>
                     {slide.collectionName === "Otaku" && slide.title === "LE STYLE" && (
                       <div className="flex items-center justify-center mt-1 sm:mt-0">
-                        <img 
-                          src="/landing_OTAKU.svg" 
-                          alt="Otaku Style" 
+                        <img
+                          src="/landing_OTAKU.svg"
+                          alt="Otaku Style"
                           className="block"
-                          style={{ 
-                            height: 'clamp(1rem, 2.5vw, 2.5rem)',
+                          style={{
+                            height: 'clamp(0.8rem, 3vw, 2rem)',
                             width: 'auto',
                             filter: 'drop-shadow(2px 2px 6px rgba(0,0,0,0.6))',
                             marginLeft: '0.2rem'
@@ -144,11 +156,12 @@ const EnhancedCarousel = () => {
                         ? 'translate-y-0 opacity-100' 
                         : 'translate-y-8 opacity-0'
                   }`} style={{ transitionDelay: index === currentSlide ? '400ms' : '0ms' }}>
-                    <p className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl text-white font-light italic tracking-wide mb-2 sm:mb-3" style={{
+                    <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white font-light italic tracking-wide mb-2 sm:mb-3" style={{
                       fontFamily: 'system-ui, -apple-system, sans-serif',
                       textShadow: '1px 1px 6px rgba(0,0,0,0.8)',
                       fontWeight: '300',
-                      lineHeight: 1.2
+                      lineHeight: 1.2,
+                      fontSize: 'clamp(0.9rem, 3vw, 1.5rem)'
                     }}>
                       {slide.subtitle}
                     </p>
@@ -176,9 +189,10 @@ const EnhancedCarousel = () => {
                   }`} style={{ transitionDelay: index === currentSlide ? '600ms' : '0ms' }}>
                     
                     {/* Bouton "Je personnalise" - Couleur correcte pour chaque slide */}
-                    <button 
+                    <button
+                      onClick={handlePersonalize}
                       className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 text-black font-semibold text-xs sm:text-sm transition-all duration-200 hover:opacity-90 w-full sm:w-auto"
-                      style={{ 
+                      style={{
                         backgroundColor: slide.buttonColor, // Utilise slide.buttonColor au lieu de currentSlideData.buttonColor
                         borderRadius: '4px',
                         fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -191,12 +205,13 @@ const EnhancedCarousel = () => {
                     >
                       {slide.primaryBtn}
                     </button>
-                    
+
                     {/* Bouton "Je Découvre" - Blanc avec texte noir */}
-                    <button 
+                    <button
+                      onClick={handleDiscover}
                       className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 text-black font-semibold text-xs sm:text-sm transition-all duration-200 hover:opacity-90 w-full sm:w-auto"
-                      style={{ 
-                        backgroundColor: 'white', 
+                      style={{
+                        backgroundColor: 'white',
                         border: 'none',
                         borderRadius: '4px',
                         fontFamily: 'system-ui, -apple-system, sans-serif',

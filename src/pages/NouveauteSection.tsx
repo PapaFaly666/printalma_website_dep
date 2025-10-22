@@ -241,9 +241,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
   return (
     <div
       className="relative rounded-2xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 w-full"
-      style={{ 
+      style={{
         aspectRatio: "4 / 5",
-        minHeight: "350px"
+        minHeight: "280px",
+        height: "auto"
       }}
     >
       <div className="absolute inset-0 w-full h-full overflow-hidden">
@@ -355,9 +356,9 @@ const NouveautesGrid: React.FC = () => {
             <div className="h-8 bg-gray-200 rounded w-60 animate-pulse"></div>
             <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
             {[...Array(4)].map((_, index) => (
-              <div key={index} className="w-full h-80 bg-gray-200 rounded-2xl animate-pulse"></div>
+              <div key={index} className="w-full h-64 sm:h-72 lg:h-80 bg-gray-200 rounded-2xl animate-pulse"></div>
             ))}
           </div>
         </div>
@@ -403,7 +404,7 @@ const NouveautesGrid: React.FC = () => {
   }
 
   return (
-    <div className="w-full bg-gray-50 py-1 md:py-2">
+    <div className="w-full bg-gray-50 py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       <div className="w-full px-4 sm:px-8">
         {/* En-tête avec titre uniforme */}
         <div className="flex items-center justify-between mb-1">
@@ -440,7 +441,7 @@ const NouveautesGrid: React.FC = () => {
           )}
 
           {/* Grille de 4 produits */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8 transition-all duration-300">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8 transition-all duration-300">
             {currentProducts.map((item) => (
               <ProductCard 
                 key={item.id} 
