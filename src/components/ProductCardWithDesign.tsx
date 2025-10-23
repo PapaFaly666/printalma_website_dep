@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { VendorProduct } from '../services/vendorProductsService';
+import DesignPositionService from '../services/DesignPositionService';
+import { useAuth } from '../contexts/AuthContext';
+import { vendorProductService } from '../services/vendorProductService';
 
 interface DelimitationData {
   x: number;
@@ -29,6 +32,7 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
   product,
   onClick
 }) => {
+  const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -159,43 +163,96 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
     return () => resizeObserver.disconnect();
   }, [imageLoaded]);
 
-  // Obtenir la position du design depuis les designPositions (comme SimpleProductPreview)
-  const getDesignPosition = () => {
-    // Fonction pour normaliser une position (centrer si extrême)
-    const normalizePosition = (x: number, y: number, source: string) => {
-      const maxReasonableValue = 20; // Valeur maximale raisonnable
-      let normalizedX = x;
-      let normalizedY = y;
+  // Fonction pour synchroniser les données localStorage vers la base de données
+  const syncLocalStorageToDatabase = async (vendorProductId: number, designId: number, enrichedData: any) => {
+    if (!user?.id) return;
 
-      // Si les positions sont extrêmes, centrer le design
-      if (Math.abs(x) > maxReasonableValue || Math.abs(y) > maxReasonableValue) {
-        console.log(`🔧 ProductCardWithDesign - Position extrême détectée (${source}):`, { x, y }, '→ Centrage (0, 0)');
-        normalizedX = 0;
-        normalizedY = 0;
+    try {
+      // Vérifier si les données ont été enrichies depuis localStorage
+      if (enrichedData.source === 'localStorage' || enrichedData.designWidth || enrichedData.designHeight) {
+        console.log('🔄 [ProductCardWithDesign] Synchronisation des données enrichies vers la base de données...', {
+          vendorProductId,
+          designId,
+          data: {
+            x: enrichedData.x,
+            y: enrichedData.y,
+            scale: enrichedData.scale,
+            rotation: enrichedData.rotation,
+            designWidth: enrichedData.designWidth,
+            designHeight: enrichedData.designHeight,
+            constraints: enrichedData.constraints
+          }
+        });
+
+        // VRAIE SYNCHRONISATION vers la base de données
+        const positionPayload = {
+          x: enrichedData.x,
+          y: enrichedData.y,
+          scale: enrichedData.scale,
+          rotation: enrichedData.rotation || 0,
+          designWidth: enrichedData.designWidth,
+          designHeight: enrichedData.designHeight
+        };
+
+        // Sauvegarder via l'API vendorProductService
+        await vendorProductService.saveDesignPosition(vendorProductId, designId, positionPayload);
+
+        console.log('✅ [ProductCardWithDesign] Données synchronisées avec succès vers la base de données !');
       }
+    } catch (error) {
+      console.error('❌ [ProductCardWithDesign] Erreur lors de la synchronisation vers la base de données:', error);
+    }
+  };
 
-      return { x: normalizedX, y: normalizedY };
-    };
+  // Obtenir la position du design depuis l'API ET localStorage (EXACTEMENT comme SimpleProductPreview)
+  const getDesignPosition = () => {
+    console.log('🎨 [ProductCardWithDesign] getDesignPosition - Début de la fonction');
+    console.log('🎨 [ProductCardWithDesign] product.designPositions:', product.designPositions);
+    console.log('🎨 [ProductCardWithDesign] product.designTransforms:', product.designTransforms);
 
     // 1. Essayer d'abord designPositions depuis l'API
     if (product.designPositions && product.designPositions.length > 0) {
       const designPos = product.designPositions[0];
-      console.log('🎨 ProductCardWithDesign - Position depuis designPositions:', designPos.position);
+      console.log('📍 [ProductCardWithDesign] Position depuis designPositions:', designPos.position);
 
-      const { x, y } = normalizePosition(
-        designPos.position.x || 0,
-        designPos.position.y || 0,
-        'designPositions'
-      );
+      // Enrichir avec localStorage si designWidth/designHeight manquent
+      let enrichedPosition: any = {
+        ...designPos.position,
+        constraints: (designPos.position as any).constraints || {}
+      };
 
-      return {
-        x,
-        y,
-        scale: designPos.position.scale || product.designApplication?.scale || 0.6,
-        rotation: designPos.position.rotation || 0,
-        constraints: designPos.position.constraints || {},
+      if ((!enrichedPosition.designWidth || !enrichedPosition.designHeight) && product.designId && user?.id && product.adminProduct?.id) {
+        const localStorageData = DesignPositionService.getPosition(product.designId, product.adminProduct.id, user.id);
+        if (localStorageData && localStorageData.position) {
+          const localPos = localStorageData.position as any;
+          enrichedPosition.designWidth = localPos.designWidth || enrichedPosition.designWidth;
+          enrichedPosition.designHeight = localPos.designHeight || enrichedPosition.designHeight;
+          console.log('📍 [ProductCardWithDesign] Enrichi avec localStorage:', {
+            designWidth: enrichedPosition.designWidth,
+            designHeight: enrichedPosition.designHeight,
+            from: 'localStorage'
+          });
+
+          // Synchroniser les données enrichies vers la base de données
+          console.log('🔄 [ProductCardWithDesign] DÉCLENCHEMENT de la synchronisation automatique...');
+          syncLocalStorageToDatabase(product.id, product.designId, enrichedPosition);
+        }
+      }
+
+      const result = {
+        x: enrichedPosition.x || 0,
+        y: enrichedPosition.y || 0,
+        scale: enrichedPosition.scale || 0.8,
+        rotation: enrichedPosition.rotation || 0,
+        designWidth: enrichedPosition.designWidth,
+        designHeight: enrichedPosition.designHeight,
+        designScale: enrichedPosition.designScale,
+        constraints: enrichedPosition.constraints || {},
         source: 'designPositions'
       };
+
+      console.log('🎨 [ProductCardWithDesign] Résultat designPositions:', result);
+      return result;
     }
 
     // 2. Essayer designTransforms depuis l'API
@@ -203,32 +260,80 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
       const designTransform = product.designTransforms[0];
       const transform = designTransform.transforms['0']; // Délimitation 0
       if (transform) {
-        console.log('🎨 ProductCardWithDesign - Position depuis designTransforms:', transform);
+        console.log('📍 [ProductCardWithDesign] Position depuis designTransforms:', transform);
 
-        const { x, y } = normalizePosition(
-          transform.x || 0,
-          transform.y || 0,
-          'designTransforms'
-        );
+        // Enrichir avec localStorage si designWidth/designHeight manquent
+        let enrichedTransform: any = {
+          ...transform,
+          constraints: (transform as any).constraints || {}
+        };
 
-        return {
-          x,
-          y,
-          scale: transform.scale || product.designApplication?.scale || 0.6,
-          rotation: transform.rotation || 0,
-          constraints: (transform as any).constraints || {},
+        if ((!enrichedTransform.designWidth || !enrichedTransform.designHeight) && product.designId && user?.id && product.adminProduct?.id) {
+          const localStorageData = DesignPositionService.getPosition(product.designId, product.adminProduct.id, user.id);
+          if (localStorageData && localStorageData.position) {
+            const localPos = localStorageData.position as any;
+            enrichedTransform.designWidth = localPos.designWidth || enrichedTransform.designWidth;
+            enrichedTransform.designHeight = localPos.designHeight || enrichedTransform.designHeight;
+            console.log('📍 [ProductCardWithDesign] Enrichi avec localStorage:', {
+              designWidth: enrichedTransform.designWidth,
+              designHeight: enrichedTransform.designHeight,
+              from: 'localStorage'
+            });
+
+            // Synchroniser les données enrichies vers la base de données
+            console.log('🔄 [ProductCardWithDesign] DÉCLENCHEMENT de la synchronisation automatique (transform)...');
+            syncLocalStorageToDatabase(product.id, product.designId, enrichedTransform);
+          }
+        }
+
+        const result = {
+          x: enrichedTransform.x || 0,
+          y: enrichedTransform.y || 0,
+          scale: enrichedTransform.scale || 0.8,
+          rotation: enrichedTransform.rotation || 0,
+          designWidth: enrichedTransform.designWidth,
+          designHeight: enrichedTransform.designHeight,
+          designScale: enrichedTransform.designScale,
+          constraints: enrichedTransform.constraints || {},
           source: 'designTransforms'
+        };
+
+        console.log('🎨 [ProductCardWithDesign] Résultat designTransforms:', result);
+        return result;
+      }
+    }
+
+    // 3. Essayer localStorage directement
+    if (product.designId && user?.id && product.adminProduct?.id) {
+      const localStorageData = DesignPositionService.getPosition(product.designId, product.adminProduct.id, user.id);
+      if (localStorageData && localStorageData.position) {
+        console.log('📍 [ProductCardWithDesign] Position complète depuis localStorage:', localStorageData.position);
+
+        const localPosition = localStorageData.position as any;
+        return {
+          x: localPosition.x || 0,
+          y: localPosition.y || 0,
+          scale: localPosition.scale || 0.8,
+          rotation: localPosition.rotation || 0,
+          designWidth: localPosition.designWidth,
+          designHeight: localPosition.designHeight,
+          designScale: localPosition.designScale,
+          constraints: localPosition.constraints || {},
+          source: 'localStorage'
         };
       }
     }
 
-    // 3. Fallback sur designApplication.scale
-    console.log('🎨 ProductCardWithDesign - Position par défaut avec scale:', product.designApplication?.scale);
+    // 4. Fallback sur designApplication.scale
+    console.log('📍 [ProductCardWithDesign] Position par défaut avec scale:', product.designApplication?.scale);
     return {
       x: 0,
       y: 0,
-      scale: product.designApplication?.scale || 0.6,
+      scale: product.designApplication?.scale || 0.8,
       rotation: 0,
+      designWidth: undefined,
+      designHeight: undefined,
+      designScale: undefined,
       constraints: {},
       source: 'designApplication'
     };

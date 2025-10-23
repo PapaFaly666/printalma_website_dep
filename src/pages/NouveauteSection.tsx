@@ -135,12 +135,10 @@ const normalizeDesignPosition = (position: any) => {
     normalizedY = 0;
   }
 
-  // Pour les nouveautés, TOUJOURS centrer le design (x: 0, y: 0)
-  // Les positions stockées dans la DB sont en pixels absolus et ne correspondent pas
-  // au système de coordonnées relatif attendu par SimpleProductPreview
-  console.log('🔧 [normalizeDesignPosition] Position originale:', { x, y }, '→ Centrage (0, 0)');
-  normalizedX = 0;
-  normalizedY = 0;
+  // ✅ CORRECTION : Conserver les positions réelles au lieu de forcer au centre
+  // SimpleProductPreview utilise maintenant designPositions/designTransforms/localStorage
+  // qui gèrent correctement le positionnement
+  console.log('📐 [normalizeDesignPosition] Position conservée:', { x: normalizedX, y: normalizedY, scale });
 
   // S'assurer que le scale est dans une plage raisonnable
   let normalizedScale = scale || 0.8;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, Loader2, Check } from 'lucide-react';
-import vendorProductsService, { VendorProduct } from '../services/vendorProductsService';
+import vendorProductsService, { VendorProduct, ProductGenre } from '../services/vendorProductsService';
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { useCart } from '../contexts/CartContext';
 
@@ -52,7 +52,93 @@ const PublicVendorProductDetailPage: React.FC = () => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
 
+  // États pour les produits similaires
+  const [similarProducts, setSimilarProducts] = useState<VendorProduct[]>([]);
+  const [selectedGenre, setSelectedGenre] = useState<ProductGenre>('HOMME');
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [errorSimilar, setErrorSimilar] = useState<string | null>(null);
+
+  // États pour les designs du vendeur
+  const [vendorDesigns, setVendorDesigns] = useState<Array<{ id: number; imageUrl: string; name: string }>>([]);
+  const [currentDesignIndex, setCurrentDesignIndex] = useState(0);
+  const [loadingVendorDesigns, setLoadingVendorDesigns] = useState(false);
+
+  // États pour l'historique
+  const [historyProducts, setHistoryProducts] = useState<VendorProduct[]>([]);
+
   const { addToCart } = useCart();
+
+  // ============ GESTION DE L'HISTORIQUE ============
+  const HISTORY_STORAGE_KEY = 'vendor_products_history';
+  const MAX_HISTORY_ITEMS = 12;
+
+  // Charger l'historique depuis le localStorage
+  const loadHistory = (): VendorProduct[] => {
+    try {
+      const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Erreur chargement historique:', error);
+    }
+    return [];
+  };
+
+  // Sauvegarder l'historique dans le localStorage
+  const saveHistory = (history: VendorProduct[]) => {
+    try {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+    } catch (error) {
+      console.error('Erreur sauvegarde historique:', error);
+    }
+  };
+
+  // Ajouter un produit à l'historique
+  const addToHistory = (product: VendorProduct) => {
+    const currentHistory = loadHistory();
+
+    // Supprimer le produit s'il existe déjà (pour éviter les doublons)
+    const filteredHistory = currentHistory.filter(p => p.id !== product.id);
+
+    // Ajouter le produit en tête de liste
+    const newHistory = [product, ...filteredHistory].slice(0, MAX_HISTORY_ITEMS);
+
+    saveHistory(newHistory);
+    setHistoryProducts(newHistory);
+
+    console.log('✅ Produit ajouté à l\'historique:', product.id);
+  };
+
+  // Supprimer tout l'historique
+  const clearHistory = () => {
+    localStorage.removeItem(HISTORY_STORAGE_KEY);
+    setHistoryProducts([]);
+    console.log('✅ Historique supprimé');
+  };
+
+  // Supprimer un produit spécifique de l'historique
+  const removeFromHistory = (productId: number) => {
+    const currentHistory = loadHistory();
+    const newHistory = currentHistory.filter(p => p.id !== productId);
+    saveHistory(newHistory);
+    setHistoryProducts(newHistory);
+    console.log('✅ Produit retiré de l\'historique:', productId);
+  };
+
+  // Charger l'historique au montage du composant
+  useEffect(() => {
+    const history = loadHistory();
+    setHistoryProducts(history);
+    console.log('📜 Historique chargé:', history.length, 'produits');
+  }, []);
+
+  // Ajouter le produit actuel à l'historique quand il est chargé
+  useEffect(() => {
+    if (product) {
+      addToHistory(product);
+    }
+  }, [product?.id]);
 
   // Timeout de sécurité pour éviter le chargement infini
   useEffect(() => {
@@ -136,6 +222,137 @@ const PublicVendorProductDetailPage: React.FC = () => {
     loadProduct();
   }, [actualProductId]);
 
+  // 🔍 Logs de diagnostic pour le positionnement du design
+  useEffect(() => {
+    if (product) {
+      console.log('🎨 [PublicVendorProductDetailPage] Diagnostic produit chargé:', {
+        productId: product.id,
+        vendorName: product.vendorName,
+        hasDesign: product.designApplication?.hasDesign,
+        designUrl: product.designApplication?.designUrl,
+        designId: product.designId,
+        designPositions: product.designPositions,
+        designTransforms: product.designTransforms,
+        adminProduct: {
+          id: product.adminProduct?.id,
+          name: product.adminProduct?.name,
+          colorVariations: product.adminProduct?.colorVariations?.length || 0,
+          firstColorImages: product.adminProduct?.colorVariations?.[0]?.images || []
+        },
+        selectedColors: product.selectedColors,
+        selectedSizes: product.selectedSizes,
+        images: product.images
+      });
+
+      // Log détaillé des délimitations pour chaque couleur
+      if (product.adminProduct?.colorVariations) {
+        product.adminProduct.colorVariations.forEach((colorVar, idx) => {
+          console.log(`🎨 [Couleur ${idx + 1}] ${colorVar.name}:`, {
+            colorId: colorVar.id,
+            colorCode: colorVar.colorCode,
+            images: colorVar.images.map(img => ({
+              id: img.id,
+              viewType: img.viewType,
+              url: img.url,
+              delimitations: img.delimitations
+            }))
+          });
+        });
+      }
+    }
+  }, [product]);
+
+  // Charger les produits similaires par genre
+  useEffect(() => {
+    const loadSimilarProducts = async () => {
+      if (!selectedGenre) return;
+
+      setLoadingSimilar(true);
+      setErrorSimilar(null);
+
+      try {
+        console.log('🔍 [PublicVendorProductDetailPage] Chargement produits similaires:', {
+          genre: selectedGenre,
+          limit: 4
+        });
+
+        const response = await vendorProductsService.getProductsByGenre(selectedGenre, 4, 0);
+
+        console.log('📡 [PublicVendorProductDetailPage] Réponse produits similaires:', {
+          success: response.success,
+          count: response.data?.length || 0
+        });
+
+        if (response.success && response.data) {
+          // Filtrer le produit actuel des résultats
+          const filtered = response.data.filter(p => p.id !== product?.id);
+          setSimilarProducts(filtered.slice(0, 4));
+          console.log('✅ [PublicVendorProductDetailPage] Produits similaires chargés:', filtered.length);
+        } else {
+          setErrorSimilar(response.message || 'Erreur lors du chargement');
+        }
+      } catch (err) {
+        console.error('❌ [PublicVendorProductDetailPage] Erreur chargement produits similaires:', err);
+        setErrorSimilar('Erreur lors du chargement des produits similaires');
+      } finally {
+        setLoadingSimilar(false);
+      }
+    };
+
+    loadSimilarProducts();
+  }, [selectedGenre, product?.id]);
+
+  // Charger les designs du vendeur
+  useEffect(() => {
+    const loadVendorDesigns = async () => {
+      if (!product?.vendor?.id) return;
+
+      setLoadingVendorDesigns(true);
+
+      try {
+        console.log('🔍 [PublicVendorProductDetailPage] Chargement designs du vendeur:', product.vendor.id);
+
+        const response = await vendorProductsService.searchProducts({
+          vendorId: product.vendor.id,
+          limit: 20
+        });
+
+        console.log('📡 [PublicVendorProductDetailPage] Réponse designs vendeur:', {
+          success: response.success,
+          count: response.data?.length || 0
+        });
+
+        if (response.success && response.data) {
+          // Extraire les designs uniques (basé sur designUrl)
+          const designsMap = new Map<string, { id: number; imageUrl: string; name: string }>();
+
+          response.data.forEach(p => {
+            if (p.designApplication?.hasDesign && p.designApplication.designUrl && p.design?.id) {
+              const designKey = p.designApplication.designUrl;
+              if (!designsMap.has(designKey)) {
+                designsMap.set(designKey, {
+                  id: p.design.id,
+                  imageUrl: p.designApplication.designUrl,
+                  name: p.design.name || p.vendorName
+                });
+              }
+            }
+          });
+
+          const uniqueDesigns = Array.from(designsMap.values());
+          setVendorDesigns(uniqueDesigns);
+          console.log('✅ [PublicVendorProductDetailPage] Designs du vendeur chargés:', uniqueDesigns.length);
+        }
+      } catch (err) {
+        console.error('❌ [PublicVendorProductDetailPage] Erreur chargement designs vendeur:', err);
+      } finally {
+        setLoadingVendorDesigns(false);
+      }
+    };
+
+    loadVendorDesigns();
+  }, [product?.vendor?.id]);
+
   const handleBack = () => {
     navigate(-1);
   };
@@ -168,7 +385,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
       if (product.adminProduct && product.adminProduct.colorVariations) {
         const colorVariation = product.adminProduct.colorVariations.find(cv => cv.id === selectedColorId);
         if (colorVariation && colorVariation.images && colorVariation.images.length > 0) {
-          const mockupImage = colorVariation.images.find(img => img.view === 'Front') || colorVariation.images[0];
+          const mockupImage = colorVariation.images.find(img => img.viewType === 'Front') || colorVariation.images[0];
           if (mockupImage && mockupImage.delimitations) {
             delimitations = mockupImage.delimitations;
           }
@@ -266,53 +483,36 @@ const PublicVendorProductDetailPage: React.FC = () => {
             {/* Image principale */}
             <div className="bg-white rounded-2xl border border-gray-200 p-8 aspect-square flex items-center justify-center">
               <SimpleProductPreview
-                product={product as any}
+                product={product}
                 onColorChange={handleColorChange}
                 showColorSlider={false}
-                showDelimitations={false}
+                showDelimitations={false} // Mettre à true pour voir les zones de délimitation en mode debug
                 onProductClick={() => {}}
                 hideValidationBadges={true}
                 initialColorId={selectedColorId}
+                imageObjectFit="cover"
               />
             </div>
 
             {/* Miniatures des vues */}
             <div className="grid grid-cols-6 gap-3">
-              {/* Première miniature : produit avec design incorporé */}
-              <button
-                className={`aspect-square bg-white rounded-lg border-2 transition-colors flex items-center justify-center relative overflow-hidden border-blue-500 ring-2 ring-blue-200`}
-              >
-                <div className="w-full h-full relative">
-                  {/* Image du produit comme fond */}
-                  <img
-                    src={product.images.adminReferences[0]?.adminImageUrl || product.images.primaryImageUrl}
-                    alt="Produit principal"
-                    className="w-full h-full object-cover"
-                  />
-
-                  {/* Design superposé par-dessus */}
-                  {product.designApplication?.hasDesign && product.designApplication.designUrl && (
-                    <div className="absolute inset-0 flex items-center justify-center p-4">
-                      <img
-                        src={product.designApplication.designUrl}
-                        alt="Design personnalisé"
-                        className="max-w-full max-h-full object-contain"
-                        style={{
-                          maxWidth: 'calc(100% - 32px)', // 16px padding de chaque côté
-                          maxHeight: 'calc(100% - 32px)',
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
+              {/* Première miniature : produit avec design incorporé - Utilise SimpleProductPreview pour garantir le même positionnement */}
+              <div className="relative aspect-square">
+                <SimpleProductPreview
+                  product={product}
+                  showColorSlider={false}
+                  showDelimitations={false}
+                  onProductClick={() => {}}
+                  hideValidationBadges={true}
+                  initialColorId={selectedColorId}
+                  imageObjectFit="cover"
+                  className="border-2 border-blue-500 ring-2 ring-blue-200"
+                />
                 {/* Indicateur de sélection principale */}
-                <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center z-20">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
-
-                
-              </button>
+              </div>
 
               {/* Miniature du design seul */}
               {product.designApplication?.hasDesign && product.designApplication.designUrl && (
@@ -519,158 +719,240 @@ const PublicVendorProductDetailPage: React.FC = () => {
 
             {/* Filtres */}
             <div className="flex flex-wrap gap-2 mb-6 sm:mb-8">
-              <button className="px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 bg-red-500 text-white rounded-full text-xs sm:text-sm font-medium hover:bg-red-600 transition-colors">
+              <button
+                onClick={() => setSelectedGenre('HOMME')}
+                className={`px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                  selectedGenre === 'HOMME'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
                 Homme
               </button>
-              <button className="px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 border border-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-1 sm:gap-2">
-                <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 16v-4" />
-                  <path d="M12 8h.01" />
-                </svg>
+              <button
+                onClick={() => setSelectedGenre('FEMME')}
+                className={`px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                  selectedGenre === 'FEMME'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
                 <span className="hidden sm:inline">Femme</span>
                 <span className="sm:hidden">F</span>
               </button>
-              <button className="px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 border border-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-1 sm:gap-2">
-                <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                </svg>
-                <span className="hidden sm:inline">Enfants</span>
-                <span className="sm:hidden">E</span>
-              </button>
-              <button className="px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 border border-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-1 sm:gap-2">
-                <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
+              <button
+                onClick={() => setSelectedGenre('BEBE')}
+                className={`px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                  selectedGenre === 'BEBE'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
                 <span className="hidden sm:inline">Bébés</span>
                 <span className="sm:hidden">B</span>
               </button>
-              <button className="px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 border border-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-1 sm:gap-2">
-                <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                <span className="hidden sm:inline">Stickers</span>
-                <span className="sm:hidden">S</span>
-              </button>
-              <button className="px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 border border-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-1 sm:gap-2">
-                <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M9 3v18" />
-                  <path d="m16 15-3-3 3-3" />
-                </svg>
-                <span className="hidden sm:inline">Accessoires</span>
-                <span className="sm:hidden">A</span>
+              <button
+                onClick={() => setSelectedGenre('UNISEXE')}
+                className={`px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                  selectedGenre === 'UNISEXE'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="hidden sm:inline">Unisexe</span>
+                <span className="sm:hidden">U</span>
               </button>
             </div>
 
             {/* Grille de produits */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-              {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="group cursor-pointer">
-                  <div className="aspect-square bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl sm:rounded-2xl mb-2 sm:mb-3 overflow-hidden relative">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-white/30" style={{ transform: 'rotate(45deg)' }} />
-                    </div>
-                  </div>
-                  <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1">Produit {item}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">
-                    <span className="font-bold">PRIX</span> <span className="text-xs">FCFA</span>
-                  </p>
+            {loadingSimilar ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                  <span className="text-gray-600">Chargement des produits...</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : errorSimilar ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">{errorSimilar}</p>
+              </div>
+            ) : similarProducts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">Aucun produit trouvé pour ce genre</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                {similarProducts.map((similarProduct) => (
+                  <div
+                    key={similarProduct.id}
+                    className="group cursor-pointer"
+                    onClick={() => navigate(`/vendor-product-detail/${similarProduct.id}`)}
+                  >
+                    {/* Utiliser SimpleProductPreview pour un positionnement correct du design */}
+                    <div className="aspect-square bg-white rounded-xl sm:rounded-2xl mb-2 sm:mb-3 overflow-hidden relative border border-gray-200 hover:shadow-lg transition-shadow">
+                      <SimpleProductPreview
+                        product={similarProduct}
+                        showColorSlider={false}
+                        showDelimitations={false}
+                        onProductClick={() => {}}
+                        hideValidationBadges={true}
+                        imageObjectFit="cover"
+                        className="w-full h-full"
+                      />
+                    </div>
+                    <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
+                      {similarProduct.vendorName || similarProduct.adminProduct?.name}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      <span className="font-bold">{(similarProduct.price / 100).toLocaleString('fr-FR')}</span>{' '}
+                      <span className="text-xs">FCFA</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Section Détails du design */}
-        <div className="max-w-7xl mx-auto mt-12">
-          <h2 className="text-2xl lg:text-3xl font-bold mb-8" style={{ color: '#00A5E0', fontStyle: 'italic' }}>
-            Détails du design
-          </h2>
+        {product.designApplication?.hasDesign && product.design && (
+          <div className="max-w-7xl mx-auto mt-12">
+            <h2 className="text-2xl lg:text-3xl font-bold mb-8" style={{ color: '#00A5E0', fontStyle: 'italic' }}>
+              Détails du design
+            </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Colonne gauche - Info du design */}
-            <div>
-              <div className="flex gap-6 mb-6">
-                {/* Miniature du design */}
-                <div className="w-32 h-32 flex-shrink-0">
-                  <div className="w-full h-full bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl overflow-hidden relative">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-20 h-20 border-2 border-white/30" style={{ transform: 'rotate(45deg)' }} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              {/* Colonne gauche - Info du design */}
+              <div>
+                <div className="flex gap-6 mb-6">
+                  {/* Miniature du design */}
+                  <div className="w-32 h-32 flex-shrink-0">
+                    <div className="w-full h-full bg-white rounded-2xl overflow-hidden relative border-2 border-gray-200">
+                      {product.designApplication.designUrl ? (
+                        <img
+                          src={product.designApplication.designUrl}
+                          alt={product.design.name}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-20 h-20 border-2 border-gray-300" style={{ transform: 'rotate(45deg)' }} />
+                        </div>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Info du design */}
+                  <div className="flex-1">
+                    <p className="text-base text-gray-700 mb-1">Nom du design</p>
+                    <p className="text-base font-bold text-gray-900 mb-2" style={{ fontStyle: 'italic' }}>
+                      {product.design.name}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Designer : <span style={{ color: '#FF1493' }}>{product.vendor?.shop_name || product.vendor?.fullName}</span>
+                    </p>
                   </div>
                 </div>
 
-                {/* Info du design */}
-                <div className="flex-1">
-                  <p className="text-base text-gray-700 mb-1">Nom du design</p>
-                  <p className="text-base font-bold text-gray-900 mb-2" style={{ fontStyle: 'italic' }}>
-                    Detail du design
+                {/* Description */}
+                <div className="space-y-4 mb-6">
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {product.design.description || "Description du design non disponible."}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    Designer : <span style={{ color: '#FF1493' }}>Nom du designer</span>
+                  {product.design.tags && product.design.tags.length > 0 && (
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Tags: {product.design.tags.join(', ')}
+                    </p>
+                  )}
+                </div>
+
+                {/* Tags clients */}
+                <div className="mb-6">
+                  <p className="text-sm font-semibold text-gray-900 mb-3">
+                    Les clients ont également recherché :
                   </p>
+                  <div className="flex flex-wrap gap-2">
+                    {['Amour', 'Chérie', 'Sport', 'Nichop', 'Anniversaire', 'Date', 'Amour', 'Chérie', 'Sport', 'Nichop', 'Anniversaire', 'Date'].map((tag, index) => (
+                      <button
+                        key={index}
+                        className="px-4 py-1.5 border border-gray-300 rounded-full text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Description */}
-              <div className="space-y-4 mb-6">
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam.
-                </p>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  Tags: Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam.
-                </p>
-              </div>
+              {/* Colonne droite - Grande image du design avec slider */}
+              <div>
+                <div className="w-full aspect-square bg-white rounded-2xl overflow-hidden relative border-2 border-gray-200">
+                  {loadingVendorDesigns ? (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                    </div>
+                  ) : vendorDesigns.length > 0 ? (
+                    <>
+                      {/* Image du design actuel */}
+                      <img
+                        src={vendorDesigns[currentDesignIndex].imageUrl}
+                        alt={vendorDesigns[currentDesignIndex].name}
+                        className="w-full h-full object-contain p-8"
+                      />
 
-              {/* Tags clients */}
-              <div className="mb-6">
-                <p className="text-sm font-semibold text-gray-900 mb-3">
-                  Les clients ont également recherché :
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {['Amour', 'Chérie', 'Sport', 'Nichop', 'Anniversaire', 'Date', 'Amour', 'Chérie', 'Sport', 'Nichop', 'Anniversaire', 'Date'].map((tag, index) => (
-                    <button
-                      key={index}
-                      className="px-4 py-1.5 border border-gray-300 rounded-full text-xs text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+                      {/* Texte en bas à droite */}
+                      <div className="absolute bottom-6 right-6 text-right bg-black/50 px-4 py-2 rounded-lg backdrop-blur-sm">
+                        <p className="text-white text-sm mb-1">plus de design fait par:</p>
+                        <p className="text-white text-base font-semibold underline cursor-pointer hover:text-white/90 transition-colors">
+                          {product.vendor?.shop_name || product.vendor?.fullName}
+                        </p>
+                      </div>
 
-            {/* Colonne droite - Grande image du design */}
-            <div>
-              <div className="w-full aspect-square bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl overflow-hidden relative">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-48 h-48 border-2 border-white/30" style={{ transform: 'rotate(45deg)' }} />
+                      {/* Boutons de navigation - seulement si plusieurs designs */}
+                      {vendorDesigns.length > 1 && (
+                        <>
+                          <button
+                            onClick={() => setCurrentDesignIndex((prev) => (prev === 0 ? vendorDesigns.length - 1 : prev - 1))}
+                            className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                          >
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => setCurrentDesignIndex((prev) => (prev === vendorDesigns.length - 1 ? 0 : prev + 1))}
+                            className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                          >
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M9 18l6-6-6-6" />
+                            </svg>
+                          </button>
+
+                          {/* Indicateurs de pagination */}
+                          <div className="absolute bottom-6 left-6 flex gap-2">
+                            {vendorDesigns.map((_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentDesignIndex(index)}
+                                className={`w-2 h-2 rounded-full transition-colors ${
+                                  index === currentDesignIndex ? 'bg-white' : 'bg-white/50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <p className="text-gray-500">Aucun autre design du vendeur</p>
+                    </div>
+                  )}
                 </div>
-                {/* Texte en bas à droite */}
-                <div className="absolute bottom-6 right-6 text-right">
-                  <p className="text-white text-sm mb-1">plus de design fait par:</p>
-                  <p className="text-white text-base font-semibold underline cursor-pointer hover:text-white/90 transition-colors">
-                    nom du designer
-                  </p>
-                </div>
-                {/* Boutons de navigation */}
-                <button className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M15 18l-6-6 6-6" />
-                  </svg>
-                </button>
-                <button className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </button>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Section Historique */}
         <div className="max-w-7xl mx-auto mt-12 mb-12">
@@ -680,37 +962,82 @@ const PublicVendorProductDetailPage: React.FC = () => {
                 Historique
               </h2>
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-cyan-400 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2v20M2 12h20" />
-                </svg>
+                <span className="text-white text-sm sm:text-base font-semibold">
+                  {historyProducts.length}
+                </span>
               </div>
             </div>
-            <button className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 bg-cyan-400 text-white rounded-lg font-medium hover:bg-cyan-500 transition-colors flex items-center gap-1 sm:gap-2">
-              <span className="hidden sm:inline">Supprimer</span>
-              <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-            </button>
+            {historyProducts.length > 0 && (
+              <button
+                onClick={clearHistory}
+                className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 bg-cyan-400 text-white rounded-lg font-medium hover:bg-cyan-500 transition-colors flex items-center gap-1 sm:gap-2"
+              >
+                <span className="hidden sm:inline">Supprimer tout</span>
+                <span className="sm:hidden">Supprimer</span>
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* Grille historique */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="group cursor-pointer relative">
-                <div className="aspect-square bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl overflow-hidden relative">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-32 h-32 border-2 border-white/30" style={{ transform: 'rotate(45deg)' }} />
+          {historyProducts.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-2xl">
+              <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-gray-600 text-lg mb-2">Aucun produit dans l'historique</p>
+              <p className="text-gray-500 text-sm">Les produits que vous consultez apparaîtront ici</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {historyProducts.map((historyProduct) => (
+                <div
+                  key={historyProduct.id}
+                  className="group cursor-pointer relative"
+                  onClick={() => navigate(`/vendor-product-detail/${historyProduct.id}`)}
+                >
+                  {/* Utiliser SimpleProductPreview pour un affichage cohérent */}
+                  <div className="aspect-square bg-white rounded-2xl overflow-hidden relative border border-gray-200 hover:shadow-lg transition-shadow">
+                    <SimpleProductPreview
+                      product={historyProduct}
+                      showColorSlider={false}
+                      showDelimitations={false}
+                      onProductClick={() => {}}
+                      hideValidationBadges={true}
+                      imageObjectFit="cover"
+                      className="w-full h-full"
+                    />
+
+                    {/* Bouton supprimer en haut à droite */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFromHistory(historyProduct.id);
+                      }}
+                      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                    >
+                      <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  {/* Bouton coeur en haut à droite */}
-                  <button className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform">
-                    <svg className="w-5 h-5 text-pink-500" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                    </svg>
-                  </button>
+
+                  {/* Info produit */}
+                  <div className="mt-3">
+                    <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
+                      {historyProduct.vendorName || historyProduct.adminProduct?.name}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      <span className="font-bold">{(historyProduct.price / 100).toLocaleString('fr-FR')}</span>{' '}
+                      <span className="text-xs">FCFA</span>
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

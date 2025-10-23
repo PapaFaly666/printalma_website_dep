@@ -66,7 +66,7 @@ export interface VendorProduct {
       images: Array<{
         id: number;
         url: string;
-        view: string;
+        viewType: string; // ✅ Changé de "view" à "viewType" pour compatibilité avec SimpleProductPreview
         naturalWidth: number;
         naturalHeight: number;
         delimitations: DelimitationData[];
@@ -98,7 +98,7 @@ export interface VendorProduct {
     isValidated: boolean;
   };
   designPositions: DesignPosition[];
-  designTransforms: any[]; // Ajout du champ manquant
+  designTransforms: any[];
   vendor: {
     id: number;
     fullName: string;
@@ -110,7 +110,7 @@ export interface VendorProduct {
       colorName: string;
       colorCode: string;
       adminImageUrl: string;
-      imageType: string;
+      imageType: 'base' | 'detail' | 'admin_reference'; // ✅ Type strict pour compatibilité avec SimpleProductPreview
     }>;
     total: number;
     primaryImageUrl: string;
@@ -124,7 +124,7 @@ export interface VendorProduct {
     name: string;
     colorCode: string;
   }>;
-  designId: number;
+  designId: number | null; // ✅ Changé à "number | null" pour compatibilité avec SimpleProductPreview
 }
 
 export interface VendorProductsResponse {
@@ -139,10 +139,18 @@ export interface VendorProductsResponse {
   };
 }
 
+export type ProductGenre = 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE';
+
 export interface SearchParams {
   search?: string;
   limit?: number;
   offset?: number;
+  genre?: ProductGenre;
+  allProducts?: boolean;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  vendorId?: number;
 }
 
 export interface VendorProductDetailResponse {
@@ -168,6 +176,24 @@ class VendorProductsService {
       }
       if (params?.offset) {
         queryParams.append('offset', params.offset.toString());
+      }
+      if (params?.genre) {
+        queryParams.append('genre', params.genre);
+      }
+      if (params?.allProducts !== undefined) {
+        queryParams.append('allProducts', params.allProducts.toString());
+      }
+      if (params?.category) {
+        queryParams.append('category', params.category);
+      }
+      if (params?.minPrice) {
+        queryParams.append('minPrice', params.minPrice.toString());
+      }
+      if (params?.maxPrice) {
+        queryParams.append('maxPrice', params.maxPrice.toString());
+      }
+      if (params?.vendorId) {
+        queryParams.append('vendorId', params.vendorId.toString());
       }
 
       const url = `${API_BASE}/public/vendor-products${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
@@ -211,6 +237,20 @@ class VendorProductsService {
    */
   async searchByCategory(category: string, limit: number = 20, offset: number = 0): Promise<VendorProductsResponse> {
     return this.searchProducts({ search: category, limit, offset });
+  }
+
+  /**
+   * Récupérer les produits par genre
+   * GET /public/vendor-products?genre=...
+   */
+  async getProductsByGenre(genre: ProductGenre, limit: number = 12, offset: number = 0): Promise<VendorProductsResponse> {
+    console.log('🔍 [VendorProducts] Recherche par genre:', genre);
+    return this.searchProducts({
+      genre,
+      limit,
+      offset,
+      allProducts: true
+    });
   }
 
   /**

@@ -3,6 +3,7 @@ import { X, Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
 import { CartItem } from '../types/cart';
 import DesignPositionService from '../services/DesignPositionService';
 import { useAuth } from '../contexts/AuthContext';
+import { vendorProductService } from '../services/vendorProductService';
 
 interface CartSidebarProps {
   isOpen: boolean;
@@ -87,9 +88,57 @@ const ProductWithDesign: React.FC<{
     };
   };
 
-  // Obtenir la position du design depuis localStorage
+  // Fonction pour synchroniser les données localStorage vers la base de données (comme SimpleProductPreview)
+  const syncLocalStorageToDatabase = async (vendorProductId: number, designId: number, enrichedData: any) => {
+    if (!user?.id) return;
+
+    try {
+      // Vérifier si les données ont été enrichies depuis localStorage
+      if (enrichedData.source === 'localStorage' || enrichedData.designWidth || enrichedData.designHeight) {
+        console.log('🔄 [CartSidebar] Synchronisation des données enrichies vers la base de données...', {
+          vendorProductId,
+          designId,
+          data: {
+            x: enrichedData.x,
+            y: enrichedData.y,
+            scale: enrichedData.scale,
+            rotation: enrichedData.rotation,
+            designWidth: enrichedData.designWidth,
+            designHeight: enrichedData.designHeight,
+            constraints: enrichedData.constraints
+          }
+        });
+
+        // VRAIE SYNCHRONISATION vers la base de données
+        const positionPayload = {
+          x: enrichedData.x,
+          y: enrichedData.y,
+          scale: enrichedData.scale,
+          rotation: enrichedData.rotation || 0,
+          designWidth: enrichedData.designWidth,
+          designHeight: enrichedData.designHeight
+        };
+
+        // Sauvegarder via l'API vendorProductService
+        await vendorProductService.saveDesignPosition(vendorProductId, designId, positionPayload);
+
+        console.log('✅ [CartSidebar] Données synchronisées avec succès vers la base de données !');
+      }
+    } catch (error) {
+      console.error('❌ [CartSidebar] Erreur lors de la synchronisation vers la base de données:', error);
+    }
+  };
+
+  // Obtenir la position du design depuis localStorage (EXACTEMENT comme SimpleProductPreview)
   const getDesignPosition = () => {
+    console.log('🎨 [CartSidebar] getDesignPosition - Début de la fonction', {
+      designId: item.designId,
+      adminProductId: item.adminProductId,
+      userId: user?.id
+    });
+
     if (!item.designId || !user?.id || !item.adminProductId) {
+      console.log('📍 [CartSidebar] Informations manquantes, position par défaut');
       return {
         x: 0,
         y: 0,
@@ -109,10 +158,13 @@ const ProductWithDesign: React.FC<{
     const sizeId = item.selectedSize?.id || item.sizeId;
     const sizeName = item.selectedSize?.sizeName || item.sizeName || item.size;
 
+    // Essayer localStorage directement (dans le panier, on n'a pas accès aux données API directement)
     const localStorageData = DesignPositionService.getPosition(item.designId, item.adminProductId, user.id);
     if (localStorageData && localStorageData.position) {
       const localPosition = localStorageData.position as any;
-      return {
+      console.log('📍 [CartSidebar] Position depuis localStorage:', localPosition);
+
+      const result = {
         x: localPosition.x || 0,
         y: localPosition.y || 0,
         scale: localPosition.scale || item.designScale || 0.8,
@@ -125,8 +177,17 @@ const ProductWithDesign: React.FC<{
         sizeId,
         sizeName
       };
+
+      // Synchroniser vers la base de données si on a un ID de produit vendeur
+      if (item.id && typeof item.id === 'number') {
+        console.log('🔄 [CartSidebar] DÉCLENCHEMENT de la synchronisation automatique...');
+        syncLocalStorageToDatabase(item.id, item.designId, result);
+      }
+
+      return result;
     }
 
+    console.log('📍 [CartSidebar] Position par défaut (pas de données localStorage)');
     return {
       x: 0,
       y: 0,
@@ -215,6 +276,26 @@ const ProductWithDesign: React.FC<{
   const designPosition = getDesignPosition();
   const delimitations = item.delimitations || [];
 
+  // Log de débogage pour le design (comme SimpleProductPreview)
+  useEffect(() => {
+    console.log('🔍 [CartSidebar] ProductWithDesign - Item:', {
+      id: item.id,
+      hasDesign: !!item.designUrl,
+      designUrl: item.designUrl,
+      designId: item.designId,
+      delimitations: delimitations.length,
+      imageMetrics: !!imageMetrics
+    });
+
+    if (item.designUrl && delimitations.length > 0) {
+      console.log('🎨 [CartSidebar] Informations design:', {
+        designPosition,
+        delimitations,
+        firstDelimitation: delimitations[0]
+      });
+    }
+  }, [item, imageMetrics, designPosition, delimitations]);
+
   return (
     <div className="relative w-20 h-20 bg-white rounded-lg border border-gray-200 flex items-center justify-center p-2">
       {/* Conteneur principal */}
@@ -233,24 +314,44 @@ const ProductWithDesign: React.FC<{
 
         {/* Design superposé si présent */}
         {item.designUrl && imageMetrics && delimitations.length > 0 && (() => {
+          console.log('🎨 [CartSidebar] Affichage du design - Conditions vérifiées');
+
           const delimitation = delimitations[0];
-          if (!delimitation) return null;
+          if (!delimitation) {
+            console.log('🎨 [CartSidebar] Pas de délimitation, pas d\'affichage');
+            return null;
+          }
 
           const pos = computePxPosition(delimitation);
-          if (pos.width <= 0 || pos.height <= 0) return null;
+          console.log('🎨 [CartSidebar] Position calculée:', pos);
+
+          if (pos.width <= 0 || pos.height <= 0) {
+            console.log('🎨 [CartSidebar] Dimensions invalides, pas d\'affichage');
+            return null;
+          }
 
           const { x, y, scale, rotation } = designPosition;
+          // Utiliser un ratio CONSTANT de la délimitation (comme SimpleProductPreview)
           const designScale = scale || 0.8;
           const actualDesignWidth = pos.width * designScale;
           const actualDesignHeight = pos.height * designScale;
 
-          // Contraintes de positionnement
+          // Contraintes de positionnement (comme SimpleProductPreview)
           const maxX = (pos.width - actualDesignWidth) / 2;
           const minX = -(pos.width - actualDesignWidth) / 2;
           const maxY = (pos.height - actualDesignHeight) / 2;
           const minY = -(pos.height - actualDesignHeight) / 2;
           const adjustedX = Math.max(minX, Math.min(x, maxX));
           const adjustedY = Math.max(minY, Math.min(y, maxY));
+
+          console.log('🎨 [CartSidebar] Positionnement exact:', {
+            originalCoords: { x, y, scale, rotation },
+            dimensions: { actualDesignWidth, actualDesignHeight },
+            delimitation,
+            pos,
+            adjustedCoords: { adjustedX, adjustedY },
+            constraints: { maxX, minX, maxY, minY }
+          });
 
           return (
             <div
