@@ -87,9 +87,6 @@ const CategoryTabs = () => {
                                 title={`${subCategory.name} (${subCategory._count.products} produit${subCategory._count.products > 1 ? 's' : ''})`}
                             >
                                 {subCategory.name}
-                                {subCategory._count.products > 0 && (
-                                    <span className="ml-1 text-xs text-gray-500">({subCategory._count.products})</span>
-                                )}
                             </button>
                         ))}
                     </div>

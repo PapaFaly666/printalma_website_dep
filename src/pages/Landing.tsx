@@ -21,6 +21,7 @@ import ThemesTendances from './ThemesTendances';
 import ServiceFeatures from './ServiceFeatures ';
 import PersonalizationSection from './PersonalizationSection';
 import NouveautesGrid from './NouveauteSection';
+import ScrollAnimation from '../components/ui/ScrollAnimation';
 
 // Interface pour les produits vendeurs
 interface VendorProduct {
@@ -273,60 +274,78 @@ export default function ModernTShirtEcommerce() {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-            {/* Container principal avec fond uniforme */}
+            {/* Container principal avec fond uniforme et animations */}
             <div className="w-full bg-gray-50">
                 <CarousselContainer />
 
                 {/* CategoryTabs gère son propre container mais suit le fond uniforme */}
                 <CategoryTabs />
 
-                {/* Section de personnalisation avec container et fond uniforme */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <PersonalizationSection />
-                </div>
+                {/* Section de personnalisation avec animation fadeUp fluide */}
+                <ScrollAnimation animation="fadeUp" delay={100}>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <PersonalizationSection />
+                    </div>
+                </ScrollAnimation>
 
-                {/* Nouveaux produits - En première position pour plus de visibilité */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                    {isLoading ? (
-                        <LoadingSlider />
-                    ) : (
-                        <FeaturedSlider />
-                    )}
-                </div>
+                {/* Nouveaux produits avec animation slideLeft fluide */}
+                <ScrollAnimation animation="slideLeft" delay={150}>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                        {isLoading ? (
+                            <LoadingSlider />
+                        ) : (
+                            <FeaturedSlider />
+                        )}
+                    </div>
+                </ScrollAnimation>
 
-                {/* Grille des nouveautés avec container */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                    <NouveautesGrid />
-                </div>
+                {/* Grille des nouveautés avec animation slideRight fluide */}
+                <ScrollAnimation animation="slideRight" delay={200}>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                        <NouveautesGrid />
+                    </div>
+                </ScrollAnimation>
 
-                {/* Thèmes tendances avec container */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                    <ThemesTendances />
-                </div>
+                {/* Thèmes tendances avec animation scaleUp fluide */}
+                <ScrollAnimation animation="scaleUp" delay={250}>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                        <ThemesTendances />
+                    </div>
+                </ScrollAnimation>
 
-                {/* DesignersSection - Maintenant présent dans tous les cas */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                    <DesignersSection />
-                </div>
+                {/* DesignersSection avec animation fadeIn fluide */}
+                <ScrollAnimation animation="fadeIn" delay={300}>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                        <DesignersSection />
+                    </div>
+                </ScrollAnimation>
 
-                {/* ArtistesSection */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                    <ArtistesSection />
-                </div>
+                {/* ArtistesSection avec animation fadeUp fluide */}
+                <ScrollAnimation animation="fadeUp" delay={350}>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                        <ArtistesSection />
+                    </div>
+                </ScrollAnimation>
 
-                {/* InfluenceursSection */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                    <InfluenceursSection />
-                </div>
+                {/* InfluenceursSection avec animation slideLeft fluide */}
+                <ScrollAnimation animation="slideLeft" delay={400}>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                        <InfluenceursSection />
+                    </div>
+                </ScrollAnimation>
 
-                {/* ServiceFeatures */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                    <ServiceFeatures />
-                </div>
+                {/* ServiceFeatures avec animation fadeIn fluide */}
+                <ScrollAnimation animation="fadeIn" delay={450}>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                        <ServiceFeatures />
+                    </div>
+                </ScrollAnimation>
             </div>
 
-            {/* Footer en pleine largeur */}
-            <Footer />
+            {/* Footer en pleine largeur avec animation fluide */}
+            <ScrollAnimation animation="fadeUp" delay={500}>
+                <Footer />
+            </ScrollAnimation>
         </div>
     );
 }

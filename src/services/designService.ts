@@ -1006,10 +1006,25 @@ class DesignService {
       throw new Error(`CategoryId doit être un nombre entier > 0. Reçu: ${payload.categoryId}`);
     }
 
+    // 🚨 VÉRIFICATION CRITIQUE: Le fichier doit exister et être valide
+    if (!payload.file) {
+      console.error('❌ ERREUR CRITIQUE: Aucun fichier fourni!');
+      throw new Error('Fichier requis pour créer un design');
+    }
+
+    if (payload.file.size === 0) {
+      console.error('❌ ERREUR CRITIQUE: Fichier vide!', {
+        fileName: payload.file.name,
+        fileSize: payload.file.size,
+        fileType: payload.file.type
+      });
+      throw new Error('Le fichier est vide');
+    }
+
     const formData = new FormData();
     formData.append('file', payload.file);  // ✅ CORRECTION: Champ renommé pour correspondre au backend
     formData.append('name', payload.name);
-    formData.append('description', payload.description || '');
+    formData.append('description', payload.description || ''); // 🔧 Éviter undefined
     formData.append('price', payload.price.toString()); // 💰 PRIX EN STRING
     formData.append('categoryId', payload.categoryId.toString()); // ✅ UTILISER L'ID DE CATÉGORIE NUMÉRIQUE
 
@@ -1018,9 +1033,10 @@ class DesignService {
     }
 
     console.log('📝 FormData préparée avec validation:');
-    console.log('  - file:', payload.file.name);
+    console.log('  - file:', payload.file.name, `(${payload.file.size} bytes, ${payload.file.type})`);
     console.log('  - name:', payload.name);
-    console.log('  - price:', payload.price);
+    console.log('  - description:', payload.description || '(vide)');
+    console.log('  - price:', payload.price, '(type:', typeof payload.price, ')');
     console.log('  - categoryId:', payload.categoryId, '(type:', typeof payload.categoryId, ')');
     console.log('  - categoryId valid:', payload.categoryId > 0 && Number.isInteger(payload.categoryId));
     console.log('  - tags:', payload.tags || 'aucun');
@@ -1034,9 +1050,23 @@ class DesignService {
     console.log('📡 Réponse /api/designs:', res.status, res.statusText);
 
     if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      console.error('❌ Erreur /api/designs:', errText);
-      throw new Error(`API designs error: ${res.status} - ${errText}`);
+      let errorDetails = '';
+      try {
+        const errJson = await res.json();
+        errorDetails = JSON.stringify(errJson, null, 2);
+        console.error('❌ Erreur /api/designs (JSON):', errJson);
+        console.error('📋 Détails erreur:', {
+          status: res.status,
+          statusText: res.statusText,
+          message: errJson.message,
+          error: errJson.error,
+          details: errJson
+        });
+      } catch {
+        errorDetails = await res.text().catch(() => 'Erreur inconnue');
+        console.error('❌ Erreur /api/designs (text):', errorDetails);
+      }
+      throw new Error(`API designs error ${res.status}: ${errorDetails}`);
     }
 
     const json = await res.json();
@@ -1095,9 +1125,30 @@ class DesignService {
     const categoryName = await this.getCategoryNameById(payload.categoryId);
     console.log(`🏷️ Conversion categoryId ${payload.categoryId} -> "${categoryName}"`);
 
+    // 🚨 VÉRIFICATION CRITIQUE: categoryName ne doit pas être undefined
+    if (!categoryName || categoryName === 'undefined') {
+      console.error('❌ ERREUR CRITIQUE: categoryName est undefined ou invalide!', {
+        categoryId: payload.categoryId,
+        categoryName,
+        typeCategoryName: typeof categoryName
+      });
+      throw new Error(`CategoryName invalide: "${categoryName}" pour categoryId ${payload.categoryId}`);
+    }
+
+    // 🚨 VÉRIFICATION CRITIQUE: imageBase64 ne doit pas être vide
+    if (!imageBase64 || imageBase64.length === 0) {
+      console.error('❌ ERREUR CRITIQUE: imageBase64 est vide ou undefined!', {
+        hasFile: !!payload.file,
+        fileName: payload.file?.name,
+        fileSize: payload.file?.size,
+        imageBase64Length: imageBase64?.length
+      });
+      throw new Error('Échec de conversion du fichier en base64');
+    }
+
     const designPayload = {
       name: payload.name,
-      description: payload.description,
+      description: payload.description || '', // 🔧 Éviter undefined
       price: payload.price, // 🔧 PRIX INCLUS
       category: categoryName, // ✅ UTILISER LE NOM DE CATÉGORIE
       imageBase64,
@@ -1107,12 +1158,16 @@ class DesignService {
     // 📤 LOGS DÉTAILLÉS PAYLOAD (selon designprice.md)
     console.log('📤 Payload complet envoyé:', {
       name: designPayload.name,
+      description: designPayload.description,
       price: designPayload.price,
       priceType: typeof designPayload.price,
       category: designPayload.category,
+      categoryType: typeof designPayload.category,
       hasImageBase64: !!designPayload.imageBase64,
+      imageBase64Prefix: designPayload.imageBase64.substring(0, 50) + '...',
       imageBase64Size: designPayload.imageBase64.length,
-      tags: designPayload.tags
+      tags: designPayload.tags,
+      tagsCount: designPayload.tags.length
     });
 
     const res = await fetch(this.vendorDesignBase, {
@@ -1127,9 +1182,25 @@ class DesignService {
     console.log('📡 Réponse /vendor/designs:', res.status, res.statusText);
 
     if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      console.error('❌ Erreur /vendor/designs:', errJson);
-      throw new Error(errJson.message || `HTTP ${res.status}`);
+      let errorMessage = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        console.error('❌ Erreur /vendor/designs (JSON):', errJson);
+        console.error('📋 Détails erreur /vendor/designs:', {
+          status: res.status,
+          statusText: res.statusText,
+          message: errJson.message,
+          error: errJson.error,
+          statusCode: errJson.statusCode,
+          details: errJson
+        });
+        errorMessage = errJson.message || JSON.stringify(errJson);
+      } catch {
+        const errText = await res.text().catch(() => 'Erreur inconnue');
+        console.error('❌ Erreur /vendor/designs (text):', errText);
+        errorMessage = errText;
+      }
+      throw new Error(`Erreur création design: ${errorMessage}`);
     }
 
     const json = await res.json();

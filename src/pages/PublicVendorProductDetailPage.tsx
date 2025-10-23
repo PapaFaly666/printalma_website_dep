@@ -460,7 +460,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Breadcrumb */}
-      <div className="w-full px-6 py-4 border-b border-gray-200">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b border-gray-200">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <button onClick={() => navigate('/')} className="hover:text-gray-900 transition-colors">
             Accueil
@@ -476,7 +476,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-full px-6 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-7xl mx-auto">
           {/* Colonne gauche : Images du produit */}
           <div className="space-y-6">
@@ -488,9 +488,9 @@ const PublicVendorProductDetailPage: React.FC = () => {
                 showColorSlider={false}
                 showDelimitations={false} // Mettre à true pour voir les zones de délimitation en mode debug
                 onProductClick={() => {}}
-                hideValidationBadges={true}
+                hideValidationBadges={false}
                 initialColorId={selectedColorId}
-                imageObjectFit="cover"
+                imageObjectFit="contain"
               />
             </div>
 
@@ -503,9 +503,9 @@ const PublicVendorProductDetailPage: React.FC = () => {
                   showColorSlider={false}
                   showDelimitations={false}
                   onProductClick={() => {}}
-                  hideValidationBadges={true}
+                  hideValidationBadges={false}
                   initialColorId={selectedColorId}
-                  imageObjectFit="cover"
+                  imageObjectFit="contain"
                   className="border-2 border-blue-500 ring-2 ring-blue-200"
                 />
                 {/* Indicateur de sélection principale */}
@@ -711,7 +711,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
         </div>
 
         {/* Section Trouver sur d'autres produits - Pleine largeur */}
-        <div className="max-w-7xl mx-auto mt-12">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12 max-w-7xl">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 lg:p-8">
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-4 sm:mb-6" style={{ fontStyle: 'italic' }}>
               Trouver sur d'autres produits
@@ -795,9 +795,9 @@ const PublicVendorProductDetailPage: React.FC = () => {
                         showColorSlider={false}
                         showDelimitations={false}
                         onProductClick={() => {}}
-                        hideValidationBadges={true}
-                        imageObjectFit="cover"
-                        className="w-full h-full"
+                        hideValidationBadges={false}
+                        imageObjectFit="contain"
+                        initialColorId={similarProduct.selectedColors[0]?.id}
                       />
                     </div>
                     <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
@@ -816,7 +816,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
 
         {/* Section Détails du design */}
         {product.designApplication?.hasDesign && product.design && (
-          <div className="max-w-7xl mx-auto mt-12">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12 max-w-7xl">
             <h2 className="text-2xl lg:text-3xl font-bold mb-8" style={{ color: '#00A5E0', fontStyle: 'italic' }}>
               Détails du design
             </h2>
@@ -955,7 +955,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
         )}
 
         {/* Section Historique */}
-        <div className="max-w-7xl mx-auto mt-12 mb-12">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-12 max-w-7xl">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2 sm:gap-3">
               <h2 className="text-2xl lg:text-3xl font-bold text-gray-900" style={{ fontStyle: 'italic' }}>
@@ -1005,9 +1005,9 @@ const PublicVendorProductDetailPage: React.FC = () => {
                       showColorSlider={false}
                       showDelimitations={false}
                       onProductClick={() => {}}
-                      hideValidationBadges={true}
-                      imageObjectFit="cover"
-                      className="w-full h-full"
+                      hideValidationBadges={false}
+                      imageObjectFit="contain"
+                      initialColorId={historyProduct.selectedColors[0]?.id}
                     />
 
                     {/* Bouton supprimer en haut à droite */}

@@ -6,7 +6,7 @@ const Footer = () => {
   return (
     <footer className="bg-gradient-to-b from-gray-900 to-black text-white">
       {/* Main Footer Content */}
-      <div className="max-w-8xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 md:py-12">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 items-start">
 
           {/* Company Info */}
@@ -69,7 +69,7 @@ const Footer = () => {
 
       {/* Bottom Section */}
       <div className="border-t border-gray-700">
-        <div className="max-w-8xl mx-auto w-full px-4 sm:px-8 py-6">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <p className="text-center text-sm text-gray-500">
             © {currentYear} Printalma.com. Tous droits réservés.
           </p>

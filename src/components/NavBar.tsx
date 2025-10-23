@@ -85,7 +85,7 @@ const NavBar = () => {
         }}
       >
         {/* Container principal avec même padding que ArtistesSection */}
-        <div className="w-full px-4 sm:px-8 h-full flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
           {/* Logo Printalma */}
           <div className="flex-shrink-0 flex items-center">
             <div
@@ -216,7 +216,7 @@ const NavBar = () => {
         }}
       >
         {/* Container principal avec même padding que ArtistesSection */}
-        <div className="w-full px-4 sm:px-8 h-full">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex items-center justify-center h-full">
             {/* Navigation Desktop */}
             <div className="hidden lg:flex items-center space-x-8">
@@ -335,7 +335,7 @@ const NavBar = () => {
       {isMobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-gray-200 shadow-lg relative z-30">
           {/* Container principal avec même padding que ArtistesSection */}
-          <div className="w-full px-4 sm:px-8 py-4">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="space-y-2">
               {/* Auth section mobile */}
               <div className="flex space-x-2 pb-4 border-b border-gray-200 mb-4">
@@ -387,7 +387,7 @@ const NavBar = () => {
       {showSearchModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
           {/* Container principal avec même padding que ArtistesSection */}
-          <div className="w-full px-4 sm:px-8 pt-16 sm:pt-20 lg:pt-24">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 lg:pt-24">
             <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
               <div className="p-6">
                 <div className="relative">

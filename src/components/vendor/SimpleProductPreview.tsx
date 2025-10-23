@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 // 🆕 Import du service localStorage pour les positions
 import DesignPositionService from '../../services/DesignPositionService';
@@ -262,10 +262,13 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
     delimitations = mockupImage?.delimitations || [];
   }
 
+  // 🆕 État pour suivre si la synchronisation a déjà été effectuée
+  const [syncCompleted, setSyncCompleted] = useState(false);
+
   // 🆕 Fonction pour synchroniser les données localStorage vers la base de données
   const syncLocalStorageToDatabase = async (vendorProductId: number, designId: number, enrichedData: any) => {
-    if (!user?.id) return;
-    
+    if (!user?.id || syncCompleted) return;
+
     try {
       // 🆕 Vérifier si les données ont été enrichies depuis localStorage
       if (enrichedData.source === 'localStorage' || enrichedData.designWidth || enrichedData.designHeight) {
@@ -282,7 +285,7 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
             constraints: enrichedData.constraints
           }
         });
-        
+
         // 🆕 VRAIE SYNCHRONISATION vers la base de données
         const positionPayload = {
           x: enrichedData.x,
@@ -295,7 +298,8 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
 
         // 🚀 Sauvegarder via l'API vendorProductService
         await vendorProductService.saveDesignPosition(vendorProductId, designId, positionPayload);
-        
+
+        setSyncCompleted(true);
         console.log('✅ Données synchronisées avec succès vers la base de données !');
         console.log('📍 Position maintenant disponible dans l\'API pour les prochains appels');
       }
@@ -338,10 +342,8 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
           // 🆕 LOG pour debug - montrer les données avant et après enrichissement
           console.log('📍 AVANT enrichissement:', designPos.position);
           console.log('📍 APRÈS enrichissement:', enrichedPosition);
-          
-          // 🆕 Synchroniser les données enrichies vers la base de données
-          console.log('🔄 DÉCLENCHEMENT de la synchronisation automatique vers la base de données...');
-          syncLocalStorageToDatabase(product.id, product.designId, enrichedPosition);
+
+          // 🆕 La synchronisation sera gérée par un useEffect séparé pour éviter les appels multiples
         }
       }
       
@@ -389,10 +391,8 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
             // 🆕 LOG pour debug - montrer les données avant et après enrichissement
             console.log('📍 AVANT enrichissement (transform):', transform);
             console.log('📍 APRÈS enrichissement (transform):', enrichedTransform);
-            
-            // 🆕 Synchroniser les données enrichies vers la base de données
-            console.log('🔄 DÉCLENCHEMENT de la synchronisation automatique vers la base de données (transform)...');
-            syncLocalStorageToDatabase(product.id, product.designId, enrichedTransform);
+
+            // 🆕 La synchronisation sera gérée par un useEffect séparé pour éviter les appels multiples
           }
         }
         
@@ -624,7 +624,31 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
     }
   };
 
-  const designPosition = getDesignPosition();
+  // 🆕 Mémoriser la position du design pour éviter les recalculs constants
+  const designPosition = useMemo(() => {
+    return getDesignPosition();
+  }, [
+    product.designPositions,
+    product.designTransforms,
+    product.designId,
+    product.adminProduct?.id,
+    user?.id,
+    product.designApplication?.scale
+  ]);
+
+  // 🆕 useEffect pour synchroniser les données enrichies vers la base de données (UNE SEULE FOIS)
+  useEffect(() => {
+    // Ne synchroniser que si les données proviennent de localStorage ou sont enrichies
+    if (
+      !syncCompleted &&
+      product.designId &&
+      user?.id &&
+      designPosition &&
+      (designPosition.source === 'localStorage' || designPosition.designWidth || designPosition.designHeight)
+    ) {
+      syncLocalStorageToDatabase(product.id, product.designId, designPosition);
+    }
+  }, [product.id, product.designId, syncCompleted]); // Ne dépend que de l'ID du produit pour éviter les re-syncs
 
   // 🆕 Log complet pour debug - TOUJOURS actif pour diagnostiquer les problèmes de positionnement
   useEffect(() => {
@@ -679,37 +703,8 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       }`}
       onClick={handleCardClick}
     >
-      {/* ✅ Badge type de produit et validation WIZARD - caché pour les pages publiques */}
-      {!hideValidationBadges && (
-        <>
-          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-            <span className={`px-2 py-1 rounded text-xs font-medium ${
-              isWizardProduct
-                ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                : 'bg-blue-100 text-blue-800 border border-blue-200'
-            }`}>
-              {product.adminValidated === true
-                ? (isWizardProduct ? '🎨 Personnalisé' : '🎯 Design')
-                : '⏳ En attente de validation'}
-            </span>
-
-            {/* Badge de validation WIZARD supprimé pour éviter la redondance */}
-          </div>
-
-          {/* ✅ Motif de rejet si présent */}
-          {product.rejectionReason && (
-            <div className="absolute top-2 right-2 z-10 max-w-[65%]">
-              <div
-                className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 border border-red-200 shadow-sm overflow-hidden text-ellipsis whitespace-nowrap"
-                title={`Motif du rejet: ${product.rejectionReason}`}
-              >
-                Rejeté: {product.rejectionReason}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
+  
+          
       {/* ✅ Image du produit selon le type */}
       <img
         ref={imgRef}
