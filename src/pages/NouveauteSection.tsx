@@ -450,7 +450,7 @@ const NouveautesGrid: React.FC = () => {
   // Affichage quand il n'y a pas de données
   if (!isLoading && nouveautesData.length === 0) {
     return (
-      <div className="w-full bg-gray-50 py-1 md:py-2">
+      <div className="w-full py-1 md:py-2">
         <div className="w-full px-4 sm:px-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">

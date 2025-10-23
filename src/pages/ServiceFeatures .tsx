@@ -2,7 +2,7 @@ import React from "react";
 
 const ServiceFeatures = () => {
   return (
-    <div className="w-full bg-gray-100 py-8 sm:py-10 md:py-12 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+    <div className="w-full py-8 sm:py-10 md:py-12 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       <div className="w-full px-4 sm:px-6 md:px-8">
         <div
           className="relative w-full flex flex-col sm:flex-row md:flex-row justify-between items-center

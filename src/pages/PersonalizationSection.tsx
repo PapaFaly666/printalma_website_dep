@@ -9,7 +9,7 @@ export default function PersonalizationSection() {
   };
 
   return (
-    <div className="w-full bg-white py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+    <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
 
 
       <div className="w-full px-4 sm:px-8">

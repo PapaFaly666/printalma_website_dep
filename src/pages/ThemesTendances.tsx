@@ -11,7 +11,7 @@ const ThemesTendances = () => {
   };
 
   return (
-    <div className="w-full bg-white py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+    <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       {/* Titre principal et bouton sur la même ligne */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1 px-4 sm:px-8">
         <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-black flex items-center gap-2 sm:gap-3">

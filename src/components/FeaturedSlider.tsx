@@ -314,7 +314,7 @@ const BestSellersGrid = () => {
   const currentProducts = getCurrentProducts();
 
   return (
-    <div className="w-full bg-white py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+    <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       <div className="w-full px-4 sm:px-8">
         {/* En-tête avec titre uniforme - identique à NouveautesGrid */}
         <div className="flex items-center justify-between mb-1">

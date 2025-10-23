@@ -2,7 +2,7 @@ import React from "react";
 
 export default function DesignersSection() {
   return (
-    <div className="w-full bg-gray-100 py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+    <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       {/* Titre principal et bouton sur la même ligne */}
       <div className="flex items-center justify-between mb-1 px-4 sm:px-8">
         <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-black flex items-center gap-3">

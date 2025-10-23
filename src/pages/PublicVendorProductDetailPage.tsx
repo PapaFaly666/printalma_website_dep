@@ -998,7 +998,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
                   className="group cursor-pointer relative"
                   onClick={() => navigate(`/vendor-product-detail/${historyProduct.id}`)}
                 >
-                  {/* Utiliser SimpleProductPreview pour un affichage cohérent */}
+                  {/* Utiliser SimpleProductPreview pour un affichage cohérent avec le même positionnement que le produit principal */}
                   <div className="aspect-square bg-white rounded-2xl overflow-hidden relative border border-gray-200 hover:shadow-lg transition-shadow">
                     <SimpleProductPreview
                       product={historyProduct}

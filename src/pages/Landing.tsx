@@ -244,23 +244,24 @@ export default function ModernTShirtEcommerce() {
         };
     };
 
-    // Créer un composant de loading réutilisable
+    // Créer un composant de loading réutilisable avec container cohérent et fond uniforme
     const LoadingSlider = () => (
-        <div className="w-full bg-background py-16 md:py-20 lg:py-24">
-            <div className="w-full">
-                <div className="text-center mb-12 md:mb-16 lg:mb-20 px-6 md:px-8">
-                    <div className="h-8 md:h-10 lg:h-12 bg-gray-200 rounded-lg max-w-md mx-auto mb-6 animate-pulse"></div>
-                    <div className="h-4 md:h-5 bg-gray-100 rounded max-w-lg mx-auto animate-pulse"></div>
+        <div className="w-full bg-gray-50">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-8 sm:mb-12">
+                    <div className="h-8 sm:h-10 lg:h-12 bg-gray-200 rounded-lg max-w-md mx-auto mb-4 sm:mb-6 animate-pulse"></div>
+                    <div className="h-4 sm:h-5 bg-gray-100 rounded max-w-lg mx-auto animate-pulse"></div>
                 </div>
-                
-                <div className="flex gap-4 md:gap-6 lg:gap-8 px-6 md:px-8 lg:px-12">
+
+                <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4">
                     {[...Array(5)].map((_, index) => (
-                        <div key={index} className="flex-none w-[calc(100%-2rem)] sm:w-[calc(50%-1rem)] md:w-[calc(33.333%-1.5rem)] lg:w-[calc(20%-1.6rem)] xl:w-[calc(20%-1.6rem)]">
-                            <div className="h-full overflow-hidden bg-background border-0 shadow-none">
+                        <div key={index} className="flex-none w-64 sm:w-72 lg:w-80">
+                            <div className="h-full bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                                 <div className="aspect-[4/5] bg-gray-200 animate-pulse"></div>
-                                <div className="p-4 md:p-6">
-                                    <div className="h-4 md:h-5 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                                <div className="p-4 sm:p-6">
+                                    <div className="h-4 sm:h-5 bg-gray-200 rounded mb-2 animate-pulse"></div>
                                     <div className="h-3 bg-gray-100 rounded w-3/4 animate-pulse"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-1/2 mt-3 animate-pulse"></div>
                                 </div>
                             </div>
                         </div>
@@ -271,30 +272,60 @@ export default function ModernTShirtEcommerce() {
     );
 
     return (
-        <div className="w-full min-h-screen bg-gray-50 font-sans text-gray-800">
-            <CarousselContainer />
-            <CategoryTabs/>
-            <PersonalizationSection/>
-            
+        <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
+            {/* Container principal avec fond uniforme */}
+            <div className="w-full bg-gray-50">
+                <CarousselContainer />
 
-            {/* Nouveaux produits - En première position pour plus de visibilité */}
-            {isLoading ? (
-                <LoadingSlider />
-            ) : (
-                <FeaturedSlider />
-               
-            )}
-             <NouveautesGrid />
-             <ThemesTendances/>
+                {/* CategoryTabs gère son propre container mais suit le fond uniforme */}
+                <CategoryTabs />
 
-            {/* DesignersSection - Maintenant présent dans tous les cas */}
-            <DesignersSection />
-            
-            {/* ArtistesSection */}
-            <ArtistesSection />
+                {/* Section de personnalisation avec container et fond uniforme */}
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <PersonalizationSection />
+                </div>
 
-            <InfluenceursSection />
-            <ServiceFeatures/>
+                {/* Nouveaux produits - En première position pour plus de visibilité */}
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    {isLoading ? (
+                        <LoadingSlider />
+                    ) : (
+                        <FeaturedSlider />
+                    )}
+                </div>
+
+                {/* Grille des nouveautés avec container */}
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <NouveautesGrid />
+                </div>
+
+                {/* Thèmes tendances avec container */}
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <ThemesTendances />
+                </div>
+
+                {/* DesignersSection - Maintenant présent dans tous les cas */}
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <DesignersSection />
+                </div>
+
+                {/* ArtistesSection */}
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <ArtistesSection />
+                </div>
+
+                {/* InfluenceursSection */}
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <InfluenceursSection />
+                </div>
+
+                {/* ServiceFeatures */}
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <ServiceFeatures />
+                </div>
+            </div>
+
+            {/* Footer en pleine largeur */}
             <Footer />
         </div>
     );
