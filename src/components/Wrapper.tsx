@@ -1,6 +1,6 @@
 import React from "react";
 import NavBar from "./NavBar";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Toaster as SonnerToaster } from "../components/ui/sonner";
 import { useAuth } from "../contexts/AuthContext";
 import CartSidebar from "./CartSidebar";
@@ -12,6 +12,7 @@ type WrapperProps = {
 
 const Wrapper = ({ children }: WrapperProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
   const {
     items,
@@ -41,8 +42,8 @@ const Wrapper = ({ children }: WrapperProps) => {
   const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname) || isProductDetailPage || isAdminProductEditPage || isAdminOrderDetailPage || isVendorRoute || isThemeManagementRoute;
 
   const handleCheckout = () => {
-    // TODO: Implémenter la logique de checkout
-    console.log('Proceeding to checkout...');
+    // Rediriger vers la page de commande
+    navigate('/order-form');
   };
 
   return (

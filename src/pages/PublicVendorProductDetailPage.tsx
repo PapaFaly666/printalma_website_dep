@@ -66,7 +66,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
   // États pour l'historique
   const [historyProducts, setHistoryProducts] = useState<VendorProduct[]>([]);
 
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
 
   // ============ GESTION DE L'HISTORIQUE ============
   const HISTORY_STORAGE_KEY = 'vendor_products_history';
@@ -374,7 +374,6 @@ const PublicVendorProductDetailPage: React.FC = () => {
     }
 
     setIsAddingToCart(true);
-    setAddedToCart(false);
 
     try {
       // Simuler un petit délai pour l'effet visuel
@@ -392,7 +391,8 @@ const PublicVendorProductDetailPage: React.FC = () => {
         }
       }
 
-      addToCart({
+      // Préparer les données du produit pour le formulaire de commande
+      const productData = {
         id: product.id,
         name: product.adminProduct?.name || product.vendorName,
         price: product.price,
@@ -411,17 +411,14 @@ const PublicVendorProductDetailPage: React.FC = () => {
         selectedSize: selectedSize,
         sizeId: selectedSize.id,
         sizeName: selectedSize.sizeName
-      });
+      };
 
-      setAddedToCart(true);
-
-      // Réinitialiser l'état après 2 secondes
-      setTimeout(() => {
-        setAddedToCart(false);
-      }, 2000);
+      // Ajouter au panier et ouvrir le panier latéral
+      addToCart(productData);
+      openCart();
 
     } catch (error) {
-      console.error('Erreur lors de l\'ajout au panier:', error);
+      console.error('Erreur lors de la préparation de la commande:', error);
     } finally {
       setIsAddingToCart(false);
     }
@@ -659,38 +656,30 @@ const PublicVendorProductDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Bouton ajouter au panier */}
+            {/* Bouton commander */}
             <div className="pt-4">
               <button
                 onClick={handleAddToCart}
                 disabled={isAddingToCart || !selectedColorId || !selectedSize}
                 className={`w-full flex items-center justify-center gap-2 sm:gap-3 py-3 sm:py-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 ${
-                  addedToCart
-                    ? 'bg-green-500 text-white'
-                    : isAddingToCart
+                  isAddingToCart
                     ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
                     : !selectedColorId || !selectedSize
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-yellow-400 text-gray-900 hover:bg-yellow-500 shadow-md hover:shadow-lg'
                 }`}
               >
-                {addedToCart ? (
+                {isAddingToCart ? (
                   <>
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-                    <span className="hidden sm:inline">Ajouté au panier !</span>
-                    <span className="sm:hidden">Ajouté !</span>
-                  </>
-                ) : isAddingToCart ? (
-                  <>
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="hidden sm:inline">Ajout en cours...</span>
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span className="hidden sm:inline">Préparation de la commande...</span>
                     <span className="sm:hidden">En cours...</span>
                   </>
                 ) : (
                   <>
                     <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                     <span className="hidden sm:inline">Ajouter au panier</span>
-                    <span className="sm:hidden">Panier</span>
+                    <span className="sm:hidden">Ajouter</span>
                   </>
                 )}
               </button>

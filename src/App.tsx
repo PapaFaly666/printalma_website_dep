@@ -127,6 +127,12 @@ import { VendorValidationDemo } from './pages/vendor/VendorValidationDemo';
 import VendorProductDetails from './pages/VendorProductDetails';
 import PublicVendorProductDetailPage from './pages/PublicVendorProductDetailPage';
 
+// Page de formulaire de commande
+import OrderFormPage from './pages/OrderFormPage';
+
+// Page de retour PayTech
+import PaymentReturnPage from './pages/PaymentReturnPage';
+
 // Page publique pour afficher les produits d'un thème
 import PublicThemeProductsPage from './pages/ThemeProductsPage';
 
@@ -223,6 +229,10 @@ function App() {
                 <Route path='/best-sellers' element={<BestSellersPage />} />
                 <Route path='/vendez-vos-oeuvres' element={<SellDesignPage />} />
                 <Route path='/cart' element={<CartPage />} />
+                <Route path='/order-form' element={<OrderFormPage />} />
+                <Route path='/payment/return' element={<PaymentReturnPage />} />
+                <Route path='/payment/notify' element={<PaymentReturnPage />} />
+                <Route path='/payment/cancel' element={<PaymentReturnPage />} />
                 <Route path="/all-marques" element={<AllMarques />} />
                 <Route path="/marque-details" element={<MarqueDetails />} />
                 <Route path='/products' element={<ProductList />} />

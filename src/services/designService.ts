@@ -374,10 +374,15 @@ class DesignService {
   validateDesignFiles(designFiles: DesignFileInfo[]): string[] {
     const errors: string[] = [];
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.svg'];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     designFiles.forEach((designFile, index) => {
-      if (!allowedTypes.includes(designFile.file.type)) {
+      // Vérification par type MIME OU par extension (pour les SVG)
+      const isValidType = allowedTypes.includes(designFile.file.type) ||
+                         allowedExtensions.some(ext => designFile.file.name.toLowerCase().endsWith(ext));
+
+      if (!isValidType) {
         errors.push(`Design ${index + 1}: Format non supporté (${designFile.file.type})`);
       }
       
@@ -404,11 +409,16 @@ class DesignService {
     designFile: File,
     options: DesignUploadOptions = {}
   ): Promise<DesignUploadResponse> {
-    // Validation côté client
+    // Validation côté client - améliorée pour SVG
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.svg'];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
-    if (!allowedTypes.includes(designFile.type)) {
+    // Vérifier par type MIME OU par extension (pour les SVG)
+    const isValidType = allowedTypes.includes(designFile.type) ||
+                       allowedExtensions.some(ext => designFile.name.toLowerCase().endsWith(ext));
+
+    if (!isValidType) {
       throw new Error('Format de fichier non supporté. Utilisez PNG, JPG ou SVG.');
     }
 
@@ -725,9 +735,14 @@ class DesignService {
    */
   validateDesignFile(file: File): { valid: boolean; error?: string } {
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.svg'];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
-    if (!allowedTypes.includes(file.type)) {
+    // Vérification par type MIME OU par extension (pour les SVG)
+    const isValidType = allowedTypes.includes(file.type) ||
+                       allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+    if (!isValidType) {
       return {
         valid: false,
         error: 'Format non supporté. Utilisez PNG, JPG ou SVG.'
@@ -908,12 +923,29 @@ class DesignService {
 
   /**
    * Convertit un fichier image en Data URL (data:image/png;base64,...) attendu par l'API.
+   * Améliorée pour gérer correctement les fichiers SVG
    */
   private fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Pour les SVG, s'assurer que le préfixe est correct
+        if (file.name.toLowerCase().endsWith('.svg') || file.type === 'image/svg+xml') {
+          // Certains navigateurs peuvent retourner un préfixe incorrect pour les SVG
+          if (!result.startsWith('data:image/svg+xml')) {
+            // Extraire les données brutes et les préfixer correctement
+            const base64Data = result.split(',')[1];
+            resolve(`data:image/svg+xml;base64,${base64Data}`);
+            return;
+          }
+        }
+        resolve(result);
+      };
+      reader.onerror = (error) => {
+        console.error('Erreur FileReader pour le fichier:', file.name, error);
+        reject(error);
+      };
       reader.readAsDataURL(file);
     });
   }

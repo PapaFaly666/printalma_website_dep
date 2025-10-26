@@ -3081,7 +3081,11 @@ const SellDesignPage: React.FC = () => {
     const file = e.target.files[0];
     
     // Vérifier le type de fichier
-    if (!file.type.startsWith('image/')) {
+    const isValidImageType = file.type.startsWith('image/') ||
+                           file.type === 'image/svg+xml' ||
+                           file.name.toLowerCase().endsWith('.svg');
+
+    if (!isValidImageType) {
       toast({
         title: "Type de fichier non supporté",
         description: "Veuillez sélectionner un fichier image (PNG, JPG, SVG).",
@@ -4478,7 +4482,7 @@ const SellDesignPage: React.FC = () => {
                       <input
                         id="design-upload"
                         type="file"
-                        accept="image/*"
+                        accept="image/*,.svg,image/svg+xml"
                         onChange={handleFileChange}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       />

@@ -621,7 +621,7 @@ const CartPage: React.FC = () => {
               onClick={handleContinueToShipping}
               disabled={cartItems.length === 0}
             >
-              Continuer vers la livraison <ChevronRight size={16} className="ml-2" />
+              Valider la commande <ChevronRight size={16} className="ml-2" />
             </Button>
             <Button
               variant="outline"
