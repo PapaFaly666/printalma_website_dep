@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { usePaytech } from '../hooks/usePaytech';
-import { useOrder } from '../hooks/useOrder';
 import { paytechService, type CreateOrderRequest } from '../services/paytechService';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
 import { formatPrice } from '../utils/priceUtils';
@@ -60,14 +59,6 @@ const OrderFormPage: React.FC = () => {
     error: paytechError,
     getAvailableMethods
   } = usePaytech();
-
-  const {
-    createQuickOrder,
-    loading: orderLoading,
-    error: orderError,
-    currentOrder,
-    storePendingOrder
-  } = useOrder();
 
   // Récupérer les données du produit depuis le panier (premier article)
   const cartItem = cartItems[0];
@@ -300,10 +291,8 @@ const OrderFormPage: React.FC = () => {
     // Validation du paiement
     if (!selectedPayment) newErrors.payment = 'Veuillez sélectionner une méthode de paiement';
 
-    // Afficher les erreurs de commande ou PayTech si présentes
-    if (orderError) {
-      newErrors.payment = orderError;
-    } else if (paytechError) {
+    // Afficher les erreurs PayTech si présentes
+    if (paytechError) {
       newErrors.payment = paytechError;
     }
 
@@ -318,54 +307,59 @@ const OrderFormPage: React.FC = () => {
     return `ORD-${timestamp}-${random}`;
   };
 
-  // Création de commande avec paiement PayTech (nouveau processus)
+  // Paiement PayTech via le hook (simplifié selon la documentation)
   const processPayTechPayment = async () => {
     try {
-      console.log('🛒 [OrderForm] Création de commande avec paiement PayTech:', {
-        product: productData?.name,
-        customer: `${formData.firstName} ${formData.lastName}`,
-        totalAmount
-      });
+      // Générer une référence de commande unique
+      const refCommand = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
-      // Utiliser le hook useOrder pour créer la commande avec paiement
-      const response = await createQuickOrder(
-        productData,
-        1, // Quantité
-        formData,
-        shippingFee,
-        (order) => {
-          // Succès: la commande est créée et le paiement est initialisé
-          console.log('✅ [OrderForm] Commande créée avec succès:', order);
+      // Préparer les données de paiement selon la documentation PayTech
+      const paymentRequest = {
+        item_name: productData?.name || 'Produit personnalisé',
+        item_price: Math.round(totalAmount * 100), // Convertir en centimes (XOF)
+        ref_command: refCommand,
+        command_name: `Commande de ${formData.firstName} ${formData.lastName} - ${productData?.name || 'Produit'}`,
+        currency: 'XOF' as const,
+        env: 'test' as const, // Utiliser 'prod' en production
+        custom_field: JSON.stringify({
+          customerInfo: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            postalCode: formData.postalCode,
+            country: formData.country,
+          },
+          orderInfo: {
+            product: {
+              id: productData?.id,
+              name: productData?.name,
+              price: productData?.price,
+              color: productData?.color,
+              size: productData?.size,
+              imageUrl: productData?.imageUrl,
+              designUrl: productData?.designUrl,
+            },
+            delivery: {
+              method: selectedDelivery,
+              cost: shippingFee,
+            },
+            paymentMethod: selectedPayTechMethod,
+          },
+          notes: formData.notes,
+        }),
+      };
 
-          // Stocker les informations pour la page de retour
-          // Créer un objet compatible avec ce qui est attendu
-          const orderData = {
-            id: order.id,
-            orderNumber: order.orderNumber,
-            status: order.status,
-            paymentStatus: order.status, // Utiliser le statut comme paymentStatus
-            totalAmount: order.totalAmount,
-            createdAt: order.createdAt,
-            paymentData: (order as any).paymentData // Cast pour accéder aux données de paiement si elles existent
-          };
-          storePendingOrder(orderData, formData);
+      console.log('💳 [OrderForm] Initialisation du paiement PayTech:', paymentRequest);
 
-          // La redirection vers PayTech est gérée automatiquement par le hook
-        },
-        (error) => {
-          // Erreur: afficher le message d'erreur
-          console.error('❌ [OrderForm] Erreur lors de la création de commande:', error);
-          setErrors(prev => ({
-            ...prev,
-            payment: error,
-          }));
-        }
-      );
-
-      // Le reste est géré par le hook (redirection, etc.)
+      // Utiliser le hook pour initialiser le paiement et rediriger
+      await initiatePaymentAndRedirect(paymentRequest);
 
     } catch (error: any) {
-      console.error('❌ [OrderForm] Erreur inattendue lors du processus PayTech:', error);
+      console.error('❌ [OrderForm] Erreur lors du paiement PayTech:', error);
+      // L'erreur est déjà gérée par le hook, mais on peut ajouter un traitement spécifique ici
       setErrors(prev => ({
         ...prev,
         payment: error.message || 'Erreur lors du traitement du paiement PayTech',
@@ -930,14 +924,14 @@ const OrderFormPage: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        disabled={isSubmitting || paytechLoading || orderLoading}
+                        disabled={isSubmitting || paytechLoading}
                         className={`w-full sm:w-auto flex items-center justify-center gap-3 px-6 sm:px-8 py-3 rounded-lg font-bold text-white transition-all duration-300 ${
-                          isSubmitting || paytechLoading || orderLoading
+                          isSubmitting || paytechLoading
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg'
                         }`}
                       >
-                        {(paytechLoading || orderLoading) ? (
+                        {paytechLoading ? (
                           <>
                             <Loader2 className="w-5 h-5 animate-spin" />
                             <span className="hidden sm:inline">Traitement du paiement...</span>
