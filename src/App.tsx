@@ -130,8 +130,10 @@ import PublicVendorProductDetailPage from './pages/PublicVendorProductDetailPage
 // Page de formulaire de commande
 import OrderFormPage from './pages/OrderFormPage';
 
-// Page de retour PayTech
+// Pages de paiement PayTech
 import PaymentReturnPage from './pages/PaymentReturnPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import PaymentCancelPage from './pages/PaymentCancelPage';
 
 // Page publique pour afficher les produits d'un thème
 import PublicThemeProductsPage from './pages/ThemeProductsPage';
@@ -230,9 +232,12 @@ function App() {
                 <Route path='/vendez-vos-oeuvres' element={<SellDesignPage />} />
                 <Route path='/cart' element={<CartPage />} />
                 <Route path='/order-form' element={<OrderFormPage />} />
+
+                {/* Routes de paiement PayTech selon la documentation */}
+                <Route path='/payment/success' element={<PaymentSuccessPage />} />
+                <Route path='/payment/cancel' element={<PaymentCancelPage />} />
                 <Route path='/payment/return' element={<PaymentReturnPage />} />
                 <Route path='/payment/notify' element={<PaymentReturnPage />} />
-                <Route path='/payment/cancel' element={<PaymentReturnPage />} />
                 <Route path="/all-marques" element={<AllMarques />} />
                 <Route path="/marque-details" element={<MarqueDetails />} />
                 <Route path='/products' element={<ProductList />} />

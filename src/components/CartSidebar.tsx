@@ -4,6 +4,7 @@ import { CartItem } from '../types/cart';
 import DesignPositionService from '../services/DesignPositionService';
 import { useAuth } from '../contexts/AuthContext';
 import { vendorProductService } from '../services/vendorProductService';
+import { formatPrice } from '../utils/priceUtils';
 
 interface CartSidebarProps {
   isOpen: boolean;
@@ -485,7 +486,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                           </span>
                         </div>
                         <p className="font-semibold text-gray-900">
-                          {(item.price / 100).toLocaleString('fr-FR')} FCFA
+                          {formatPrice(item.price)}
                         </p>
                       </div>
 

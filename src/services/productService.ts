@@ -491,6 +491,8 @@ export class ProductService {
     if (!variations || variations.length === 0) return [];
 
     let fileIndex = 0;
+    // Générer une seule timestamp pour toutes les images de ce produit
+    const productTimestamp = Date.now();
 
     return variations.map((variation: any) => ({
       name: variation.value || variation.name,
@@ -498,8 +500,8 @@ export class ProductService {
       price: Number(variation.price),
       stock: Number(variation.stock),
       images: variation.images?.map((img: any) => {
-        // Générer un fileId unique pour cette image
-        const fileId = `img_${Date.now()}_${fileIndex}`;
+        // Générer un fileId unique pour cette image avec la même timestamp
+        const fileId = `img_${productTimestamp}_${fileIndex}`;
 
         // Avancer l'index des fichiers
         const currentFileIndex = fileIndex;

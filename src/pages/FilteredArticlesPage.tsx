@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import vendorProductsService, { VendorProduct } from '../services/vendorProductsService';
 import { ProductCardWithDesign } from '../components/ProductCardWithDesign';
+import { formatPrice } from '../utils/priceUtils';
 
 const FilteredArticlesPage: React.FC = () => {
   const [searchParams] = useSearchParams();

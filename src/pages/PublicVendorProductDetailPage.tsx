@@ -4,6 +4,7 @@ import { ShoppingCart, Loader2, Check } from 'lucide-react';
 import vendorProductsService, { VendorProduct, ProductGenre } from '../services/vendorProductsService';
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { useCart } from '../contexts/CartContext';
+import { formatPrice } from '../utils/priceUtils';
 
 const PublicVendorProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -574,7 +575,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
             <div className="pb-6">
               <div className="mb-2">
                 <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900" style={{ fontStyle: 'italic' }}>
-                  {(product.price / 100).toLocaleString('fr-FR')} FCFA
+                  {formatPrice(product.price)}
                 </p>
               </div>
               <p className="text-xs text-gray-500" style={{ fontStyle: 'italic' }}>
@@ -793,8 +794,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
                       {similarProduct.vendorName || similarProduct.adminProduct?.name}
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600">
-                      <span className="font-bold">{(similarProduct.price / 100).toLocaleString('fr-FR')}</span>{' '}
-                      <span className="text-xs">FCFA</span>
+                      <span className="font-bold">{formatPrice(similarProduct.price)}</span>
                     </p>
                   </div>
                 ))}
@@ -1019,8 +1019,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
                       {historyProduct.vendorName || historyProduct.adminProduct?.name}
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600">
-                      <span className="font-bold">{(historyProduct.price / 100).toLocaleString('fr-FR')}</span>{' '}
-                      <span className="text-xs">FCFA</span>
+                      <span className="font-bold">{formatPrice(historyProduct.price)}</span>
                     </p>
                   </div>
                 </div>

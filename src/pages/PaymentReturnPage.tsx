@@ -39,14 +39,17 @@ const PaymentReturnPage: React.FC = () => {
         }
 
         // Vérifier le statut de la transaction avec PayTech
-        const verification = await paytechService.verifyTransaction(token);
+        const verification = await paytechService.checkPaymentStatus(token);
 
         if (verification.success) {
-          setPaymentStatus(verification.status as 'success' | 'failed' | 'pending');
-          setPaymentDetails(verification.transaction);
+          // Mapper le statut de PayTech vers nos statuts locaux
+          const mappedStatus = verification.status === 'PAID' ? 'success' :
+                              verification.status === 'FAILED' ? 'failed' : 'pending';
+          setPaymentStatus(mappedStatus);
+          setPaymentDetails(verification.payment_data);
 
           // Si le paiement est réussi, vider le panier et rediriger
-          if (verification.status === 'success') {
+          if (mappedStatus === 'success') {
             setTimeout(() => {
               clearCart();
               // Ici vous pourriez rediriger vers la page des commandes

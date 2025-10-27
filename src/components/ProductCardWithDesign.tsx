@@ -4,6 +4,7 @@ import { VendorProduct } from '../services/vendorProductsService';
 import DesignPositionService from '../services/DesignPositionService';
 import { useAuth } from '../contexts/AuthContext';
 import { vendorProductService } from '../services/vendorProductService';
+import { formatPrice } from '../utils/priceUtils';
 
 interface DelimitationData {
   x: number;
@@ -340,7 +341,6 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
   };
 
   const designPosition = getDesignPosition();
-  const productPrice = product.price / 100;
 
   // 🆕 Log complet pour debug - comme SimpleProductPreview
   useEffect(() => {
@@ -522,7 +522,7 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
           {product.adminProduct?.name || product.vendorName}
         </h3>
         <p className="text-sm font-bold">
-          {productPrice.toLocaleString('fr-FR')} <span className="text-xs font-normal">FCFA</span>
+          {formatPrice(product.price)}
         </p>
 
         {/* Couleurs disponibles - MASQUÉES */}

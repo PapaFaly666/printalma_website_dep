@@ -16,8 +16,10 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
-import { paytechService, type PayTechPaymentResponse } from '../services/paytechService';
+import { usePaytech } from '../hooks/usePaytech';
+import { paytechService, type CreateOrderRequest } from '../services/paytechService';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
+import { formatPrice } from '../utils/priceUtils';
 
 interface OrderFormData {
   firstName: string;
@@ -51,6 +53,12 @@ const OrderFormPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { addToCart, items: cartItems, clearCart } = useCart();
+  const {
+    initiatePaymentAndRedirect,
+    loading: paytechLoading,
+    error: paytechError,
+    getAvailableMethods
+  } = usePaytech();
 
   // Récupérer les données du produit depuis le panier (premier article)
   const cartItem = cartItems[0];
@@ -140,10 +148,12 @@ const OrderFormPage: React.FC = () => {
   // États additionnels pour la commande
   const [selectedDelivery, setSelectedDelivery] = useState<string>('standard');
   const [selectedPayment, setSelectedPayment] = useState<string>('paytech');
-  const [paymentPhone, setPaymentPhone] = useState<string>('');
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [selectedPayTechMethod, setSelectedPayTechMethod] = useState<string>('orange_money');
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string>('');
+
+  // Obtenir les méthodes de paiement disponibles depuis le hook
+  const availablePaymentMethods = getAvailableMethods();
 
   // Vérifier si le panier est vide
   useEffect(() => {
@@ -155,7 +165,11 @@ const OrderFormPage: React.FC = () => {
 
   // États de chargement et erreurs
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Partial<OrderFormData> & { delivery?: string; payment?: string; paymentPhone?: string }>({});
+  const [errors, setErrors] = useState<Partial<OrderFormData> & { delivery?: string; payment?: string }>({});
+
+  // Note: Les retours de paiement sont maintenant gérés par des pages dédiées
+  // /payment/success et /payment/cancel (voir documentation PayTech)
+  // Cette page se concentre uniquement sur la création de commande et l'initialisation du paiement
 
   // Options de livraison
   const deliveryOptions: DeliveryOption[] = [
@@ -182,11 +196,11 @@ const OrderFormPage: React.FC = () => {
     }
   ];
 
-  // Méthodes de paiement PayTech
+  // Méthodes de paiement PayTech selon la documentation officielle
   const paymentMethods: PaymentMethod[] = [
     {
       id: 'paytech',
-      name: 'PayTech (Tous les moyens)',
+      name: 'PayTech (Paiement sécurisé)',
       icon: '💳',
       description: 'Wave, Orange Money, Free Money, Cartes bancaires, PayPal',
       type: 'card'
@@ -199,6 +213,16 @@ const OrderFormPage: React.FC = () => {
       type: 'transfer'
     }
   ];
+
+  // Options spécifiques de paiement PayTech selon la documentation et le hook
+  const payTechPaymentOptions = availablePaymentMethods.filter(method =>
+    ['wave', 'orange_money', 'free_money', 'carte_bancaire', 'paypal'].includes(method.id)
+  ).map(method => ({
+    id: method.id,
+    name: method.name,
+    icon: method.icon,
+    description: method.description
+  }));
 
   // Calculs
   const productPrice = cartItem?.price || 0;
@@ -222,14 +246,6 @@ const OrderFormPage: React.FC = () => {
         [name]: undefined
       }));
     }
-
-    // Valider le numéro de téléphone pour le paiement
-    if (name === 'paymentPhone' && errors.paymentPhone) {
-      setErrors(prev => ({
-        ...prev,
-        paymentPhone: undefined
-      }));
-    }
   };
 
   if (!productData) {
@@ -251,7 +267,7 @@ const OrderFormPage: React.FC = () => {
 
   // Validation du formulaire
   const validateForm = (): boolean => {
-    const newErrors: Partial<OrderFormData> & { delivery?: string; payment?: string; paymentPhone?: string } = {};
+    const newErrors: Partial<OrderFormData> & { delivery?: string; payment?: string } = {};
 
     // Validation des informations personnelles
     if (!formData.firstName.trim()) newErrors.firstName = 'Le prénom est requis';
@@ -275,8 +291,10 @@ const OrderFormPage: React.FC = () => {
     // Validation du paiement
     if (!selectedPayment) newErrors.payment = 'Veuillez sélectionner une méthode de paiement';
 
-    // PayTech gère tous les moyens de paiement, pas besoin de téléphone séparé
-    // Le champ paymentPhone n'est plus nécessaire
+    // Afficher les erreurs PayTech si présentes
+    if (paytechError) {
+      newErrors.payment = paytechError;
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -289,21 +307,21 @@ const OrderFormPage: React.FC = () => {
     return `ORD-${timestamp}-${random}`;
   };
 
-  // Paiement PayTech réel
+  // Paiement PayTech via le hook (simplifié selon la documentation)
   const processPayTechPayment = async () => {
-    setIsProcessingPayment(true);
-
     try {
-      const orderNumber = generateOrderNumber();
+      // Générer une référence de commande unique
+      const refCommand = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
-      // Préparer la requête PayTech
+      // Préparer les données de paiement selon la documentation PayTech
       const paymentRequest = {
-        item_name: productData?.name || 'Produit',
-        item_price: Math.round(totalAmount), // PayTech attend le montant en FCFA
-        currency: 'XOF', // Code monnaie pour FCFA
-        command_name: `Commande ${orderNumber}`,
+        item_name: productData?.name || 'Produit personnalisé',
+        item_price: Math.round(totalAmount * 100), // Convertir en centimes (XOF)
+        ref_command: refCommand,
+        command_name: `Commande de ${formData.firstName} ${formData.lastName} - ${productData?.name || 'Produit'}`,
+        currency: 'XOF' as const,
+        env: 'test' as const, // Utiliser 'prod' en production
         custom_field: JSON.stringify({
-          orderId: orderNumber,
           customerInfo: {
             firstName: formData.firstName,
             lastName: formData.lastName,
@@ -312,41 +330,40 @@ const OrderFormPage: React.FC = () => {
             address: formData.address,
             city: formData.city,
             postalCode: formData.postalCode,
-            country: formData.country
+            country: formData.country,
           },
-          productInfo: {
-            productId: productData?.id,
-            productName: productData?.name,
-            color: productData?.color,
-            size: productData?.size,
-            price: productData?.price
+          orderInfo: {
+            product: {
+              id: productData?.id,
+              name: productData?.name,
+              price: productData?.price,
+              color: productData?.color,
+              size: productData?.size,
+              imageUrl: productData?.imageUrl,
+              designUrl: productData?.designUrl,
+            },
+            delivery: {
+              method: selectedDelivery,
+              cost: shippingFee,
+            },
+            paymentMethod: selectedPayTechMethod,
           },
-          deliveryInfo: {
-            method: selectedDelivery,
-            fee: shippingFee,
-            estimatedDelivery: estimatedDelivery.toISOString()
-          }
-        })
+          notes: formData.notes,
+        }),
       };
 
-      // Initier le paiement PayTech
-      const paymentResponse: PayTechPaymentResponse = await paytechService.initiatePayment(paymentRequest);
+      console.log('💳 [OrderForm] Initialisation du paiement PayTech:', paymentRequest);
 
-      if (paymentResponse.success && paymentResponse.payment_url) {
-        // Rediriger vers la page de paiement PayTech
-        window.location.href = paymentResponse.payment_url;
-      } else {
-        throw new Error(paymentResponse.error || 'Erreur lors de l\'initialisation du paiement');
-      }
+      // Utiliser le hook pour initialiser le paiement et rediriger
+      await initiatePaymentAndRedirect(paymentRequest);
 
     } catch (error: any) {
-      console.error('Erreur lors du paiement PayTech:', error);
+      console.error('❌ [OrderForm] Erreur lors du paiement PayTech:', error);
+      // L'erreur est déjà gérée par le hook, mais on peut ajouter un traitement spécifique ici
       setErrors(prev => ({
         ...prev,
-        payment: error.message || 'Erreur lors du traitement du paiement PayTech'
+        payment: error.message || 'Erreur lors du traitement du paiement PayTech',
       }));
-    } finally {
-      setIsProcessingPayment(false);
     }
   };
 
@@ -520,7 +537,7 @@ const OrderFormPage: React.FC = () => {
                             </p>
                           )}
                           <p className="text-sm sm:text-base font-bold text-gray-900 mt-2">
-                            {(productPrice / 100).toLocaleString('fr-FR')} FCFA
+                            {formatPrice(productPrice)}
                           </p>
                         </div>
                       </div>
@@ -559,7 +576,7 @@ const OrderFormPage: React.FC = () => {
                                   <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2">{option.description}</p>
                                 </div>
                                 <span className="font-semibold text-gray-900 text-sm sm:text-base whitespace-nowrap">
-                                  {option.price === 0 ? 'Gratuit' : `${option.price.toLocaleString()} FCFA`}
+                                  {option.price === 0 ? 'Gratuit' : formatPrice(option.price)}
                                 </span>
                               </div>
                               {option.estimatedDays > 0 && (
@@ -614,32 +631,45 @@ const OrderFormPage: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Détails PayTech optimisés pour mobile */}
+                    {/* Options de paiement PayTech spécifiques */}
                     {selectedPayment === 'paytech' && (
                       <div className="mt-4 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
                         <div className="flex items-start gap-3">
                           <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-blue-900">Paiement 100% sécurisé</h4>
+                            <h4 className="text-sm font-semibold text-blue-900">Choisissez votre méthode de paiement</h4>
                             <p className="text-xs text-blue-800 mt-1">
-                              Traité par PayTech, solution agréée au Sénégal.
+                              Sélectionnez la méthode que vous préférez pour payer
                             </p>
-                            <div className="mt-3 grid grid-cols-3 gap-2">
-                              <img
-                                src="https://business221.com/wp-content/uploads/2025/07/wave-photo.png"
-                                alt="Wave"
-                                className="w-full h-8 object-contain bg-white rounded p-1"
-                              />
-                              <img
-                                src="https://yop.l-frii.com/wp-content/uploads/2022/12/Orange-Money-recrute-pour-ce-poste-28-Decembre-2022-1024x683.png"
-                                alt="Orange Money"
-                                className="w-full h-8 object-contain bg-white rounded p-1"
-                              />
-                              <img
-                                src="https://www.leral.net/photo/art/grande/37799395-33255723.jpg?v=1569937186"
-                                alt="Free Money"
-                                className="w-full h-8 object-contain bg-white rounded p-1"
-                              />
+
+                            {/* Sélecteur de méthodes PayTech */}
+                            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {payTechPaymentOptions.map((option) => (
+                                <label
+                                  key={option.id}
+                                  className={`relative flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer transition-all hover:shadow-sm ${
+                                    selectedPayTechMethod === option.id
+                                      ? 'border-blue-500 bg-blue-50'
+                                      : 'border-gray-200'
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="paytech_method"
+                                    value={option.id}
+                                    checked={selectedPayTechMethod === option.id}
+                                    onChange={(e) => setSelectedPayTechMethod(e.target.value)}
+                                    className="sr-only"
+                                  />
+                                  <span className="text-sm sm:text-base">{option.icon}</span>
+                                  <span className="text-xs font-medium text-gray-700">{option.name}</span>
+                                </label>
+                              ))}
+                            </div>
+
+                            {/* Informations de sécurité */}
+                            <div className="mt-3 text-xs text-blue-800">
+                              <p>💳 Paiement 100% sécurisé par PayTech, solution agréée au Sénégal</p>
                             </div>
                           </div>
                         </div>
@@ -658,20 +688,20 @@ const OrderFormPage: React.FC = () => {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Sous-total</span>
                         <span className="font-medium">
-                          {(productPrice / 100).toLocaleString('fr-FR')} FCFA
+                          {formatPrice(productPrice)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Livraison</span>
                         <span className="font-medium">
-                          {shippingFee === 0 ? 'Gratuit' : `${shippingFee.toLocaleString()} FCFA`}
+                          {shippingFee === 0 ? 'Gratuit' : formatPrice(shippingFee)}
                         </span>
                       </div>
                       <div className="border-t pt-3">
                         <div className="flex justify-between">
                           <span className="font-semibold text-gray-900">Total</span>
                           <span className="text-lg font-bold text-gray-900">
-                            {totalAmount.toLocaleString('fr-FR')} FCFA
+                            {formatPrice(totalAmount)}
                           </span>
                         </div>
                       </div>
@@ -894,14 +924,14 @@ const OrderFormPage: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        disabled={isSubmitting || isProcessingPayment}
+                        disabled={isSubmitting || paytechLoading}
                         className={`w-full sm:w-auto flex items-center justify-center gap-3 px-6 sm:px-8 py-3 rounded-lg font-bold text-white transition-all duration-300 ${
-                          isSubmitting || isProcessingPayment
+                          isSubmitting || paytechLoading
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg'
                         }`}
                       >
-                        {isProcessingPayment ? (
+                        {paytechLoading ? (
                           <>
                             <Loader2 className="w-5 h-5 animate-spin" />
                             <span className="hidden sm:inline">Traitement du paiement...</span>
@@ -916,7 +946,7 @@ const OrderFormPage: React.FC = () => {
                           <>
                             <ShoppingCart className="w-5 h-5" />
                             <span className="hidden sm:inline">
-                              {selectedPayment === 'paytech' ? 'Payer avec PayTech' : 'Confirmer'} ({totalAmount.toLocaleString('fr-FR')} FCFA)
+                              {selectedPayment === 'paytech' ? 'Payer avec PayTech' : 'Confirmer'} ({formatPrice(totalAmount)})
                             </span>
                             <span className="sm:hidden">
                               {selectedPayment === 'paytech' ? 'Payer' : 'Confirmer'}

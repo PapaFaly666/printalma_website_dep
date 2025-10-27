@@ -1,42 +1,75 @@
-// import { api } from '../config/api'; // Pas nécessaire pour PayTech, nous utilisons fetch directement
+// Configuration pour appeler le backend (pas PayTech directement)
+// Le backend gère les clés API de manière sécurisée
+const BACKEND_CONFIG = {
+  // URL de votre backend NestJS
+  API_BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3004',
 
-// Configuration PayTech
-const PAYTECH_CONFIG = {
-  // URL de l'API PayTech (à remplacer par les vraies URLs en production)
-  API_BASE_URL: import.meta.env.PROD
-    ? 'https://api.paytech.sn'
-    : 'https://api-sandbox.paytech.sn',
-
-  // Clés API (à remplacer par les vraies clés)
-  API_KEY: import.meta.env.VITE_PAYTECH_API_KEY || 'test_api_key',
-  API_SECRET: import.meta.env.VITE_PAYTECH_API_SECRET || 'test_api_secret',
-
-  // URLs de retour et notification
-  RETURN_URL: `${window.location.origin}/payment/return`,
-  NOTIFY_URL: `${window.location.origin}/payment/notify`,
+  // URLs de retour (gérées par le frontend)
+  SUCCESS_URL: `${window.location.origin}/payment/success`,
   CANCEL_URL: `${window.location.origin}/payment/cancel`,
 };
 
-// Types pour PayTech
+// Types pour l'API Backend (qui appelle PayTech)
+export interface CreateOrderRequest {
+  shippingDetails: {
+    name: string;
+    street: string;
+    city: string;
+    region: string;
+    postalCode: string;
+    country: string;
+  };
+  phoneNumber: string;
+  notes?: string;
+  orderItems: Array<{
+    productId: number;
+    quantity: number;
+    size?: string;
+    colorId?: number;
+  }>;
+  paymentMethod: 'PAYTECH' | 'CASH';
+  initiatePayment: boolean;
+}
+
+export interface OrderResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+    orderNumber: string;
+    totalAmount: number;
+    status: string;
+    payment?: {
+      token: string;
+      redirect_url: string;
+    };
+  };
+}
+
+// Types pour PayTech selon la documentation officielle
 export interface PayTechPaymentRequest {
   item_name: string;
   item_price: number;
-  currency: string; // 'XOF' pour FCFA
-  ref_command: string; // Référence unique de commande
-  command_name: string; // Nom de la commande
-  env: 'test' | 'prod'; // Environnement
-  ipn_url: string; // URL de notification
-  success_url: string; // URL de succès
-  cancel_url: string; // URL d'annulation
-  custom_field?: string; // Champ personnalisé (JSON string)
+  currency?: string;
+  ref_command?: string;
+  command_name: string;
+  custom_field?: string;
+  env?: 'test' | 'prod';
+  success_url?: string;
+  cancel_url?: string;
+  ipn_url?: string;
+  target_payment?: string;
 }
 
 export interface PayTechPaymentResponse {
   success: boolean;
-  token?: string;
-  payment_url?: string;
+  message: string;
+  data?: {
+    token: string;
+    redirect_url: string;
+    ref_command: string;
+  };
   error?: string;
-  message?: string;
 }
 
 export interface PayTechNotification {
@@ -66,196 +99,121 @@ export interface PayTechTransaction {
   };
 }
 
-// Service PayTech
+// Service PayTech - Appelle le backend (pas PayTech directement)
 export class PayTechService {
-  private apiKey: string;
-  private apiSecret: string;
+  private backendUrl: string;
 
   constructor() {
-    this.apiKey = PAYTECH_CONFIG.API_KEY;
-    this.apiSecret = PAYTECH_CONFIG.API_SECRET;
+    this.backendUrl = BACKEND_CONFIG.API_BASE_URL;
   }
 
-  // Générer une référence de commande unique
-  private generateRefCommand(): string {
-    const timestamp = Date.now().toString();
-    const random = Math.random().toString(36).substr(2, 9);
-    return `CMD_${timestamp}_${random}`;
+  // Obtenir le token d'authentification depuis localStorage (optionnel)
+  private getAuthToken(): string | null {
+    return localStorage.getItem('access_token') || localStorage.getItem('token');
   }
 
-  // Calculer la signature sécurisée (nécessaire pour l'API PayTech)
-  private calculateSignature(paymentData: PayTechPaymentRequest): string {
-    // La signature est calculée selon la documentation PayTech
-    // C'est un hash SHA256 des paramètres triés par ordre alphabétique
-    const sortedKeys = Object.keys(paymentData).sort();
-    const stringToHash = sortedKeys
-      .map(key => `${key}=${paymentData[key as keyof PayTechPaymentRequest]}`)
-      .join('&');
-
-    // En production, utilisez une vraie fonction de hash SHA256
-    // Pour l'instant, nous simulons
-    return btoa(stringToHash + this.apiSecret);
-  }
-
-  // Initier un paiement PayTech
-  async initiatePayment(paymentRequest: Omit<PayTechPaymentRequest, 'ref_command' | 'env' | 'ipn_url' | 'success_url' | 'cancel_url'>): Promise<PayTechPaymentResponse> {
+  // Créer une commande avec paiement PayTech (pas besoin d'authentification)
+  async createOrderWithPayment(orderRequest: CreateOrderRequest): Promise<OrderResponse> {
     try {
-      const refCommand = this.generateRefCommand();
+      const token = this.getAuthToken();
 
-      const payload: PayTechPaymentRequest = {
-        ...paymentRequest,
-        ref_command: refCommand,
-        env: PAYTECH_CONFIG.API_KEY.includes('test') ? 'test' : 'prod',
-        ipn_url: PAYTECH_CONFIG.NOTIFY_URL,
-        success_url: PAYTECH_CONFIG.RETURN_URL + '?status=success',
-        cancel_url: PAYTECH_CONFIG.CANCEL_URL + '?status=cancel',
-      };
+      console.log('🚀 [PayTech] Création de commande avec paiement (invité):', orderRequest);
 
-      // En production, faire un vrai appel API
-      // Pour le développement, nous simulons la réponse
-      if (import.meta.env.DEV) {
-        return this.simulatePaymentResponse(payload);
-      }
-
-      // Appel API réel en production
-      const response = await fetch(`${PAYTECH_CONFIG.API_BASE_URL}/payment`, {
+      const response = await fetch(`${this.backendUrl}/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'API_KEY': this.apiKey,
-          'API_SECRET': this.apiSecret,
+          // Token optionnel - les commandes invitées sont autorisées
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(orderRequest),
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        return {
-          success: true,
-          token: data.token,
-          payment_url: data.payment_url,
-        };
-      } else {
-        return {
-          success: false,
-          error: data.error || 'Erreur lors de l\'initialisation du paiement',
-        };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Erreur PayTech:', error);
+
+      const data = await response.json();
+      console.log('✅ [PayTech] Commande créée:', data);
+
+      return data;
+    } catch (error: any) {
+      console.error('❌ [PayTech] Erreur lors de la création de commande:', error);
+      throw new Error(error.message || 'Erreur lors de la création de la commande');
+    }
+  }
+
+  // Initier un paiement PayTech direct (pas besoin d'authentification)
+  async initiatePayment(paymentRequest: PayTechPaymentRequest): Promise<PayTechPaymentResponse> {
+    try {
+      const token = this.getAuthToken();
+
+      console.log('🚀 [PayTech] Initialisation du paiement (invité):', paymentRequest);
+
+      const response = await fetch(`${this.backendUrl}/paytech/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Token optionnel - les paiements invités sont autorisés
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify(paymentRequest),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ [PayTech] Paiement initialisé:', data);
+
+      return data;
+    } catch (error: any) {
+      console.error('❌ [PayTech] Erreur lors de l\'initialisation du paiement:', error);
       return {
         success: false,
-        error: 'Erreur technique lors de l\'initialisation du paiement',
+        message: error.message || 'Erreur lors de l\'initialisation du paiement',
+        error: error.message,
       };
     }
   }
 
-  // Simuler une réponse PayTech (pour le développement)
-  private async simulatePaymentResponse(paymentRequest: PayTechPaymentRequest): Promise<PayTechPaymentResponse> {
-    // Simuler un délai de traitement
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const token = `paytech_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const paymentUrl = `https://payment.paytech.sn/pay/${token}`;
-
-    return {
-      success: true,
-      token,
-      payment_url: paymentUrl,
-      message: 'Paiement initialisé avec succès',
-    };
-  }
-
-  // Vérifier le statut d'une transaction
-  async verifyTransaction(token: string): Promise<{ success: boolean; status: string; transaction?: PayTechTransaction }> {
+  // Vérifier le statut d'un paiement via le backend (pas besoin d'authentification)
+  async checkPaymentStatus(token: string): Promise<{ success: boolean; status: string; payment_data?: any }> {
     try {
-      if (import.meta.env.DEV) {
-        // Simulation en développement
-        return this.simulateTransactionVerification(token);
-      }
+      const authToken = this.getAuthToken();
 
-      // Appel API réel en production
-      const response = await fetch(`${PAYTECH_CONFIG.API_BASE_URL}/transaction/${token}`, {
+      console.log('🔍 [PayTech] Vérification du statut pour token:', token);
+
+      const response = await fetch(`${this.backendUrl}/paytech/status/${token}`, {
         method: 'GET',
         headers: {
-          'API_KEY': this.apiKey,
-          'API_SECRET': this.apiSecret,
+          'Content-Type': 'application/json',
+          // Token optionnel - vérification des paiements invités autorisée
+          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
         },
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        return {
-          success: true,
-          status: data.status,
-          transaction: data.transaction,
-        };
-      } else {
-        return {
-          success: false,
-          status: 'failed',
-        };
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Erreur vérification transaction:', error);
+
+      const data = await response.json();
+      console.log('📡 [PayTech] Statut du paiement:', data);
+
+      return {
+        success: data.success,
+        status: data.data?.status || 'unknown',
+        payment_data: data.data,
+      };
+    } catch (error: any) {
+      console.error('❌ [PayTech] Erreur vérification statut:', error);
       return {
         success: false,
         status: 'failed',
       };
-    }
-  }
-
-  // Simuler la vérification de transaction
-  private async simulateTransactionVerification(token: string): Promise<{ success: boolean; status: string; transaction?: PayTechTransaction }> {
-    // Simuler un délai de vérification
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Simuler un paiement réussi
-    const transaction: PayTechTransaction = {
-      ref_command: `CMD_${Date.now()}`,
-      token,
-      amount: 10000, // 10 000 FCFA
-      currency: 'XOF',
-      status: 'success',
-      payment_method: 'mobile_money', // Peut être 'mobile_money', 'credit_card', etc.
-      created_at: new Date().toISOString(),
-    };
-
-    return {
-      success: true,
-      status: 'success',
-      transaction,
-    };
-  }
-
-  // Traiter la notification IPN (Instant Payment Notification)
-  processNotification(notificationData: any): PayTechNotification | null {
-    try {
-      // Vérifier la signature pour valider l'authenticité
-      const expectedSignature = this.calculateSignature(notificationData);
-      const receivedSignature = notificationData.signature;
-
-      if (expectedSignature !== receivedSignature) {
-        console.error('Signature invalide - notification ignorée');
-        return null;
-      }
-
-      return {
-        ref_command: notificationData.ref_command,
-        token: notificationData.token,
-        api_key_id: notificationData.api_key_id,
-        api_secret_id: notificationData.api_secret_id,
-        transaction_id: notificationData.transaction_id,
-        amount: notificationData.amount,
-        currency: notificationData.currency,
-        status: notificationData.status,
-        custom_field: notificationData.custom_field,
-      };
-    } catch (error) {
-      console.error('Erreur traitement notification:', error);
-      return null;
     }
   }
 
