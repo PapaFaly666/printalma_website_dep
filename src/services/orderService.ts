@@ -39,6 +39,52 @@ interface CreateOrderRequest {
   }[];
 }
 
+// Interface pour la création de commande avec paiement PayTech
+export interface CreateOrderWithPaymentRequest {
+  shippingDetails: {
+    name: string;
+    street: string;
+    city: string;
+    region: string;
+    postalCode: string;
+    country: string;
+  };
+  phoneNumber: string;
+  notes?: string;
+  orderItems: {
+    productId: number;
+    quantity: number;
+    size?: string;
+    color?: string;
+    colorId?: number;
+    designId?: number;
+    designUrl?: string;
+    designScale?: number;
+  }[];
+  paymentMethod: 'PAYTECH' | 'CASH';
+  initiatePayment?: boolean;
+}
+
+// Interface pour la réponse de commande avec paiement
+export interface OrderWithPaymentResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    id: number;
+    orderNumber: string;
+    status: string;
+    paymentStatus: string;
+    totalAmount: number;
+    createdAt: string;
+    paymentData?: {
+      token: string;
+      redirect_url: string;
+      ref_command: string;
+    };
+  };
+  error?: string;
+}
+
 // Interface pour changer le statut selon la nouvelle API
 interface UpdateStatusRequest {
   status: OrderStatus;
@@ -172,12 +218,101 @@ export class OrderService {
     return response.data;
   }
 
+  // Créer une commande avec paiement PayTech (méthode principale pour l'intégration)
+  async createOrderWithPayment(orderRequest: CreateOrderWithPaymentRequest): Promise<OrderWithPaymentResponse> {
+    try {
+      const token = this.getAuthToken();
+
+      console.log('🛒 [OrderService] Création de commande avec paiement PayTech:', orderRequest);
+
+      const response = await fetch(`${this.baseURL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify(orderRequest),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ [OrderService] Commande créée avec succès:', data);
+
+      return data;
+    } catch (error: any) {
+      console.error('❌ [OrderService] Erreur lors de la création de commande:', error);
+      return {
+        success: false,
+        message: error.message || 'Erreur lors de la création de la commande',
+        error: error.message,
+      };
+    }
+  }
+
+  // Créer une commande rapide depuis le formulaire de commande
+  async createQuickOrder(
+    product: any,
+    quantity: number = 1,
+    formData: any,
+    shippingFee: number = 0,
+    notes?: string
+  ): Promise<OrderWithPaymentResponse> {
+    const orderRequest: CreateOrderWithPaymentRequest = {
+      shippingDetails: {
+        name: `${formData.firstName} ${formData.lastName}`,
+        street: formData.address,
+        city: formData.city,
+        region: formData.city, // Utiliser la ville comme région
+        postalCode: formData.postalCode,
+        country: formData.country,
+      },
+      phoneNumber: formData.phone,
+      notes: notes || formData.notes,
+      orderItems: [{
+        productId: product.id,
+        quantity,
+        size: product.size,
+        color: product.color,
+        colorId: product.colorId,
+        designId: product.designId,
+        designUrl: product.designUrl,
+        designScale: product.designScale
+      }],
+      paymentMethod: 'PAYTECH',
+      initiatePayment: true
+    };
+
+    return this.createOrderWithPayment(orderRequest);
+  }
+
+  // Obtenir le token d'authentification
+  private getAuthToken(): string | null {
+    return localStorage.getItem('access_token') || localStorage.getItem('token');
+  }
+
   async getMyOrders(): Promise<Order[]> {
     const response = await this.apiCall<Order[]>('/orders/my-orders');
     return response.data;
   }
 
+  // Obtenir les commandes de l'utilisateur (avec pagination)
+  async getUserOrders(page: number = 1, limit: number = 10): Promise<{ data: Order[], total: number, page: number, limit: number }> {
+    const response = await this.apiCall<{ data: Order[], total: number, page: number, limit: number }>(`/orders/my-orders?page=${page}&limit=${limit}`);
+    return response.data;
+  }
+
   async getOrderById(orderId: number): Promise<Order> {
+    const response = await this.apiCall<Order>(`/orders/${orderId}`);
+    return response.data;
+  }
+
+  // Obtenir le statut d'une commande spécifique (alias pour getOrderById)
+  async getOrderStatus(orderId: number): Promise<Order> {
     const response = await this.apiCall<Order>(`/orders/${orderId}`);
     return response.data;
   }
@@ -418,6 +553,35 @@ export class OrderService {
     } catch (error) {
       console.error('❌ Erreur lors de la création de commande:', error);
       throw error;
+    }
+  }
+
+  // ==========================================
+  // UTILITAIRES POUR LES COMMANDES
+  // ==========================================
+
+  // Vérifier si l'utilisateur a des commandes en cours
+  async hasPendingOrders(): Promise<boolean> {
+    try {
+      const orders = await this.getUserOrders(1, 1);
+      return orders.data.some(order =>
+        order.status === 'PENDING'
+        // Le paymentStatus n'existe pas dans le type Order, on utilise seulement le status
+      );
+    } catch (error) {
+      console.error('Erreur lors de la vérification des commandes en cours:', error);
+      return false;
+    }
+  }
+
+  // Obtenir le nombre total de commandes
+  async getOrderCount(): Promise<number> {
+    try {
+      const orders = await this.getUserOrders(1, 1);
+      return orders.total || 0;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du nombre de commandes:', error);
+      return 0;
     }
   }
 

@@ -27,7 +27,7 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "mcp__ide__getDiagnostics",
-      "Bash(npm install:*)",
+      "Bash(npm install:*)", 
       "Bash(cat:*)",
       "WebSearch",
       "WebFetch(domain:paytech.sn)",
