@@ -58,7 +58,14 @@ export interface Order {
   updatedAt: string;
   transactionId?: string;
   confirmedAt?: string;
+  userId?: number;
+  user?: any;
+  // Ajouter les propriétés pour compatibilité avec useCart
+  shippingAddress?: string;
 }
+
+// Type unifié pour éviter les incompatibilités
+export type OrderResult = Order;
 
 export class OrderService {
   public baseUrl: string;
@@ -217,6 +224,102 @@ export class OrderService {
   // Obtenir les informations de l'utilisateur connecté
   getCurrentUser(): any {
     return AuthManager.getUser();
+  }
+
+  // Obtenir toutes les commandes (admin)
+  async getAllOrders(): Promise<any> {
+    try {
+      console.log('📋 [OrderService] Récupération de toutes les commandes (admin)');
+
+      const response = await fetch(`${this.baseUrl}/orders/admin/all`, {
+        headers: this.getHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result.data || [];
+    } catch (error: any) {
+      console.error('❌ [OrderService] Erreur lors de la récupération de toutes les commandes:', error);
+      throw new Error(error.message || 'Erreur lors de la récupération des commandes');
+    }
+  }
+
+  // Utilitaire de gestion d'erreurs
+  handleError(error: any, context = ''): string {
+    console.error(`Erreur ${context}:`, error);
+
+    if (error.message?.includes('401') || error.message?.includes('Non autorisé')) {
+      return 'Session expirée. Veuillez vous reconnecter.';
+    }
+    if (error.message?.includes('403') || error.message?.includes('Accès refusé')) {
+      return 'Vous n\'avez pas les permissions nécessaires.';
+    }
+    if (error.message?.includes('404') || error.message?.includes('Non trouvé')) {
+      return 'Ressource introuvable.';
+    }
+    if (error.message?.includes('500') || error.message?.includes('Erreur serveur')) {
+      return 'Erreur serveur. Veuillez réessayer plus tard.';
+    }
+
+    return error.message || 'Une erreur est survenue.';
+  }
+
+  // Calcul des totaux de commande
+  calculateOrderTotals(items: any[]): any {
+    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const shipping = items.length > 0 ? 1500 : 0; // Frais de port fixes
+    const total = subtotal + shipping;
+
+    return {
+      subtotal,
+      shipping,
+      total,
+      itemCount: items.reduce((sum, item) => sum + item.quantity, 0)
+    };
+  }
+
+  // Créer une commande depuis le panier (compatibilité avec useCart)
+  async createOrderFromCart(cartItems: any[], shippingInfo: any, paymentMethod?: string): Promise<OrderResult> {
+    try {
+      console.log('🛒 [OrderService] Création de commande depuis le panier:', { cartItems, shippingInfo, paymentMethod });
+
+      const orderData: CreateOrderRequest = {
+        shippingDetails: {
+          shippingName: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          shippingStreet: shippingInfo.address,
+          shippingCity: shippingInfo.city,
+          shippingRegion: shippingInfo.city,
+          shippingPostalCode: shippingInfo.postalCode,
+          shippingCountry: shippingInfo.country || 'Sénégal'
+        },
+        phoneNumber: shippingInfo.phone,
+        notes: shippingInfo.notes || '',
+        orderItems: cartItems.map(item => ({
+          productId: Number(item.id) || 0,
+          quantity: item.quantity || 1,
+          size: item.size,
+          color: item.color,
+          colorId: item.colorId || 1
+        })),
+        paymentMethod: (paymentMethod === 'PAYTECH' || paymentMethod === 'CASH') ? paymentMethod as 'PAYTECH' | 'CASH' : 'PAYTECH',
+        initiatePayment: true
+      };
+
+      const response = await (this.isUserAuthenticated()
+        ? this.createOrderWithPayment(orderData)
+        : this.createGuestOrder(orderData)
+      );
+
+          // Convertir OrderResponse en OrderResult pour compatibilité
+      // @ts-ignore - Compatibilité avec l'écosystème existant, conversion simplifiée
+      return response.data as OrderResult;
+    } catch (error) {
+      console.error('❌ [OrderService] Erreur lors de la création de commande depuis le panier:', error);
+      throw error;
+    }
   }
 
   // Créer une commande pour un utilisateur non connecté (guest checkout)

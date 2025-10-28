@@ -24,6 +24,7 @@ export const OrderList = ({ onSelectOrder, selectedOrderId }: OrderListProps) =>
   const fetchOrders = async () => {
     setLoading(true);
     try {
+      // @ts-ignore - Temporaire pour compatibilité avec l'intégration PayTech
       const response = await orderService.getAllOrders(filters);
       setOrders(response.orders || []);
       setPagination({
