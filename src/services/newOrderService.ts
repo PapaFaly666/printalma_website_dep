@@ -520,7 +520,8 @@ export class NewOrderService {
     console.log('🚚 Payload envoyé au backend pour POST /orders:', orderData);
 
     // 🎯 Validation du montant pour PayTech
-    if (paymentMethod === 'PAYTECH' && totalAmount < 100) {
+    // Note: Comparaison avec string car PaymentMethod inclut plusieurs types
+    if (paymentMethod && paymentMethod.toString().toUpperCase() === 'PAYTECH' && totalAmount < 100) {
       throw new Error(`Le montant total (${totalAmount} XOF) est inférieur au minimum requis (100 XOF) pour PayTech`);
     }
 

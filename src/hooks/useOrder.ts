@@ -117,7 +117,8 @@ export const useOrder = () => {
 
       const orderData: CreateOrderRequest = {
         shippingDetails: {
-          name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          firstName: shippingInfo.firstName,
+          lastName: shippingInfo.lastName,
           street: shippingInfo.address,
           city: shippingInfo.city,
           region: shippingInfo.city,
@@ -126,14 +127,6 @@ export const useOrder = () => {
         },
         phoneNumber: shippingInfo.phone,
         notes: shippingInfo.notes || '',
-        totalAmount: orderService.calculateOrderTotal([{
-          productId: productId,
-          quantity: 1,
-          unitPrice: unitPrice,
-          size: cartItem.size,
-          color: cartItem.color,
-          colorId: cartItem.colorId || 1
-        }]),
         orderItems: [{
           productId: productId,
           quantity: 1,

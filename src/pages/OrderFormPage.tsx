@@ -155,7 +155,7 @@ const OrderFormPage: React.FC = () => {
 
   // États additionnels pour la commande
   const [selectedDelivery, setSelectedDelivery] = useState<string>('standard');
-  const [selectedPayment, setSelectedPayment] = useState<string>('paytech');
+  const [selectedPayment, setSelectedPayment] = useState<string>('cash_on_delivery'); // Défaut selon doc API
   const [selectedPayTechMethod, setSelectedPayTechMethod] = useState<string>('orange_money');
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string>('');
@@ -204,7 +204,7 @@ const OrderFormPage: React.FC = () => {
     }
   ];
 
-  // Méthodes de paiement PayTech selon la documentation officielle
+  // Méthodes de paiement selon la documentation API v2
   const paymentMethods: PaymentMethod[] = [
     {
       id: 'paytech',
@@ -214,7 +214,7 @@ const OrderFormPage: React.FC = () => {
       type: 'card'
     },
     {
-      id: 'cash',
+      id: 'cash_on_delivery',
       name: 'Paiement à la livraison',
       icon: '💵',
       description: 'Paiement en espèces à la réception du colis',
@@ -273,41 +273,56 @@ const OrderFormPage: React.FC = () => {
     );
   }
 
-  // Validation du formulaire
+  // Validation du formulaire selon la documentation API v2
   const validateForm = (): boolean => {
     const newErrors: Partial<OrderFormData> & { delivery?: string; payment?: string } = {};
 
-    // Validation des informations personnelles
-    if (!formData.firstName.trim()) newErrors.firstName = 'Le prénom est requis';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Le nom est requis';
-    if (!formData.email.trim()) {
-      newErrors.email = 'L\'email est requis';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    // Validation des informations personnelles (au moins prénom OU nom requis selon la doc)
+    const hasName = formData.firstName.trim() || formData.lastName.trim();
+    if (!hasName) {
+      newErrors.firstName = 'Au moins un prénom ou nom est requis';
+    }
+
+    // Validation des longueurs max
+    if (formData.firstName.length > 100) {
+      newErrors.firstName = 'Le prénom doit contenir au maximum 100 caractères';
+    }
+    if (formData.lastName.length > 100) {
+      newErrors.lastName = 'Le nom doit contenir au maximum 100 caractères';
+    }
+
+    // Email non obligatoire pour commande invité selon la doc
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'L\'email est invalide';
     }
+
+    // Téléphone (OBLIGATOIRE selon la doc)
     if (!formData.phone.trim()) {
       newErrors.phone = 'Le téléphone est requis';
     } else if (!/^(70|75|76|77|78|33)[0-9]{7}$/.test(formData.phone.replace(/\s+/g, ''))) {
       newErrors.phone = 'Format invalide. Ex: 77 123 45 67';
     }
 
-    // Validation de l'adresse avec limites de longueur
+    // Validation de l'adresse avec limites de longueur (OBLIGATOIRE)
     if (!formData.address.trim()) {
       newErrors.address = 'L\'adresse est requise';
     } else if (formData.address.length > 200) {
       newErrors.address = 'L\'adresse doit contenir au maximum 200 caractères';
     }
 
+    // Ville (OBLIGATOIRE)
     if (!formData.city.trim()) {
       newErrors.city = 'La ville est requise';
     } else if (formData.city.length > 100) {
       newErrors.city = 'La ville doit contenir au maximum 100 caractères';
     }
 
-    if (!formData.postalCode.trim()) {
-      newErrors.postalCode = 'Le code postal est requis';
+    // Code postal (OPTIONNEL selon la doc)
+    if (formData.postalCode && formData.postalCode.length > 20) {
+      newErrors.postalCode = 'Le code postal doit contenir au maximum 20 caractères';
     }
 
+    // Pays (OBLIGATOIRE)
     if (!formData.country.trim()) {
       newErrors.country = 'Le pays est requis';
     } else if (formData.country.length > 100) {
@@ -348,17 +363,19 @@ const OrderFormPage: React.FC = () => {
       }
 
       // Préparer les données de commande selon le format attendu par le backend
+      // Conforme à la documentation API v2
       const orderRequest: OrderRequest = {
         shippingDetails: {
-          name: `${formData.firstName} ${formData.lastName}`,
+          firstName: formData.firstName || undefined,
+          lastName: formData.lastName || undefined,
           street: formData.address,
           city: formData.city,
           region: formData.city, // Utiliser la ville comme région
-          postalCode: formData.postalCode,
+          postalCode: formData.postalCode || undefined,
           country: formData.country,
         },
         phoneNumber: formData.phone,
-        notes: formData.notes || '',
+        notes: formData.notes || undefined,
         orderItems: [{
           productId: productId,
           quantity: 1,
@@ -366,7 +383,7 @@ const OrderFormPage: React.FC = () => {
           color: productData?.color,
           colorId: 1, // Valeur par défaut car colorId n'existe pas dans CartItem
         }],
-        paymentMethod: 'PAYTECH',
+        paymentMethod: 'PAYTECH', // Type conforme à la doc API v2
         initiatePayment: true, // Important: demander l'initialisation du paiement
       };
 
@@ -761,7 +778,7 @@ const OrderFormPage: React.FC = () => {
                       {/* Prénom */}
                       <div>
                         <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                          Prénom *
+                          Prénom * <span className="text-xs text-gray-500">(au moins prénom ou nom requis)</span>
                         </label>
                         <input
                           type="text"
@@ -769,6 +786,7 @@ const OrderFormPage: React.FC = () => {
                           name="firstName"
                           value={formData.firstName}
                           onChange={handleInputChange}
+                          maxLength={100}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                             errors.firstName ? 'border-red-500' : 'border-gray-300'
                           }`}
@@ -782,7 +800,7 @@ const OrderFormPage: React.FC = () => {
                       {/* Nom */}
                       <div>
                         <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                          Nom *
+                          Nom * <span className="text-xs text-gray-500">(au moins prénom ou nom requis)</span>
                         </label>
                         <input
                           type="text"
@@ -790,6 +808,7 @@ const OrderFormPage: React.FC = () => {
                           name="lastName"
                           value={formData.lastName}
                           onChange={handleInputChange}
+                          maxLength={100}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                             errors.lastName ? 'border-red-500' : 'border-gray-300'
                           }`}
@@ -803,7 +822,7 @@ const OrderFormPage: React.FC = () => {
                       {/* Email */}
                       <div className="sm:col-span-2">
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                          Email *
+                          Email <span className="text-xs text-gray-500">(optionnel)</span>
                         </label>
                         <input
                           type="email"
@@ -814,7 +833,7 @@ const OrderFormPage: React.FC = () => {
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                             errors.email ? 'border-red-500' : 'border-gray-300'
                           }`}
-                          placeholder="votre@email.com"
+                          placeholder="votre@email.com (optionnel)"
                         />
                         {errors.email && (
                           <p className="mt-1 text-sm text-red-600">{errors.email}</p>
@@ -899,7 +918,7 @@ const OrderFormPage: React.FC = () => {
                       {/* Code postal */}
                       <div>
                         <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
-                          Code postal *
+                          Code postal <span className="text-xs text-gray-500">(optionnel)</span>
                         </label>
                         <input
                           type="text"
@@ -907,10 +926,11 @@ const OrderFormPage: React.FC = () => {
                           name="postalCode"
                           value={formData.postalCode}
                           onChange={handleInputChange}
+                          maxLength={20}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                             errors.postalCode ? 'border-red-500' : 'border-gray-300'
                           }`}
-                          placeholder="12000"
+                          placeholder="12000 (optionnel)"
                         />
                         {errors.postalCode && (
                           <p className="mt-1 text-sm text-red-600">{errors.postalCode}</p>
@@ -991,7 +1011,7 @@ const OrderFormPage: React.FC = () => {
                           <>
                             <ShoppingCart className="w-5 h-5" />
                             <span className="hidden sm:inline">
-                              {selectedPayment === 'paytech' ? 'Payer avec PayTech' : 'Confirmer'} ({formatPrice(totalAmount)})
+                              {selectedPayment === 'paytech' ? 'Payer avec PayTech' : 'Confirmer la commande'} ({formatPrice(totalAmount)})
                             </span>
                             <span className="sm:hidden">
                               {selectedPayment === 'paytech' ? 'Payer' : 'Confirmer'}

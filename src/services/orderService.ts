@@ -2,13 +2,20 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3004';
 import AuthManager from '../utils/authUtils';
 
+// Structure conforme à la documentation API v2
 export interface ShippingDetails {
-  name: string;
-  street: string;
-  city: string;
-  region: string;
-  postalCode: string;
-  country: string;
+  // Identité (au moins un des deux requis selon doc)
+  firstName?: string;          // Max 100 caractères
+  lastName?: string;           // Max 100 caractères
+  company?: string;            // Max 150 caractères (optionnel)
+
+  // Adresse (OBLIGATOIRE)
+  street: string;              // Max 200 caractères (OBLIGATOIRE)
+  apartment?: string;          // Max 100 caractères (optionnel)
+  city: string;                // Max 100 caractères (OBLIGATOIRE)
+  region?: string;             // Max 100 caractères (optionnel)
+  postalCode?: string;         // Max 20 caractères (optionnel)
+  country: string;             // Max 100 caractères (OBLIGATOIRE)
 }
 
 export interface OrderItem {
@@ -21,13 +28,25 @@ export interface OrderItem {
 }
 
 export interface CreateOrderRequest {
+  // Détails de livraison (OBLIGATOIRE - objet imbriqué)
   shippingDetails: ShippingDetails;
-  phoneNumber: string;
-  notes?: string;
-  totalAmount?: number; // 🎯 Ajout du montant total pour PayTech
+
+  // Contact (OBLIGATOIRE)
+  phoneNumber: string;           // Numéro de téléphone
+
+  // Produits (OBLIGATOIRE - au moins 1 article)
   orderItems: OrderItem[];
-  paymentMethod: 'PAYTECH' | 'CASH';
-  initiatePayment: boolean;
+
+  // Options de paiement
+  paymentMethod?: 'PAYTECH' | 'CASH_ON_DELIVERY' | 'OTHER';  // Défaut: CASH_ON_DELIVERY
+  initiatePayment?: boolean;     // Pour déclencher paiement PayTech (défaut: false)
+
+  // Notes additionnelles (optionnel)
+  notes?: string;                // Commentaires sur la commande
+
+  // DEPRECATED - Ne plus utiliser dans les nouvelles implémentations
+  // Le backend calcule automatiquement le montant total
+  totalAmount?: number;
 }
 
 export interface OrderResponse {
@@ -81,39 +100,10 @@ export class OrderService {
     return AuthManager.getAuthHeaders();
   }
 
-  // 🎯 Calculer le montant total d'une commande
-  calculateOrderTotal(orderItems: OrderItem[]): number {
-    const subtotal = orderItems.reduce((sum, item) => {
-      return sum + ((item.unitPrice || 0) * item.quantity);
-    }, 0);
-
-    const shippingCost = orderItems.length > 0 ? 1500 : 0; // Frais de port fixes
-    const total = subtotal + shippingCost;
-
-    console.log('💰 [OrderService] Calcul du montant total:', {
-      subtotal,
-      shippingCost,
-      total,
-      itemsCount: orderItems.length
-    });
-
-    return total;
-  }
-
-  // Créer une commande avec paiement PayTech
+  // Créer une commande avec paiement (utilisateur authentifié)
   async createOrderWithPayment(orderData: CreateOrderRequest): Promise<OrderResponse> {
     try {
-      console.log('🛒 [OrderService] Création de commande avec paiement:', orderData);
-
-      // 🎯 Calculer le montant total si non fourni
-      if (!orderData.totalAmount) {
-        orderData.totalAmount = this.calculateOrderTotal(orderData.orderItems);
-      }
-
-      // 🎯 Validation du montant pour PayTech
-      if (orderData.paymentMethod === 'PAYTECH' && orderData.totalAmount < 100) {
-        throw new Error(`Le montant total (${orderData.totalAmount} XOF) est inférieur au minimum requis (100 XOF) pour PayTech`);
-      }
+      console.log('🛒 [OrderService] Création de commande avec paiement (utilisateur authentifié):', orderData);
 
       const response = await fetch(`${this.baseUrl}/orders`, {
         method: 'POST',
@@ -137,7 +127,7 @@ export class OrderService {
   }
 
   // Méthode simplifiée pour commande rapide depuis le panier
-  async createQuickOrder(cartItem: any, shippingInfo: any, userToken?: string): Promise<OrderResponse> {
+  async createQuickOrder(cartItem: any, shippingInfo: any): Promise<OrderResponse> {
     try {
       // Validation du productId selon la documentation
       // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
@@ -154,7 +144,8 @@ export class OrderService {
 
       const orderData: CreateOrderRequest = {
         shippingDetails: {
-          name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          firstName: shippingInfo.firstName,
+          lastName: shippingInfo.lastName,
           street: shippingInfo.address,
           city: shippingInfo.city,
           region: shippingInfo.city, // Utiliser la ville comme région
@@ -163,14 +154,6 @@ export class OrderService {
         },
         phoneNumber: shippingInfo.phone,
         notes: shippingInfo.notes || '',
-        totalAmount: this.calculateOrderTotal([{
-          productId: productId,
-          quantity: 1,
-          unitPrice: unitPrice,
-          size: cartItem.size,
-          color: cartItem.color,
-          colorId: cartItem.colorId || 1
-        }]),
         orderItems: [{
           productId: productId,
           quantity: 1,
@@ -341,7 +324,7 @@ export class OrderService {
 
       // Validation des productIds selon la documentation
       // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
-      const validatedItems = cartItems.map((item, index) => {
+      const itemsWithPrices = cartItems.map((item, index) => {
         const productId = Number(item.productId);
         if (!productId || productId <= 0) {
           throw new Error(`Invalid productId in cart item ${index}: ${item.productId}. Must be greater than 0`);
@@ -349,21 +332,17 @@ export class OrderService {
         return {
           productId: productId,
           quantity: item.quantity || 1,
+          unitPrice: item.price || item.unitPrice || 0, // Récupérer le prix
           size: item.size,
           color: item.color,
           colorId: item.colorId || 1
         };
       });
 
-      // 🎯 Ajouter les prix unitaires aux orderItems et calculer le total
-      const itemsWithPrices = validatedItems.map(item => ({
-        ...item,
-        unitPrice: item.unitPrice || 0 // S'assurer que le prix est inclus
-      }));
-
       const orderData: CreateOrderRequest = {
         shippingDetails: {
-          name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          firstName: shippingInfo.firstName,
+          lastName: shippingInfo.lastName,
           street: shippingInfo.address,
           city: shippingInfo.city,
           region: shippingInfo.city,
@@ -372,9 +351,10 @@ export class OrderService {
         },
         phoneNumber: shippingInfo.phone,
         notes: shippingInfo.notes || '',
-        totalAmount: this.calculateOrderTotal(itemsWithPrices), // 🎯 Calculer le montant total
         orderItems: itemsWithPrices,
-        paymentMethod: (paymentMethod === 'PAYTECH' || paymentMethod === 'CASH') ? paymentMethod as 'PAYTECH' | 'CASH' : 'PAYTECH',
+        paymentMethod: (paymentMethod === 'PAYTECH' || paymentMethod === 'CASH_ON_DELIVERY')
+          ? paymentMethod as 'PAYTECH' | 'CASH_ON_DELIVERY'
+          : 'CASH_ON_DELIVERY',
         initiatePayment: true
       };
 
@@ -395,17 +375,7 @@ export class OrderService {
   // Créer une commande pour un utilisateur non connecté (guest checkout)
   async createGuestOrder(orderData: CreateOrderRequest): Promise<OrderResponse> {
     try {
-      console.log('🛒 [OrderService] Création de commande guest:', orderData);
-
-      // 🎯 Calculer le montant total si non fourni (pour guest aussi)
-      if (!orderData.totalAmount) {
-        orderData.totalAmount = this.calculateOrderTotal(orderData.orderItems);
-      }
-
-      // 🎯 Validation du montant pour PayTech (pour guest aussi)
-      if (orderData.paymentMethod === 'PAYTECH' && orderData.totalAmount < 100) {
-        throw new Error(`Le montant total (${orderData.totalAmount} XOF) est inférieur au minimum requis (100 XOF) pour PayTech`);
-      }
+      console.log('🛒 [OrderService] Création de commande guest (route /orders/guest):', orderData);
 
       const response = await fetch(`${this.baseUrl}/orders/guest`, {
         method: 'POST',
@@ -417,7 +387,10 @@ export class OrderService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        const errorMessage = Array.isArray(errorData.message)
+          ? errorData.message.join(', ')
+          : errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

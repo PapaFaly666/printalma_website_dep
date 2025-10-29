@@ -18,7 +18,8 @@ const TestPaytechPage = () => {
 
       const testOrderData = {
         shippingDetails: {
-          name: 'Test User',
+          firstName: 'Test',
+          lastName: 'User',
           street: '123 Test Street',
           city: 'Dakar',
           region: 'Dakar',
@@ -40,7 +41,6 @@ const TestPaytechPage = () => {
       };
 
       console.log('📦 [Test] Données de commande:', testOrderData);
-      console.log('💰 [Test] Calcul du montant total:', orderService.calculateOrderTotal(testOrderData.orderItems));
 
       const response = await orderService.createOrderWithPayment(testOrderData);
 
