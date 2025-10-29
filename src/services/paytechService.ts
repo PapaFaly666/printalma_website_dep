@@ -1,3 +1,5 @@
+import { PAYTECH_CONFIG } from '../config/paytechConfig';
+
 // Configuration pour appeler le backend (pas PayTech directement)
 // Le backend gère les clés API de manière sécurisée
 const BACKEND_CONFIG = {
@@ -149,7 +151,22 @@ export class PayTechService {
     try {
       const token = this.getAuthToken();
 
-      console.log('🚀 [PayTech] Initialisation du paiement (invité):', paymentRequest);
+      // 🎯 Ajouter les URLs PayTech HTTPS
+      const enhancedPaymentRequest = {
+        ...paymentRequest,
+        ipn_url: PAYTECH_CONFIG.IPN_URL,      // URL HTTPS pour IPN
+        success_url: PAYTECH_CONFIG.SUCCESS_URL,  // URL HTTPS pour succès
+        cancel_url: PAYTECH_CONFIG.CANCEL_URL,    // URL HTTPS pour annulation
+        env: PAYTECH_CONFIG.ENV,
+      };
+
+      console.log('🚀 [PayTech] Initialisation du paiement (invité):', enhancedPaymentRequest);
+      console.log('🔗 [PayTech] URLs configurées:', {
+        ipn_url: PAYTECH_CONFIG.IPN_URL,
+        success_url: PAYTECH_CONFIG.SUCCESS_URL,
+        cancel_url: PAYTECH_CONFIG.CANCEL_URL,
+        env: PAYTECH_CONFIG.ENV
+      });
 
       const response = await fetch(`${this.backendUrl}/paytech/payment`, {
         method: 'POST',
@@ -158,7 +175,7 @@ export class PayTechService {
           // Token optionnel - les paiements invités sont autorisés
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
-        body: JSON.stringify(paymentRequest),
+        body: JSON.stringify(enhancedPaymentRequest),
       });
 
       if (!response.ok) {

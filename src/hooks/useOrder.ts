@@ -102,20 +102,42 @@ export const useOrder = () => {
     onError?: (error: string) => void
   ): Promise<OrderResponse> => {
     try {
+      // Validation du productId selon la documentation
+      // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
+      const productId = Number(cartItem.productId);
+      if (!productId || productId <= 0) {
+        throw new Error(`Invalid productId: ${cartItem.productId}. Must be greater than 0`);
+      }
+
+      // 🎯 Récupérer le prix unitaire depuis le cartItem
+      const unitPrice = cartItem.price || cartItem.unitPrice || 0;
+      if (!unitPrice || unitPrice <= 0) {
+        console.warn('⚠️ [useOrder] Prix unitaire non valide:', { price: cartItem.price, unitPrice: cartItem.unitPrice });
+      }
+
       const orderData: CreateOrderRequest = {
         shippingDetails: {
-          shippingName: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
-          shippingStreet: shippingInfo.address,
-          shippingCity: shippingInfo.city,
-          shippingRegion: shippingInfo.city,
-          shippingPostalCode: shippingInfo.postalCode,
-          shippingCountry: shippingInfo.country || 'Sénégal'
+          name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          street: shippingInfo.address,
+          city: shippingInfo.city,
+          region: shippingInfo.city,
+          postalCode: shippingInfo.postalCode,
+          country: shippingInfo.country || 'Sénégal'
         },
         phoneNumber: shippingInfo.phone,
         notes: shippingInfo.notes || '',
-        orderItems: [{
-          productId: Number(cartItem.id) || 0,
+        totalAmount: orderService.calculateOrderTotal([{
+          productId: productId,
           quantity: 1,
+          unitPrice: unitPrice,
+          size: cartItem.size,
+          color: cartItem.color,
+          colorId: cartItem.colorId || 1
+        }]),
+        orderItems: [{
+          productId: productId,
+          quantity: 1,
+          unitPrice: unitPrice,
           size: cartItem.size,
           color: cartItem.color,
           colorId: cartItem.colorId || 1

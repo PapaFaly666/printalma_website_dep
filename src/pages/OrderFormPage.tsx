@@ -291,10 +291,28 @@ const OrderFormPage: React.FC = () => {
       newErrors.phone = 'Format invalide. Ex: 77 123 45 67';
     }
 
-    // Validation de l'adresse
-    if (!formData.address.trim()) newErrors.address = 'L\'adresse est requise';
-    if (!formData.city.trim()) newErrors.city = 'La ville est requise';
-    if (!formData.postalCode.trim()) newErrors.postalCode = 'Le code postal est requis';
+    // Validation de l'adresse avec limites de longueur
+    if (!formData.address.trim()) {
+      newErrors.address = 'L\'adresse est requise';
+    } else if (formData.address.length > 200) {
+      newErrors.address = 'L\'adresse doit contenir au maximum 200 caractères';
+    }
+
+    if (!formData.city.trim()) {
+      newErrors.city = 'La ville est requise';
+    } else if (formData.city.length > 100) {
+      newErrors.city = 'La ville doit contenir au maximum 100 caractères';
+    }
+
+    if (!formData.postalCode.trim()) {
+      newErrors.postalCode = 'Le code postal est requis';
+    }
+
+    if (!formData.country.trim()) {
+      newErrors.country = 'Le pays est requis';
+    } else if (formData.country.length > 100) {
+      newErrors.country = 'Le pays doit contenir au maximum 100 caractères';
+    }
 
     // Validation du paiement
     if (!selectedPayment) newErrors.payment = 'Veuillez sélectionner une méthode de paiement';
@@ -322,20 +340,27 @@ const OrderFormPage: React.FC = () => {
     try {
       console.log('🛒 [OrderForm] Création de commande réelle avec paiement PayTech');
 
+      // Validation du productId selon la documentation
+      // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
+      const productId = Number(productData?.productId);
+      if (!productId || productId <= 0) {
+        throw new Error(`Invalid productId: ${productData?.productId}. Must be greater than 0`);
+      }
+
       // Préparer les données de commande selon le format attendu par le backend
       const orderRequest: OrderRequest = {
         shippingDetails: {
-          shippingName: `${formData.firstName} ${formData.lastName}`,
-          shippingStreet: formData.address,
-          shippingCity: formData.city,
-          shippingRegion: formData.city, // Utiliser la ville comme région
-          shippingPostalCode: formData.postalCode,
-          shippingCountry: formData.country,
+          name: `${formData.firstName} ${formData.lastName}`,
+          street: formData.address,
+          city: formData.city,
+          region: formData.city, // Utiliser la ville comme région
+          postalCode: formData.postalCode,
+          country: formData.country,
         },
         phoneNumber: formData.phone,
         notes: formData.notes || '',
         orderItems: [{
-          productId: Number(productData?.id) || 0,
+          productId: productId,
           quantity: 1,
           size: productData?.size,
           color: productData?.color,
@@ -830,7 +855,7 @@ const OrderFormPage: React.FC = () => {
                       {/* Adresse */}
                       <div className="sm:col-span-2">
                         <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                          Adresse complète *
+                          Adresse complète * <span className="text-xs text-gray-500">({formData.address.length}/200)</span>
                         </label>
                         <input
                           type="text"
@@ -838,6 +863,7 @@ const OrderFormPage: React.FC = () => {
                           name="address"
                           value={formData.address}
                           onChange={handleInputChange}
+                          maxLength={200}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                             errors.address ? 'border-red-500' : 'border-gray-300'
                           }`}
@@ -851,7 +877,7 @@ const OrderFormPage: React.FC = () => {
                       {/* Ville */}
                       <div>
                         <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-                          Ville *
+                          Ville * <span className="text-xs text-gray-500">({formData.city.length}/100)</span>
                         </label>
                         <input
                           type="text"
@@ -859,6 +885,7 @@ const OrderFormPage: React.FC = () => {
                           name="city"
                           value={formData.city}
                           onChange={handleInputChange}
+                          maxLength={100}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                             errors.city ? 'border-red-500' : 'border-gray-300'
                           }`}
@@ -893,7 +920,7 @@ const OrderFormPage: React.FC = () => {
                       {/* Pays */}
                       <div className="sm:col-span-2">
                         <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
-                          Pays *
+                          Pays * <span className="text-xs text-gray-500">({formData.country.length}/100)</span>
                         </label>
                         <input
                           type="text"
@@ -901,9 +928,15 @@ const OrderFormPage: React.FC = () => {
                           name="country"
                           value={formData.country}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          maxLength={100}
+                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                            errors.country ? 'border-red-500' : 'border-gray-300'
+                          }`}
                           placeholder="Sénégal"
                         />
+                        {errors.country && (
+                          <p className="mt-1 text-sm text-red-600">{errors.country}</p>
+                        )}
                       </div>
 
                       {/* Notes */}

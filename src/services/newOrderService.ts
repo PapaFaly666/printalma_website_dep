@@ -33,9 +33,11 @@ interface CreateOrderRequest {
   shippingDetails: ShippingDetailsPayload; // Modifié pour accepter un objet
   phoneNumber: string;
   notes?: string;
+  totalAmount?: number; // 🎯 Ajout du montant total pour PayTech
   orderItems: {
     productId: number;
     quantity: number;
+    unitPrice?: number; // 🎯 Ajout du prix unitaire pour le calcul
     size?: string;
     color?: string;
     colorId?: number;
@@ -175,14 +177,39 @@ export class NewOrderService {
   extractPrice(priceString: string | number): number {
     if (typeof priceString === 'number') return priceString;
     if (!priceString) return 0;
-    
+
     const cleanPrice = priceString
       .replace(/[^\d,.-]/g, '')
       .replace(',', '.')
       .trim();
-    
+
     const price = parseFloat(cleanPrice);
     return isNaN(price) ? 0 : price;
+  }
+
+  // 🎯 Calculer le montant total d'une commande
+  calculateOrderTotal(orderItems: any[]): number {
+    const subtotal = orderItems.reduce((sum, item) => {
+      const unitPrice = item.unitPrice || item.price || 0;
+      return sum + (unitPrice * item.quantity);
+    }, 0);
+
+    const shippingCost = orderItems.length > 0 ? 1500 : 0; // Frais de port fixes
+    const total = subtotal + shippingCost;
+
+    console.log('💰 [NewOrderService] Calcul du montant total:', {
+      subtotal,
+      shippingCost,
+      total,
+      itemsCount: orderItems.length,
+      items: orderItems.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice || item.price || 0
+      }))
+    });
+
+    return total;
   }
 
   formatDate(date: string): string {
@@ -366,7 +393,7 @@ export class NewOrderService {
   }
 
   async createOrderFromCart(
-    cartItems: any[], 
+    cartItems: any[],
     shippingDetailsFromCartPage: any, // Renommé pour clarté
     paymentMethod: PaymentMethod
   ): Promise<Order> {
@@ -394,90 +421,108 @@ export class NewOrderService {
         // Si tous les champs sont vides, cela pourrait être le problème
         console.warn('⚠️ L\'objet backendShippingDetails est entièrement vide ou ne contient que des valeurs null/undefined/chaînes vides.');
         // Selon la logique backend, il peut vouloir au moins un champ renseigné.
-        // Si l'erreur "shippingDetails must be a non-empty object" persiste, 
-        // il faut s'assurer que le backend n'attend pas simplement un objet existant, 
+        // Si l'erreur "shippingDetails must be a non-empty object" persiste,
+        // il faut s'assurer que le backend n'attend pas simplement un objet existant,
         // mais un objet avec au moins certaines propriétés définies.
     }
+
+    // 🎯 Préparer les orderItems avec les prix unitaires
+    const processedOrderItems = cartItems.map(item => {
+      // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
+      const productIdAsNumber = parseInt(item.productId, 10);
+      if (isNaN(productIdAsNumber) || productIdAsNumber <= 0) {
+        throw new Error(`L'article "${item.title || item.productName || item.name || 'Inconnu'}" a un ID de produit invalide (${item.productId}). L'ID doit être supérieur à 0.`);
+      }
+
+      // 🆕 CORRECTION: Récupérer correctement size et color selon le format de l'item
+      let finalSize: string | undefined;
+      let finalColor: string | undefined;
+      let colorId: number | undefined;
+
+      // Gestion de la taille - supporter plusieurs formats
+      if (item.selectedSize) {
+        finalSize = typeof item.selectedSize === 'object' ? item.selectedSize.name : item.selectedSize;
+      } else if (item.size) {
+        finalSize = typeof item.size === 'object' ? item.size.name : item.size;
+      }
+
+      // Gestion de la couleur - supporter plusieurs formats + colorId
+      if (item.selectedColorObject) {
+        // Format avec objet couleur complet
+        finalColor = item.selectedColorObject.name;
+        colorId = item.selectedColorObject.id;
+      } else if (item.selectedColorId && item.selectedColor) {
+        // Format avec ID et nom séparés
+        colorId = item.selectedColorId;
+        finalColor = typeof item.selectedColor === 'object' ? item.selectedColor.name : item.selectedColor;
+      } else if (item.selectedColor) {
+        // Format avec couleur seulement
+        finalColor = typeof item.selectedColor === 'object' ? item.selectedColor.name : item.selectedColor;
+        colorId = typeof item.selectedColor === 'object' ? item.selectedColor.id : undefined;
+      } else if (item.color) {
+        // Format simple avec couleur comme string
+        finalColor = typeof item.color === 'object' ? item.color.name : item.color;
+        colorId = typeof item.color === 'object' ? item.color.id : undefined;
+      }
+
+      // 🎯 Récupérer le prix unitaire
+      const unitPrice = this.extractPrice(item.price || item.unitPrice || 0);
+
+      console.log('📦 Item traité:', {
+        original: item,
+        processed: {
+          productId: productIdAsNumber,
+          quantity: item.quantity,
+          unitPrice: unitPrice,
+          size: finalSize,
+          color: finalColor,
+          colorId: colorId
+        }
+      });
+
+      const orderItem: any = {
+        productId: productIdAsNumber,
+        quantity: item.quantity,
+        unitPrice: unitPrice, // 🎯 Ajouter le prix unitaire
+      };
+
+      // Ajouter size si disponible
+      if (finalSize) {
+        orderItem.size = finalSize;
+      }
+
+      // Ajouter color si disponible
+      if (finalColor) {
+        orderItem.color = finalColor;
+      }
+
+      // 🆕 Ajouter colorId si disponible
+      if (colorId) {
+        orderItem.colorId = colorId;
+      }
+
+      console.log('🔍 OrderItem final pour backend:', orderItem);
+
+      return orderItem;
+    });
+
+    // 🎯 Calculer le montant total
+    const totalAmount = this.calculateOrderTotal(processedOrderItems);
 
     const orderData: CreateOrderRequest = {
       shippingDetails: backendShippingDetails, // Passer l'objet structuré
       phoneNumber: shippingDetailsFromCartPage.phone || shippingDetailsFromCartPage.phoneNumber || 'N/A',
       notes: shippingDetailsFromCartPage.notes || '',
-      orderItems: cartItems.map(item => {
-        const productIdAsNumber = parseInt(item.id || item.productId, 10);
-        if (isNaN(productIdAsNumber)) {
-          throw new Error(`L'article "${item.title || item.productName || 'Inconnu'}" a un ID de produit invalide.`);
-        }
-
-        // 🆕 CORRECTION: Récupérer correctement size et color selon le format de l'item
-        let finalSize: string | undefined;
-        let finalColor: string | undefined;
-        let colorId: number | undefined;
-
-        // Gestion de la taille - supporter plusieurs formats
-        if (item.selectedSize) {
-          finalSize = typeof item.selectedSize === 'object' ? item.selectedSize.name : item.selectedSize;
-        } else if (item.size) {
-          finalSize = typeof item.size === 'object' ? item.size.name : item.size;
-        }
-
-        // Gestion de la couleur - supporter plusieurs formats + colorId
-        if (item.selectedColorObject) {
-          // Format avec objet couleur complet
-          finalColor = item.selectedColorObject.name;
-          colorId = item.selectedColorObject.id;
-        } else if (item.selectedColorId && item.selectedColor) {
-          // Format avec ID et nom séparés
-          colorId = item.selectedColorId;
-          finalColor = typeof item.selectedColor === 'object' ? item.selectedColor.name : item.selectedColor;
-        } else if (item.selectedColor) {
-          // Format avec couleur seulement
-          finalColor = typeof item.selectedColor === 'object' ? item.selectedColor.name : item.selectedColor;
-          colorId = typeof item.selectedColor === 'object' ? item.selectedColor.id : undefined;
-        } else if (item.color) {
-          // Format simple avec couleur comme string
-          finalColor = typeof item.color === 'object' ? item.color.name : item.color;
-          colorId = typeof item.color === 'object' ? item.color.id : undefined;
-        }
-
-        console.log('📦 Item traité:', {
-          original: item,
-          processed: {
-            productId: productIdAsNumber,
-            quantity: item.quantity,
-            size: finalSize,
-            color: finalColor,
-            colorId: colorId
-          }
-        });
-
-        const orderItem: any = {
-          productId: productIdAsNumber,
-          quantity: item.quantity,
-        };
-
-        // Ajouter size si disponible
-        if (finalSize) {
-          orderItem.size = finalSize;
-        }
-
-        // Ajouter color si disponible
-        if (finalColor) {
-          orderItem.color = finalColor;
-        }
-
-        // 🆕 Ajouter colorId si disponible
-        if (colorId) {
-          orderItem.colorId = colorId;
-        }
-
-        console.log('🔍 OrderItem final pour backend:', orderItem);
-
-        return orderItem;
-      }),
+      totalAmount: totalAmount, // 🎯 Ajouter le montant total calculé
+      orderItems: processedOrderItems,
     };
 
     console.log('🚚 Payload envoyé au backend pour POST /orders:', orderData);
+
+    // 🎯 Validation du montant pour PayTech
+    if (paymentMethod === 'PAYTECH' && totalAmount < 100) {
+      throw new Error(`Le montant total (${totalAmount} XOF) est inférieur au minimum requis (100 XOF) pour PayTech`);
+    }
 
     try {
       const result = await this.apiCall<Order>('/orders', {
@@ -486,7 +531,7 @@ export class NewOrderService {
       });
 
       console.log('✅ Réponse du backend après création de commande:', result);
-      
+
       return result.data;
     } catch (error) {
       console.error('❌ Erreur lors de la création de commande depuis le panier (newOrderService):', error);

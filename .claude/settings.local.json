@@ -1,11 +1,11 @@
 {
- /* "env": {
+  "env": {
     "ANTHROPIC_AUTH_TOKEN": "962afa57981e44f1ade9f91f24a6b97b.Ng0qr6jFxbMf97MV",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
-  }, */
+  },
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
@@ -27,13 +27,14 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "mcp__ide__getDiagnostics",
-      "Bash(npm install:*)", 
+      "Bash(npm install:*)",
       "Bash(cat:*)",
       "WebSearch",
       "WebFetch(domain:paytech.sn)",
       "WebFetch(domain:doc.paytech.sn)",
       "WebFetch(domain:docs.intech.sn)",
-      "WebFetch(domain:doc.intech.sn)"
+      "WebFetch(domain:doc.intech.sn)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": [],

@@ -3,17 +3,18 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3004';
 import AuthManager from '../utils/authUtils';
 
 export interface ShippingDetails {
-  shippingName: string;
-  shippingStreet: string;
-  shippingCity: string;
-  shippingRegion: string;
-  shippingPostalCode: string;
-  shippingCountry: string;
+  name: string;
+  street: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  country: string;
 }
 
 export interface OrderItem {
   productId: number;
   quantity: number;
+  unitPrice?: number; // 🎯 Ajout du prix unitaire pour le calcul
   size?: string;
   color?: string;
   colorId?: number;
@@ -23,6 +24,7 @@ export interface CreateOrderRequest {
   shippingDetails: ShippingDetails;
   phoneNumber: string;
   notes?: string;
+  totalAmount?: number; // 🎯 Ajout du montant total pour PayTech
   orderItems: OrderItem[];
   paymentMethod: 'PAYTECH' | 'CASH';
   initiatePayment: boolean;
@@ -79,10 +81,39 @@ export class OrderService {
     return AuthManager.getAuthHeaders();
   }
 
+  // 🎯 Calculer le montant total d'une commande
+  calculateOrderTotal(orderItems: OrderItem[]): number {
+    const subtotal = orderItems.reduce((sum, item) => {
+      return sum + ((item.unitPrice || 0) * item.quantity);
+    }, 0);
+
+    const shippingCost = orderItems.length > 0 ? 1500 : 0; // Frais de port fixes
+    const total = subtotal + shippingCost;
+
+    console.log('💰 [OrderService] Calcul du montant total:', {
+      subtotal,
+      shippingCost,
+      total,
+      itemsCount: orderItems.length
+    });
+
+    return total;
+  }
+
   // Créer une commande avec paiement PayTech
   async createOrderWithPayment(orderData: CreateOrderRequest): Promise<OrderResponse> {
     try {
       console.log('🛒 [OrderService] Création de commande avec paiement:', orderData);
+
+      // 🎯 Calculer le montant total si non fourni
+      if (!orderData.totalAmount) {
+        orderData.totalAmount = this.calculateOrderTotal(orderData.orderItems);
+      }
+
+      // 🎯 Validation du montant pour PayTech
+      if (orderData.paymentMethod === 'PAYTECH' && orderData.totalAmount < 100) {
+        throw new Error(`Le montant total (${orderData.totalAmount} XOF) est inférieur au minimum requis (100 XOF) pour PayTech`);
+      }
 
       const response = await fetch(`${this.baseUrl}/orders`, {
         method: 'POST',
@@ -108,20 +139,42 @@ export class OrderService {
   // Méthode simplifiée pour commande rapide depuis le panier
   async createQuickOrder(cartItem: any, shippingInfo: any, userToken?: string): Promise<OrderResponse> {
     try {
+      // Validation du productId selon la documentation
+      // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
+      const productId = Number(cartItem.productId);
+      if (!productId || productId <= 0) {
+        throw new Error(`Invalid productId: ${cartItem.productId}. Must be greater than 0`);
+      }
+
+      // 🎯 Récupérer le prix unitaire depuis le cartItem
+      const unitPrice = cartItem.price || cartItem.unitPrice || 0;
+      if (!unitPrice || unitPrice <= 0) {
+        console.warn('⚠️ [OrderService] Prix unitaire non valide:', { price: cartItem.price, unitPrice: cartItem.unitPrice });
+      }
+
       const orderData: CreateOrderRequest = {
         shippingDetails: {
-          shippingName: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
-          shippingStreet: shippingInfo.address,
-          shippingCity: shippingInfo.city,
-          shippingRegion: shippingInfo.city, // Utiliser la ville comme région
-          shippingPostalCode: shippingInfo.postalCode,
-          shippingCountry: shippingInfo.country || 'Sénégal'
+          name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          street: shippingInfo.address,
+          city: shippingInfo.city,
+          region: shippingInfo.city, // Utiliser la ville comme région
+          postalCode: shippingInfo.postalCode,
+          country: shippingInfo.country || 'Sénégal'
         },
         phoneNumber: shippingInfo.phone,
         notes: shippingInfo.notes || '',
-        orderItems: [{
-          productId: Number(cartItem.id) || 0,
+        totalAmount: this.calculateOrderTotal([{
+          productId: productId,
           quantity: 1,
+          unitPrice: unitPrice,
+          size: cartItem.size,
+          color: cartItem.color,
+          colorId: cartItem.colorId || 1
+        }]),
+        orderItems: [{
+          productId: productId,
+          quantity: 1,
+          unitPrice: unitPrice,
           size: cartItem.size,
           color: cartItem.color,
           colorId: cartItem.colorId || 1
@@ -286,24 +339,41 @@ export class OrderService {
     try {
       console.log('🛒 [OrderService] Création de commande depuis le panier:', { cartItems, shippingInfo, paymentMethod });
 
-      const orderData: CreateOrderRequest = {
-        shippingDetails: {
-          shippingName: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
-          shippingStreet: shippingInfo.address,
-          shippingCity: shippingInfo.city,
-          shippingRegion: shippingInfo.city,
-          shippingPostalCode: shippingInfo.postalCode,
-          shippingCountry: shippingInfo.country || 'Sénégal'
-        },
-        phoneNumber: shippingInfo.phone,
-        notes: shippingInfo.notes || '',
-        orderItems: cartItems.map(item => ({
-          productId: Number(item.id) || 0,
+      // Validation des productIds selon la documentation
+      // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
+      const validatedItems = cartItems.map((item, index) => {
+        const productId = Number(item.productId);
+        if (!productId || productId <= 0) {
+          throw new Error(`Invalid productId in cart item ${index}: ${item.productId}. Must be greater than 0`);
+        }
+        return {
+          productId: productId,
           quantity: item.quantity || 1,
           size: item.size,
           color: item.color,
           colorId: item.colorId || 1
-        })),
+        };
+      });
+
+      // 🎯 Ajouter les prix unitaires aux orderItems et calculer le total
+      const itemsWithPrices = validatedItems.map(item => ({
+        ...item,
+        unitPrice: item.unitPrice || 0 // S'assurer que le prix est inclus
+      }));
+
+      const orderData: CreateOrderRequest = {
+        shippingDetails: {
+          name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          street: shippingInfo.address,
+          city: shippingInfo.city,
+          region: shippingInfo.city,
+          postalCode: shippingInfo.postalCode,
+          country: shippingInfo.country || 'Sénégal'
+        },
+        phoneNumber: shippingInfo.phone,
+        notes: shippingInfo.notes || '',
+        totalAmount: this.calculateOrderTotal(itemsWithPrices), // 🎯 Calculer le montant total
+        orderItems: itemsWithPrices,
         paymentMethod: (paymentMethod === 'PAYTECH' || paymentMethod === 'CASH') ? paymentMethod as 'PAYTECH' | 'CASH' : 'PAYTECH',
         initiatePayment: true
       };
@@ -326,6 +396,16 @@ export class OrderService {
   async createGuestOrder(orderData: CreateOrderRequest): Promise<OrderResponse> {
     try {
       console.log('🛒 [OrderService] Création de commande guest:', orderData);
+
+      // 🎯 Calculer le montant total si non fourni (pour guest aussi)
+      if (!orderData.totalAmount) {
+        orderData.totalAmount = this.calculateOrderTotal(orderData.orderItems);
+      }
+
+      // 🎯 Validation du montant pour PayTech (pour guest aussi)
+      if (orderData.paymentMethod === 'PAYTECH' && orderData.totalAmount < 100) {
+        throw new Error(`Le montant total (${orderData.totalAmount} XOF) est inférieur au minimum requis (100 XOF) pour PayTech`);
+      }
 
       const response = await fetch(`${this.baseUrl}/orders/guest`, {
         method: 'POST',
