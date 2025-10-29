@@ -56,8 +56,14 @@ export interface OrderResponse {
     id: number;
     orderNumber: string;
     status: string;
-    paymentStatus: string;
+    paymentStatus?: string;
     totalAmount: number;
+    // Champs de la documentation API
+    payment?: {
+      token: string;
+      redirect_url: string;
+    };
+    // Support ancien format (compatibilité)
     paymentData?: {
       token: string;
       redirect_url: string;

@@ -381,6 +381,7 @@ const OrderFormPage: React.FC = () => {
         orderItems: [{
           productId: productId,
           quantity: 1,
+          unitPrice: productData?.price || 0, // 🎯 Ajouter le prix unitaire
           size: productData?.size,
           color: productData?.color,
           colorId: 1, // Valeur par défaut car colorId n'existe pas dans CartItem

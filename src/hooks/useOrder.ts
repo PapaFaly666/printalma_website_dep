@@ -60,23 +60,36 @@ export const useOrder = () => {
       setCurrentOrder(response);
 
       // Rediriger vers Paytech si paiement requis
-      if (response.success && response.data.paymentData?.redirect_url) {
+      // Support des deux formats: payment (nouveau) et paymentData (ancien)
+      const paymentInfo = response.data.payment || response.data.paymentData;
+
+      if (response.success && paymentInfo?.redirect_url) {
         // Stocker les informations de commande pour référence
         localStorage.setItem('pendingOrder', JSON.stringify({
           orderId: response.data.id,
           orderNumber: response.data.orderNumber,
           timestamp: Date.now(),
-          paymentToken: response.data.paymentData?.token,
+          paymentToken: paymentInfo.token,
           totalAmount: response.data.totalAmount,
           orderData
         }));
 
-        console.log('🔄 [useOrder] Redirection vers PayTech:', response.data.paymentData.redirect_url);
+        console.log('🔄 [useOrder] Redirection vers PayTech:', paymentInfo.redirect_url);
+        console.log('📦 [useOrder] Réponse complète du backend:', response);
 
         // Rediriger vers Paytech après un court délai pour permettre le stockage
         setTimeout(() => {
-          window.location.href = response.data.paymentData!.redirect_url;
+          console.log('🚀 [useOrder] Exécution de la redirection...');
+          window.location.href = paymentInfo.redirect_url;
         }, 100);
+      } else {
+        console.warn('⚠️ [useOrder] Aucune URL de redirection trouvée dans la réponse:', {
+          success: response.success,
+          hasPayment: !!response.data.payment,
+          hasPaymentData: !!response.data.paymentData,
+          paymentInfo,
+          fullResponse: response
+        });
       }
 
       if (onSuccess) onSuccess(response);
