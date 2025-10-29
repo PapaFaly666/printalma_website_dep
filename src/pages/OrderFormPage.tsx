@@ -76,12 +76,14 @@ const OrderFormPage: React.FC = () => {
   const getProductForPreview = () => {
     if (!productData) return null;
 
+    console.log('🔍 [OrderFormPage] CartItem data:', productData);
+
     return {
-      id: Number(productData.id),
+      id: Number(productData.productId), // Utiliser productId au lieu de id
       vendorName: productData.name,
       price: productData.price || 0,
       adminProduct: {
-        id: productData.adminProductId,
+        id: productData.adminProductId || productData.productId,
         name: productData.name,
         colorVariations: [{
           id: 1,
