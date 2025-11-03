@@ -38,8 +38,8 @@ export interface CreateOrderRequest {
   orderItems: OrderItem[];
 
   // Options de paiement
-  paymentMethod?: 'PAYTECH' | 'CASH_ON_DELIVERY' | 'OTHER';  // Défaut: CASH_ON_DELIVERY
-  initiatePayment?: boolean;     // Pour déclencher paiement PayTech (défaut: false)
+  paymentMethod?: 'PAYTECH' | 'PAYDUNYA' | 'CASH_ON_DELIVERY' | 'OTHER';  // Défaut: CASH_ON_DELIVERY
+  initiatePayment?: boolean;     // Pour déclencher paiement PayTech/PayDunya (défaut: false)
 
   // Notes additionnelles (optionnel)
   notes?: string;                // Commentaires sur la commande

@@ -173,7 +173,7 @@ const AdminDesignCategories: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 w-full">
       {/* En-tête */}
       <div className="flex items-center justify-between mb-8">
         <div>

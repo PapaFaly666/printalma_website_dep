@@ -130,7 +130,10 @@ import PublicVendorProductDetailPage from './pages/PublicVendorProductDetailPage
 // Page de formulaire de commande
 import OrderFormPage from './pages/OrderFormPage';
 
-// Pages de paiement PayTech
+// Pages de paiement PayDunya
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancel from './pages/PaymentCancel';
+// Pages de paiement PayTech (compatibilité)
 import PaymentReturnPage from './pages/PaymentReturnPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentCancelPage from './pages/PaymentCancelPage';
@@ -166,6 +169,8 @@ import ReadyProductDetailPage from './pages/admin/ReadyProductDetailPage';
 import EditReadyProductPage from './pages/admin/EditReadyProductPage';
 import DesignPositioningPage from './pages/admin/DesignPositioningPage';
 import AdminDesignCategories from './pages/admin/AdminDesignCategories';
+import FeaturedThemesManager from './pages/admin/FeaturedThemesManager';
+import FeaturedDesignersManager from './pages/admin/FeaturedDesignersManager';
 
 // 🎨 Gestion des thèmes - Admin
 import ThemesPage from './pages/admin/ThemesPage';
@@ -177,6 +182,10 @@ import AdminStockManagement from './pages/admin/AdminStockManagement';
 
 // 🧪 Test de connexion admin
 import AdminLoginTest from './pages/test/AdminLoginTest';
+
+// 💳 Test PayDunya
+import TestPaydunyaPage from './pages/TestPaydunyaPage';
+import TestPaydunyaFixPage from './pages/TestPaydunyaFixPage';
 
 // 🏆 Best Sellers
 import BestSellersPage from './pages/BestSellersPage';
@@ -233,9 +242,12 @@ function App() {
                 <Route path='/cart' element={<CartPage />} />
                 <Route path='/order-form' element={<OrderFormPage />} />
 
-                {/* Routes de paiement PayTech selon la documentation */}
-                <Route path='/payment/success' element={<PaymentSuccessPage />} />
-                <Route path='/payment/cancel' element={<PaymentCancelPage />} />
+                {/* Routes de paiement PayDunya */}
+                <Route path='/payment/success' element={<PaymentSuccess />} />
+                <Route path='/payment/cancel' element={<PaymentCancel />} />
+                {/* Routes de paiement PayTech (compatibilité) */}
+                <Route path='/paytech/success' element={<PaymentSuccessPage />} />
+                <Route path='/paytech/cancel' element={<PaymentCancelPage />} />
                 <Route path='/payment/return' element={<PaymentReturnPage />} />
                 <Route path='/payment/notify' element={<PaymentReturnPage />} />
                 <Route path="/all-marques" element={<AllMarques />} />
@@ -282,6 +294,8 @@ function App() {
                   <Route path="wizard-validation" element={<AdminWizardValidation />} />
                   <Route path="auto-validation" element={<AutoValidationDashboard />} />
                   <Route path="design-categories" element={<AdminDesignCategories />} />
+                  <Route path="featured-themes" element={<FeaturedThemesManager />} />
+                  <Route path="featured-designers" element={<FeaturedDesignersManager />} />
                   <Route path="vendor-products-admin" element={<AdminVendorProductsPage />} />
                   <Route path="vendor-products" element={<AdminVendorProductsPage />} />
                   <Route path="vendor-products/create" element={<AdminCreateVendorProductPage />} />
@@ -395,6 +409,10 @@ function App() {
 
                 {/* Test de la page de positionnement */}
                 <Route path='/test-design-positioning' element={<DesignPositioningPage />} />
+
+                {/* 💳 Test PayDunya */}
+                <Route path='/test-paydunya' element={<TestPaydunyaPage />} />
+                <Route path='/test-paydunya-fix' element={<TestPaydunyaFixPage />} />
 
                 {/* Confirmation de changement d'email */}
                 <Route path='/confirm-email-change' element={<ConfirmEmailChange />} />

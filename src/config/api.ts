@@ -66,6 +66,34 @@ export const API_ENDPOINTS = {
     MY_COMMISSION: '/vendors/my-commission',
     // 🆕 STATS COMPTE VENDEUR (dates membre depuis / dernière connexion)
     STATS: '/vendor/stats'
+  },
+  PAYDUNYA: {
+    // Endpoint pour initialiser un paiement PayDunya
+    INITIALIZE_PAYMENT: '/paydunya/payment',
+    // Endpoint pour vérifier le statut d'un paiement
+    CHECK_STATUS: (token: string) => `/paydunya/status/${token}`,
+    // Endpoint pour tester la configuration PayDunya
+    TEST_CONFIG: '/paydunya/test-config',
+    // Endpoint callback (utilisé par PayDunya, pas par le frontend)
+    CALLBACK: '/paydunya/callback',
+    // Endpoint pour demander un remboursement (admin)
+    REFUND: '/paydunya/refund'
+  },
+  ORDERS: {
+    // Créer une commande (utilisateur authentifié)
+    CREATE: '/orders',
+    // Créer une commande guest (utilisateur non authentifié)
+    CREATE_GUEST: '/orders/guest',
+    // Récupérer mes commandes
+    MY_ORDERS: '/orders/my-orders',
+    // Récupérer une commande spécifique
+    GET_ORDER: (orderId: number | string) => `/orders/${orderId}`,
+    // Mettre à jour le statut d'une commande (admin)
+    UPDATE_STATUS: (orderId: number) => `/orders/${orderId}/status`,
+    // Annuler une commande
+    CANCEL_ORDER: (orderId: number) => `/orders/${orderId}/cancel`,
+    // Toutes les commandes (admin)
+    ALL_ORDERS: '/orders/admin/all'
   }
 };
 
@@ -80,9 +108,16 @@ export const ERROR_MESSAGES = {
   SERVER_ERROR: 'Erreur interne du serveur',
   UNKNOWN_ERROR: 'Une erreur inattendue s\'est produite',
   // 🆕 NOUVEAUX MESSAGES POUR UPLOAD PHOTOS
-  INVALID_FILE_TYPE: 'Type de fichier non autorisé. Utilisez JPG, PNG, GIF ou WebP',
-  FILE_TOO_LARGE: 'Fichier trop volumineux. Taille maximale : 5MB',
+  INVALID_FILE_TYPE: 'Type de fichier non autorisé. Utilisez JPG, PNG, GIF, WebP ou SVG',
+  FILE_TOO_LARGE: 'Fichier trop volumineux. Taille maximale : 20MB',
   UPLOAD_FAILED: 'Échec de l\'upload de la photo'
+};
+
+// Messages d'erreur spécifiques pour les designers
+export const DESIGNER_ERROR_MESSAGES = {
+  INVALID_FILE_TYPE: 'Type de fichier non autorisé. Utilisez JPG, PNG, GIF, WebP ou SVG',
+  FILE_TOO_LARGE: 'Fichier trop volumineux. Taille maximale pour l\'avatar de designer : 10MB',
+  UPLOAD_FAILED: 'Échec de l\'upload de l\'avatar du designer'
 };
 
 // Configuration de pagination par défaut
@@ -94,10 +129,17 @@ export const PAGINATION_CONFIG = {
 
 // 🆕 CONFIGURATION UPLOAD PHOTOS
 export const UPLOAD_CONFIG = {
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
-  ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
+  MAX_FILE_SIZE: 20 * 1024 * 1024, // 20MB
+  ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
   PROFILE_PHOTO_DIMENSIONS: {
     width: 400,
     height: 400
   }
+};
+
+// 🆕 CONFIGURATION SPÉCIFIQUE POUR LES DESIGNERS
+export const DESIGNER_UPLOAD_CONFIG = {
+  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB pour les avatars de designers
+  ALLOWED_IMAGE_TYPES: UPLOAD_CONFIG.ALLOWED_IMAGE_TYPES, // Mêmes formats que la config générale
+  PROFILE_PHOTO_DIMENSIONS: UPLOAD_CONFIG.PROFILE_PHOTO_DIMENSIONS
 }; 

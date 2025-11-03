@@ -11,6 +11,8 @@ export interface DesignCategory {
   isActive: boolean;
   sortOrder: number;
   designCount: number;
+  isFeatured?: boolean;
+  featuredOrder?: number;
   createdAt: string;
   updatedAt: string;
   creator: {
@@ -39,6 +41,8 @@ export interface UpdateDesignCategoryData {
   removeCoverImage?: boolean;
   isActive?: boolean;
   sortOrder?: number;
+  isFeatured?: boolean;
+  featuredOrder?: number;
 }
 
 export interface DesignCategoriesResponse {
@@ -162,12 +166,65 @@ class DesignCategoryService {
         headers: this.getAuthHeaders(),
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw await this.parseError(response);
       }
     } catch (error) {
       console.error('Erreur lors de la suppression de la catégorie:', error);
+      throw error;
+    }
+  }
+
+  // Récupérer les thèmes en vedette (featured) pour le landing page
+  async getFeaturedCategories(): Promise<DesignCategory[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/featured`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw await this.parseError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Erreur lors du chargement des thèmes en vedette:', error);
+      throw error;
+    }
+  }
+
+  // Mettre à jour la configuration des thèmes en vedette (admin only)
+  async updateFeaturedCategories(categoryIds: number[]): Promise<DesignCategory[]> {
+    try {
+      // Validation côté client
+      if (categoryIds.length === 0) {
+        throw new Error('Au moins 1 catégorie doit être sélectionnée');
+      }
+
+      if (categoryIds.length > 5) {
+        throw new Error('Maximum 5 thèmes autorisés');
+      }
+
+      const response = await fetch(`${this.baseUrl}/featured/update`, {
+        method: 'PUT',
+        headers: {
+          ...this.getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          categoryIds: categoryIds.map(String) // Convertir en strings selon la doc
+        }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw await this.parseError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour des thèmes en vedette:', error);
       throw error;
     }
   }

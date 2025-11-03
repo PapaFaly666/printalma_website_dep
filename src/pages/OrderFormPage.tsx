@@ -16,9 +16,9 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
-import { usePaytech } from '../hooks/usePaytech';
+import { usePaydunya } from '../hooks/usePaydunya';
 import { useOrder } from '../hooks/useOrder';
-import { paytechService, type CreateOrderRequest } from '../services/paytechService';
+import { paydunyaService, type CreateOrderRequest } from '../services/paydunyaService';
 import { orderService, type CreateOrderRequest as OrderRequest } from '../services/orderService';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
 import { formatPrice } from '../utils/priceUtils';
@@ -63,10 +63,10 @@ const OrderFormPage: React.FC = () => {
   } = useOrder();
   const {
     initiatePaymentAndRedirect,
-    loading: paytechLoading,
-    error: paytechError,
+    loading: paydunyaLoading,
+    error: paydunyaError,
     getAvailableMethods
-  } = usePaytech();
+  } = usePaydunya();
 
   // Récupérer les données du produit depuis le panier (premier article)
   const cartItem = cartItems[0];
@@ -157,8 +157,8 @@ const OrderFormPage: React.FC = () => {
 
   // États additionnels pour la commande
   const [selectedDelivery, setSelectedDelivery] = useState<string>('standard');
-  const [selectedPayment, setSelectedPayment] = useState<string>('cash_on_delivery'); // Défaut selon doc API
-  const [selectedPayTechMethod, setSelectedPayTechMethod] = useState<string>('orange_money');
+  const [selectedPayment, setSelectedPayment] = useState<string>('paydunya'); // Défaut sur PayDunya
+  const [selectedPayDunyaMethod, setSelectedPayDunyaMethod] = useState<string>('orange_money');
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string>('');
 
@@ -178,7 +178,7 @@ const OrderFormPage: React.FC = () => {
   const [errors, setErrors] = useState<Partial<OrderFormData> & { delivery?: string; payment?: string }>({});
 
   // Note: Les retours de paiement sont maintenant gérés par des pages dédiées
-  // /payment/success et /payment/cancel (voir documentation PayTech)
+  // /payment/success et /payment/cancel (voir documentation PayDunya)
   // Cette page se concentre uniquement sur la création de commande et l'initialisation du paiement
 
   // Options de livraison
@@ -206,13 +206,13 @@ const OrderFormPage: React.FC = () => {
     }
   ];
 
-  // Méthodes de paiement selon la documentation API v2
+  // Méthodes de paiement - Uniquement PayDunya et Paiement à la livraison
   const paymentMethods: PaymentMethod[] = [
     {
-      id: 'paytech',
-      name: 'PayTech (Paiement sécurisé)',
+      id: 'paydunya',
+      name: 'PayDunya (Paiement sécurisé)',
       icon: '💳',
-      description: 'Wave, Orange Money, Free Money, Cartes bancaires, PayPal',
+      description: 'Orange Money, Wave, MTN Money, Moov Money, Cartes bancaires, Wallet',
       type: 'card'
     },
     {
@@ -224,9 +224,9 @@ const OrderFormPage: React.FC = () => {
     }
   ];
 
-  // Options spécifiques de paiement PayTech selon la documentation et le hook
-  const payTechPaymentOptions = availablePaymentMethods.filter(method =>
-    ['wave', 'orange_money', 'free_money', 'carte_bancaire', 'paypal'].includes(method.id)
+  // Options spécifiques de paiement PayDunya selon la documentation et le hook
+  const payDunyaPaymentOptions = availablePaymentMethods.filter(method =>
+    ['orange_money', 'wave', 'mtn_money', 'moov_money', 'carte_bancaire', 'paypal'].includes(method.id)
   ).map(method => ({
     id: method.id,
     name: method.name,
@@ -334,11 +334,11 @@ const OrderFormPage: React.FC = () => {
     // Validation du paiement
     if (!selectedPayment) newErrors.payment = 'Veuillez sélectionner une méthode de paiement';
 
-    // Afficher les erreurs de commande ou PayTech si présentes
+    // Afficher les erreurs de commande ou PayDunya si présentes
     if (orderError) {
       newErrors.payment = orderError;
-    } else if (paytechError) {
-      newErrors.payment = paytechError;
+    } else if (paydunyaError) {
+      newErrors.payment = paydunyaError;
     }
 
     setErrors(newErrors);
@@ -352,10 +352,10 @@ const OrderFormPage: React.FC = () => {
     return `ORD-${timestamp}-${random}`;
   };
 
-  // Paiement PayTech via création de commande réelle
-  const processPayTechPayment = async () => {
+  // Paiement PayDunya via création de commande réelle
+  const processPayDunyaPayment = async () => {
     try {
-      console.log('🛒 [OrderForm] Création de commande réelle avec paiement PayTech');
+      console.log('🛒 [OrderForm] Création de commande réelle avec paiement PayDunya');
 
       // Validation du productId selon la documentation
       // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
@@ -386,40 +386,115 @@ const OrderFormPage: React.FC = () => {
           color: productData?.color,
           colorId: 1, // Valeur par défaut car colorId n'existe pas dans CartItem
         }],
-        paymentMethod: 'PAYTECH', // Type conforme à la doc API v2
+        paymentMethod: 'PAYDUNYA', // PayDunya au lieu de PAYTECH
         initiatePayment: true, // Important: demander l'initialisation du paiement
       };
 
-      console.log('📦 [OrderForm] Données de commande:', orderRequest);
+      console.log('📦 [OrderForm] Données de commande PayDunya:', orderRequest);
 
-      // Utiliser le hook useOrder pour créer la commande avec paiement
-      const orderResponse = await createOrder(
-        orderRequest,
-        // Callback de succès
-        (response) => {
-          console.log('✅ [OrderForm] Commande créée avec succès:', response.data);
+      // Créer la commande via le backend
+      // Note: Endpoint /orders nécessite l'authentification pour les utilisateurs connectés
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
 
-          // La redirection vers PayTech est gérée automatiquement par le hook
-          // Le stockage localStorage est aussi géré par le hook
-        },
-        // Callback d'erreur
-        (error) => {
-          console.error('❌ [OrderForm] Erreur lors de la création de commande:', error);
-          setErrors(prev => ({
-            ...prev,
-            payment: error || 'Erreur lors de la création de la commande',
-          }));
+      // Ajouter le token seulement s'il existe (utilisateur connecté)
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/orders`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(orderRequest)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        // Si erreur 401 (Unauthorized) et qu'on a essayé avec un token
+        // Réessayer avec l'endpoint guest (sans authentification)
+        if (response.status === 401 && token) {
+          console.warn('⚠️ [OrderForm] Token expiré/invalide, basculement vers commande guest');
+
+          // Supprimer le token expiré
+          localStorage.removeItem('access_token');
+
+          // Réessayer avec endpoint guest
+          const guestResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/orders/guest`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(orderRequest)
+          });
+
+          if (!guestResponse.ok) {
+            const guestErrorData = await guestResponse.json().catch(() => ({}));
+            throw new Error(guestErrorData.message || `Erreur HTTP ${guestResponse.status}`);
+          }
+
+          const guestOrderResponse = await guestResponse.json();
+          console.log('✅ [OrderForm] Commande guest créée avec succès:', guestOrderResponse);
+
+          // Vérifier si on a une URL de redirection PayDunya
+          if (guestOrderResponse.success && guestOrderResponse.data?.payment?.redirect_url) {
+            // Stocker les informations de commande pour la page de retour
+            localStorage.setItem('paydunyaPendingPayment', JSON.stringify({
+              orderId: guestOrderResponse.data.id,
+              orderNumber: guestOrderResponse.data.orderNumber,
+              token: guestOrderResponse.data.payment.token,
+              totalAmount: guestOrderResponse.data.totalAmount,
+              timestamp: Date.now(),
+            }));
+
+            console.log('🔄 [OrderForm] Redirection vers PayDunya:', guestOrderResponse.data.payment.redirect_url);
+
+            // Rediriger vers PayDunya
+            setTimeout(() => {
+              window.location.href = guestOrderResponse.data.payment.redirect_url;
+            }, 100);
+          } else {
+            throw new Error('URL de redirection PayDunya non reçue');
+          }
+
+          return; // Sortir de la fonction
         }
-      );
 
-      // En cas de succès, la redirection se fera automatiquement via le hook
-      console.log('🔄 [OrderForm] Commande en cours de création...');
+        // Si autre erreur, la propager
+        throw new Error(errorData.message || `Erreur HTTP ${response.status}`);
+      }
+
+      const orderResponse = await response.json();
+      console.log('✅ [OrderForm] Réponse du backend:', orderResponse);
+
+      // Vérifier si on a une URL de redirection PayDunya
+      if (orderResponse.success && orderResponse.data?.payment?.redirect_url) {
+        // Stocker les informations de commande pour la page de retour
+        localStorage.setItem('paydunyaPendingPayment', JSON.stringify({
+          orderId: orderResponse.data.id,
+          orderNumber: orderResponse.data.orderNumber,
+          token: orderResponse.data.payment.token,
+          totalAmount: orderResponse.data.totalAmount,
+          timestamp: Date.now(),
+        }));
+
+        console.log('🔄 [OrderForm] Redirection vers PayDunya:', orderResponse.data.payment.redirect_url);
+
+        // Rediriger vers PayDunya
+        setTimeout(() => {
+          window.location.href = orderResponse.data.payment.redirect_url;
+        }, 100);
+      } else {
+        throw new Error('URL de redirection PayDunya non reçue');
+      }
 
     } catch (error: any) {
       console.error('❌ [OrderForm] Erreur lors du processus de commande:', error);
       setErrors(prev => ({
         ...prev,
-        payment: error.message || 'Erreur lors du traitement du paiement PayTech',
+        payment: error.message || 'Erreur lors du traitement du paiement PayDunya',
       }));
     }
   };
@@ -430,9 +505,9 @@ const OrderFormPage: React.FC = () => {
 
     if (!validateForm()) return;
 
-    if (selectedPayment === 'paytech') {
-      // Utiliser PayTech pour le paiement
-      await processPayTechPayment();
+    if (selectedPayment === 'paydunya') {
+      // Utiliser PayDunya pour le paiement
+      await processPayDunyaPayment();
     } else {
       // Pour le paiement à la livraison, traiter directement
       setIsSubmitting(true);
@@ -678,7 +753,7 @@ const OrderFormPage: React.FC = () => {
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                {method.id === 'paytech' && <span className="text-xl sm:text-2xl">{method.icon}</span>}
+                                {method.id === 'paydunya' && <span className="text-xl sm:text-2xl">{method.icon}</span>}
                                 <p className="font-medium text-gray-900 text-sm sm:text-base">{method.name}</p>
                               </div>
                               <p className="text-xs sm:text-sm text-gray-600 mt-1">{method.description}</p>
@@ -688,34 +763,34 @@ const OrderFormPage: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Options de paiement PayTech spécifiques */}
-                    {selectedPayment === 'paytech' && (
-                      <div className="mt-4 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    {/* Options de paiement PayDunya spécifiques */}
+                    {selectedPayment === 'paydunya' && (
+                      <div className="mt-4 p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200">
                         <div className="flex items-start gap-3">
-                          <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-blue-900">Choisissez votre méthode de paiement</h4>
-                            <p className="text-xs text-blue-800 mt-1">
+                            <h4 className="text-sm font-semibold text-green-900">Choisissez votre méthode de paiement</h4>
+                            <p className="text-xs text-green-800 mt-1">
                               Sélectionnez la méthode que vous préférez pour payer
                             </p>
 
-                            {/* Sélecteur de méthodes PayTech */}
+                            {/* Sélecteur de méthodes PayDunya */}
                             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              {payTechPaymentOptions.map((option) => (
+                              {payDunyaPaymentOptions.map((option) => (
                                 <label
                                   key={option.id}
                                   className={`relative flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer transition-all hover:shadow-sm ${
-                                    selectedPayTechMethod === option.id
-                                      ? 'border-blue-500 bg-blue-50'
+                                    selectedPayDunyaMethod === option.id
+                                      ? 'border-green-500 bg-green-50'
                                       : 'border-gray-200'
                                   }`}
                                 >
                                   <input
                                     type="radio"
-                                    name="paytech_method"
+                                    name="paydunya_method"
                                     value={option.id}
-                                    checked={selectedPayTechMethod === option.id}
-                                    onChange={(e) => setSelectedPayTechMethod(e.target.value)}
+                                    checked={selectedPayDunyaMethod === option.id}
+                                    onChange={(e) => setSelectedPayDunyaMethod(e.target.value)}
                                     className="sr-only"
                                   />
                                   <span className="text-sm sm:text-base">{option.icon}</span>
@@ -725,8 +800,8 @@ const OrderFormPage: React.FC = () => {
                             </div>
 
                             {/* Informations de sécurité */}
-                            <div className="mt-3 text-xs text-blue-800">
-                              <p>💳 Paiement 100% sécurisé par PayTech, solution agréée au Sénégal</p>
+                            <div className="mt-3 text-xs text-green-800">
+                              <p>💳 Paiement 100% sécurisé par PayDunya, solution agréée au Sénégal</p>
                             </div>
                           </div>
                         </div>
@@ -992,14 +1067,14 @@ const OrderFormPage: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        disabled={isSubmitting || orderLoading || paytechLoading}
+                        disabled={isSubmitting || orderLoading || paydunyaLoading}
                         className={`w-full sm:w-auto flex items-center justify-center gap-3 px-6 sm:px-8 py-3 rounded-lg font-bold text-white transition-all duration-300 ${
-                          isSubmitting || orderLoading || paytechLoading
+                          isSubmitting || orderLoading || paydunyaLoading
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg'
                         }`}
                       >
-                        {orderLoading || paytechLoading ? (
+                        {orderLoading || paydunyaLoading ? (
                           <>
                             <Loader2 className="w-5 h-5 animate-spin" />
                             <span className="hidden sm:inline">Création de la commande...</span>
@@ -1014,10 +1089,10 @@ const OrderFormPage: React.FC = () => {
                           <>
                             <ShoppingCart className="w-5 h-5" />
                             <span className="hidden sm:inline">
-                              {selectedPayment === 'paytech' ? 'Payer avec PayTech' : 'Confirmer la commande'} ({formatPrice(totalAmount)})
+                              {selectedPayment === 'paydunya' ? 'Payer avec PayDunya' : 'Confirmer la commande'} ({formatPrice(totalAmount)})
                             </span>
                             <span className="sm:hidden">
-                              {selectedPayment === 'paytech' ? 'Payer' : 'Confirmer'}
+                              {selectedPayment === 'paydunya' ? 'Payer' : 'Confirmer'}
                             </span>
                           </>
                         )}

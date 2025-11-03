@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Upload, Loader2, X } from 'lucide-react';
 import { Button } from './ui/button';
+import { UPLOAD_CONFIG } from '../config/api';
 
 interface ColorImageUploaderProps {
   productId: number;
@@ -20,13 +21,12 @@ export function ColorImageUploader({ productId, colorId, onImageUploaded, disabl
 
     try {
       // Validation du fichier
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        throw new Error('Format d\'image non supporté. Utilisez JPG, PNG ou WEBP.');
+      if (!UPLOAD_CONFIG.ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        throw new Error('Format d\'image non supporté. Utilisez JPG, PNG, GIF, WEBP ou SVG.');
       }
 
-      if (file.size > 5 * 1024 * 1024) { // 5MB max
-        throw new Error('L\'image est trop volumineuse. Taille maximum: 5MB.');
+      if (file.size > UPLOAD_CONFIG.MAX_FILE_SIZE) {
+        throw new Error(`L'image est trop volumineuse. Taille maximum: ${UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.`);
       }
 
       console.log(`🚀 [ColorImageUploader] Upload direct image couleur ${colorId}...`);
@@ -117,7 +117,7 @@ export function ColorImageUploader({ productId, colorId, onImageUploaded, disabl
       >
         <input
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={UPLOAD_CONFIG.ALLOWED_IMAGE_TYPES.join(',')}
           onChange={handleFileSelect}
           disabled={isUploading || disabled}
           id={`color-image-${colorId}`}
@@ -143,7 +143,7 @@ export function ColorImageUploader({ productId, colorId, onImageUploaded, disabl
                 {disabled ? 'Upload désactivé' : 'Glissez-déposez une image ou cliquez pour sélectionner'}
               </span>
               <span className="text-xs text-gray-500">
-                JPG, PNG, WEBP - Max 5MB
+                JPG, PNG, WEBP, SVG - Max {UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB
               </span>
             </>
           )}

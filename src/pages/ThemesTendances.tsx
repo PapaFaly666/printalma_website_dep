@@ -1,13 +1,170 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { designCategoryService, DesignCategory } from "../services/designCategoryService";
+import { Loader2 } from "lucide-react";
 
-const ThemesTendances = () => {
-  // URLs des images pour chaque thème
-  const themeImages = {
-    theme1: "https://m.media-amazon.com/images/M/MV5BYzhkODE3NjEtYzVkNC00OWQ5LTk5ZjItNWI5MzI0YjdiNTg4XkEyXkFqcGc@._V1_.jpg",
-    theme2: "https://www.nextplz.fr/wp-content/uploads/nextplz/2025/05/mort-de-werenoi-apres-leur-duo-gims-lui-rend-un-hommage-bouleversant.jpg",
-    theme3: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&q=80&w=800",
-    theme4: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=800",
-    theme5: "https://static.wixstatic.com/media/e96aef_27347120c7c24a3d8ac4a00165bae4a9~mv2.jpg/v1/fill/w_640,h_632,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/e96aef_27347120c7c24a3d8ac4a00165bae4a9~mv2.jpg",
+interface ThemesTendancesProps {
+  themes?: DesignCategory[];
+}
+
+const ThemesTendances = ({ themes: propThemes }: ThemesTendancesProps = {}) => {
+  const [themes, setThemes] = useState<DesignCategory[]>(propThemes || []);
+  const [loading, setLoading] = useState(!propThemes);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Si les thèmes sont fournis en props, les utiliser directement
+    if (propThemes && propThemes.length > 0) {
+      setThemes(propThemes);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Sinon, charger les thèmes depuis l'API (comportement par défaut)
+    const loadFeaturedThemes = async () => {
+      try {
+        setLoading(true);
+        const featuredThemes = await designCategoryService.getFeaturedCategories();
+        setThemes(featuredThemes);
+        setError(null);
+      } catch (err: any) {
+        console.error('Erreur lors du chargement des thèmes tendances:', err);
+        setError(err.message || 'Erreur de chargement');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFeaturedThemes();
+  }, [propThemes]);
+
+  // États de chargement et d'erreur
+  if (loading) {
+    return (
+      <div className="w-full py-12">
+        <div className="flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-gray-600">Chargement des thèmes tendances...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full py-12">
+        <div className="text-center text-red-600">
+          <p>Erreur lors du chargement des thèmes tendances</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (themes.length === 0) {
+    return null; // Ne rien afficher si aucun thème configuré
+  }
+
+  // Rendre le layout en fonction du nombre de thèmes
+  const renderThemeLayout = () => {
+    const [theme1, theme2, theme3, theme4, theme5] = themes;
+
+    return (
+      <div className="space-y-1 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-1 lg:gap-2">
+        {/* Thème 1 - Principal */}
+        {theme1 && (
+          <div className="md:col-span-1 lg:col-span-1">
+            <div
+              className="rounded h-40 sm:h-48 md:h-64 lg:h-80 xl:h-[450px] flex items-end cursor-pointer relative overflow-hidden shadow-lg bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
+              style={{ backgroundImage: `url(${theme1.coverImageUrl || 'https://via.placeholder.com/800'})` }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+              <span className="relative z-10 m-3 sm:m-4 text-white font-bold text-sm sm:text-base md:text-lg lg:text-xl drop-shadow-lg uppercase">
+                {theme1.name}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Thèmes 2-5 en grille adaptative */}
+        <div className="md:col-span-1 lg:col-span-2 grid grid-cols-2 gap-0.5 md:gap-1 lg:gap-2 md:h-64 lg:h-80 xl:h-[450px]">
+
+          {/* Thème 2 - Tall sur desktop */}
+          {theme2 && (
+            <div className="md:row-span-2">
+              <div
+                className="rounded h-40 sm:h-48 md:h-full flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
+                style={{ backgroundImage: `url(${theme2.coverImageUrl || 'https://via.placeholder.com/800'})` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                <span className="relative z-10 m-2 sm:m-3 md:m-4 text-white font-bold text-xs sm:text-sm md:text-base lg:text-lg drop-shadow-lg uppercase">
+                  {theme2.name}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Thème 3 */}
+          {theme3 && (
+            <div>
+              <div
+                className="rounded h-40 sm:h-48 md:h-full flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
+                style={{ backgroundImage: `url(${theme3.coverImageUrl || 'https://via.placeholder.com/800'})` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                <span className="relative z-10 m-2 sm:m-3 text-white font-bold text-xs sm:text-sm md:text-base drop-shadow-lg uppercase">
+                  {theme3.name}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Thème 4 - Hidden sur mobile, visible sur md+ */}
+          {theme4 && (
+            <div className="hidden md:block md:row-span-2">
+              <div
+                className="rounded h-full flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
+                style={{ backgroundImage: `url(${theme4.coverImageUrl || 'https://via.placeholder.com/800'})` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                <span className="relative z-10 m-3 md:m-4 text-white font-bold text-sm md:text-base lg:text-lg drop-shadow-lg uppercase">
+                  {theme4.name}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Thème 5 */}
+          {theme5 && (
+            <div>
+              <div
+                className="rounded h-40 sm:h-48 md:h-full flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
+                style={{ backgroundImage: `url(${theme5.coverImageUrl || 'https://via.placeholder.com/800'})` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                <span className="relative z-10 m-2 sm:m-3 text-white font-bold text-xs sm:text-sm md:text-base drop-shadow-lg uppercase">
+                  {theme5.name}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Thème 4 visible uniquement sur mobile */}
+        {theme4 && (
+          <div className="md:hidden col-span-2">
+            <div
+              className="rounded h-36 sm:h-40 flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
+              style={{ backgroundImage: `url(${theme4.coverImageUrl || 'https://via.placeholder.com/800'})` }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+              <span className="relative z-10 m-2 sm:m-3 text-white font-bold text-sm sm:text-base drop-shadow-lg uppercase">
+                {theme4.name}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -28,100 +185,7 @@ const ThemesTendances = () => {
 
       {/* Container principal */}
       <div className="w-full px-4 sm:px-8">
-        {/* En-tête avec bouton */}
-        <div className="flex justify-end items-center mb-1">
-        </div>
-
-        {/* Layout mobile-first responsive */}
-        <div className="space-y-1 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-1 lg:gap-2">
-
-          {/* Thème 1 - Principal */}
-          <div className="md:col-span-1 lg:col-span-1">
-            <div
-              className="rounded h-40 sm:h-48 md:h-64 lg:h-80 xl:h-[450px] flex items-end cursor-pointer relative overflow-hidden shadow-lg bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
-              style={{ backgroundImage: `url(${themeImages.theme1})` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-              <span className="relative z-10 m-3 sm:m-4 text-white font-bold text-sm sm:text-base md:text-lg lg:text-xl drop-shadow-lg">
-                MANGAS ET ANIME
-              </span>
-            </div>
-          </div>
-
-          {/* Thèmes 2-5 en grille adaptative */}
-          <div className="md:col-span-1 lg:col-span-2 grid grid-cols-2 gap-0.5 md:gap-1 lg:gap-2 md:h-64 lg:h-80 xl:h-[450px]">
-            
-            {/* Thème 2 - Tall sur desktop */}
-            <div className="md:row-span-2">
-              <div
-                className="rounded h-40 sm:h-48 md:h-full flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
-                style={{ backgroundImage: `url(${themeImages.theme2})` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                <span className="relative z-10 m-2 sm:m-3 md:m-4 text-white font-bold text-xs sm:text-sm md:text-base lg:text-lg drop-shadow-lg">
-                  RAP
-                </span>
-              </div>
-            </div>
-
-            {/* Thème 3 */}
-            <div>
-              <div
-                className="rounded h-40 sm:h-48 md:h-full flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
-                style={{ backgroundImage: `url(${themeImages.theme3})` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                <span className="relative z-10 m-2 sm:m-3 text-white font-bold text-xs sm:text-sm md:text-base drop-shadow-lg">
-                  GAMING
-                </span>
-              </div>
-            </div>
-
-            {/* Thème 4 - Hidden sur mobile, visible sur md+ */}
-            <div className="hidden md:block md:row-span-2">
-              <div
-                className="rounded h-full flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
-                style={{ backgroundImage: `url(${themeImages.theme4})` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                <span className="relative z-10 m-3 md:m-4 text-white font-bold text-sm md:text-base lg:text-lg drop-shadow-lg">
-                  MUSIQUE
-                </span>
-              </div>
-            </div>
-
-            {/* Thème 5 */}
-            <div>
-              <div
-                className="rounded h-40 sm:h-48 md:h-full flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
-                style={{ backgroundImage: `url(${themeImages.theme5})` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                <span className="relative z-10 m-2 sm:m-3 text-white font-bold text-xs sm:text-sm md:text-base drop-shadow-lg">
-                  ART
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Thème 4 visible uniquement sur mobile */}
-          <div className="md:hidden col-span-2">
-            <div
-              className="rounded h-36 sm:h-40 flex items-end cursor-pointer relative overflow-hidden shadow-md bg-cover bg-center group transition-transform duration-300 hover:scale-[1.02]"
-              style={{ backgroundImage: `url(${themeImages.theme4})` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-              <span className="relative z-10 m-2 sm:m-3 text-white font-bold text-sm sm:text-base drop-shadow-lg">
-                MUSIQUE
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Indicateur de plus de contenu sur mobile */}
-        <div className="mt-1 text-center md:hidden">
-          <p className="text-gray-600 text-xs sm:text-sm">Faites défiler horizontalement pour plus de thèmes</p>
-        </div>
+        {renderThemeLayout()}
       </div>
     </div>
   );

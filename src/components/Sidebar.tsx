@@ -41,7 +41,8 @@ import {
     FileText,
     Wallet,
     Banknote,
-    PackageSearch
+    PackageSearch,
+    Star
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -163,6 +164,12 @@ export default function Sidebar() {
             setActiveItem('products');
         } else if (location.pathname.includes('/admin/categories')) {
             setActiveItem('categories');
+        } else if (location.pathname.includes('/admin/design-categories')) {
+            setActiveItem('design-categories');
+        } else if (location.pathname.includes('/admin/featured-themes')) {
+            setActiveItem('featured-themes');
+        } else if (location.pathname.includes('/admin/featured-designers')) {
+            setActiveItem('featured-designers');
         } else if (location.pathname.includes('/admin/orders')) {
             setActiveItem('orders');
         } else if (location.pathname.includes('/admin/dashboard')) {
@@ -431,6 +438,24 @@ export default function Sidebar() {
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'design-categories'}
                             onClick={() => handleNavigation('design-categories')}
+                            badge=""
+                            textColor=""
+                        />
+                        <NavItem
+                            icon={<Star size={18} />}
+                            label="Thèmes en Vedette"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'featured-themes'}
+                            onClick={() => handleNavigation('featured-themes')}
+                            badge=""
+                            textColor=""
+                        />
+                        <NavItem
+                            icon={<User size={18} />}
+                            label="Designers"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'featured-designers'}
+                            onClick={() => handleNavigation('featured-designers')}
                             badge=""
                             textColor=""
                         />

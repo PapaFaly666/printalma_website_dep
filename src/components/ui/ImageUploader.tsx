@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { UPLOAD_CONFIG } from '../../config/api';
 
 interface ImageUploaderProps {
   onImageSelect: (file: File | null) => void;
@@ -12,8 +13,8 @@ interface ImageUploaderProps {
 const ImageUploader: React.FC<ImageUploaderProps> = ({
   onImageSelect,
   currentImage,
-  maxSize = 5,
-  acceptedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+  maxSize = UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024), // Convert bytes to MB
+  acceptedTypes = UPLOAD_CONFIG.ALLOWED_IMAGE_TYPES,
   className = ''
 }) => {
   const [dragActive, setDragActive] = useState(false);
@@ -136,7 +137,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                 Glissez une image ici ou cliquez pour sélectionner
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                PNG, JPG, GIF, WEBP jusqu'à {maxSize}MB
+                PNG, JPG, GIF, WEBP, SVG jusqu'à {maxSize}MB
               </p>
             </div>
           </div>
