@@ -18,8 +18,10 @@ import {
 import { useCart } from '../contexts/CartContext';
 import { usePaydunya } from '../hooks/usePaydunya';
 import { useOrder } from '../hooks/useOrder';
-import { paydunyaService, type CreateOrderRequest } from '../services/paydunyaService';
+import { paydunyaService } from '../services/paydunyaService';
 import { orderService, type CreateOrderRequest as OrderRequest } from '../services/orderService';
+import { paymentStatusService } from '../services/paymentStatusService';
+import { generatePaydunyaUrl, validatePaymentData } from '../types/payment';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
 import { formatPrice } from '../utils/priceUtils';
 
@@ -293,8 +295,10 @@ const OrderFormPage: React.FC = () => {
       newErrors.lastName = 'Le nom doit contenir au maximum 100 caractères';
     }
 
-    // Email non obligatoire pour commande invité selon la doc
-    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    // Email OBLIGATOIRE pour PayDunya selon la nouvelle documentation
+    if (!formData.email.trim()) {
+      newErrors.email = 'L\'email est requis pour le paiement PayDunya';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'L\'email est invalide';
     }
 
@@ -352,27 +356,31 @@ const OrderFormPage: React.FC = () => {
     return `ORD-${timestamp}-${random}`;
   };
 
-  // Paiement PayDunya via création de commande réelle
+  // Paiement PayDunya via création de commande réelle - Version conforme à la documentation
   const processPayDunyaPayment = async () => {
     try {
-      console.log('🛒 [OrderForm] Création de commande réelle avec paiement PayDunya');
+      console.log('🛒 [OrderForm] === DÉBUT DU PROCESSUS PAYDUNYA ===');
+      console.log('📧 Email:', formData.email);
+      console.log('📱 Téléphone:', formData.phone);
+      console.log('💰 Montant total:', totalAmount, 'FCFA');
 
       // Validation du productId selon la documentation
-      // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
       const productId = Number(productData?.productId);
       if (!productId || productId <= 0) {
         throw new Error(`Invalid productId: ${productData?.productId}. Must be greater than 0`);
       }
 
-      // Préparer les données de commande selon le format attendu par le backend
-      // Conforme à la documentation API v2
+      console.log('✅ ProductId valide:', productId);
+
+      // Préparer les données de commande selon le format attendu par le backend et la documentation PayDunya
       const orderRequest: OrderRequest = {
+        email: formData.email, // Email OBLIGATOIRE pour PayDunya
         shippingDetails: {
           firstName: formData.firstName || undefined,
           lastName: formData.lastName || undefined,
           street: formData.address,
           city: formData.city,
-          region: formData.city, // Utiliser la ville comme région
+          region: formData.city,
           postalCode: formData.postalCode || undefined,
           country: formData.country,
         },
@@ -381,121 +389,101 @@ const OrderFormPage: React.FC = () => {
         orderItems: [{
           productId: productId,
           quantity: 1,
-          unitPrice: productData?.price || 0, // 🎯 Ajouter le prix unitaire
+          unitPrice: productData?.price || 0,
           size: productData?.size,
           color: productData?.color,
-          colorId: 1, // Valeur par défaut car colorId n'existe pas dans CartItem
+          colorId: 1,
         }],
-        paymentMethod: 'PAYDUNYA', // PayDunya au lieu de PAYTECH
-        initiatePayment: true, // Important: demander l'initialisation du paiement
+        paymentMethod: 'PAYDUNYA',
+        initiatePayment: true, // IMPORTANT : Déclenche la création du paiement PayDunya
       };
 
-      console.log('📦 [OrderForm] Données de commande PayDunya:', orderRequest);
+      console.log('📦 [OrderForm] Données de commande PayDunya:', JSON.stringify(orderRequest, null, 2));
 
-      // Créer la commande via le backend
-      // Note: Endpoint /orders nécessite l'authentification pour les utilisateurs connectés
-      const token = localStorage.getItem('access_token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+      // Utiliser orderService qui gère automatiquement la normalisation des réponses
+      console.log('🔄 [OrderForm] Envoi de la requête au backend...');
+      const orderResponse = orderService.isUserAuthenticated()
+        ? await orderService.createOrderWithPayment(orderRequest)
+        : await orderService.createGuestOrder(orderRequest);
+
+      console.log('✅ [OrderForm] Réponse du backend (normalisée):', JSON.stringify(orderResponse, null, 2));
+
+      // Vérifier si la commande a été créée avec succès
+      if (!orderResponse.success || !orderResponse.data) {
+        throw new Error(orderResponse.message || 'Échec de la création de commande');
+      }
+
+      // Valider les données de paiement
+      const paymentData = orderResponse.data.payment;
+      if (!paymentData) {
+        throw new Error('Données de paiement PayDunya manquantes dans la réponse');
+      }
+
+      const validation = validatePaymentData(paymentData);
+      if (!validation.isValid) {
+        console.error('❌ [OrderForm] Données de paiement invalides:', validation.missingFields);
+        throw new Error(`Données de paiement incomplètes: ${validation.missingFields.join(', ')}`);
+      }
+
+      // Récupérer l'URL de paiement (déjà normalisée par orderService)
+      const paymentUrl = paymentData.redirect_url || paymentData.payment_url;
+      if (!paymentUrl) {
+        throw new Error('URL de paiement PayDunya manquante');
+      }
+
+      // Stocker les informations de commande pour la page de retour (selon la documentation)
+      const pendingPaymentData = {
+        orderId: orderResponse.data.id,
+        orderNumber: orderResponse.data.orderNumber,
+        token: paymentData.token,
+        totalAmount: orderResponse.data.totalAmount,
+        timestamp: Date.now(),
       };
 
-      // Ajouter le token seulement s'il existe (utilisateur connecté)
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      paymentStatusService.savePendingPayment(pendingPaymentData);
+      console.log('💾 [OrderForm] Données sauvegardées dans localStorage:', pendingPaymentData);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/orders`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(orderRequest)
-      });
+      console.log('🔄 [OrderForm] === REDIRECTION VERS PAYDUNYA ===');
+      console.log('🌐 URL:', paymentUrl);
+      console.log('🎫 Token:', paymentData.token);
+      console.log('📋 Order ID:', orderResponse.data.id);
+      console.log('📋 Order Number:', orderResponse.data.orderNumber);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      // Afficher un message de chargement avant la redirection
+      const loadingMessage = `✅ Commande créée avec succès !\n\n📋 Numéro: ${orderResponse.data.orderNumber}\n💰 Montant: ${totalAmount} FCFA\n\n🔄 Redirection vers PayDunya...`;
+      console.log(loadingMessage);
 
-        // Si erreur 401 (Unauthorized) et qu'on a essayé avec un token
-        // Réessayer avec l'endpoint guest (sans authentification)
-        if (response.status === 401 && token) {
-          console.warn('⚠️ [OrderForm] Token expiré/invalide, basculement vers commande guest');
-
-          // Supprimer le token expiré
-          localStorage.removeItem('access_token');
-
-          // Réessayer avec endpoint guest
-          const guestResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/orders/guest`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(orderRequest)
-          });
-
-          if (!guestResponse.ok) {
-            const guestErrorData = await guestResponse.json().catch(() => ({}));
-            throw new Error(guestErrorData.message || `Erreur HTTP ${guestResponse.status}`);
-          }
-
-          const guestOrderResponse = await guestResponse.json();
-          console.log('✅ [OrderForm] Commande guest créée avec succès:', guestOrderResponse);
-
-          // Vérifier si on a une URL de redirection PayDunya
-          if (guestOrderResponse.success && guestOrderResponse.data?.payment?.redirect_url) {
-            // Stocker les informations de commande pour la page de retour
-            localStorage.setItem('paydunyaPendingPayment', JSON.stringify({
-              orderId: guestOrderResponse.data.id,
-              orderNumber: guestOrderResponse.data.orderNumber,
-              token: guestOrderResponse.data.payment.token,
-              totalAmount: guestOrderResponse.data.totalAmount,
-              timestamp: Date.now(),
-            }));
-
-            console.log('🔄 [OrderForm] Redirection vers PayDunya:', guestOrderResponse.data.payment.redirect_url);
-
-            // Rediriger vers PayDunya
-            setTimeout(() => {
-              window.location.href = guestOrderResponse.data.payment.redirect_url;
-            }, 100);
-          } else {
-            throw new Error('URL de redirection PayDunya non reçue');
-          }
-
-          return; // Sortir de la fonction
-        }
-
-        // Si autre erreur, la propager
-        throw new Error(errorData.message || `Erreur HTTP ${response.status}`);
-      }
-
-      const orderResponse = await response.json();
-      console.log('✅ [OrderForm] Réponse du backend:', orderResponse);
-
-      // Vérifier si on a une URL de redirection PayDunya
-      if (orderResponse.success && orderResponse.data?.payment?.redirect_url) {
-        // Stocker les informations de commande pour la page de retour
-        localStorage.setItem('paydunyaPendingPayment', JSON.stringify({
-          orderId: orderResponse.data.id,
-          orderNumber: orderResponse.data.orderNumber,
-          token: orderResponse.data.payment.token,
-          totalAmount: orderResponse.data.totalAmount,
-          timestamp: Date.now(),
-        }));
-
-        console.log('🔄 [OrderForm] Redirection vers PayDunya:', orderResponse.data.payment.redirect_url);
-
-        // Rediriger vers PayDunya
-        setTimeout(() => {
-          window.location.href = orderResponse.data.payment.redirect_url;
-        }, 100);
-      } else {
-        throw new Error('URL de redirection PayDunya non reçue');
-      }
+      // Rediriger vers PayDunya
+      setTimeout(() => {
+        window.location.href = paymentUrl;
+      }, 100);
 
     } catch (error: any) {
       console.error('❌ [OrderForm] Erreur lors du processus de commande:', error);
+
+      // Gestion des erreurs selon la documentation PayDunya
+      let errorMessage = 'Erreur lors du traitement du paiement PayDunya';
+
+      if (error.response?.status === 400) {
+        // Données invalides
+        errorMessage = 'Veuillez vérifier vos informations de commande';
+      } else if (error.response?.status === 500) {
+        // Erreur serveur
+        errorMessage = 'Erreur serveur. Veuillez réessayer plus tard.';
+      } else if (error.message?.includes('network') || error.message?.includes('Network')) {
+        // Erreur réseau
+        errorMessage = 'Problème de connexion. Vérifiez votre connexion Internet.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       setErrors(prev => ({
         ...prev,
-        payment: error.message || 'Erreur lors du traitement du paiement PayDunya',
+        payment: errorMessage,
       }));
+
+      // Afficher une alerte visuelle
+      alert(`❌ ${errorMessage}\n\nVeuillez réessayer ou contacter le support si le problème persiste.`);
     }
   };
 
@@ -765,43 +753,67 @@ const OrderFormPage: React.FC = () => {
 
                     {/* Options de paiement PayDunya spécifiques */}
                     {selectedPayment === 'paydunya' && (
-                      <div className="mt-4 p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200">
-                        <div className="flex items-start gap-3">
-                          <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-green-900">Choisissez votre méthode de paiement</h4>
-                            <p className="text-xs text-green-800 mt-1">
-                              Sélectionnez la méthode que vous préférez pour payer
-                            </p>
-
-                            {/* Sélecteur de méthodes PayDunya */}
-                            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              {payDunyaPaymentOptions.map((option) => (
-                                <label
-                                  key={option.id}
-                                  className={`relative flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer transition-all hover:shadow-sm ${
-                                    selectedPayDunyaMethod === option.id
-                                      ? 'border-green-500 bg-green-50'
-                                      : 'border-gray-200'
-                                  }`}
-                                >
-                                  <input
-                                    type="radio"
-                                    name="paydunya_method"
-                                    value={option.id}
-                                    checked={selectedPayDunyaMethod === option.id}
-                                    onChange={(e) => setSelectedPayDunyaMethod(e.target.value)}
-                                    className="sr-only"
-                                  />
-                                  <span className="text-sm sm:text-base">{option.icon}</span>
-                                  <span className="text-xs font-medium text-gray-700">{option.name}</span>
-                                </label>
-                              ))}
+                      <div className="mt-4 space-y-3">
+                        {/* Information sur le processus */}
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-start gap-2">
+                            <Shield className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-blue-900">Comment ça marche ?</p>
+                              <ol className="mt-2 space-y-1 text-xs text-blue-800">
+                                <li>1️⃣ Cliquez sur "Payer avec PayDunya"</li>
+                                <li>2️⃣ Vous serez redirigé vers PayDunya</li>
+                                <li>3️⃣ Choisissez votre méthode de paiement</li>
+                                <li>4️⃣ Confirmez le paiement</li>
+                                <li>5️⃣ Vous serez automatiquement redirigé ici</li>
+                              </ol>
                             </div>
+                          </div>
+                        </div>
 
-                            {/* Informations de sécurité */}
-                            <div className="mt-3 text-xs text-green-800">
-                              <p>💳 Paiement 100% sécurisé par PayDunya, solution agréée au Sénégal</p>
+                        {/* Sélection de la méthode préférée */}
+                        <div className="p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200">
+                          <div className="flex items-start gap-3">
+                            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <h4 className="text-sm font-semibold text-green-900">Méthodes acceptées</h4>
+                              <p className="text-xs text-green-800 mt-1">
+                                Vous choisirez votre méthode sur la page PayDunya
+                              </p>
+
+                              {/* Affichage des méthodes disponibles */}
+                              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                                  <span className="text-sm">📱</span>
+                                  <span className="text-xs font-medium text-gray-700">Orange Money</span>
+                                </div>
+                                <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                                  <span className="text-sm">💰</span>
+                                  <span className="text-xs font-medium text-gray-700">Wave</span>
+                                </div>
+                                <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                                  <span className="text-sm">💳</span>
+                                  <span className="text-xs font-medium text-gray-700">Carte bancaire</span>
+                                </div>
+                                <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                                  <span className="text-sm">📲</span>
+                                  <span className="text-xs font-medium text-gray-700">Free Money</span>
+                                </div>
+                                <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                                  <span className="text-sm">🏦</span>
+                                  <span className="text-xs font-medium text-gray-700">Moov Money</span>
+                                </div>
+                                <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                                  <span className="text-sm">💼</span>
+                                  <span className="text-xs font-medium text-gray-700">MTN Money</span>
+                                </div>
+                              </div>
+
+                              {/* Informations de sécurité */}
+                              <div className="mt-3 flex items-center gap-2 text-xs text-green-800">
+                                <Shield className="w-3 h-3" />
+                                <p>Paiement 100% sécurisé par PayDunya, solution agréée au Sénégal</p>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -900,19 +912,23 @@ const OrderFormPage: React.FC = () => {
                       {/* Email */}
                       <div className="sm:col-span-2">
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                          Email <span className="text-xs text-gray-500">(optionnel)</span>
+                          Email *
                         </label>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                            errors.email ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="votre@email.com (optionnel)"
-                        />
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            required
+                            className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                              errors.email ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="votre@email.com"
+                          />
+                        </div>
                         {errors.email && (
                           <p className="mt-1 text-sm text-red-600">{errors.email}</p>
                         )}
@@ -923,20 +939,25 @@ const OrderFormPage: React.FC = () => {
                         <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                           Téléphone *
                         </label>
-                        <input
-                          type="tel"
-                          id="phone"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                            errors.phone ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="77 123 45 67"
-                        />
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleInputChange}
+                            required
+                            className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                              errors.phone ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="+221 77 123 45 67"
+                          />
+                        </div>
                         {errors.phone && (
                           <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
                         )}
+                        <p className="mt-1 text-xs text-gray-500">Format: +221 suivi de votre numéro</p>
                       </div>
                     </div>
                   </div>

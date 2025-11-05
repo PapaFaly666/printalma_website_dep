@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { designerService, Designer } from '../../services/designerService';
+import designerService from '../../services/designerService';
+import { Designer } from '../../types/designer.types';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';

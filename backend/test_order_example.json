@@ -1,0 +1,35 @@
+{
+  "shippingDetails": {
+    "firstName": "Moussa",
+    "lastName": "Diop",
+    "street": "Rue 10, Médina",
+    "city": "Dakar",
+    "region": "Dakar",
+    "postalCode": "12000",
+    "country": "Sénégal"
+  },
+  "phoneNumber": "77 123 45 67",
+  "notes": "Merci de livrer entre 14h et 18h. Sonner 2 fois.",
+  "orderItems": [
+    {
+      "productId": 1,
+      "vendorProductId": 5,
+      "quantity": 2,
+      "unitPrice": 12500,
+      "size": "L",
+      "color": "Noir",
+      "colorId": 1
+    },
+    {
+      "productId": 2,
+      "vendorProductId": 8,
+      "quantity": 1,
+      "unitPrice": 15000,
+      "size": "M",
+      "color": "Blanc",
+      "colorId": 2
+    }
+  ],
+  "paymentMethod": "PAYDUNYA",
+  "initiatePayment": true
+}

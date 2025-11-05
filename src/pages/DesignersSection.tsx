@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Designer } from '../services/designerService';
+import { Designer } from '../types/designer.types';
 import designerService from '../services/designerService';
 
 export default function DesignersSection() {

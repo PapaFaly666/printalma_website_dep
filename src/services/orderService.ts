@@ -1,6 +1,7 @@
-// Service de gestion des commandes avec intégration PayTech
+// Service de gestion des commandes avec intégration PayTech et PayDunya
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3004';
 import AuthManager from '../utils/authUtils';
+import { generatePaydunyaUrl, validatePaymentData } from '../types/payment';
 
 // Structure conforme à la documentation API v2
 export interface ShippingDetails {
@@ -33,6 +34,7 @@ export interface CreateOrderRequest {
 
   // Contact (OBLIGATOIRE)
   phoneNumber: string;           // Numéro de téléphone
+  email?: string;                // Email (requis pour PayDunya)
 
   // Produits (OBLIGATOIRE - au moins 1 article)
   orderItems: OrderItem[];
@@ -61,7 +63,9 @@ export interface OrderResponse {
     // Champs de la documentation API
     payment?: {
       token: string;
-      redirect_url: string;
+      redirect_url?: string;
+      payment_url?: string;
+      mode?: 'test' | 'live';
     };
     // Support ancien format (compatibilité)
     paymentData?: {
@@ -106,6 +110,38 @@ export class OrderService {
     return AuthManager.getAuthHeaders();
   }
 
+  // Normaliser la réponse de paiement PayDunya
+  private normalizePaymentResponse(result: any): OrderResponse {
+    console.log('🔄 [OrderService] Normalisation de la réponse PayDunya:', result);
+
+    // Si les données de paiement existent
+    if (result.data?.payment) {
+      const paymentData = result.data.payment;
+
+      // Valider les données de paiement
+      const validation = validatePaymentData(paymentData);
+
+      if (!validation.isValid) {
+        console.warn('⚠️ [OrderService] Données de paiement incomplètes:', validation.missingFields);
+
+        // Si le token existe mais pas d'URL, générer l'URL
+        if (paymentData.token && !paymentData.redirect_url && !paymentData.payment_url) {
+          const mode = paymentData.mode ||
+                      (import.meta.env.VITE_PAYDUNYA_MODE === 'live' ? 'live' : 'test');
+          const generatedUrl = generatePaydunyaUrl(paymentData.token, mode);
+
+          console.log('🔧 [OrderService] URL PayDunya générée:', generatedUrl);
+
+          // Ajouter l'URL générée
+          result.data.payment.redirect_url = generatedUrl;
+          result.data.payment.payment_url = generatedUrl;
+        }
+      }
+    }
+
+    return result;
+  }
+
   // Créer une commande avec paiement (utilisateur authentifié)
   async createOrderWithPayment(orderData: CreateOrderRequest): Promise<OrderResponse> {
     try {
@@ -125,7 +161,8 @@ export class OrderService {
       const result = await response.json();
       console.log('✅ [OrderService] Commande créée avec succès:', result);
 
-      return result;
+      // Normaliser la réponse avant de la retourner
+      return this.normalizePaymentResponse(result);
     } catch (error: any) {
       console.error('❌ [OrderService] Erreur lors de la création de commande:', error);
       throw new Error(error.message || 'Erreur lors de la création de la commande');
@@ -402,7 +439,8 @@ export class OrderService {
       const result = await response.json();
       console.log('✅ [OrderService] Commande guest créée avec succès:', result);
 
-      return result;
+      // Normaliser la réponse avant de la retourner
+      return this.normalizePaymentResponse(result);
     } catch (error: any) {
       console.error('❌ [OrderService] Erreur lors de la création de commande guest:', error);
       throw new Error(error.message || 'Erreur lors de la création de la commande');

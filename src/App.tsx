@@ -138,6 +138,11 @@ import PaymentReturnPage from './pages/PaymentReturnPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentCancelPage from './pages/PaymentCancelPage';
 
+// 🆕 Nouvelles pages de paiement PayDunya avec gestion complète des statuts
+import PaymentSuccessPageNew from './pages/payment/PaymentSuccessPage';
+import PaymentFailedPageNew from './pages/payment/PaymentFailedPage';
+import PaymentStatusHandler from './components/payment/PaymentStatusHandler';
+
 // Page publique pour afficher les produits d'un thème
 import PublicThemeProductsPage from './pages/ThemeProductsPage';
 
@@ -242,10 +247,13 @@ function App() {
                 <Route path='/cart' element={<CartPage />} />
                 <Route path='/order-form' element={<OrderFormPage />} />
 
-                {/* Routes de paiement PayDunya */}
-                <Route path='/payment/success' element={<PaymentSuccess />} />
-                <Route path='/payment/cancel' element={<PaymentCancel />} />
-                {/* Routes de paiement PayTech (compatibilité) */}
+                {/* Routes de paiement PayDunya - Nouvelles pages avec gestion complète des statuts */}
+                <Route path='/payment/success' element={<PaymentSuccessPageNew />} />
+                <Route path='/payment/failed' element={<PaymentFailedPageNew />} />
+                <Route path='/payment/cancel' element={<PaymentFailedPageNew />} />
+                <Route path='/payment/status' element={<PaymentStatusHandler />} />
+
+                {/* Routes de paiement PayTech (compatibilité - anciennes pages) */}
                 <Route path='/paytech/success' element={<PaymentSuccessPage />} />
                 <Route path='/paytech/cancel' element={<PaymentCancelPage />} />
                 <Route path='/payment/return' element={<PaymentReturnPage />} />
