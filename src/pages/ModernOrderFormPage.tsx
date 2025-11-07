@@ -76,6 +76,8 @@ const ModernOrderFormPage: React.FC = () => {
   const [selectedPayment, setSelectedPayment] = useState<string>('paydunya');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string>('');
   const [orderNumber, setOrderNumber] = useState<string>('');
   const [errors, setErrors] = useState<Partial<OrderFormData> & { delivery?: string; payment?: string }>({});
 
@@ -293,8 +295,8 @@ const ModernOrderFormPage: React.FC = () => {
         throw new Error(`Données de paiement incomplètes: ${validation.missingFields.join(', ')}`);
       }
 
-      const paymentUrl = paymentData.redirect_url || paymentData.payment_url;
-      if (!paymentUrl) {
+      const retrievedPaymentUrl = paymentData.redirect_url || paymentData.payment_url;
+      if (!retrievedPaymentUrl) {
         throw new Error('URL de paiement PayDunya manquante');
       }
 
@@ -308,9 +310,12 @@ const ModernOrderFormPage: React.FC = () => {
 
       paymentStatusService.savePendingPayment(pendingPaymentData);
 
-      setTimeout(() => {
-        window.location.href = paymentUrl;
-      }, 100);
+      // Sauvegarder les données pour l'affichage
+      setOrderNumber(orderResponse.data.orderNumber);
+      setPaymentUrl(retrievedPaymentUrl);
+
+      // Afficher l'état de paiement en cours avec bouton
+      setPaymentPending(true);
 
     } catch (error: any) {
       console.error('Erreur lors du processus de commande:', error);
@@ -366,6 +371,186 @@ const ModernOrderFormPage: React.FC = () => {
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -20 }
   };
+
+  // Écran de paiement en cours
+  if (paymentPending) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', duration: 0.6 }}
+          className="max-w-2xl w-full"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-12 text-center">
+            {/* Icône de paiement en cours */}
+            <div className="relative w-28 h-28 mx-auto mb-8">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-4 border-blue-200 border-t-blue-600 rounded-full"
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <CreditCard className="w-12 h-12 text-blue-600" />
+              </div>
+            </div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4"
+            >
+              Commande créée avec succès !
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-lg text-gray-600 mb-8"
+            >
+              Votre commande a été enregistrée. Finalisez votre paiement dans l'onglet PayDunya.
+            </motion.p>
+
+            {/* Numéro de commande */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 mb-8 border border-gray-200"
+            >
+              <p className="text-sm text-gray-600 mb-2">Numéro de commande</p>
+              <p className="text-3xl font-bold text-gray-900 tracking-wide">{orderNumber}</p>
+            </motion.div>
+
+            {/* Bouton CTA principal */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: 0.6, type: 'spring', stiffness: 200 }}
+              className="mb-8"
+            >
+              <a
+                href={paymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block w-full"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity"></div>
+                <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                  <div className="flex items-center justify-center gap-3">
+                    <CreditCard className="w-8 h-8" />
+                    <span className="text-2xl font-bold">Procéder au paiement PayDunya</span>
+                    <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
+                  </div>
+                  <p className="text-center text-blue-100 text-sm mt-2">
+                    Cliquez ici pour ouvrir la page de paiement sécurisée
+                  </p>
+                </div>
+              </a>
+            </motion.div>
+
+            {/* Instructions */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="space-y-3 mb-8 bg-blue-50 rounded-2xl p-6 border border-blue-200"
+            >
+              <p className="text-sm font-semibold text-gray-900 mb-3">📝 Comment finaliser votre commande :</p>
+              <div className="flex items-start gap-3 text-left">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
+                  1
+                </div>
+                <p className="text-sm text-gray-700">Cliquez sur le bouton ci-dessus pour ouvrir PayDunya</p>
+              </div>
+              <div className="flex items-start gap-3 text-left">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
+                  2
+                </div>
+                <p className="text-sm text-gray-700">Choisissez votre méthode (Orange Money, Wave, MTN...)</p>
+              </div>
+              <div className="flex items-start gap-3 text-left">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
+                  3
+                </div>
+                <p className="text-sm text-gray-700">Confirmez le paiement sur PayDunya</p>
+              </div>
+              <div className="flex items-start gap-3 text-left">
+                <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
+                  ✓
+                </div>
+                <p className="text-sm text-gray-700">Vous serez redirigé automatiquement ici</p>
+              </div>
+            </motion.div>
+
+            {/* Détails de la commande */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="space-y-3 mb-8 bg-gray-50 rounded-2xl p-6"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-gray-400" />
+                  <span className="text-gray-600">Confirmation envoyée à</span>
+                </div>
+                <span className="font-semibold text-gray-900">{formData.email}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Package className="w-5 h-5 text-gray-400" />
+                  <span className="text-gray-600">Montant</span>
+                </div>
+                <span className="font-semibold text-gray-900">{formatPrice(total)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-gray-400" />
+                  <span className="text-gray-600">Livraison estimée</span>
+                </div>
+                <span className="font-semibold text-gray-900">
+                  {new Date(Date.now() + (deliveryOptions.find(d => d.id === selectedDelivery)?.estimatedDays || 3) * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Boutons d'action */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
+              <button
+                onClick={() => navigate('/')}
+                className="px-8 py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200"
+              >
+                Retour à l'accueil
+              </button>
+            </motion.div>
+
+            {/* Note de sécurité */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.9 }}
+              className="mt-8 p-4 bg-green-50 border border-green-200 rounded-xl"
+            >
+              <div className="flex items-center justify-center gap-2 text-green-700">
+                <Shield className="w-5 h-5" />
+                <p className="text-sm font-medium">
+                  Paiement 100% sécurisé par PayDunya
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (orderComplete) {
     return (

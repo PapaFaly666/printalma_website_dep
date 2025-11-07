@@ -431,37 +431,30 @@ const OrderFormPage: React.FC = () => {
         throw new Error('URL de paiement PayDunya manquante');
       }
 
-      // Stocker les informations de commande pour la page de confirmation
+      // Stocker les informations de commande pour la page de retour (selon la documentation)
       const pendingPaymentData = {
         orderId: orderResponse.data.id,
         orderNumber: orderResponse.data.orderNumber,
         token: paymentData.token,
         totalAmount: orderResponse.data.totalAmount,
-        customerEmail: formData.email,
-        paymentUrl: paymentUrl,
         timestamp: Date.now(),
       };
 
       paymentStatusService.savePendingPayment(pendingPaymentData);
       console.log('💾 [OrderForm] Données sauvegardées dans localStorage:', pendingPaymentData);
 
-      console.log('🔄 [OrderForm] === REDIRECTION VERS PAGE DE CONFIRMATION ===');
-      console.log('🌐 URL PayDunya:', paymentUrl);
+      console.log('🔄 [OrderForm] === REDIRECTION VERS PAYDUNYA ===');
+      console.log('🌐 URL:', paymentUrl);
       console.log('🎫 Token:', paymentData.token);
       console.log('📋 Order ID:', orderResponse.data.id);
       console.log('📋 Order Number:', orderResponse.data.orderNumber);
 
-      // Afficher un message de succès
-      const successMessage = `✅ Commande créée avec succès !\n\n📋 Numéro: ${orderResponse.data.orderNumber}\n💰 Montant: ${totalAmount} FCFA\n\n📧 Un lien de paiement a été envoyé à ${formData.email}`;
-      console.log(successMessage);
+      // Afficher un message de chargement avant la redirection
+      const loadingMessage = `✅ Commande créée avec succès !\n\n📋 Numéro: ${orderResponse.data.orderNumber}\n💰 Montant: ${totalAmount} FCFA\n\n🔄 Redirection vers PayDunya...`;
+      console.log(loadingMessage);
 
-      // Vider le panier après création de commande réussie
-      clearCart();
-
-      // Rediriger vers la page de confirmation
-      setTimeout(() => {
-        navigate('/order-confirmation');
-      }, 100);
+      // Ouvrir PayDunya dans un nouvel onglet
+      window.open(paymentUrl, '_blank', 'noopener,noreferrer');
 
     } catch (error: any) {
       console.error('❌ [OrderForm] Erreur lors du processus de commande:', error);
