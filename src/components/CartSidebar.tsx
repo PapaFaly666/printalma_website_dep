@@ -419,73 +419,94 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Overlay */}
+    <>
+      {/* Overlay avec fond semi-transparent et backdrop blur */}
       <div
-        className="absolute inset-0 bg-white/30 backdrop-blur-sm transition-opacity"
+        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
         onClick={onClose}
       />
 
-      {/* Panier latéral */}
-      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform">
+      {/* Panier latéral avec animation slide */}
+      <div
+        className={`fixed right-0 top-0 h-full w-full sm:max-w-md md:max-w-lg bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
         <div className="flex flex-col h-full">
           {/* En-tête du panier */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
             <div className="flex items-center gap-3">
-              <ShoppingCart className="w-6 h-6 text-gray-900" />
+              <div className="p-2 bg-gray-100 rounded-2xl">
+                <ShoppingCart className="w-5 h-5 text-gray-900" />
+              </div>
               <h2 className="text-xl font-semibold text-gray-900">
                 Mon Panier ({totalItems})
               </h2>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-2xl transition-all duration-200 hover:scale-110"
+              aria-label="Fermer le panier"
             >
               <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
           {/* Liste des produits */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
             {items.length === 0 ? (
-              <div className="text-center py-12">
-                <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">Votre panier est vide</p>
-                <p className="text-gray-400 text-sm mt-2">
-                  Ajoutez des produits pour commencer vos achats
-                </p>
+              <div className="text-center py-12 px-4">
+                <div className="bg-white rounded-2xl p-8 shadow-sm">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <ShoppingCart className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <p className="text-gray-700 text-lg font-semibold mb-2">Votre panier est vide</p>
+                  <p className="text-gray-500 text-sm mb-6">
+                    Découvrez nos produits et designs personnalisés pour commencer vos achats
+                  </p>
+                  <button
+                    onClick={onClose}
+                    className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-6 py-2.5 rounded-2xl font-semibold hover:from-yellow-500 hover:to-yellow-600 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    Découvrir les produits
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.id} className="bg-gray-50 rounded-lg p-4">
+                  <div key={item.id} className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
                     <div className="flex gap-4">
                       {/* Image du produit avec design intégré */}
                       <ProductWithDesign item={item} user={user} />
 
                       {/* Détails du produit */}
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 text-sm mb-1">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">
                           {item.name}
                         </h3>
-                        <p className="text-xs text-gray-500 mb-1">
-                          {item.vendorName && `Par ${item.vendorName}`}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
-                          <div
-                            className="w-4 h-4 rounded border border-gray-300"
-                            style={{ backgroundColor: item.colorCode }}
-                          />
-                          <span>{item.color}</span>
-                          <span>•</span>
-                          <span>
+                        {item.vendorName && (
+                          <p className="text-xs text-gray-500 mb-1">
+                            Par {item.vendorName}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 text-xs text-gray-600 mb-2 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <div
+                              className="w-4 h-4 rounded-full border border-gray-300 shadow-sm"
+                              style={{ backgroundColor: item.colorCode }}
+                            />
+                            <span className="truncate">{item.color}</span>
+                          </div>
+                          <span className="text-gray-400">•</span>
+                          <span className="truncate">
                             Taille {item.selectedSize?.sizeName || item.sizeName || item.size}
                           </span>
                         </div>
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-bold text-gray-900 text-base">
                           {formatPrice(item.price)}
                         </p>
                       </div>
@@ -494,25 +515,28 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                       <div className="flex flex-col items-end gap-2">
                         <button
                           onClick={() => onRemoveItem(item.id)}
-                          className="p-1 hover:bg-red-50 rounded transition-colors"
+                          className="p-1.5 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-110"
+                          aria-label="Supprimer l'article"
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
 
-                        <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-1 bg-gray-50 rounded-xl border border-gray-200 shadow-sm">
                           <button
                             onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                            className="p-1 hover:bg-gray-100 rounded-l transition-colors"
+                            className="p-1.5 hover:bg-gray-200 rounded-l-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={item.quantity <= 1}
+                            aria-label="Diminuer la quantité"
                           >
                             <Minus className="w-3 h-3 text-gray-600" />
                           </button>
-                          <span className="w-8 text-center text-sm font-medium">
+                          <span className="w-8 text-center text-sm font-semibold text-gray-900">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                            className="p-1 hover:bg-gray-100 rounded-r transition-colors"
+                            className="p-1.5 hover:bg-gray-200 rounded-r-xl transition-colors"
+                            aria-label="Augmenter la quantité"
                           >
                             <Plus className="w-3 h-3 text-gray-600" />
                           </button>
@@ -522,14 +546,16 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
 
                     {/* Design si présent */}
                     {item.designUrl && (
-                      <div className="mt-3 p-2 bg-white rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Design personnalisé :</p>
+                      <div className="mt-3 p-2 bg-gray-50 rounded-xl border border-gray-200">
+                        <p className="text-xs text-gray-600 mb-1 font-medium">Design personnalisé :</p>
                         <div className="flex items-center gap-2">
-                          <img
-                            src={item.designUrl}
-                            alt="Design"
-                            className="w-8 h-8 object-contain"
-                          />
+                          <div className="w-8 h-8 bg-white rounded-lg p-1 shadow-sm">
+                            <img
+                              src={item.designUrl}
+                              alt="Design"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
                           <span className="text-xs text-gray-700">Inclus</span>
                         </div>
                       </div>
@@ -542,38 +568,51 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
 
           {/* Pied du panier */}
           {items.length > 0 && (
-            <div className="border-t border-gray-200 p-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold text-gray-900">Total</span>
-                <span className="text-2xl font-bold text-gray-900">
-                  {(totalPrice / 100).toLocaleString('fr-FR')} FCFA
-                </span>
+            <div className="border-t border-gray-200 p-6 space-y-4 bg-gray-50">
+              {/* Résumé du total */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm text-gray-600">Sous-total ({totalItems} article{totalItems > 1 ? 's' : ''})</span>
+                  <span className="text-base font-semibold text-gray-900">
+                    {(totalPrice / 100).toLocaleString('fr-FR')} FCFA
+                  </span>
+                </div>
+                <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
+                  <span className="text-lg font-bold text-gray-900">Total</span>
+                  <span className="text-2xl font-bold text-gray-900">
+                    {(totalPrice / 100).toLocaleString('fr-FR')} FCFA
+                  </span>
+                </div>
               </div>
 
-              <div className="space-y-2">
+              {/* Boutons d'action */}
+              <div className="space-y-3">
                 <button
                   onClick={onCheckout}
-                  className="w-full bg-yellow-400 text-gray-900 py-3 rounded-lg font-semibold hover:bg-yellow-500 transition-colors"
+                  className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 py-3.5 rounded-2xl font-bold hover:from-yellow-500 hover:to-yellow-600 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 transform"
                 >
-                  Valider la commande
+                  Commander maintenant
                 </button>
 
                 <button
                   onClick={onClose}
-                  className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                  className="w-full bg-white text-gray-700 py-3 rounded-2xl font-semibold hover:bg-gray-100 transition-all duration-200 border border-gray-200 shadow-sm hover:shadow-md"
                 >
                   Continuer mes achats
                 </button>
               </div>
 
-              <p className="text-xs text-gray-500 text-center">
-                Frais de port calculés à l'étape suivante
+              <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Paiement sécurisé • Frais de port calculés à l'étape suivante
               </p>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

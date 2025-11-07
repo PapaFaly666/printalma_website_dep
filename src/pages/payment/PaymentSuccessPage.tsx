@@ -3,10 +3,12 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Package, Truck, Mail, ArrowRight, Home } from 'lucide-react';
 import { paymentStatusService } from '../../services/paymentStatusService';
 import { PaymentTracker } from '../../components/payment/PaymentTracker';
+import { useCart } from '../../contexts/CartContext';
 
 const PaymentSuccessPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { clearCart } = useCart();
   const [showConfetti, setShowConfetti] = useState(true);
   const [orderData, setOrderData] = useState<any>(null);
 
@@ -15,6 +17,9 @@ const PaymentSuccessPage: React.FC = () => {
   const token = searchParams.get('token');
 
   useEffect(() => {
+    // Vider le panier après un paiement réussi
+    clearCart();
+
     // Arrêter les confettis après 5 secondes
     const timer = setTimeout(() => setShowConfetti(false), 5000);
 
@@ -25,7 +30,7 @@ const PaymentSuccessPage: React.FC = () => {
     }
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [clearCart]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 relative overflow-hidden">

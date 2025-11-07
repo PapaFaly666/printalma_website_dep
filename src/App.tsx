@@ -128,7 +128,8 @@ import VendorProductDetails from './pages/VendorProductDetails';
 import PublicVendorProductDetailPage from './pages/PublicVendorProductDetailPage';
 
 // Page de formulaire de commande
-import OrderFormPage from './pages/OrderFormPage';
+import ModernOrderFormPage from './pages/ModernOrderFormPage';
+import OrderConfirmationPage from './pages/OrderConfirmationPage';
 
 // Pages de paiement PayDunya
 import PaymentSuccess from './pages/PaymentSuccess';
@@ -245,7 +246,8 @@ function App() {
                 <Route path='/best-sellers' element={<BestSellersPage />} />
                 <Route path='/vendez-vos-oeuvres' element={<SellDesignPage />} />
                 <Route path='/cart' element={<CartPage />} />
-                <Route path='/order-form' element={<OrderFormPage />} />
+                <Route path='/order-form' element={<ModernOrderFormPage />} />
+                <Route path='/order-confirmation' element={<OrderConfirmationPage />} />
 
                 {/* Routes de paiement PayDunya - Nouvelles pages avec gestion complète des statuts */}
                 <Route path='/payment/success' element={<PaymentSuccessPageNew />} />

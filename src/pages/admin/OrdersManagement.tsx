@@ -4,49 +4,71 @@ import '../../styles/admin/orders-management.css';
 import { useAuth } from '../../contexts/AuthContext';
 import newOrderService from '../../services/newOrderService';
 import { Order, OrderStatus, OrderStatistics, ShippingAddressObjectDto } from '../../types/order';
+
+// Types basés sur la structure RÉELLE de l'API
+interface PaymentInfo {
+  status: string;
+  status_text: string;
+  status_icon: string;
+  status_color: string;
+  method: string;
+  method_text: string;
+  transaction_id?: string;
+  attempts_count: number;
+  last_attempt_at?: string;
+}
+
+interface PaymentError {
+  reason: string;
+  category: string;
+  message: string;
+  timestamp: string;
+  attemptNumber: number;
+}
+
+// Type minimal pour customer_info (utilisé dans les fonctions)
+interface CustomerInfo {
+  full_name?: string;
+  shipping_name?: string;
+  user_firstname?: string;
+  user_lastname?: string;
+  email?: string;
+  shipping_email?: string;
+  user_email?: string;
+  phone?: string;
+  shipping_phone?: string;
+  user_phone?: string;
+  shipping_address?: any;
+  notes?: string;
+  user_role?: string;
+}
+
 import { WebSocketService } from '../../services/websocketService';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  RefreshCw, 
+import {
+  Search,
+  Filter,
+  Download,
+  RefreshCw,
   Eye,
-  Edit3,
-  Trash2,
-  Plus,
   TrendingUp,
-  TrendingDown,
   Package,
   DollarSign,
-  Users,
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
   Truck,
   Home,
-  X,
   MapPin,
   Phone,
-  Mail,
   Calendar,
-  Hash,
   CreditCard,
-  Bell,
-  BellOff,
   MoreHorizontal,
-  ExternalLink,
-  Archive,
-  Settings,
+  LayoutGrid,
+  LayoutList,
   Zap,
-  Sparkles,
-  Activity,
   ShoppingCart,
-  TrendingUpIcon,
-  ArrowUpRight,
-  ArrowRight,
-  ChevronDown,
-  Dot
+  BarChart3
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -55,21 +77,319 @@ import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Separator } from '../../components/ui/separator';
-import { ScrollArea } from '../../components/ui/scroll-area';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../../components/ui/sheet';
-import { Progress } from '../../components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
 import NotificationCenter from '../../components/NotificationCenter';
 import { getStatusColor, getStatusIcon, formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
 
+// Import pour le drag-and-drop
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverEvent,
+  closestCorners,
+  useDroppable
+} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Fonctions utilitaires pour le paiement
+const getPaymentStatusColor = (status: string): string => {
+  const colors: Record<string, string> = {
+    'PENDING': 'bg-amber-100 text-amber-800 border-amber-200',
+    'PAID': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    'FAILED': 'bg-red-100 text-red-800 border-red-200',
+    'CANCELLED': 'bg-slate-100 text-slate-800 border-slate-200',
+    'REFUNDED': 'bg-cyan-100 text-cyan-800 border-cyan-200'
+  };
+  return colors[status] || 'bg-slate-100 text-slate-800 border-slate-200';
+};
+
+const formatPaymentMethod = (method: string): string => {
+  const methods: Record<string, string> = {
+    'PAYDUNYA': 'PayDunya',
+    'PAYTECH': 'PayTech',
+    'CASH_ON_DELIVERY': 'Paiement à la livraison',
+    'WAVE': 'Wave',
+    'ORANGE_MONEY': 'Orange Money'
+  };
+  return methods[method] || method;
+};
+
+// Fonctions utilitaires basées sur la structure RÉELLE de l'API
+const getCustomerDisplayName = (order: any): string => {
+  if (order.shippingName) return order.shippingName;
+  if (order.customer_info?.full_name) return order.customer_info.full_name;
+  if (order.customer_info?.shipping_name) return order.customer_info.shipping_name;
+  if (order.user?.firstName || order.user?.lastName) {
+    return `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim();
+  }
+  return 'Client inconnu';
+};
+
+const getCustomerEmail = (order: any): string => {
+  if (order.email) return order.email;
+  if (order.customer_info?.email) return order.customer_info.email;
+  if (order.customer_info?.shipping_email) return order.customer_info.shipping_email;
+  if (order.user?.email) return order.user.email;
+  return 'Email non disponible';
+};
+
+const getCustomerPhone = (order: any): string => {
+  if (order.phoneNumber) return order.phoneNumber;
+  if (order.customer_info?.phone) return order.customer_info.phone;
+  if (order.customer_info?.shipping_phone) return order.customer_info.shipping_phone;
+  if (order.user?.phone) return order.user.phone;
+  return 'Téléphone non disponible';
+};
+
+const getCustomerInitials = (order: any): string => {
+  const name = getCustomerDisplayName(order);
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+const getFormattedShippingAddress = (order: any): string => {
+  if (order.shippingAddressFull) return order.shippingAddressFull;
+
+  const parts = [
+    order.shippingStreet,
+    order.shippingCity,
+    order.shippingRegion,
+    order.shippingPostalCode,
+    order.shippingCountry
+  ].filter(Boolean);
+
+  if (parts.length > 0) return parts.join(', ');
+  return 'Adresse non disponible';
+};
+
+// Parser les erreurs de paiement depuis les notes
+const parsePaymentError = (notes: string): PaymentError | null => {
+  try {
+    if (notes && notes.includes('💳 PAYMENT FAILED')) {
+      const match = notes.match(/\{[^}]+\}/);
+      if (match) return JSON.parse(match[0]);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+// Formatter les dates importantes
+const formatDate = (dateString: string | null): string => {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+// Type pour les vues
+type ViewMode = 'table' | 'kanban';
+
+// Configuration des colonnes Kanban
+const KANBAN_COLUMNS: { id: OrderStatus; title: string; color: string; icon: any }[] = [
+  { id: 'PENDING', title: 'En attente', color: 'bg-amber-50 border-amber-200', icon: Clock },
+  { id: 'CONFIRMED', title: 'Confirmées', color: 'bg-blue-50 border-blue-200', icon: CheckCircle },
+  { id: 'PROCESSING', title: 'En traitement', color: 'bg-purple-50 border-purple-200', icon: Package },
+  { id: 'SHIPPED', title: 'Expédiées', color: 'bg-indigo-50 border-indigo-200', icon: Truck },
+  { id: 'DELIVERED', title: 'Livrées', color: 'bg-emerald-50 border-emerald-200', icon: Home },
+  { id: 'CANCELLED', title: 'Annulées', color: 'bg-red-50 border-red-200', icon: XCircle },
+];
+
+// Composant pour une carte de commande dans le Kanban
+interface KanbanCardProps {
+  order: Order;
+  onView: (orderId: number) => void;
+}
+
+const KanbanCard: React.FC<KanbanCardProps> = ({ order, onView }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `order-${order.id}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`bg-white rounded-lg border-2 ${
+        isDragging ? 'border-slate-400 shadow-2xl rotate-3 scale-105' : 'border-slate-200 shadow-sm hover:shadow-lg'
+      } p-3 mb-2 transition-all cursor-grab active:cursor-grabbing group`}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-gradient-to-r from-slate-900 to-slate-600"></div>
+          <span className="font-mono text-xs font-bold text-slate-900">
+            #{order.orderNumber}
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onView(order.id);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100"
+        >
+          <Eye className="h-3 w-3" />
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2 mb-3">
+        <Avatar className="h-9 w-9 border-2 border-slate-100">
+          <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 text-xs font-bold">
+            {getCustomerInitials(order)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-slate-900 truncate">
+            {getCustomerDisplayName(order)}
+          </p>
+          <p className="text-xs text-slate-500 truncate">
+            {getCustomerEmail(order)}
+          </p>
+        </div>
+      </div>
+
+      <Separator className="my-2" />
+
+      <div className="space-y-2 mb-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-slate-500 flex items-center gap-1">
+            <DollarSign className="h-3 w-3" />
+            Montant
+          </span>
+          <span className="font-bold text-slate-900">
+            {formatCurrency(order.totalAmount)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-slate-500 flex items-center gap-1">
+            <Package className="h-3 w-3" />
+            Articles
+          </span>
+          <span className="font-semibold text-slate-900">
+            {(order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0}
+          </span>
+        </div>
+      </div>
+
+      <Separator className="my-2" />
+
+      <div className="flex items-center justify-between">
+        <Badge className={`${getPaymentStatusColor((order as any).payment_info?.status || 'PENDING')} text-xs border-2 font-semibold px-2 py-0.5`}>
+          {(order as any).payment_info?.status_text || 'En attente'}
+        </Badge>
+        <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// Composant pour une colonne Kanban avec Droppable
+interface KanbanColumnProps {
+  column: typeof KANBAN_COLUMNS[0];
+  orders: Order[];
+  onView: (orderId: number) => void;
+}
+
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, orders, onView }) => {
+  const Icon = column.icon;
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+  });
+
+  return (
+    <div className="flex-shrink-0 w-80">
+      <div
+        className={`${column.color} rounded-xl border-2 ${
+          isOver ? 'border-slate-400 bg-slate-100 scale-102' : ''
+        } p-4 flex flex-col transition-all duration-200`}
+        style={{ minHeight: '600px', maxHeight: '80vh' }}
+      >
+        {/* Header de la colonne style Trello */}
+        <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-slate-200">
+          <div className="flex items-center gap-2">
+            <div className={`h-10 w-10 rounded-xl ${column.color.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-200').replace('border-', 'to-')} shadow-md flex items-center justify-center border-2 border-white`}>
+              <Icon className="h-5 w-5 text-slate-700" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">{column.title}</h3>
+              <p className="text-xs text-slate-500 font-medium">{orders.length} commande{orders.length > 1 ? 's' : ''}</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="font-mono font-bold text-sm px-3 py-1 bg-white border-2 border-slate-200">
+            {orders.length}
+          </Badge>
+        </div>
+
+        {/* Zone de drop avec scroll */}
+        <div
+          ref={setNodeRef}
+          className={`flex-1 overflow-y-auto space-y-2 pr-2 ${
+            isOver ? 'bg-blue-50 rounded-lg p-2' : ''
+          } transition-colors duration-200`}
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#cbd5e1 transparent'
+          }}
+        >
+          <SortableContext items={orders.map(o => `order-${o.id}`)} strategy={verticalListSortingStrategy}>
+            {orders.map((order) => (
+              <KanbanCard key={order.id} order={order} onView={onView} />
+            ))}
+          </SortableContext>
+
+          {orders.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-slate-400 bg-white/50 rounded-lg border-2 border-dashed border-slate-200">
+              <Package className="h-16 w-16 mb-3 opacity-20" />
+              <p className="text-sm font-medium">Aucune commande</p>
+              <p className="text-xs mt-1">Glissez une commande ici</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const OrdersManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   // États principaux
   const [orders, setOrders] = useState<Order[]>([]);
   const [statistics, setStatistics] = useState<OrderStatistics | null>(null);
@@ -77,14 +397,27 @@ const OrdersManagement = () => {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportPeriod, setExportPeriod] = useState<'all' | '24h' | '7d' | '30d'>('all');
-  
+
   // États de filtrage et pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize] = useState(20);
-  
+
+  // États pour la vue
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+
+  // États pour le drag-and-drop
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
+
   // États pour la gestion des rafraîchissements
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -105,7 +438,7 @@ const OrdersManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const filters = {
         page: currentPage,
         limit: pageSize,
@@ -114,18 +447,17 @@ const OrdersManagement = () => {
       };
 
       const result = await newOrderService.getAllOrders(filters);
-      
+
       setOrders(result.orders);
       setTotalPages(result.totalPages);
-      
+
       console.log('✅ Commandes chargées:', result.orders.length);
-      
+
     } catch (error) {
       const errorMessage = newOrderService.handleError(error, 'chargement commandes');
       setError(errorMessage);
       console.error('❌ Erreur chargement commandes:', error);
-      
-      // Notification native du navigateur
+
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(errorMessage, {
           body: errorMessage,
@@ -145,7 +477,6 @@ const OrdersManagement = () => {
       console.log('📊 Statistiques chargées:', stats);
     } catch (error) {
       console.error('❌ Erreur statistiques:', error);
-      // Notification native du navigateur
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Statistiques indisponibles', {
           body: 'Impossible de charger les statistiques',
@@ -160,45 +491,41 @@ const OrdersManagement = () => {
   // FONCTIONS AVANCÉES
   // ==========================================
 
-  // Extraction du nom du vendeur depuis le champ notes quand l'objet vendor n'est pas fourni par l'API
   const extractVendorNameFromNotes = (notes?: string | null): string | null => {
     if (!notes) return null;
     const match = notes.match(/Produit vendeur:\s*(.+?)\s*\(ID:/i);
     return match ? match[1].trim() : null;
   };
 
-  // Fonction de rafraîchissement avec débounce
   const debouncedRefresh = useCallback(() => {
     if (refreshTimeout) {
       clearTimeout(refreshTimeout);
     }
-    
+
     const newTimeout = setTimeout(() => {
       const now = Date.now();
-      if (now - lastRefreshTime > 2000) { // Minimum 2 secondes entre les rafraîchissements
+      if (now - lastRefreshTime > 2000) {
         console.log('🔄 Rafraîchissement des commandes...');
         fetchOrders();
         setLastRefreshTime(now);
       }
-    }, 1000); // Délai de 1 seconde
-    
+    }, 1000);
+
     setRefreshTimeout(newTimeout);
   }, [fetchOrders, lastRefreshTime, refreshTimeout]);
 
   const updateOrderStatus = async (orderId: number, newStatus: OrderStatus) => {
     try {
       await newOrderService.updateOrderStatus(orderId, newStatus);
-      
-      // Mettre à jour localement
-      setOrders(prev => 
-        prev.map(order => 
-          order.id === orderId 
+
+      setOrders(prev =>
+        prev.map(order =>
+          order.id === orderId
             ? { ...order, status: newStatus }
             : order
         )
       );
 
-      // Notification native du navigateur
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(`Commande ${orderId} mise à jour vers ${newStatus}`, {
           body: `Commande ${orderId} mise à jour vers ${newStatus}`,
@@ -207,12 +534,10 @@ const OrdersManagement = () => {
         });
       }
 
-      // Recharger les stats
       fetchStatistics();
-      
+
     } catch (error) {
       const errorMessage = newOrderService.handleError(error, 'mise à jour statut');
-      // Notification native du navigateur
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(errorMessage, {
           body: errorMessage,
@@ -224,49 +549,123 @@ const OrdersManagement = () => {
   };
 
   // ==========================================
+  // DRAG AND DROP HANDLERS
+  // ==========================================
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Si on survole une colonne (statut)
+    if (KANBAN_COLUMNS.some(col => col.id === overId)) {
+      return;
+    }
+
+    // Si on survole une autre carte
+    const activeOrderId = parseInt(activeId.replace('order-', ''));
+    const overOrderId = parseInt(overId.replace('order-', ''));
+
+    const activeOrder = orders.find(o => o.id === activeOrderId);
+    const overOrder = orders.find(o => o.id === overOrderId);
+
+    if (!activeOrder || !overOrder) return;
+
+    // Si les deux cartes sont dans des colonnes différentes, déplacer immédiatement
+    if (activeOrder.status !== overOrder.status) {
+      setOrders(prev => {
+        const activeIndex = prev.findIndex(o => o.id === activeOrderId);
+        const overIndex = prev.findIndex(o => o.id === overOrderId);
+
+        const newOrders = [...prev];
+        newOrders[activeIndex] = { ...newOrders[activeIndex], status: overOrder.status };
+
+        // Réorganiser l'ordre
+        const [removed] = newOrders.splice(activeIndex, 1);
+        newOrders.splice(overIndex, 0, removed);
+
+        return newOrders;
+      });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    setActiveId(null);
+
+    if (!over) {
+      return;
+    }
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Extraire l'ID de la commande
+    const orderIdMatch = activeId.match(/order-(\d+)/);
+    if (!orderIdMatch) return;
+
+    const orderId = parseInt(orderIdMatch[1]);
+    const draggedOrder = orders.find(o => o.id === orderId);
+
+    if (!draggedOrder) return;
+
+    // Déterminer le nouveau statut
+    let newStatus: OrderStatus | null = null;
+
+    // Si on drop sur une colonne directement
+    if (KANBAN_COLUMNS.some(col => col.id === overId)) {
+      newStatus = overId as OrderStatus;
+    } else {
+      // Si on drop sur une carte, prendre le statut de cette carte
+      const overOrderId = parseInt(overId.replace('order-', ''));
+      const overOrder = orders.find(o => o.id === overOrderId);
+      if (overOrder) {
+        newStatus = overOrder.status;
+      }
+    }
+
+    // Si le statut a changé, mettre à jour via l'API
+    if (newStatus && draggedOrder.status !== newStatus) {
+      updateOrderStatus(orderId, newStatus);
+    }
+  };
+
+  // ==========================================
   // WEBSOCKET ET TEMPS RÉEL
   // ==========================================
 
   useEffect(() => {
     if (user?.role === 'ADMIN' || user?.role === 'SUPERADMIN') {
       console.log('🔌 Connexion WebSocket admin...');
-      
+
       const webSocketService = new WebSocketService();
       webSocketService.connectWebSocket();
-      
+
       webSocketService.onNewOrder = (notification) => {
         console.log('🆕 Nouvelle commande reçue:', notification);
-        console.log('🔍 Structure complète de la notification:', JSON.stringify(notification, null, 2));
-        
         debouncedRefresh();
         fetchStatistics();
-        
-        const orderId = notification.data.orderId;
-        console.log('🔍 ID extrait:', orderId);
-        
-        if (orderId && typeof orderId === 'number') {
-          console.log('✅ ID trouvé, notification intelligente à implémenter si besoin');
-          // Ici, on pourrait créer une notification plus riche avec les données de notification.data
-        } else {
-          console.log('❌ Pas d\'ID trouvé, stratégie alternative...');
-          // ... (logique de fallback existante, peut être revue/supprimée si notification.data est fiable)
-        }
       };
 
       webSocketService.onOrderStatusChanged = (data) => {
         console.log('📝 Statut commande changé:', data);
-        
+
         if (data.data.orderId) {
-          setOrders(prev => 
-            prev.map(order => 
-              order.id === data.data.orderId 
+          setOrders(prev =>
+            prev.map(order =>
+              order.id === data.data.orderId
                 ? { ...order, status: data.data.newStatus as OrderStatus }
                 : order
             )
           );
-          // Notification intelligente à implémenter si besoin
-        } else {
-          // ... (logique de fallback existante)
         }
         fetchStatistics();
       };
@@ -289,12 +688,7 @@ const OrdersManagement = () => {
     fetchStatistics();
   }, [fetchStatistics]);
 
-  // ==========================================
-  // NETTOYAGE
-  // ==========================================
-
   useEffect(() => {
-    // Nettoyer le timeout au démontage
     return () => {
       if (refreshTimeout) {
         clearTimeout(refreshTimeout);
@@ -303,15 +697,13 @@ const OrdersManagement = () => {
   }, [refreshTimeout]);
 
   // ==========================================
-  // RENDU PRINCIPAL
+  // EXPORT CSV
   // ==========================================
 
-  // Export CSV (avec filtres status + période + recherche)
   const handleExportCSV = async () => {
     try {
       setExporting(true);
 
-      // Déterminer période
       let startISO: string | undefined;
       let endISO: string | undefined;
       if (exportPeriod !== 'all') {
@@ -329,13 +721,11 @@ const OrdersManagement = () => {
         endISO = nowISO;
       }
 
-      // Pagination API
-      const pageSizeExport = 100; // respecter contraintes backend
-      const maxPages = 100; // garde-fou
+      const pageSizeExport = 100;
+      const maxPages = 100;
       let page = 1;
       const allRows: Order[] = [];
 
-      // Construire les filtres de la requête
       const baseFilters: Record<string, any> = {
         page,
         limit: pageSizeExport,
@@ -345,7 +735,6 @@ const OrdersManagement = () => {
       if (startISO) baseFilters.startDate = startISO;
       if (endISO) baseFilters.endDate = endISO;
 
-      // Boucle jusqu'à épuisement des pages
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const res = await newOrderService.getAllOrders({ ...baseFilters, page });
@@ -356,7 +745,6 @@ const OrdersManagement = () => {
         page += 1;
       }
 
-      // Sécurité: filtre client par période + statut + recherche si nécessaire
       let filtered = [...allRows];
       if (statusFilter !== 'all') {
         filtered = filtered.filter(o => o.status === statusFilter);
@@ -376,22 +764,28 @@ const OrdersManagement = () => {
         });
       }
 
-      // Génération CSV
       const headers = [
         'ID',
         'Numéro commande',
-        'Client - Prénom',
-        'Client - Nom',
+        'Client - Nom complet',
         'Client - Email',
-        'Vendeur',
-        'Vendeur - Email',
+        'Client - Téléphone',
+        'Client - Rôle',
         'Articles (nb)',
-        'Statut',
+        'Statut commande',
+        'Statut paiement',
+        'Méthode paiement',
+        'ID Transaction',
         'Montant total',
-        'Téléphone',
-        'Adresse',
+        'Adresse complète',
+        'Code Postal',
+        'Ville',
+        'Pays',
+        'Infos complémentaires',
+        'Notes client',
         'Créé le',
-        'Mis à jour le'
+        'Mis à jour le',
+        'Livraison estimée'
       ];
 
       const escapeCell = (val: unknown) => {
@@ -401,25 +795,32 @@ const OrdersManagement = () => {
       };
 
       const rows = filtered.map(o => {
-        const itemsCount = Array.isArray(o.orderItems) ? o.orderItems.reduce((sum, it) => sum + (it.quantity || 0), 0) : 0;
-        const address = (o as any).shippingAddress?.fullFormatted
-          || (((o as any).shippingAddress?.street || '') + (((o as any).shippingAddress?.city) ? ', ' + (o as any).shippingAddress.city : ''))
-          || '';
+        const itemsCount = (o as any).itemsCount || (Array.isArray(o.orderItems) ? o.orderItems.reduce((sum, it) => sum + (it.quantity || 0), 0) : 0);
+        const customerInfo = (o as any).customer_info as CustomerInfo;
+        const shippingAddress = customerInfo?.shipping_address;
+
         return [
           o.id,
           o.orderNumber || '',
-          o.user?.firstName || '',
-          o.user?.lastName || '',
-          o.user?.email || '',
-          (o as any).vendor?.username || '',
-          (o as any).vendor?.email || '',
+          getCustomerDisplayName(o),
+          getCustomerEmail(o),
+          getCustomerPhone(o),
+          customerInfo?.user_role || '',
           itemsCount,
-          o.status,
-          o.totalAmount,
-          o.phoneNumber || '',
-          address,
-          o.createdAt,
-          o.updatedAt
+          o.status || '',
+          (o as any).payment_info?.status_text || (o as any).paymentStatus || '',
+          formatPaymentMethod((o as any).payment_info?.method || (o as any).paymentMethod || ''),
+          (o as any).payment_info?.transaction_id || (o as any).transactionId || '',
+          o.totalAmount || 0,
+          getFormattedShippingAddress(o),
+          shippingAddress?.postal_code || '',
+          shippingAddress?.city || '',
+          shippingAddress?.country || '',
+          shippingAddress?.additional_info || '',
+          customerInfo?.notes || '',
+          o.createdAt || '',
+          o.updatedAt || '',
+          (o as any).estimatedDelivery || ''
         ].map(escapeCell).join(',');
       });
 
@@ -443,6 +844,19 @@ const OrdersManagement = () => {
     }
   };
 
+  // ==========================================
+  // GROUPER LES COMMANDES PAR STATUT (KANBAN)
+  // ==========================================
+
+  const ordersByStatus = KANBAN_COLUMNS.reduce((acc, column) => {
+    acc[column.id] = orders.filter(order => order.status === column.id);
+    return acc;
+  }, {} as Record<OrderStatus, Order[]>);
+
+  // ==========================================
+  // RENDU PRINCIPAL
+  // ==========================================
+
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
@@ -462,19 +876,24 @@ const OrdersManagement = () => {
     <TooltipProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
         <div className="w-full px-6 py-8">
-          {/* Header Ultra-Moderne */}
+          {/* Header Ultra-Moderne avec Gradient */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center">
-                    <Package className="h-5 w-5 text-white" />
+              <div className="space-y-2">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 flex items-center justify-center shadow-lg">
+                      <Package className="h-7 w-7 text-white" />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
+                      <Zap className="h-3 w-3 text-white" />
+                    </div>
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                      Commandes
-            </h1>
-                    <p className="text-slate-500 text-sm font-medium">
+                    <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 bg-clip-text text-transparent">
+                      Gestion des Commandes
+                    </h1>
+                    <p className="text-slate-500 text-base font-medium mt-1">
                       Tableau de bord • {orders.length} commande{orders.length > 1 ? 's' : ''} • Page {currentPage}/{totalPages}
                     </p>
                   </div>
@@ -482,10 +901,31 @@ const OrdersManagement = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                {/* Notifications - REST et WebSocket */}
+                {/* Vue Switcher */}
+                <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
+                  <Button
+                    variant={viewMode === 'table' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('table')}
+                    className={`gap-2 ${viewMode === 'table' ? 'bg-slate-900 text-white' : ''}`}
+                  >
+                    <LayoutList className="h-4 w-4" />
+                    Table
+                  </Button>
+                  <Button
+                    variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('kanban')}
+                    className={`gap-2 ${viewMode === 'kanban' ? 'bg-slate-900 text-white' : ''}`}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    Kanban
+                  </Button>
+                </div>
+
                 <NotificationCenter />
 
-                <Button onClick={debouncedRefresh} disabled={loading} variant="outline" className="gap-2">
+                <Button onClick={debouncedRefresh} disabled={loading} variant="outline" className="gap-2 hover:bg-slate-50">
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                   Actualiser
                 </Button>
@@ -502,7 +942,7 @@ const OrdersManagement = () => {
                       <SelectItem value="30d">30 derniers jours</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button className="gap-2 bg-slate-900 hover:bg-slate-800" disabled={exporting} onClick={async () => { await handleExportCSV(); }}>
+                  <Button className="gap-2 bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 shadow-lg" disabled={exporting} onClick={handleExportCSV}>
                     <Download className={`h-4 w-4 ${exporting ? 'animate-pulse' : ''}`} />
                     {exporting ? 'Export...' : 'Exporter'}
                   </Button>
@@ -511,86 +951,142 @@ const OrdersManagement = () => {
             </div>
           </div>
 
-          {/* Statistiques simplifiées */}
+          {/* Statistiques Améliorées avec Animations */}
           {statistics && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+              {/* Total Commandes */}
+              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-200">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent opacity-50"></div>
+                <CardContent className="p-6 relative">
                   <div className="flex items-center justify-between">
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500">Total Commandes</p>
+                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                        <ShoppingCart className="h-4 w-4" />
+                        Total Commandes
+                      </p>
                       <div className="flex items-baseline gap-2">
-                        <p className="text-3xl font-bold text-slate-900">{statistics.totalOrders}</p>
-                        <Badge variant="secondary" className="text-xs">
-                          +{statistics.ordersCount.today}
+                        <p className="text-4xl font-bold bg-gradient-to-br from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                          {statistics.totalOrders}
+                        </p>
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                          +{statistics.ordersCount?.today || 0}
                         </Badge>
                       </div>
                       <p className="text-xs text-slate-400">aujourd'hui</p>
                     </div>
-                    <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Package className="h-6 w-6 text-blue-600" />
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                      <Package className="h-8 w-8 text-white" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
+              {/* Revenus */}
+              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-emerald-200">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-transparent opacity-50"></div>
+                <CardContent className="p-6 relative">
                   <div className="flex items-center justify-between">
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500">Revenus</p>
+                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Revenus
+                      </p>
                       <div className="flex items-baseline gap-2">
-                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(statistics.revenue.total)}</p>
+                        <p className="text-3xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-400 bg-clip-text text-transparent">
+                          {formatCurrency(statistics.revenue?.total || 0)}
+                        </p>
                         <div className="flex items-center gap-1 text-emerald-600">
                           <TrendingUp className="h-3 w-3" />
                           <span className="text-xs font-medium">+12%</span>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400">{formatCurrency(statistics.revenue.monthly)} ce mois</p>
+                      <p className="text-xs text-slate-400">{formatCurrency(statistics.revenue?.monthly || 0)} ce mois</p>
                     </div>
-                    <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <TrendingUp className="h-6 w-6 text-emerald-600" />
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                      <BarChart3 className="h-8 w-8 text-white" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
+              {/* En attente */}
+              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-amber-200">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-transparent opacity-50"></div>
+                <CardContent className="p-6 relative">
                   <div className="flex items-center justify-between">
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500">En attente</p>
+                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        En attente
+                      </p>
                       <div className="flex items-baseline gap-2">
-                        <p className="text-3xl font-bold text-slate-900">{statistics.ordersByStatus.pending}</p>
-                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-200">
+                        <p className="text-4xl font-bold bg-gradient-to-br from-amber-600 to-amber-400 bg-clip-text text-transparent">
+                          {statistics.ordersByStatus?.pending || 0}
+                        </p>
+                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">
                           Urgent
                         </Badge>
                       </div>
                       <p className="text-xs text-slate-400">à traiter</p>
                     </div>
-                    <div className="h-12 w-12 rounded-xl bg-amber-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Clock className="h-6 w-6 text-amber-600" />
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                      <AlertCircle className="h-8 w-8 text-white" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
+              {/* Payées */}
+              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-green-200">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-transparent opacity-50"></div>
+                <CardContent className="p-6 relative">
                   <div className="flex items-center justify-between">
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500">Livrées</p>
+                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Payées
+                      </p>
                       <div className="flex items-baseline gap-2">
-                        <p className="text-3xl font-bold text-slate-900">{statistics.ordersByStatus.delivered}</p>
-                        <div className="flex items-center gap-1 text-emerald-600">
+                        <p className="text-4xl font-bold bg-gradient-to-br from-green-600 to-green-400 bg-clip-text text-transparent">
+                          {(statistics as any)?.paidOrders || 0}
+                        </p>
+                        <div className="flex items-center gap-1 text-green-600">
                           <CheckCircle className="h-3 w-3" />
-                          <span className="text-xs font-medium">98%</span>
+                          <span className="text-xs font-medium">OK</span>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400">taux de succès</p>
+                      <p className="text-xs text-slate-400">paiement validé</p>
                     </div>
-                    <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <CheckCircle className="h-6 w-6 text-emerald-600" />
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                      <CheckCircle className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Livrées */}
+              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-indigo-200">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-transparent opacity-50"></div>
+                <CardContent className="p-6 relative">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                        <Truck className="h-4 w-4" />
+                        Livrées
+                      </p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-4xl font-bold bg-gradient-to-br from-indigo-600 to-indigo-400 bg-clip-text text-transparent">
+                          {statistics.ordersByStatus?.delivered || 0}
+                        </p>
+                        <div className="flex items-center gap-1 text-indigo-600">
+                          <Home className="h-3 w-3" />
+                          <span className="text-xs font-medium">OK</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400">finalisées</p>
+                    </div>
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                      <Home className="h-8 w-8 text-white" />
                     </div>
                   </div>
                 </CardContent>
@@ -600,7 +1096,7 @@ const OrdersManagement = () => {
 
           {/* Alertes modernes */}
           {error && (
-            <Alert className="mb-6 border-red-200 bg-red-50">
+            <Alert className="mb-6 border-2 border-red-200 bg-gradient-to-r from-red-50 to-transparent">
               <AlertCircle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-800">
                 <div className="flex items-center justify-between">
@@ -616,23 +1112,23 @@ const OrdersManagement = () => {
             </Alert>
           )}
 
-          {/* Filtres modernes */}
-          <Card className="mb-8">
+          {/* Filtres améliorés */}
+          <Card className="mb-8 border-2 border-slate-100 shadow-sm">
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
                 <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
-                      placeholder="Rechercher commandes..."
+                      placeholder="Rechercher par numéro..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 w-full sm:w-80"
+                      className="pl-10 w-full sm:w-80 border-slate-200 focus:border-slate-400"
                     />
                   </div>
 
                   <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as OrderStatus | 'all')}>
-                    <SelectTrigger className="w-full sm:w-48">
+                    <SelectTrigger className="w-full sm:w-48 border-slate-200">
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue />
                     </SelectTrigger>
@@ -656,297 +1152,313 @@ const OrdersManagement = () => {
             </CardContent>
           </Card>
 
-          {/* Tableau ultra-moderne */}
-          <Card className="overflow-hidden border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center">
-                    <Package className="h-4 w-4 text-white" />
+          {/* Vue Table ou Kanban */}
+          {viewMode === 'table' ? (
+            /* VUE TABLE */
+            <Card className="overflow-hidden border-0 shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b-2 border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center shadow-lg">
+                      <LayoutList className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Vue Tableau</CardTitle>
+                      <CardDescription>Gestion détaillée des commandes</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-xl">Commandes</CardTitle>
-                    <CardDescription>Gestion et suivi en temps réel</CardDescription>
-                  </div>
+                  <Badge variant="outline" className="font-mono text-base px-4 py-2">
+                    {orders.length} total
+                  </Badge>
                 </div>
-                <Badge variant="outline" className="font-mono">
-                  {orders.length} total
-                </Badge>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="h-12 w-12 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin"></div>
-                    <p className="text-slate-500 font-medium">Chargement des commandes...</p>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="flex items-center justify-center h-96">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="h-16 w-16 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin"></div>
+                      <p className="text-slate-500 font-medium text-lg">Chargement des commandes...</p>
+                    </div>
                   </div>
-                </div>
-              ) : orders.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                  <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                    <Package className="h-10 w-10 text-slate-300" />
+                ) : orders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-96 text-slate-400">
+                    <div className="h-24 w-24 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                      <Package className="h-12 w-12 text-slate-300" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-600 mb-2">Aucune commande</h3>
+                    <p className="text-sm text-center max-w-md">
+                      Aucune commande ne correspond à vos critères de recherche.
+                      Essayez de modifier vos filtres.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-600 mb-2">Aucune commande</h3>
-                  <p className="text-sm text-center max-w-md">
-                    Aucune commande ne correspond à vos critères de recherche. 
-                    Essayez de modifier vos filtres.
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                        <TableHead className="font-semibold text-slate-900">Commande</TableHead>
-                        <TableHead className="font-semibold text-slate-900">Client</TableHead>
-                        <TableHead className="font-semibold text-slate-900">Vendeur</TableHead>
-                        <TableHead className="font-semibold text-slate-900">Articles</TableHead>
-                        <TableHead className="font-semibold text-slate-900">Statut</TableHead>
-                        <TableHead className="font-semibold text-slate-900">Montant</TableHead>
-                        <TableHead className="font-semibold text-slate-900">Contact</TableHead>
-                        <TableHead className="font-semibold text-slate-900">Date</TableHead>
-                        <TableHead className="font-semibold text-slate-900 text-center">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {orders.map((order, index) => (
-                        <TableRow 
-                          key={order.id} 
-                          className="group hover:bg-slate-50/50 transition-colors border-b border-slate-100"
-                        >
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-3">
-                              <div className="h-2 w-2 rounded-full bg-slate-900 opacity-60"></div>
-                              <div className="space-y-1">
-                                <p className="font-mono text-sm font-semibold text-slate-900">
-                                  #{order.orderNumber}
-                                </p>
-                                <div className="flex items-center gap-2">
-                                  
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/80 hover:bg-slate-50 border-b-2 border-slate-200">
+                          <TableHead className="font-semibold text-slate-900">Commande</TableHead>
+                          <TableHead className="font-semibold text-slate-900">Client</TableHead>
+                          <TableHead className="font-semibold text-slate-900">Articles</TableHead>
+                          <TableHead className="font-semibold text-slate-900">Paiement</TableHead>
+                          <TableHead className="font-semibold text-slate-900">Statut</TableHead>
+                          <TableHead className="font-semibold text-slate-900">Montant</TableHead>
+                          <TableHead className="font-semibold text-slate-900">Contact</TableHead>
+                          <TableHead className="font-semibold text-slate-900">Livraison</TableHead>
+                          <TableHead className="font-semibold text-slate-900 text-center">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {orders.map((order) => (
+                          <TableRow
+                            key={order.id}
+                            className="group hover:bg-slate-50/80 transition-all border-b border-slate-100 cursor-pointer"
+                            onClick={() => viewOrderDetails(order.id)}
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 rounded-full bg-slate-900 opacity-60"></div>
+                                <div className="space-y-1">
+                                  <p className="font-mono text-sm font-semibold text-slate-900">
+                                    #{order.orderNumber}
+                                  </p>
                                 </div>
                               </div>
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback className="bg-slate-100 text-slate-600 text-xs font-semibold">
-                                  {(order.user?.firstName?.[0] || '?').toUpperCase()}
-                                  {(order.user?.lastName?.[0] || '').toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-slate-900 text-sm">
-                                  {order.user?.firstName || 'Client'}
-                                  {order.user?.lastName || 'inconnu'}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  {order.user?.email || 'Email inconnu'}
-                                </p>
-                              </div>
-                            </div>
-                          </TableCell>
+                            </TableCell>
 
-                          <TableCell>
-                            {(order as any).vendor ? (
+                            <TableCell>
                               <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs font-semibold">
-                                    {(((order as any).vendor?.username?.[0]) || 'V').toUpperCase()}
+                                <Avatar className="h-9 w-9 border-2 border-slate-200">
+                                  <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 text-xs font-bold">
+                                    {getCustomerInitials(order)}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div>
-                                  <p className="font-medium text-slate-900 text-sm">
-                                    {(order as any).vendor?.username || 'Vendeur'}
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-semibold text-slate-900 text-sm truncate">
+                                    {getCustomerDisplayName(order)}
                                   </p>
-                                  <p className="text-xs text-slate-500">
-                                    {(order as any).vendor?.email || 'Email inconnu'}
+                                  <p className="text-xs text-slate-500 truncate max-w-40">
+                                    {getCustomerEmail(order)}
                                   </p>
                                 </div>
                               </div>
-                            ) : (
-                              (() => {
-                                const parsedVendorName = extractVendorNameFromNotes(order.notes);
-                                if (parsedVendorName) {
-                                  return (
-                                    <div className="flex items-center gap-3">
-                                      <Avatar className="h-8 w-8">
-                                        <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs font-semibold">
-                                          {(parsedVendorName?.[0] || 'V').toUpperCase()}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                                        <p className="font-medium text-slate-900 text-sm">
-                                          {parsedVendorName}
-                                        </p>
-                                        
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                                return (
-                                  <div className="flex items-center gap-2 text-slate-400">
-                                    <Users className="h-4 w-4" />
-                                    <span className="text-sm">Pas de vendeur</span>
-                                  </div>
-                                );
-                              })()
-                            )}
-                          </TableCell>
+                            </TableCell>
 
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <Package className="h-3 w-3 text-slate-500" />
-                                <span className="text-sm font-medium text-slate-900">
-                                  {order.orderItems?.length || 0} article{(order.orderItems?.length || 0) > 1 ? 's' : ''}
-                                </span>
-                              </div>
-                              {order.orderItems && order.orderItems.length > 0 && (
-                                <div className="text-xs text-slate-500 max-w-32 truncate">
-                                  {order.orderItems[0].product?.name}
-                                  {order.orderItems.length > 1 && ` +${order.orderItems.length - 1} autre${order.orderItems.length > 2 ? 's' : ''}`}
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Package className="h-3 w-3 text-slate-500" />
+                                  <span className="text-sm font-medium text-slate-900">
+                                    {(order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} article{((order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0) > 1 ? 's' : ''}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Badge className={`${getStatusColor(order.status)} border-0 font-medium`}>
-                              <div className="flex items-center gap-1.5">
-                                {getStatusIcon(order.status)}
-                                {getStatusLabel(order.status)}
                               </div>
-                            </Badge>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="font-semibold text-slate-900">
+                            </TableCell>
+
+                            <TableCell>
+                              <div className="space-y-1">
+                                <Badge className={`${getPaymentStatusColor((order as any).payment_info?.status || 'PENDING')} text-xs border font-medium`}>
+                                  <span className="mr-1">
+                                    {(order as any).payment_info?.status_icon || '⏳'}
+                                  </span>
+                                  {(order as any).payment_info?.status_text || 'En attente'}
+                                </Badge>
+                                <div className="text-xs text-slate-500">
+                                  {formatPaymentMethod((order as any).payment_info?.method || order.paymentMethod || 'Non spécifié')}
+                                </div>
+                              </div>
+                            </TableCell>
+
+                            <TableCell>
+                              <Badge className={`${getStatusColor(order.status)} border-0 font-semibold px-3 py-1.5`}>
+                                <div className="flex items-center gap-1.5">
+                                  {getStatusIcon(order.status)}
+                                  {getStatusLabel(order.status)}
+                                </div>
+                              </Badge>
+                            </TableCell>
+
+                            <TableCell>
+                              <div className="font-bold text-slate-900 text-base">
                                 {formatCurrency(order.totalAmount)}
                               </div>
-                              {order.orderItems && order.orderItems.length > 0 && (
-                                <div className="text-xs text-slate-500">
-                                  Moy. {formatCurrency(order.totalAmount / order.orderItems.reduce((sum, item) => sum + item.quantity, 0))}/article
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
+                            </TableCell>
 
-                          <TableCell>
-                            <div className="space-y-1 max-w-40">
-                              <div className="flex items-center gap-1 text-xs text-slate-600">
-                                <Phone className="h-3 w-3 flex-shrink-0" />
-                                <span className="truncate">{order.phoneNumber}</span>
+                            <TableCell>
+                              <div className="space-y-1 max-w-48">
+                                <div className="flex items-center gap-1 text-xs text-slate-600">
+                                  <Phone className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate font-medium">
+                                    {getCustomerPhone(order)}
+                                  </span>
+                                </div>
+                                <div className="flex items-start gap-1 text-xs text-slate-500">
+                                  <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                                  <span className="truncate leading-tight">
+                                    {getFormattedShippingAddress(order)}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex items-start gap-1 text-xs text-slate-500">
-                                <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                                <span className="truncate leading-tight">
-                                  {(order.shippingAddress && order.shippingAddress.street) 
-                                    ? `${order.shippingAddress.street}${order.shippingAddress.city ? `, ${order.shippingAddress.city}` : ''}`
-                                    : order.shippingAddress?.fullFormatted || 'Adresse non disponible'}
-                                </span>
+                            </TableCell>
+
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <Calendar className="h-3 w-3" />
+                                  <div>
+                                    <span className="text-sm font-medium">
+                                      {new Date(order.createdAt).toLocaleDateString('fr-FR')}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2 text-slate-600">
-                                <Calendar className="h-3 w-3" />
-                                <span className="text-sm">
-                                  {new Date(order.createdAt).toLocaleDateString('fr-FR')}
-                                </span>
+                            </TableCell>
+
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-2 justify-center">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => viewOrderDetails(order.id)}
+                                      className="h-9 w-9 p-0 hover:bg-slate-900 hover:text-white transition-colors"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Voir les détails</TooltipContent>
+                                </Tooltip>
+
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-slate-100">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuLabel>Actions rapides</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => updateOrderStatus(order.id, 'CONFIRMED')}
+                                      disabled={order.status === 'CONFIRMED'}
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Confirmer
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => updateOrderStatus(order.id, 'SHIPPED')}
+                                      disabled={order.status === 'SHIPPED' || order.status === 'DELIVERED'}
+                                    >
+                                      <Truck className="h-4 w-4 mr-2" />
+                                      Expédier
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => updateOrderStatus(order.id, 'DELIVERED')}
+                                      disabled={order.status === 'DELIVERED'}
+                                    >
+                                      <Home className="h-4 w-4 mr-2" />
+                                      Livrer
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => updateOrderStatus(order.id, 'CANCELLED')}
+                                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                      disabled={order.status === 'CANCELLED' || order.status === 'DELIVERED'}
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Annuler
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
-                              <div className="text-xs text-slate-500">
-                                {new Date(order.createdAt).toLocaleTimeString('fr-FR', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </div>
-                            </div>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="flex items-center gap-2 justify-center">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => viewOrderDetails(order.id)}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Voir les détails</TooltipContent>
-                              </Tooltip>
-                              
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => viewOrderDetails(order.id)}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Voir détails
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => updateOrderStatus(order.id, 'CONFIRMED')}
-                                    disabled={order.status === 'CONFIRMED'}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirmer
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => updateOrderStatus(order.id, 'SHIPPED')}
-                                    disabled={order.status === 'SHIPPED' || order.status === 'DELIVERED'}
-                                  >
-                                    <Truck className="h-4 w-4 mr-2" />
-                                    Expédier
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => updateOrderStatus(order.id, 'DELIVERED')}
-                                    disabled={order.status === 'DELIVERED'}
-                                  >
-                                    <Home className="h-4 w-4 mr-2" />
-                                    Livrer
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => updateOrderStatus(order.id, 'CANCELLED')}
-                                    className="text-red-600 focus:text-red-600"
-                                    disabled={order.status === 'CANCELLED' || order.status === 'DELIVERED'}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Annuler
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            /* VUE KANBAN */
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              <Card className="overflow-hidden border-0 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b-2 border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center shadow-lg">
+                        <LayoutGrid className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl">Vue Kanban</CardTitle>
+                        <CardDescription>Glissez-déposez pour changer les statuts</CardDescription>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="font-mono text-base px-4 py-2">
+                      {orders.length} total
+                    </Badge>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+                  {loading ? (
+                    <div className="flex items-center justify-center h-96">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="h-16 w-16 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin"></div>
+                        <p className="text-slate-500 font-medium text-lg">Chargement des commandes...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex gap-6 overflow-x-auto pb-4 px-2"
+                      style={{
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: '#94a3b8 #e2e8f0'
+                      }}
+                    >
+                      {KANBAN_COLUMNS.map((column) => (
+                        <KanbanColumn
+                          key={column.id}
+                          column={column}
+                          orders={ordersByStatus[column.id] || []}
+                          onView={viewOrderDetails}
+                        />
                       ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <DragOverlay>
+                {activeId ? (
+                  <div className="rotate-6 scale-105">
+                    {(() => {
+                      const orderIdMatch = activeId.match(/order-(\d+)/);
+                      if (!orderIdMatch) return null;
+                      const orderId = parseInt(orderIdMatch[1]);
+                      const order = orders.find(o => o.id === orderId);
+                      if (!order) return null;
+                      return <KanbanCard order={order} onView={viewOrderDetails} />;
+                    })()}
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
 
           {/* Pagination ultra-moderne */}
-          {totalPages > 1 && (
+          {viewMode === 'table' && totalPages > 1 && (
             <div className="flex items-center justify-between mt-8">
               <div className="flex items-center gap-2 text-sm text-slate-600">
-                <span>Page {currentPage} sur {totalPages}</span>
+                <span className="font-medium">Page {currentPage} sur {totalPages}</span>
                 <Separator orientation="vertical" className="h-4" />
                 <span>{orders.length} commandes affichées</span>
               </div>
@@ -956,10 +1468,11 @@ const OrdersManagement = () => {
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
+                  className="hover:bg-slate-900 hover:text-white transition-colors"
                 >
                   Précédent
                 </Button>
-                
+
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   const page = i + 1;
                   return (
@@ -968,18 +1481,19 @@ const OrdersManagement = () => {
                       variant={currentPage === page ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(page)}
-                      className={currentPage === page ? "bg-slate-900" : ""}
+                      className={currentPage === page ? "bg-slate-900 hover:bg-slate-800" : "hover:bg-slate-100"}
                     >
                       {page}
                     </Button>
                   );
                 })}
-                
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
+                  className="hover:bg-slate-900 hover:text-white transition-colors"
                 >
                   Suivant
                 </Button>
@@ -992,4 +1506,4 @@ const OrdersManagement = () => {
   );
 };
 
-export default OrdersManagement; 
+export default OrdersManagement;

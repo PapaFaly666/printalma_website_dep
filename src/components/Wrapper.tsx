@@ -19,7 +19,8 @@ const Wrapper = ({ children }: WrapperProps) => {
     isOpen,
     removeFromCart,
     updateQuantity,
-    closeCart
+    closeCart,
+    clearCart
   } = useCart();
 
   // Liste des routes où le NavBar ne doit PAS apparaître
@@ -31,17 +32,19 @@ const Wrapper = ({ children }: WrapperProps) => {
   const isAdminProductEditPage = /^\/admin\/products\/\d+\/edit$/.test(location.pathname);
   // Vérifier si on est sur une page de détail de commande admin (/admin/orders/:orderId)
   const isAdminOrderDetailPage = /^\/admin\/orders\/\d+$/.test(location.pathname);
-  
+
   // Vérifier si on est sur une route vendeur
   const isVendorRoute = location.pathname.startsWith('/vendeur');
 
   // Vérifier si on est sur une route de gestion des thèmes
   const isThemeManagementRoute = location.pathname.startsWith('/admin/themes/') && location.pathname.includes('/products');
-  
+
   // Cacher la navbar si la route est dans la liste, si c'est une page de détail produit, si c'est une route vendeur, ou si c'est une route de gestion des thèmes
   const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname) || isProductDetailPage || isAdminProductEditPage || isAdminOrderDetailPage || isVendorRoute || isThemeManagementRoute;
 
   const handleCheckout = () => {
+    // Fermer le panier
+    closeCart();
     // Rediriger vers la page de commande
     navigate('/order-form');
   };
