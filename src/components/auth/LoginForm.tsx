@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ButtonLoading } from '../ui/loading';
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Shield } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Shield, TestTube } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
+import { TEST_CREDENTIALS } from '../../config/testCredentials';
 
 const LoginForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -121,7 +122,7 @@ const LoginForm: React.FC = () => {
   // 🎨 Déterminer le type d'alerte
   const getAlertType = (): 'warning' | 'critical' | 'locked' | 'default' => {
     if (!error) return 'default';
-    
+
     if (isAccountLocked(error)) return 'locked';
     if (isLastAttempt(error)) return 'critical';
     if (extractRemainingAttempts(error) !== null) return 'warning';
@@ -130,6 +131,21 @@ const LoginForm: React.FC = () => {
 
   const alertType = getAlertType();
   const remainingAttempts = extractRemainingAttempts(error || '');
+
+  // 🧪 Fonction pour remplir avec les identifiants de test
+  const fillTestCredentials = () => {
+    const testCreds = TEST_CREDENTIALS.VALID_ADMIN;
+    setFormData({
+      email: testCreds.email,
+      password: testCreds.password
+    });
+
+    // Effacer les erreurs précédentes
+    setFormErrors({});
+    clearError();
+
+    console.log('🧪 [LoginForm] Identifiants de test remplis:', testCreds.email);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8">
@@ -265,10 +281,29 @@ const LoginForm: React.FC = () => {
                 )}
               </Button>
 
+              {/* 🧪 Bouton de test rapide (développement uniquement) */}
+              {import.meta.env.DEV && (
+                <div className="border-t pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={fillTestCredentials}
+                    className="w-full text-xs bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                  >
+                    <TestTube className="h-3 w-3 mr-2" />
+                    Remplir avec identifiants de test (Admin)
+                  </Button>
+                  <p className="text-xs text-purple-600 mt-1 text-center">
+                    testadmin@printalma.com / password123
+                  </p>
+                </div>
+              )}
+
               {/* Lien mot de passe oublié */}
               <div className="text-center">
-                <Link 
-                  to="/forgot-password" 
+                <Link
+                  to="/forgot-password"
                   className="text-sm text-gray-600 hover:text-black transition-colors underline"
                 >
                   Mot de passe oublié ?

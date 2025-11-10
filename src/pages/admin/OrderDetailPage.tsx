@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import newOrderService from '../../services/newOrderService';
 import { Order } from '../../types/order';
 import { Button } from '../../components/ui/button';
@@ -12,10 +12,14 @@ import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrde
 const OrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDesign, setSelectedDesign] = useState<{ url: string; name: string } | null>(null);
+
+  // Récupérer les données depuis le state de navigation si disponibles
+  const orderDataFromState = location.state?.orderData as Order | undefined;
 
   useEffect(() => {
     if (orderId) {
@@ -28,7 +32,38 @@ const OrderDetailPage: React.FC = () => {
             setLoading(false);
             return;
           }
-          const fetchedOrder = await newOrderService.getOrderById(numericOrderId);
+
+          // ✨ PRIORITÉ 1 : Utiliser les données du state si disponibles (depuis OrdersManagement)
+          if (orderDataFromState && orderDataFromState.id === numericOrderId) {
+            console.log('✅ [OrderDetailPage] Utilisation des données du state (avec enrichedVendorProduct)');
+            console.log('🎨 [OrderDetailPage] Items avec enrichedVendorProduct:',
+              orderDataFromState.orderItems?.map(item => ({
+                id: item.id,
+                hasEnriched: !!item.enrichedVendorProduct,
+                designId: item.designId,
+                mockupUrl: item.mockupUrl
+              }))
+            );
+            setOrder(orderDataFromState);
+            setError(null);
+            setLoading(false);
+            return;
+          }
+
+          // ✨ PRIORITÉ 2 : Sinon, charger depuis l'API (navigation directe via URL)
+          console.log('🔄 [OrderDetailPage] Chargement depuis l\'API...');
+          const fetchedOrder = await newOrderService.getOrderByIdAdmin(numericOrderId);
+
+          console.log('📦 [OrderDetailPage] Commande chargée depuis API:', fetchedOrder);
+          console.log('🎨 [OrderDetailPage] Items avec enrichedVendorProduct:',
+            fetchedOrder.orderItems?.map(item => ({
+              id: item.id,
+              hasEnriched: !!item.enrichedVendorProduct,
+              designId: item.designId,
+              mockupUrl: item.mockupUrl
+            }))
+          );
+
           setOrder(fetchedOrder);
           setError(null);
         } catch (err) {
@@ -40,7 +75,7 @@ const OrderDetailPage: React.FC = () => {
       };
       fetchOrderDetails();
     }
-  }, [orderId]);
+  }, [orderId, orderDataFromState]);
 
   // Gestion du raccourci clavier Échap pour fermer le modal
   useEffect(() => {

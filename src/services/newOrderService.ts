@@ -268,20 +268,35 @@ export class NewOrderService {
    * GET /orders/:id
    */
   async getOrderById(orderId: number): Promise<Order> {
-    // 🎨 Utiliser l'endpoint admin qui renvoie enrichedVendorProduct avec les délimitations
-    // Cela permet d'afficher les designs dans les détails de commande
-    try {
-      const response = await this.apiCall<{ orders: Order[] }>(`/orders/admin/all?page=1&limit=1&search=${orderId}`);
-      if (response.data.orders && response.data.orders.length > 0) {
-        return response.data.orders[0];
-      }
-    } catch (error) {
-      console.warn('Erreur avec endpoint admin, fallback sur endpoint standard:', error);
-    }
-
-    // Fallback sur l'endpoint standard si l'admin échoue
+    // Utiliser directement l'endpoint standard qui renvoie une commande par son ID
     const response = await this.apiCall<Order>(`/orders/${orderId}`);
     return response.data;
+  }
+
+  /**
+   * Récupérer les détails enrichis d'une commande (Admin uniquement)
+   * Inclut les données enrichedVendorProduct avec délimitations et designs
+   *
+   * Stratégie:
+   * 1. Essayer GET /orders/admin/:id (si disponible)
+   * 2. Fallback: GET /orders/:id (endpoint standard)
+   */
+  async getOrderByIdAdmin(orderId: number): Promise<Order> {
+    try {
+      // Essayer d'abord l'endpoint admin enrichi
+      const response = await this.apiCall<Order>(`/orders/admin/${orderId}`);
+      console.log('✅ [NewOrderService] Commande chargée via /orders/admin/:id');
+      return response.data;
+    } catch (error: any) {
+      // Si l'endpoint admin n'existe pas (404), utiliser l'endpoint standard
+      if (error.message?.includes('404') || error.message?.includes('non trouvée')) {
+        console.warn('⚠️ [NewOrderService] Endpoint /orders/admin/:id non disponible, fallback sur /orders/:id');
+        const response = await this.apiCall<Order>(`/orders/${orderId}`);
+        return response.data;
+      }
+      // Pour les autres erreurs, les propager
+      throw error;
+    }
   }
 
   // ==========================================
@@ -327,14 +342,14 @@ export class NewOrderService {
 
   /**
    * Modifier le statut d'une commande (Admin)
-   * PUT /orders/:id/status
+   * PATCH /orders/:id/status
    */
   async updateOrderStatus(orderId: number, status: OrderStatus, notes?: string): Promise<Order> {
     const updateData: UpdateStatusRequest = { status };
     if (notes) updateData.notes = notes;
 
     const response = await this.apiCall<Order>(`/orders/${orderId}/status`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(updateData)
     });
     return response.data;

@@ -27,11 +27,15 @@ interface ImageMetrics {
 interface ProductCardWithDesignProps {
   product: VendorProduct;
   onClick?: () => void;
+  selectedColor?: string | null;
+  selectedColors?: string[];
 }
 
 export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
   product,
-  onClick
+  onClick,
+  selectedColor,
+  selectedColors
 }) => {
   const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,9 +47,70 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
   // Déterminer si le produit a un design
   const hasDesign = product.designApplication?.hasDesign && product.designApplication?.designUrl;
 
-  // Obtenir l'image principale et les délimitations
-  const primaryImage = product.images?.primaryImageUrl ||
-                       product.images?.adminReferences?.[0]?.adminImageUrl;
+  // Fonction pour obtenir l'image en fonction de la ou des couleurs sélectionnées
+  const getImageForColor = () => {
+    // Priorité aux couleurs sélectionnées multiples
+    const colorsToCheck = selectedColors || (selectedColor ? [selectedColor] : []);
+
+    if (colorsToCheck.length > 0 && product.adminProduct?.colorVariations) {
+      // Mapping des noms de couleurs vers les codes
+      const colorMapping: { [key: string]: string[] } = {
+        'black': ['black', 'noir'],
+        'white': ['white', 'blanc'],
+        'red': ['red', 'rouge'],
+        'blue': ['blue', 'bleu'],
+        'green': ['green', 'vert'],
+        'yellow': ['yellow', 'jaune'],
+        'pink': ['pink', 'rose'],
+        'purple': ['purple', 'violet'],
+        'gray': ['gray', 'grey', 'gris'],
+        'orange': ['orange']
+      };
+
+      // Fonction pour normaliser les noms de couleurs
+      const normalizeColorName = (colorName: string): string => {
+        return colorName.toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Remove accents
+          .trim();
+      };
+
+      // Chercher une variation correspondante pour chaque couleur sélectionnée
+      for (const selectedColor of colorsToCheck) {
+        const selectedColorNormalized = normalizeColorName(selectedColor);
+        const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+
+        const colorVariation = product.adminProduct.colorVariations.find((variation: any) => {
+          const variationName = normalizeColorName(variation.name);
+
+          const match = possibleNames.some(name => {
+            const normalizedPossible = normalizeColorName(name);
+            const isMatch = variationName === normalizedPossible ||
+                           variationName.includes(normalizedPossible) ||
+                           normalizedPossible.includes(variationName);
+            return isMatch;
+          });
+
+          // Vérifier aussi par colorCode
+          const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+
+          return match || colorCodeMatch;
+        });
+
+        if (colorVariation?.images?.length > 0) {
+          // Retourner la première image de la variation trouvée
+          console.log(`🎨 [ProductCardWithDesign] Couleur trouvée pour produit ${product.id}: ${selectedColor} -> ${colorVariation.name}`);
+          return colorVariation.images[0].url;
+        }
+      }
+    }
+
+    // Fallback vers l'image par défaut
+    return product.images?.primaryImageUrl ||
+           product.images?.adminReferences?.[0]?.adminImageUrl;
+  };
+
+  const primaryImage = getImageForColor();
 
   const getDelimitations = (): DelimitationData[] => {
     if (!product.adminProduct?.colorVariations) return [];

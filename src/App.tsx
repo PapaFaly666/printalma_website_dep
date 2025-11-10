@@ -193,6 +193,9 @@ import AdminLoginTest from './pages/test/AdminLoginTest';
 import TestPaydunyaPage from './pages/TestPaydunyaPage';
 import TestPaydunyaFixPage from './pages/TestPaydunyaFixPage';
 
+// 🧪 Page de test authentification
+import TestAuth from './pages/TestAuth';
+
 // 🏆 Best Sellers
 import BestSellersPage from './pages/BestSellersPage';
 
@@ -333,7 +336,7 @@ function App() {
                   <Route path="themes/:themeId/products" element={<ThemeProductsPage />} />
                   <Route path="stock" element={<AdminStockManagement />} />
                   <Route path="settings" element={<AdminSettingsPage />} />
-                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route index element={<Navigate to="/test-auth" replace />} />
                 </Route>
                 
                 {/* Routes vendeur protégées */}
@@ -423,6 +426,9 @@ function App() {
                 {/* 💳 Test PayDunya */}
                 <Route path='/test-paydunya' element={<TestPaydunyaPage />} />
                 <Route path='/test-paydunya-fix' element={<TestPaydunyaFixPage />} />
+
+                {/* 🧪 Test authentification */}
+                <Route path='/test-auth' element={<TestAuth />} />
 
                 {/* Confirmation de changement d'email */}
                 <Route path='/confirm-email-change' element={<ConfirmEmailChange />} />

@@ -84,6 +84,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 import NotificationCenter from '../../components/NotificationCenter';
 import { getStatusColor, getStatusIcon, formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
 import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrderProductPreview';
+import { UpdateStatusModal } from '../../components/admin/UpdateStatusModal';
 
 // Import pour le drag-and-drop
 import {
@@ -217,9 +218,10 @@ const KANBAN_COLUMNS: { id: OrderStatus; title: string; color: string; icon: any
 interface KanbanCardProps {
   order: Order;
   onView: (orderId: number) => void;
+  onChangeStatus?: (order: Order) => void;
 }
 
-const KanbanCard: React.FC<KanbanCardProps> = ({ order, onView }) => {
+const KanbanCard: React.FC<KanbanCardProps> = ({ order, onView, onChangeStatus }) => {
   const {
     attributes,
     listeners,
@@ -251,19 +253,38 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order, onView }) => {
             #{order.orderNumber}
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            onView(order.id);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100"
-        >
-          <Eye className="h-3 w-3" />
-        </Button>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onChangeStatus && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onChangeStatus(order);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="h-6 w-6 p-0 hover:bg-blue-100"
+              title="Changer le statut"
+            >
+              <Package className="h-3 w-3 text-blue-600" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onView(order.id);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="h-6 w-6 p-0 hover:bg-slate-100"
+            title="Voir les détails"
+          >
+            <Eye className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 mb-3">
@@ -482,9 +503,10 @@ interface KanbanColumnProps {
   column: typeof KANBAN_COLUMNS[0];
   orders: Order[];
   onView: (orderId: number) => void;
+  onChangeStatus?: (order: Order) => void;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, orders, onView }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, orders, onView, onChangeStatus }) => {
   const Icon = column.icon;
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -527,7 +549,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, orders, onView }) =
         >
           <SortableContext items={orders.map(o => `order-${o.id}`)} strategy={verticalListSortingStrategy}>
             {orders.map((order) => (
-              <KanbanCard key={order.id} order={order} onView={onView} />
+              <KanbanCard key={order.id} order={order} onView={onView} onChangeStatus={onChangeStatus} />
             ))}
           </SortableContext>
 
@@ -580,12 +602,32 @@ const OrdersManagement = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  // États pour la modal de changement de statut
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [selectedOrderForStatusChange, setSelectedOrderForStatusChange] = useState<Order | null>(null);
+
   // ==========================================
   // ACTIONS DE BASE
   // ==========================================
 
   const viewOrderDetails = (orderId: number) => {
-    navigate(`/admin/orders/${orderId}`);
+    // Trouver la commande dans la liste actuelle
+    const orderData = orders.find(o => o.id === orderId);
+
+    // Naviguer avec les données dans le state pour éviter un nouvel appel API
+    navigate(`/admin/orders/${orderId}`, {
+      state: { orderData }
+    });
+  };
+
+  const openStatusModal = (order: Order) => {
+    setSelectedOrderForStatusChange(order);
+    setIsStatusModalOpen(true);
+  };
+
+  const closeStatusModal = () => {
+    setSelectedOrderForStatusChange(null);
+    setIsStatusModalOpen(false);
   };
 
   // ==========================================
@@ -672,9 +714,9 @@ const OrdersManagement = () => {
     setRefreshTimeout(newTimeout);
   }, [fetchOrders, lastRefreshTime, refreshTimeout]);
 
-  const updateOrderStatus = async (orderId: number, newStatus: OrderStatus) => {
+  const updateOrderStatus = async (orderId: number, newStatus: OrderStatus, notes?: string) => {
     try {
-      await newOrderService.updateOrderStatus(orderId, newStatus);
+      await newOrderService.updateOrderStatus(orderId, newStatus, notes);
 
       setOrders(prev =>
         prev.map(order =>
@@ -685,8 +727,8 @@ const OrdersManagement = () => {
       );
 
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`Commande ${orderId} mise à jour vers ${newStatus}`, {
-          body: `Commande ${orderId} mise à jour vers ${newStatus}`,
+        new Notification(`Statut mis à jour`, {
+          body: `La commande #${orders.find(o => o.id === orderId)?.orderNumber || orderId} a été mise à jour vers ${getStatusLabel(newStatus)}`,
           icon: '/favicon.ico',
           tag: 'success'
         });
@@ -703,7 +745,13 @@ const OrdersManagement = () => {
           tag: 'error'
         });
       }
+      throw error; // Re-throw pour que la modal puisse afficher l'erreur
     }
+  };
+
+  const handleStatusChangeFromModal = async (newStatus: OrderStatus, notes?: string) => {
+    if (!selectedOrderForStatusChange) return;
+    await updateOrderStatus(selectedOrderForStatusChange.id, newStatus, notes);
   };
 
   // ==========================================
@@ -1567,38 +1615,49 @@ const OrdersManagement = () => {
                                       <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuContent align="end" className="w-56">
                                     <DropdownMenuLabel>Actions rapides</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => openStatusModal(order)}
+                                      className="cursor-pointer"
+                                    >
+                                      <Package className="h-4 w-4 mr-2" />
+                                      Changer le statut
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => updateOrderStatus(order.id, 'CONFIRMED')}
                                       disabled={order.status === 'CONFIRMED'}
+                                      className="cursor-pointer"
                                     >
                                       <CheckCircle className="h-4 w-4 mr-2" />
-                                      Confirmer
+                                      Confirmer rapidement
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => updateOrderStatus(order.id, 'SHIPPED')}
                                       disabled={order.status === 'SHIPPED' || order.status === 'DELIVERED'}
+                                      className="cursor-pointer"
                                     >
                                       <Truck className="h-4 w-4 mr-2" />
-                                      Expédier
+                                      Expédier rapidement
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => updateOrderStatus(order.id, 'DELIVERED')}
                                       disabled={order.status === 'DELIVERED'}
+                                      className="cursor-pointer"
                                     >
                                       <Home className="h-4 w-4 mr-2" />
-                                      Livrer
+                                      Livrer rapidement
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => updateOrderStatus(order.id, 'CANCELLED')}
-                                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                      className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
                                       disabled={order.status === 'CANCELLED' || order.status === 'DELIVERED'}
                                     >
                                       <XCircle className="h-4 w-4 mr-2" />
-                                      Annuler
+                                      Annuler rapidement
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -1661,6 +1720,7 @@ const OrdersManagement = () => {
                           column={column}
                           orders={ordersByStatus[column.id] || []}
                           onView={viewOrderDetails}
+                          onChangeStatus={openStatusModal}
                         />
                       ))}
                     </div>
@@ -1732,6 +1792,25 @@ const OrdersManagement = () => {
             </div>
           )}
         </div>
+
+        {/* Modal de changement de statut */}
+        {selectedOrderForStatusChange && (
+          <UpdateStatusModal
+            isOpen={isStatusModalOpen}
+            onClose={closeStatusModal}
+            onConfirm={handleStatusChangeFromModal}
+            currentStatus={selectedOrderForStatusChange.status}
+            orderNumber={selectedOrderForStatusChange.orderNumber}
+            orderDetails={{
+              customerName: getCustomerDisplayName(selectedOrderForStatusChange),
+              totalAmount: selectedOrderForStatusChange.totalAmount,
+              itemsCount: selectedOrderForStatusChange.orderItems?.reduce(
+                (sum, item) => sum + (item.quantity || 0),
+                0
+              ) || 0
+            }}
+          />
+        )}
       </div>
     </TooltipProvider>
   );

@@ -4,11 +4,13 @@ import { Search, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-
 import vendorProductsService, { VendorProduct } from '../services/vendorProductsService';
 import { ProductCardWithDesign } from '../components/ProductCardWithDesign';
 import { formatPrice } from '../utils/priceUtils';
+import { categoriesService, Category } from '../services/categoriesService';
+import { subCategoriesService, SubCategory } from '../services/subCategoriesService';
 
 const FilteredArticlesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const selectedCategory = searchParams.get('category');
+  const categoryParam = searchParams.get('category');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('product');
@@ -25,6 +27,131 @@ const FilteredArticlesPage: React.FC = () => {
 
   const themes = ['Amour', 'Otaku', 'Sport', 'HipHop', 'Anniversaire', 'Drôle'];
 
+  // États pour les catégories et sous-catégories
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  // États pour le sélecteur de couleur
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [tempSelectedColors, setTempSelectedColors] = useState<string[]>([]);
+  const [showColorSelector, setShowColorSelector] = useState(false);
+
+  // Couleurs disponibles
+  const availableColors = [
+    { name: 'Noir', value: 'black', hex: '#000000' },
+    { name: 'Blanc', value: 'white', hex: '#FFFFFF' },
+    { name: 'Rouge', value: 'red', hex: '#EF4444' },
+    { name: 'Bleu', value: 'blue', hex: '#3B82F6' },
+    { name: 'Vert', value: 'green', hex: '#10B981' },
+    { name: 'Jaune', value: 'yellow', hex: '#F59E0B' },
+    { name: 'Rose', value: 'pink', hex: '#EC4899' },
+    { name: 'Violet', value: 'purple', hex: '#8B5CF6' },
+    { name: 'Gris', value: 'gray', hex: '#6B7280' },
+    { name: 'Orange', value: 'orange', hex: '#F97316' }
+  ];
+
+  // Fonctions pour gérer la sélection de couleur
+  const toggleTempColor = (colorValue: string) => {
+    setTempSelectedColors(prev =>
+      prev.includes(colorValue)
+        ? prev.filter(c => c !== colorValue)
+        : [...prev, colorValue]
+    );
+  };
+
+  const applyColorSelection = () => {
+    setSelectedColors(tempSelectedColors);
+    setShowColorSelector(false);
+  };
+
+  const cancelColorSelection = () => {
+    setTempSelectedColors(selectedColors);
+    setShowColorSelector(false);
+  };
+
+  const clearColors = () => {
+    setSelectedColors([]);
+    setTempSelectedColors([]);
+  };
+
+  // Fonction pour déterminer les couleurs disponibles dans les produits
+  const getAvailableColorsFromProducts = () => {
+    const colorSet = new Set<string>();
+
+    products.forEach(product => {
+      if (product.adminProduct?.colorVariations) {
+        product.adminProduct.colorVariations.forEach((variation: any) => {
+          const variationName = variation.name.toLowerCase();
+
+          // Mapping inversé: trouver la valeur de couleur correspondante
+          const colorMapping: { [key: string]: string } = {
+            'noir': 'black',
+            'blanc': 'white',
+            'rouge': 'red',
+            'bleu': 'blue',
+            'vert': 'green',
+            'jaune': 'yellow',
+            'rose': 'pink',
+            'violet': 'purple',
+            'gris': 'gray',
+            'orange': 'orange'
+          };
+
+          // Chercher correspondance par nom
+          const mappedColor = colorMapping[variationName];
+          if (mappedColor && availableColors.find(c => c.value === mappedColor)) {
+            colorSet.add(mappedColor);
+          }
+
+          // Chercher correspondance directe par valeur
+          const directMatch = availableColors.find(c =>
+            c.value === variationName ||
+            variation.colorCode.toLowerCase().includes(c.value)
+          );
+          if (directMatch) {
+            colorSet.add(directMatch.value);
+          }
+        });
+      }
+    });
+
+    // Filtrer availableColors pour ne garder que celles trouvées
+    return availableColors.filter(color => colorSet.has(color.value));
+  };
+
+  // Charger les catégories et sous-catégories
+  useEffect(() => {
+    const loadCategoriesAndSubCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const [categoriesData, subCategoriesData] = await Promise.all([
+          categoriesService.getActiveCategories(),
+          subCategoriesService.getAllSubCategories()
+        ]);
+
+        setCategories(categoriesData);
+        setSubCategories(subCategoriesData.filter(sub => sub.isActive));
+
+        // Si une catégorie est sélectionnée via l'URL, trouver la catégorie correspondante
+        if (categoryParam) {
+          const category = categoriesData.find(cat =>
+            cat.name.toLowerCase() === categoryParam.toLowerCase() ||
+            cat.slug === categoryParam
+          );
+          setSelectedCategory(category || null);
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors du chargement des catégories:', error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    loadCategoriesAndSubCategories();
+  }, [categoryParam]);
+
   // Charger les produits depuis l'API
   useEffect(() => {
     const loadProducts = async () => {
@@ -32,12 +159,12 @@ const FilteredArticlesPage: React.FC = () => {
       setError(null);
 
       try {
-        const searchQuery = selectedCategory || searchTerm || '';
+        const searchQuery = categoryParam || searchTerm || '';
         const itemsPerPage = 9;
         const offset = (currentPage - 1) * itemsPerPage;
 
         console.log('🔍 [FilteredArticlesPage] Recherche:', {
-          category: selectedCategory,
+          category: categoryParam,
           searchTerm,
           searchQuery,
           page: currentPage,
@@ -52,17 +179,263 @@ const FilteredArticlesPage: React.FC = () => {
 
         if (response.success) {
           // Filtrer pour n'afficher que les produits publiés
-          const publishedProducts = response.data.filter(product =>
+          let publishedProducts = response.data.filter(product =>
             product.status && product.status.toLowerCase() === 'published'
           );
 
+          // Si des couleurs sont sélectionnées, filtrer pour n'afficher que les produits qui ont ces couleurs
+          if (selectedColors.length > 0) {
+            console.log('🎨 [DEBUG] Couleurs sélectionnées:', selectedColors);
+            console.log(`🧠 [LOGIC] ${selectedColors.length} couleur(s) sélectionnée(s) -> ${selectedColors.length === 1 ? 'Logique ET (exact match)' : 'Logique OU (any match)'}`);
+
+            const filteredProducts = publishedProducts.filter(product => {
+              if (!product.adminProduct?.colorVariations) {
+                console.log(`❌ [DEBUG] Produit ${product.id} n'a pas de colorVariations`);
+                return false;
+              }
+
+              console.log(`🔍 [DEBUG] Produit ${product.id}:`, {
+                name: product.adminProduct.name,
+                variations: product.adminProduct.colorVariations.map(v => ({
+                  name: v.name,
+                  colorCode: v.colorCode
+                }))
+              });
+
+              // Fonction pour normaliser les noms de couleurs et comparer
+              const normalizeColorName = (colorName: string): string => {
+                return colorName.toLowerCase()
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '') // Remove accents
+                  .trim();
+              };
+
+              // LOGIQUE CONDITIONNELLE :
+              // - 1 couleur : doit avoir EXACTEMENT cette couleur (ET)
+              // - 2+ couleurs : doit avoir AU MOINS UNE de ces couleurs (OU)
+              let hasMatchingColors: boolean;
+
+              if (selectedColors.length === 1) {
+                // UNE SEULE COULEUR : Logique ET exacte
+                const selectedColor = selectedColors[0];
+                console.log(`\n  🎯 [1 COULEUR] Recherche exacte de: ${selectedColor}`);
+
+                hasMatchingColors = product.adminProduct.colorVariations.some((variation: any) => {
+                  const variationName = normalizeColorName(variation.name);
+                  const selectedColorNormalized = normalizeColorName(selectedColor);
+
+                  // Mapping des couleurs anglaises vers françaises
+                  const colorMapping: { [key: string]: string[] } = {
+                    'black': ['black', 'noir'],
+                    'white': ['white', 'blanc'],
+                    'red': ['red', 'rouge'],
+                    'blue': ['blue', 'bleu'],
+                    'green': ['green', 'vert'],
+                    'yellow': ['yellow', 'jaune'],
+                    'pink': ['pink', 'rose'],
+                    'purple': ['purple', 'violet'],
+                    'gray': ['gray', 'grey', 'gris'],
+                    'orange': ['orange']
+                  };
+
+                  // Noms possibles pour cette couleur
+                  const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+
+                  const match = possibleNames.some(name => {
+                    const normalizedPossible = normalizeColorName(name);
+                    const isMatch = variationName === normalizedPossible ||
+                                   variationName.includes(normalizedPossible) ||
+                                   normalizedPossible.includes(variationName);
+                    return isMatch;
+                  });
+
+                  // Vérifier aussi par colorCode
+                  const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+
+                  const found = match || colorCodeMatch;
+                  console.log(`    - Variation "${variation.name}" (code: ${variation.colorCode}) -> match: ${found}`);
+                  return found;
+                });
+
+                console.log(`  ✅ [1 COULEUR] Couleur ${selectedColor} trouvée: ${hasMatchingColors}`);
+
+              } else {
+                // MULTIPLES COULEURS : Logique OU (au moins une couleur)
+                console.log(`\n  🎯 [MULTI COULEURS] Recherche AU MOINS UNE de: ${selectedColors.join(', ')}`);
+
+                hasMatchingColors = selectedColors.some(selectedColor => {
+                  const colorFound = product.adminProduct.colorVariations.some((variation: any) => {
+                    const variationName = normalizeColorName(variation.name);
+                    const selectedColorNormalized = normalizeColorName(selectedColor);
+
+                    // Mapping des couleurs anglaises vers françaises
+                    const colorMapping: { [key: string]: string[] } = {
+                      'black': ['black', 'noir'],
+                      'white': ['white', 'blanc'],
+                      'red': ['red', 'rouge'],
+                      'blue': ['blue', 'bleu'],
+                      'green': ['green', 'vert'],
+                      'yellow': ['yellow', 'jaune'],
+                      'pink': ['pink', 'rose'],
+                      'purple': ['purple', 'violet'],
+                      'gray': ['gray', 'grey', 'gris'],
+                      'orange': ['orange']
+                    };
+
+                    // Noms possibles pour cette couleur
+                    const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+
+                    const match = possibleNames.some(name => {
+                      const normalizedPossible = normalizeColorName(name);
+                      const isMatch = variationName === normalizedPossible ||
+                                     variationName.includes(normalizedPossible) ||
+                                     normalizedPossible.includes(variationName);
+                      return isMatch;
+                    });
+
+                    // Vérifier aussi par colorCode
+                    const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+
+                    return match || colorCodeMatch;
+                  });
+
+                  console.log(`    - Couleur ${selectedColor} trouvée: ${colorFound}`);
+                  return colorFound;
+                });
+
+                console.log(`  ✅ [MULTI COULEURS] Au moins une couleur trouvée: ${hasMatchingColors}`);
+              }
+
+              console.log(`🏆 Produit ${product.id} (${product.adminProduct.name}) - Résultat final: ${hasMatchingColors}`);
+              return hasMatchingColors;
+            });
+
+            console.log(`📊 [DEBUG] Produits filtrés: ${filteredProducts.length} / ${publishedProducts.length}`);
+            publishedProducts = filteredProducts;
+          }
+
           setProducts(publishedProducts);
-          setPagination({
-            total: response.pagination.total, // Garder le total original pour la pagination
-            hasMore: response.pagination.hasMore
-          });
+
+          // Calculer correctement la pagination pour les produits filtrés
+          if (selectedColors.length > 0) {
+            // Pour les filtres de couleur, nous avons besoin de compter tous les produits correspondants
+            // Pas juste ceux de la page actuelle - UTILISER LA MÊME LOGIQUE CONDITIONNELLE QUE CI-DESSUS
+            const allFilteredProducts = response.data.filter(product => {
+              if (!product.status || product.status.toLowerCase() !== 'published') return false;
+              if (!product.adminProduct?.colorVariations) return false;
+
+              // Fonction pour normaliser les noms de couleurs et comparer (même fonction que ci-dessus)
+              const normalizeColorName = (colorName: string): string => {
+                return colorName.toLowerCase()
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '') // Remove accents
+                  .trim();
+              };
+
+              // MÊME LOGIQUE CONDITIONNELLE :
+              // - 1 couleur : doit avoir EXACTEMENT cette couleur
+              // - 2+ couleurs : doit avoir AU MOINS UNE de ces couleurs
+              let hasMatchingColors: boolean;
+
+              if (selectedColors.length === 1) {
+                // UNE SEULE COULEUR : Logique exacte
+                const selectedColor = selectedColors[0];
+
+                hasMatchingColors = product.adminProduct.colorVariations.some((variation: any) => {
+                  const variationName = normalizeColorName(variation.name);
+                  const selectedColorNormalized = normalizeColorName(selectedColor);
+
+                  const colorMapping: { [key: string]: string[] } = {
+                    'black': ['black', 'noir'],
+                    'white': ['white', 'blanc'],
+                    'red': ['red', 'rouge'],
+                    'blue': ['blue', 'bleu'],
+                    'green': ['green', 'vert'],
+                    'yellow': ['yellow', 'jaune'],
+                    'pink': ['pink', 'rose'],
+                    'purple': ['purple', 'violet'],
+                    'gray': ['gray', 'grey', 'gris'],
+                    'orange': ['orange']
+                  };
+
+                  const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+
+                  const match = possibleNames.some(name => {
+                    const normalizedPossible = normalizeColorName(name);
+                    const isMatch = variationName === normalizedPossible ||
+                                   variationName.includes(normalizedPossible) ||
+                                   normalizedPossible.includes(variationName);
+                    return isMatch;
+                  });
+
+                  const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+
+                  return match || colorCodeMatch;
+                });
+
+              } else {
+                // MULTIPLES COULEURS : Logique OU (au moins une couleur)
+                hasMatchingColors = selectedColors.some(selectedColor => {
+                  return product.adminProduct.colorVariations.some((variation: any) => {
+                    const variationName = normalizeColorName(variation.name);
+                    const selectedColorNormalized = normalizeColorName(selectedColor);
+
+                    const colorMapping: { [key: string]: string[] } = {
+                      'black': ['black', 'noir'],
+                      'white': ['white', 'blanc'],
+                      'red': ['red', 'rouge'],
+                      'blue': ['blue', 'bleu'],
+                      'green': ['green', 'vert'],
+                      'yellow': ['yellow', 'jaune'],
+                      'pink': ['pink', 'rose'],
+                      'purple': ['purple', 'violet'],
+                      'gray': ['gray', 'grey', 'gris'],
+                      'orange': ['orange']
+                    };
+
+                    const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+
+                    const match = possibleNames.some(name => {
+                      const normalizedPossible = normalizeColorName(name);
+                      const isMatch = variationName === normalizedPossible ||
+                                     variationName.includes(normalizedPossible) ||
+                                     normalizedPossible.includes(variationName);
+                      return isMatch;
+                    });
+
+                    const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+
+                    return match || colorCodeMatch;
+                  });
+                });
+              }
+
+              return hasMatchingColors;
+            });
+
+            setPagination({
+              total: allFilteredProducts.length,
+              hasMore: false // Désactiver la pagination pour les filtres de couleur pour l'instant
+            });
+          } else {
+            setPagination({
+              total: response.pagination.total,
+              hasMore: response.pagination.hasMore
+            });
+          }
           console.log('✅ [FilteredArticlesPage] Produits chargés:', response.data.length);
           console.log('📊 [FilteredArticlesPage] Produits publiés:', publishedProducts.length);
+          console.log('🎨 [FilteredArticlesPage] Couleurs sélectionnées:', selectedColors);
+
+          // Debug: Afficher la structure d'un produit exemple
+          if (response.data.length > 0) {
+            console.log('📋 [DEBUG] Structure produit exemple:', {
+              id: response.data[0].id,
+              status: response.data[0].status,
+              hasAdminProduct: !!response.data[0].adminProduct,
+              colorVariations: response.data[0].adminProduct?.colorVariations
+            });
+          }
         } else {
           setError(response.message);
           setProducts([]);
@@ -77,7 +450,7 @@ const FilteredArticlesPage: React.FC = () => {
     };
 
     loadProducts();
-  }, [selectedCategory, searchTerm, currentPage]);
+  }, [categoryParam, searchTerm, currentPage, selectedColors]);
 
   // Calcul de la pagination
   const itemsPerPage = 9;
@@ -93,11 +466,11 @@ const FilteredArticlesPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header avec catégorie sélectionnée */}
-      {selectedCategory && (
+      {categoryParam && (
         <div className="bg-white border-b border-gray-200 py-4">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-2xl font-bold text-gray-900">
-              {selectedCategory}
+              {selectedCategory?.name || categoryParam}
             </h1>
             <p className="text-sm text-gray-600 mt-1">
               Découvrez nos produits personnalisables
@@ -198,11 +571,31 @@ const FilteredArticlesPage: React.FC = () => {
                       <ChevronDown className="w-4 h-4" />
                     </button>
                     <div className="pl-6 space-y-2 text-sm text-gray-700">
-                      <button className="text-left hover:text-blue-600 block w-full text-left py-1">T-shirt</button>
-                      <button className="text-left hover:text-blue-600 block w-full text-left py-1">Sweat/ Pull</button>
-                      <button className="text-left hover:text-blue-600 block w-full text-left py-1">Casquettes et bonnets</button>
-                      <button className="text-left hover:text-blue-600 block w-full text-left py-1">Sacs et sacs à dos</button>
-                      <button className="text-left hover:text-blue-600 block w-full text-left py-1">Mugs et tasses</button>
+                      {loadingCategories ? (
+                        <div className="flex items-center gap-2 py-1">
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                          <span className="text-gray-500">Chargement...</span>
+                        </div>
+                      ) : (
+                        <>
+                          {subCategories.length === 0 ? (
+                            <span className="text-gray-500 py-1">Aucune sous-catégorie</span>
+                          ) : (
+                            subCategories.map((subCategory) => (
+                              <button
+                                key={subCategory.id}
+                                onClick={() => {
+                                  // Naviguer vers la page filtrée pour cette sous-catégorie
+                                  navigate(`/filtered-articles?category=${subCategory.slug}`);
+                                }}
+                                className="text-left hover:text-blue-600 block w-full text-left py-1 transition-colors"
+                              >
+                                {subCategory.name}
+                              </button>
+                            ))
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -222,10 +615,152 @@ const FilteredArticlesPage: React.FC = () => {
                   <span>Filtrer par</span>
                 </button>
 
-                <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
-                  <span>Couleurs</span>
-                  <span className="text-base">🎨</span>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => {
+    if (!showColorSelector) {
+      setTempSelectedColors(selectedColors);
+    }
+    setShowColorSelector(!showColorSelector);
+  }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      selectedColors.length > 0
+                        ? 'bg-blue-500 text-white border-2 border-blue-500 shadow-md hover:bg-blue-600'
+                        : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Couleurs</span>
+                      {selectedColors.length === 0 && (
+                        <span className="text-xs opacity-70">
+                          ({getAvailableColorsFromProducts().length})
+                        </span>
+                      )}
+                      {selectedColors.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          {selectedColors.slice(0, 3).map((colorValue, index) => {
+                            const color = availableColors.find(c => c.value === colorValue);
+                            return color ? (
+                              <div
+                                key={colorValue}
+                                className="w-3 h-3 rounded-full border border-white/30 shadow-sm"
+                                style={{ backgroundColor: color.hex }}
+                                title={color.name}
+                              />
+                            ) : null;
+                          })}
+                          {selectedColors.length > 3 && (
+                            <span className="text-xs opacity-90">
+                              +{selectedColors.length - 3}
+                            </span>
+                          )}
+                          <span className="text-xs opacity-90">
+                            ({selectedColors.length})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showColorSelector ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Color Dropdown */}
+                  {showColorSelector && (
+                    <div className="absolute z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg w-64">
+                      <div className="p-3">
+                        {/* Sélection actuelle */}
+                        {tempSelectedColors.length > 0 && (
+                          <div className="mb-3 p-2 bg-gray-50 rounded border border-gray-200">
+                            <div className="text-xs text-gray-600 mb-1">Sélectionné:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {tempSelectedColors.map((colorValue) => {
+                                const color = availableColors.find(c => c.value === colorValue);
+                                return color ? (
+                                  <div
+                                    key={colorValue}
+                                    className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded text-xs"
+                                  >
+                                    <div
+                                      className="w-3 h-3 rounded-full border border-gray-400"
+                                      style={{ backgroundColor: color.hex }}
+                                    />
+                                    <span className="text-gray-700">{color.name}</span>
+                                    <button
+                                      onClick={() => toggleTempColor(colorValue)}
+                                      className="text-gray-400 hover:text-gray-600 ml-1"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Grille de couleurs */}
+                        <div className="grid grid-cols-5 gap-1 max-h-32 overflow-y-auto mb-3">
+                          {getAvailableColorsFromProducts().map((color) => (
+                            <button
+                              key={color.value}
+                              onClick={() => toggleTempColor(color.value)}
+                              className={`group relative w-9 h-9 border transition-all hover:scale-105 ${
+                                tempSelectedColors.includes(color.value)
+                                  ? 'border-blue-500 shadow-sm z-10'
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              title={color.name}
+                            >
+                              <div
+                                className="w-full h-full"
+                                style={{ backgroundColor: color.hex }}
+                              />
+                              {tempSelectedColors.includes(color.value) && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center shadow-md">
+                                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+
+                        {getAvailableColorsFromProducts().length === 0 && (
+                          <div className="text-center py-3 text-sm text-gray-500">
+                            Aucune couleur disponible
+                          </div>
+                        )}
+
+                        {/* Boutons Enregistrer/Annuler */}
+                        {getAvailableColorsFromProducts().length > 0 && (
+                          <div className="flex gap-2 border-t border-gray-200 pt-3">
+                            <button
+                              onClick={applyColorSelection}
+                              className="flex-1 px-3 py-1.5 bg-blue-500 text-white text-sm font-medium rounded hover:bg-blue-600 transition-colors"
+                            >
+                              Enregistrer
+                            </button>
+                            <button
+                              onClick={cancelColorSelection}
+                              className="flex-1 px-3 py-1.5 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300 transition-colors"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
                   <span>Tailles</span>
@@ -250,6 +785,53 @@ const FilteredArticlesPage: React.FC = () => {
 
             {/* Search and Display controls */}
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+              {/* Color selection info */}
+              {selectedColors.length > 0 && (
+                <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-blue-900">
+                          Couleurs sélectionnées:
+                        </span>
+                        <div className="flex gap-1">
+                          {selectedColors.map((colorValue) => {
+                            const color = availableColors.find(c => c.value === colorValue);
+                            return color ? (
+                              <div
+                                key={colorValue}
+                                className="flex items-center gap-1 px-2 py-1 bg-white rounded-full text-sm font-semibold text-blue-700 border border-blue-300"
+                              >
+                                <div
+                                  className="w-3 h-3 rounded-full border border-blue-300"
+                                  style={{ backgroundColor: color.hex }}
+                                />
+                                {color.name}
+                              </div>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-600 bg-white/60 px-2 py-1 rounded-full">
+                        {selectedColors.length === 1
+                          ? `Produits disponibles dans cette couleur`
+                          : `Produits disponibles dans au moins une de ces couleurs`
+                        }
+                      </span>
+                    </div>
+                    <button
+                      onClick={clearColors}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-white/80 hover:bg-white text-sm font-medium text-blue-600 hover:text-blue-800 rounded-lg border border-blue-200 transition-all"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h16v16H4z" />
+                      </svg>
+                      Toutes les couleurs
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 {/* Search */}
                 <div className="relative flex-1 sm:flex-initial">
@@ -321,10 +903,22 @@ const FilteredArticlesPage: React.FC = () => {
                   <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600 font-medium">Aucun produit trouvé</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {selectedCategory
-                      ? `Aucun produit pour la catégorie "${selectedCategory}"`
+                    {selectedColors.length > 0 && categoryParam
+                      ? `Aucun produit "${selectedCategory?.name || categoryParam}" disponible ${selectedColors.length === 1 ? 'dans cette couleur' : 'dans ces couleurs'} : ${selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(selectedColors.length === 1 ? '' : ', ')}`
+                      : selectedColors.length > 0
+                      ? `Aucun produit disponible ${selectedColors.length === 1 ? 'dans cette couleur' : 'dans ces couleurs'} : ${selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(', ')}`
+                      : categoryParam
+                      ? `Aucun produit pour la catégorie "${selectedCategory?.name || categoryParam}"`
                       : 'Essayez une autre recherche'}
                   </p>
+                  {selectedColors.length > 0 && (
+                    <button
+                      onClick={clearColors}
+                      className="mt-3 text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      Afficher tous les produits
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -333,13 +927,18 @@ const FilteredArticlesPage: React.FC = () => {
                 <>
                   <div className="mb-4 text-sm text-gray-600">
                     {pagination.total} produit{pagination.total > 1 ? 's' : ''} trouvé{pagination.total > 1 ? 's' : ''}
-                    {selectedCategory && ` pour "${selectedCategory}"`}
+                    {selectedColors.length > 0 && categoryParam
+                      ? ` "${selectedCategory?.name || categoryParam}" ${selectedColors.length === 1 ? 'dans cette couleur' : 'dans ces couleurs'} : ${selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(', ')}`
+                      : selectedColors.length > 0
+                      ? ` ${selectedColors.length === 1 ? 'dans cette couleur' : 'dans ces couleurs'} : ${selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(', ')}`
+                      : categoryParam && ` pour "${selectedCategory?.name || categoryParam}"`}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {products.map((product) => (
                       <ProductCardWithDesign
                         key={product.id}
                         product={product}
+                        selectedColors={selectedColors}
                         onClick={() => {
                           // Navigation vers la page détails du produit
                           console.log('Navigation vers détail produit:', product.id);

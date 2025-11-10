@@ -1,11 +1,11 @@
 {
-   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "962afa57981e44f1ade9f91f24a6b97b.Ng0qr6jFxbMf97MV",
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "b02faffd6c59409ab97562bd8f05179c.RRDvHohvrNgdlPVp    ",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
-  }, 
+  },
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
@@ -35,7 +35,10 @@
       "WebFetch(domain:docs.intech.sn)",
       "WebFetch(domain:doc.intech.sn)",
       "Bash(chmod:*)",
-      "Bash(timeout 10s npm run dev:*)"
+      "Bash(timeout 10s npm run dev:*)",
+      "Bash(sudo:*)",
+      "Bash(CHOKIDAR_USEPOLLING=true npm run dev:*)",
+      "WebFetch(domain:www.spreadshirt.com)"
     ],
     "deny": [],
     "ask": [],

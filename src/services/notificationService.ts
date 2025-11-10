@@ -1,5 +1,27 @@
 // Service pour gérer les notifications côté frontend avec l'API backend
 import axios from 'axios';
+import { API_CONFIG } from '../config/api';
+
+// Fonction pour obtenir le token d'authentification JWT depuis les cookies
+const getAuthToken = () => {
+  // Essayer d'abord le localStorage (fallback), puis chercher dans les cookies
+  const token = localStorage.getItem('auth_token') ||
+                sessionStorage.getItem('auth_token') ||
+                getCookie('auth_token');
+  console.log('🔑 [notificationService] Token recherché:', !!token);
+  return token;
+};
+
+// Fonction pour extraire un cookie spécifique
+const getCookie = (name: string): string | null => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    const cookieValue = parts.pop()?.split(';').shift();
+    return cookieValue || null;
+  }
+  return null;
+};
 
 // Interface pour les notifications backend selon la nouvelle API
 export interface BackendNotification {
@@ -58,18 +80,36 @@ interface ApiResponse {
 }
 
 class NotificationService {
-  // Base URL selon la nouvelle documentation
-  private baseUrl = 'https://printalma-back-dep.onrender.com/notifications';
-  
-  // Configuration Axios avec cookies uniquement (selon la doc)
+  // Base URL selon la nouvelle documentation - utilise la configuration centralisée
+  private baseUrl = `${API_CONFIG.BASE_URL}/notifications`;
+
+  // Configuration Axios avec token JWT + cookies pour compatibilité
   private getRequestConfig() {
-    return {
+    const token = getAuthToken();
+
+    const config: any = {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      withCredentials: true // Authentification par cookies uniquement
+      withCredentials: true // ⭐ Important pour envoyer les cookies HttpOnly
     };
+
+    // Ajouter le header Authorization si un token est disponible (backup)
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 [notificationService] Authorization header ajouté');
+    } else {
+      console.warn('⚠️ [notificationService] Aucun token JWT trouvé - utilisation des cookies uniquement');
+    }
+
+    console.log('🔧 [notificationService] Config requête:', {
+      url: this.baseUrl,
+      withCredentials: config.withCredentials,
+      hasAuthHeader: !!config.headers.Authorization
+    });
+
+    return config;
   }
 
   /**
