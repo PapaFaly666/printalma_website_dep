@@ -38,6 +38,7 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
   const imgRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageMetrics, setImageMetrics] = useState<ImageMetrics | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Déterminer si le produit a un design
   const hasDesign = product.designApplication?.hasDesign && product.designApplication?.designUrl;
@@ -389,161 +390,188 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
 
   return (
     <div
-      className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-shadow border border-gray-200 cursor-pointer"
+      className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 cursor-pointer group"
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div
         ref={containerRef}
-        className="relative aspect-square flex items-center justify-center bg-gray-100"
+        className="relative aspect-square flex items-center justify-center bg-gray-100 overflow-hidden"
       >
-        {/* Image du produit */}
-        <img
-          ref={imgRef}
-          src={primaryImage}
-          alt={product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
-          className="w-full h-full object-cover"
-          onLoad={() => setImageLoaded(true)}
-        />
-
-        {/* Design superposé */}
-        {hasDesign && imageMetrics && delimitations.length > 0 && (
-          (() => {
-            console.log('🎨 ProductCardWithDesign - Affichage du design - Conditions vérifiées:', {
-              hasDesign,
-              designUrl: product.designApplication?.designUrl,
-              imageMetrics: !!imageMetrics,
-              delimitations: delimitations.length
-            });
-
-            const { x, y, scale, rotation } = designPosition;
-            const delimitation = delimitations[0];
-            const pos = computePxPosition(delimitation);
-
-            console.log('🎨 ProductCardWithDesign - delimitation:', delimitation);
-            console.log('🎨 ProductCardWithDesign - pos calculé:', pos);
-
-            if (pos.width <= 0 || pos.height <= 0) {
-              console.log('🎨 ProductCardWithDesign - Dimensions invalides, pas d\'affichage');
-              return null;
-            }
-
-            // 🎯 SYSTÈME identique à SimpleProductPreview : Utiliser un ratio CONSTANT de la délimitation
-            const designScale = scale || 0.8; // Ratio constant par défaut : 80% de la délimitation
-            const actualDesignWidth = pos.width * designScale;
-            const actualDesignHeight = pos.height * designScale;
-
-            // 🆕 Contraintes de positionnement comme dans SimpleProductPreview
-            const maxX = (pos.width - actualDesignWidth) / 2;
-            const minX = -(pos.width - actualDesignWidth) / 2;
-            const maxY = (pos.height - actualDesignHeight) / 2;
-            const minY = -(pos.height - actualDesignHeight) / 2;
-            const adjustedX = Math.max(minX, Math.min(x, maxX));
-            const adjustedY = Math.max(minY, Math.min(y, maxY));
-
-            console.log('🎨 ProductCardWithDesign - Positionnement exact:', {
-              originalCoords: { x, y, scale, rotation },
-              dimensions: { actualDesignWidth, actualDesignHeight },
-              delimitation,
-              pos,
-              adjustedCoords: { adjustedX, adjustedY },
-              constraints: { maxX, minX, maxY, minY }
-            });
-
-            return (
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  zIndex: 2,
-                  overflow: 'visible'
-                }}
-              >
-                {/* Conteneur délimité EXACTEMENT comme dans SimpleProductPreview */}
-                <div
-                  className="absolute overflow-hidden"
-                  style={{
-                    left: pos.left,
-                    top: pos.top,
-                    width: pos.width,
-                    height: pos.height,
-                    pointerEvents: 'none',
-                  }}
-                >
-                  {/* Conteneur du design EXACTEMENT comme dans SimpleProductPreview */}
-                  <div
-                    className="absolute pointer-events-none select-none"
-                    style={{
-                      left: '50%',
-                      top: '50%',
-                      width: actualDesignWidth,
-                      height: actualDesignHeight,
-                      transform: `translate(-50%, -50%) translate(${adjustedX}px, ${adjustedY}px) rotate(${rotation || 0}deg)`,
-                      transformOrigin: 'center center',
-                      transition: 'transform 0.1s ease-out',
-                    }}
-                  >
-                    {/* Image du design EXACTEMENT comme dans SimpleProductPreview */}
-                    <img
-                      src={product.designApplication.designUrl}
-                      alt="Design"
-                      className="object-contain pointer-events-none select-none"
-                      draggable={false}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        transform: 'scale(1)', // Pas de scale supplémentaire
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })()
+        {/* Image du produit - cachée au hover s'il y a un design */}
+        {(!hasDesign || !isHovered) && (
+          <img
+            ref={imgRef}
+            src={primaryImage}
+            alt={product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
+            className={`w-full h-full object-cover transition-all duration-300 ${hasDesign && isHovered ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}
+            onLoad={() => setImageLoaded(true)}
+          />
         )}
 
-        {/* Bouton favori */}
-        <button
-          className="absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 shadow-md z-10"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Heart className="w-4 h-4 text-gray-600" />
-        </button>
+        {/* Design superposé - Affichage normal OU affichage plein écran au hover */}
+        {hasDesign && (
+          <>
+            {/* Affichage normal (pas de hover) */}
+            {!isHovered && imageMetrics && delimitations.length > 0 && (
+              (() => {
+                console.log('🎨 ProductCardWithDesign - Affichage du design - Conditions vérifiées:', {
+                  hasDesign,
+                  designUrl: product.designApplication?.designUrl,
+                  imageMetrics: !!imageMetrics,
+                  delimitations: delimitations.length
+                });
+
+                const { x, y, scale, rotation } = designPosition;
+                const delimitation = delimitations[0];
+                const pos = computePxPosition(delimitation);
+
+                console.log('🎨 ProductCardWithDesign - delimitation:', delimitation);
+                console.log('🎨 ProductCardWithDesign - pos calculé:', pos);
+
+                if (pos.width <= 0 || pos.height <= 0) {
+                  console.log('🎨 ProductCardWithDesign - Dimensions invalides, pas d\'affichage');
+                  return null;
+                }
+
+                // 🎯 SYSTÈME identique à SimpleProductPreview : Utiliser un ratio CONSTANT de la délimitation
+                const designScale = scale || 0.8; // Ratio constant par défaut : 80% de la délimitation
+                const actualDesignWidth = pos.width * designScale;
+                const actualDesignHeight = pos.height * designScale;
+
+                // 🆕 Contraintes de positionnement comme dans SimpleProductPreview
+                const maxX = (pos.width - actualDesignWidth) / 2;
+                const minX = -(pos.width - actualDesignWidth) / 2;
+                const maxY = (pos.height - actualDesignHeight) / 2;
+                const minY = -(pos.height - actualDesignHeight) / 2;
+                const adjustedX = Math.max(minX, Math.min(x, maxX));
+                const adjustedY = Math.max(minY, Math.min(y, maxY));
+
+                console.log('🎨 ProductCardWithDesign - Positionnement exact:', {
+                  originalCoords: { x, y, scale, rotation },
+                  dimensions: { actualDesignWidth, actualDesignHeight },
+                  delimitation,
+                  pos,
+                  adjustedCoords: { adjustedX, adjustedY },
+                  constraints: { maxX, minX, maxY, minY }
+                });
+
+                return (
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      zIndex: 2,
+                      overflow: 'visible'
+                    }}
+                  >
+                    {/* Conteneur délimité EXACTEMENT comme dans SimpleProductPreview */}
+                    <div
+                      className="absolute overflow-hidden"
+                      style={{
+                        left: pos.left,
+                        top: pos.top,
+                        width: pos.width,
+                        height: pos.height,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {/* Conteneur du design EXACTEMENT comme dans SimpleProductPreview */}
+                      <div
+                        className="absolute pointer-events-none select-none"
+                        style={{
+                          left: '50%',
+                          top: '50%',
+                          width: actualDesignWidth,
+                          height: actualDesignHeight,
+                          transform: `translate(-50%, -50%) translate(${adjustedX}px, ${adjustedY}px) rotate(${rotation || 0}deg)`,
+                          transformOrigin: 'center center',
+                          transition: 'transform 0.1s ease-out',
+                        }}
+                      >
+                        {/* Image du design EXACTEMENT comme dans SimpleProductPreview */}
+                        <img
+                          src={product.designApplication.designUrl}
+                          alt="Design"
+                          className="object-contain pointer-events-none select-none"
+                          draggable={false}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            transform: 'scale(1)', // Pas de scale supplémentaire
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+
+            {/* Affichage plein écran au hover (style Spreadshirt) */}
+            {isHovered && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white transition-all duration-300 ease-in-out">
+                <div className="w-full h-full flex items-center justify-center p-6 sm:p-8">
+                  <img
+                    src={product.designApplication.designUrl}
+                    alt="Design"
+                    className="max-w-full max-h-full object-contain transition-all duration-300 ease-in-out transform group-hover:scale-110"
+                    draggable={false}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Bouton favori - caché au hover si design */}
+        {(!hasDesign || !isHovered) && (
+          <button
+            className="absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 shadow-md z-10 transition-opacity duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Heart className="w-4 h-4 text-gray-600" />
+          </button>
+        )}
 
         {/* Badge vendeur - MASQUÉ */}
-        {false && product.vendor && (
+        {false && product.vendor && (!hasDesign || !isHovered) && (
           <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium z-10">
             {product.vendor.shop_name || product.vendor.fullName}
           </div>
         )}
       </div>
 
-      {/* Informations du produit */}
-      <div className="p-3">
-        <h3 className="font-bold italic text-base mb-0.5 truncate">
-          {product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
-        </h3>
-        <p className="text-sm font-bold">
-          {formatPrice(product.price)}
-        </p>
+      {/* Informations du produit - cachées au hover si design */}
+      {(!hasDesign || !isHovered) && (
+        <div className="p-3 transition-opacity duration-300">
+          <h3 className="font-bold italic text-base mb-0.5 truncate">
+            {product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
+          </h3>
+          <p className="text-sm font-bold">
+            {formatPrice(product.price)}
+          </p>
 
-        {/* Couleurs disponibles - MASQUÉES */}
-        {false && product.selectedColors && product.selectedColors.length > 0 && (
-          <div className="flex gap-1 mt-2">
-            {product.selectedColors.slice(0, 4).map((color) => (
-              <div
-                key={color.id}
-                className="w-4 h-4 rounded-full border border-gray-300"
-                style={{ backgroundColor: color.colorCode }}
-                title={color.name}
-              />
-            ))}
-            {product.selectedColors.length > 4 && (
-              <div className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-medium">
-                +{product.selectedColors.length - 4}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          {/* Couleurs disponibles - MASQUÉES */}
+          {false && product.selectedColors && product.selectedColors.length > 0 && (
+            <div className="flex gap-1 mt-2">
+              {product.selectedColors.slice(0, 4).map((color) => (
+                <div
+                  key={color.id}
+                  className="w-4 h-4 rounded-full border border-gray-300"
+                  style={{ backgroundColor: color.colorCode }}
+                  title={color.name}
+                />
+              ))}
+              {product.selectedColors.length > 4 && (
+                <div className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-medium">
+                  +{product.selectedColors.length - 4}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
