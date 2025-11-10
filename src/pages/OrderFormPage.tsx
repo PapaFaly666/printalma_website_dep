@@ -11,19 +11,16 @@ import {
   Phone,
   Mail,
   User,
-  Package,
-  CheckCircle2,
-  ExternalLink
+  Package
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { usePaydunya } from '../hooks/usePaydunya';
 import { useOrder } from '../hooks/useOrder';
-import { paydunyaService } from '../services/paydunyaService';
 import { orderService, type CreateOrderRequest as OrderRequest } from '../services/orderService';
 import { paymentStatusService } from '../services/paymentStatusService';
-import { generatePaydunyaUrl, validatePaymentData } from '../types/payment';
+import { validatePaymentData } from '../types/payment';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
-import { formatPrice } from '../utils/priceUtils';
+import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
 
 interface OrderFormData {
   firstName: string;
@@ -161,8 +158,6 @@ const OrderFormPage: React.FC = () => {
   const [selectedDelivery, setSelectedDelivery] = useState<string>('standard');
   const [selectedPayment, setSelectedPayment] = useState<string>('paydunya'); // Défaut sur PayDunya
   const [selectedPayDunyaMethod, setSelectedPayDunyaMethod] = useState<string>('orange_money');
-  const [orderComplete, setOrderComplete] = useState(false);
-  const [orderNumber, setOrderNumber] = useState<string>('');
 
   // Obtenir les méthodes de paiement disponibles depuis le hook
   const availablePaymentMethods = getAvailableMethods();
@@ -236,10 +231,20 @@ const OrderFormPage: React.FC = () => {
     description: method.description
   }));
 
-  // Calculs
-  const productPrice = cartItem?.price || 0;
+  // Calculs - Utiliser le prix suggéré par le vendeur si disponible, sinon le prix de base
+  const productPrice = cartItem?.suggestedPrice || cartItem?.price || 0;
   const shippingFee = deliveryOptions.find(d => d.id === selectedDelivery)?.price || 0;
-  const totalAmount = (productPrice / 100) + shippingFee;
+  const totalAmount = productPrice + shippingFee;
+
+  // Debug: afficher les valeurs de calcul
+  console.log('🔍 [OrderForm] Debug prix:', {
+    cartItem: cartItem,
+    suggestedPrice: cartItem?.suggestedPrice,
+    price: cartItem?.price,
+    productPrice: productPrice,
+    shippingFee: shippingFee,
+    totalAmount: totalAmount
+  });
   const estimatedDelivery = new Date();
   estimatedDelivery.setDate(estimatedDelivery.getDate() + (deliveryOptions.find(d => d.id === selectedDelivery)?.estimatedDays || 3));
 
@@ -349,13 +354,6 @@ const OrderFormPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Génération de numéro de commande
-  const generateOrderNumber = (): string => {
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substr(2, 5).toUpperCase();
-    return `ORD-${timestamp}-${random}`;
-  };
-
   // Paiement PayDunya via création de commande réelle - Version conforme à la documentation
   const processPayDunyaPayment = async () => {
     try {
@@ -389,7 +387,7 @@ const OrderFormPage: React.FC = () => {
         orderItems: [{
           productId: productId,
           quantity: 1,
-          unitPrice: productData?.price || 0,
+          unitPrice: productPrice,
           size: productData?.size,
           color: productData?.color,
           colorId: 1,
@@ -456,6 +454,10 @@ const OrderFormPage: React.FC = () => {
       // Ouvrir PayDunya dans un nouvel onglet
       window.open(paymentUrl, '_blank', 'noopener,noreferrer');
 
+      // Rediriger vers la page de confirmation avec les paramètres
+      const confirmationUrl = `/order-confirmation?orderNumber=${encodeURIComponent(orderResponse.data.orderNumber)}&token=${encodeURIComponent(paymentData.token)}&paymentUrl=${encodeURIComponent(paymentUrl)}&totalAmount=${encodeURIComponent(totalAmount)}&email=${encodeURIComponent(formData.email)}`;
+      navigate(confirmationUrl);
+
     } catch (error: any) {
       console.error('❌ [OrderForm] Erreur lors du processus de commande:', error);
 
@@ -495,19 +497,56 @@ const OrderFormPage: React.FC = () => {
       // Utiliser PayDunya pour le paiement
       await processPayDunyaPayment();
     } else {
-      // Pour le paiement à la livraison, traiter directement
+      // Pour le paiement à la livraison, créer la commande directement
       setIsSubmitting(true);
 
       try {
-        const generatedOrderNumber = generateOrderNumber();
-        setOrderNumber(generatedOrderNumber);
-        setOrderComplete(true);
+        // Préparer les données de commande
+        const orderRequest: OrderRequest = {
+          email: formData.email,
+          shippingDetails: {
+            firstName: formData.firstName || undefined,
+            lastName: formData.lastName || undefined,
+            street: formData.address,
+            city: formData.city,
+            region: formData.city,
+            postalCode: formData.postalCode || undefined,
+            country: formData.country,
+          },
+          phoneNumber: formData.phone,
+          notes: formData.notes || undefined,
+          orderItems: [{
+            productId: Number(productData?.productId),
+            quantity: 1,
+            unitPrice: productPrice,
+            size: productData?.size,
+            color: productData?.color,
+            colorId: 1,
+          }],
+          paymentMethod: 'CASH_ON_DELIVERY',
+          initiatePayment: false,
+        };
 
-        // Vider le panier après validation de la commande
-        clearCart();
+        // Créer la commande
+        const orderResponse = orderService.isUserAuthenticated()
+          ? await orderService.createOrderWithPayment(orderRequest)
+          : await orderService.createGuestOrder(orderRequest);
+
+        if (orderResponse.success && orderResponse.data) {
+          // Vider le panier après validation de la commande
+          clearCart();
+
+          // Rediriger vers la page de confirmation
+          const confirmationUrl = `/order-confirmation?orderNumber=${encodeURIComponent(orderResponse.data.orderNumber)}&totalAmount=${encodeURIComponent(totalAmount)}&email=${encodeURIComponent(formData.email)}`;
+          navigate(confirmationUrl);
+        }
 
       } catch (error) {
         console.error('Erreur lors de la commande:', error);
+        setErrors(prev => ({
+          ...prev,
+          payment: 'Erreur lors de la création de la commande. Veuillez réessayer.',
+        }));
       } finally {
         setIsSubmitting(false);
       }
@@ -556,49 +595,8 @@ const OrderFormPage: React.FC = () => {
       {/* Container principal avec layout optimisé */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
         <div className="max-w-7xl mx-auto">
-
-          {/* État de commande terminée - Layout centré */}
-          {orderComplete ? (
-            <div className="grid grid-cols-1 place-items-center min-h-[60vh]">
-              <div className="w-full max-w-2xl">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 lg:p-12 text-center">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8">
-                    <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-green-600" />
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-4">Commande confirmée !</h2>
-                  <p className="text-gray-600 mb-6 text-base sm:text-lg">
-                    Votre commande a été validée avec succès
-                  </p>
-                  <div className="bg-gray-50 rounded-xl p-6 mb-6 sm:mb-8">
-                    <p className="text-sm text-gray-600 mb-2">Numéro de commande</p>
-                    <p className="text-xl sm:text-2xl font-bold text-gray-900">{orderNumber}</p>
-                  </div>
-                  <div className="space-y-3 text-left mb-8 bg-gray-50 rounded-xl p-6">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Email de confirmation:</span>
-                      <span className="font-medium text-gray-900">{formData.email}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Date de livraison estimée:</span>
-                      <span className="font-medium text-gray-900">
-                        {estimatedDelivery.toLocaleDateString('fr-FR')}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                      onClick={() => navigate('/panier')}
-                      className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      Voir mes commandes
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Layout responsive optimisé */
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
+          {/* Layout responsive optimisé */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
               {/* Colonne gauche : Récapitulatif et options - Responsive */}
               <div className="xl:col-span-4 order-2 lg:order-1">
                 <div className="sticky top-24 lg:top-28 space-y-4 lg:space-y-6">
@@ -1121,7 +1119,6 @@ const OrderFormPage: React.FC = () => {
                 </form>
               </div>
             </div>
-          )}
         </div>
       </div>
     </div>

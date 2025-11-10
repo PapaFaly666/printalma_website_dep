@@ -25,7 +25,7 @@ import { orderService, type CreateOrderRequest as OrderRequest } from '../servic
 import { paymentStatusService } from '../services/paymentStatusService';
 import { validatePaymentData } from '../types/payment';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
-import { formatPrice } from '../utils/priceUtils';
+import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface OrderFormData {
@@ -75,18 +75,14 @@ const ModernOrderFormPage: React.FC = () => {
   const [selectedDelivery, setSelectedDelivery] = useState<string>('standard');
   const [selectedPayment, setSelectedPayment] = useState<string>('paydunya');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
-  const [paymentPending, setPaymentPending] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState<string>('');
-  const [orderNumber, setOrderNumber] = useState<string>('');
   const [errors, setErrors] = useState<Partial<OrderFormData> & { delivery?: string; payment?: string }>({});
 
   // Rediriger si panier vide
   useEffect(() => {
-    if (cartItems.length === 0 && !orderComplete) {
+    if (cartItems.length === 0) {
       navigate('/');
     }
-  }, [cartItems, orderComplete, navigate]);
+  }, [cartItems, navigate]);
 
   // Transformer les données du produit pour SimpleProductPreview
   const getProductForPreview = () => {
@@ -180,11 +176,22 @@ const ModernOrderFormPage: React.FC = () => {
     }
   ];
 
-  // Calculs
-  const productPrice = cartItem?.price || 0;
+  // Calculs - Utiliser le prix suggéré par le vendeur si disponible, sinon le prix de base
+  const productPrice = cartItem?.suggestedPrice || cartItem?.price || 0;
   const shippingFee = deliveryOptions.find(d => d.id === selectedDelivery)?.price || 0;
-  const subtotal = productPrice / 100;
+  const subtotal = productPrice; // Pas de division par 100, le prix est déjà en FCFA
   const total = subtotal + shippingFee;
+
+  // Debug: afficher les valeurs de calcul
+  console.log('🔍 [ModernOrderForm] Debug prix:', {
+    cartItem: cartItem,
+    suggestedPrice: cartItem?.suggestedPrice,
+    price: cartItem?.price,
+    productPrice: productPrice,
+    subtotal: subtotal,
+    shippingFee: shippingFee,
+    total: total
+  });
 
   // Configuration des étapes
   const steps = [
@@ -272,6 +279,13 @@ const ModernOrderFormPage: React.FC = () => {
           size: productData?.size,
           color: productData?.color,
           colorId: 1,
+          // 🎨 Données de design depuis le panier
+          vendorProductId: productData?.vendorProductId,
+          mockupUrl: productData?.mockupUrl,
+          designId: productData?.designId,
+          designPositions: productData?.designPositions,
+          designMetadata: productData?.designMetadata,
+          delimitation: productData?.delimitation,
         }],
         paymentMethod: 'PAYDUNYA',
         initiatePayment: true,
@@ -310,12 +324,12 @@ const ModernOrderFormPage: React.FC = () => {
 
       paymentStatusService.savePendingPayment(pendingPaymentData);
 
-      // Sauvegarder les données pour l'affichage
-      setOrderNumber(orderResponse.data.orderNumber);
-      setPaymentUrl(retrievedPaymentUrl);
+      // Ouvrir PayDunya dans un nouvel onglet
+      window.open(retrievedPaymentUrl, '_blank', 'noopener,noreferrer');
 
-      // Afficher l'état de paiement en cours avec bouton
-      setPaymentPending(true);
+      // Rediriger vers la page de confirmation avec les paramètres
+      const confirmationUrl = `/order-confirmation?orderNumber=${encodeURIComponent(orderResponse.data.orderNumber)}&token=${encodeURIComponent(paymentData.token)}&paymentUrl=${encodeURIComponent(retrievedPaymentUrl)}&totalAmount=${encodeURIComponent(total)}&email=${encodeURIComponent(formData.email)}`;
+      navigate(confirmationUrl);
 
     } catch (error: any) {
       console.error('Erreur lors du processus de commande:', error);
@@ -343,14 +357,63 @@ const ModernOrderFormPage: React.FC = () => {
     if (selectedPayment === 'paydunya') {
       await processPayDunyaPayment();
     } else {
+      // Pour le paiement à la livraison, créer la commande directement
       setIsSubmitting(true);
+
       try {
-        const generatedOrderNumber = generateOrderNumber();
-        setOrderNumber(generatedOrderNumber);
-        setOrderComplete(true);
-        clearCart();
+        // Préparer les données de commande
+        const orderRequest: OrderRequest = {
+          email: formData.email,
+          shippingDetails: {
+            firstName: formData.firstName || undefined,
+            lastName: formData.lastName || undefined,
+            street: formData.address,
+            city: formData.city,
+            region: formData.city,
+            postalCode: formData.postalCode || undefined,
+            country: formData.country,
+          },
+          phoneNumber: formData.phone,
+          notes: formData.notes || undefined,
+          orderItems: [{
+            productId: Number(productData?.productId),
+            quantity: 1,
+            unitPrice: productData?.price || 0,
+            size: productData?.size,
+            color: productData?.color,
+            colorId: 1,
+            // 🎨 Données de design depuis le panier
+            vendorProductId: productData?.vendorProductId,
+            mockupUrl: productData?.mockupUrl,
+            designId: productData?.designId,
+            designPositions: productData?.designPositions,
+            designMetadata: productData?.designMetadata,
+            delimitation: productData?.delimitation,
+          }],
+          paymentMethod: 'CASH_ON_DELIVERY',
+          initiatePayment: false,
+        };
+
+        // Créer la commande
+        const orderResponse = orderService.isUserAuthenticated()
+          ? await orderService.createOrderWithPayment(orderRequest)
+          : await orderService.createGuestOrder(orderRequest);
+
+        if (orderResponse.success && orderResponse.data) {
+          console.log('📦 [ModernOrderForm] Commande créée avec succès:', orderResponse.data.orderNumber);
+          console.log('💡 [ModernOrderForm] Le panier sera vidé après confirmation du paiement');
+
+          // Rediriger vers la page de confirmation
+          const confirmationUrl = `/order-confirmation?orderNumber=${encodeURIComponent(orderResponse.data.orderNumber)}&totalAmount=${encodeURIComponent(total)}&email=${encodeURIComponent(formData.email)}`;
+          navigate(confirmationUrl);
+        }
+
       } catch (error) {
         console.error('Erreur lors de la commande:', error);
+        setErrors(prev => ({
+          ...prev,
+          payment: 'Erreur lors de la création de la commande. Veuillez réessayer.',
+        }));
       } finally {
         setIsSubmitting(false);
       }
@@ -371,288 +434,6 @@ const ModernOrderFormPage: React.FC = () => {
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -20 }
   };
-
-  // Écran de paiement en cours
-  if (paymentPending) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', duration: 0.6 }}
-          className="max-w-2xl w-full"
-        >
-          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-12 text-center">
-            {/* Icône de paiement en cours */}
-            <div className="relative w-28 h-28 mx-auto mb-8">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-4 border-blue-200 border-t-blue-600 rounded-full"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <CreditCard className="w-12 h-12 text-blue-600" />
-              </div>
-            </div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4"
-            >
-              Commande créée avec succès !
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-lg text-gray-600 mb-8"
-            >
-              Votre commande a été enregistrée. Finalisez votre paiement dans l'onglet PayDunya.
-            </motion.p>
-
-            {/* Numéro de commande */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 mb-8 border border-gray-200"
-            >
-              <p className="text-sm text-gray-600 mb-2">Numéro de commande</p>
-              <p className="text-3xl font-bold text-gray-900 tracking-wide">{orderNumber}</p>
-            </motion.div>
-
-            {/* Bouton CTA principal */}
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: 0.6, type: 'spring', stiffness: 200 }}
-              className="mb-8"
-            >
-              <a
-                href={paymentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative block w-full"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-                  <div className="flex items-center justify-center gap-3">
-                    <CreditCard className="w-8 h-8" />
-                    <span className="text-2xl font-bold">Procéder au paiement PayDunya</span>
-                    <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
-                  </div>
-                  <p className="text-center text-blue-100 text-sm mt-2">
-                    Cliquez ici pour ouvrir la page de paiement sécurisée
-                  </p>
-                </div>
-              </a>
-            </motion.div>
-
-            {/* Instructions */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="space-y-3 mb-8 bg-blue-50 rounded-2xl p-6 border border-blue-200"
-            >
-              <p className="text-sm font-semibold text-gray-900 mb-3">📝 Comment finaliser votre commande :</p>
-              <div className="flex items-start gap-3 text-left">
-                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
-                  1
-                </div>
-                <p className="text-sm text-gray-700">Cliquez sur le bouton ci-dessus pour ouvrir PayDunya</p>
-              </div>
-              <div className="flex items-start gap-3 text-left">
-                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
-                  2
-                </div>
-                <p className="text-sm text-gray-700">Choisissez votre méthode (Orange Money, Wave, MTN...)</p>
-              </div>
-              <div className="flex items-start gap-3 text-left">
-                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
-                  3
-                </div>
-                <p className="text-sm text-gray-700">Confirmez le paiement sur PayDunya</p>
-              </div>
-              <div className="flex items-start gap-3 text-left">
-                <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
-                  ✓
-                </div>
-                <p className="text-sm text-gray-700">Vous serez redirigé automatiquement ici</p>
-              </div>
-            </motion.div>
-
-            {/* Détails de la commande */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="space-y-3 mb-8 bg-gray-50 rounded-2xl p-6"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600">Confirmation envoyée à</span>
-                </div>
-                <span className="font-semibold text-gray-900">{formData.email}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600">Montant</span>
-                </div>
-                <span className="font-semibold text-gray-900">{formatPrice(total)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600">Livraison estimée</span>
-                </div>
-                <span className="font-semibold text-gray-900">
-                  {new Date(Date.now() + (deliveryOptions.find(d => d.id === selectedDelivery)?.estimatedDays || 3) * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Boutons d'action */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
-              <button
-                onClick={() => navigate('/')}
-                className="px-8 py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200"
-              >
-                Retour à l'accueil
-              </button>
-            </motion.div>
-
-            {/* Note de sécurité */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.9 }}
-              className="mt-8 p-4 bg-green-50 border border-green-200 rounded-xl"
-            >
-              <div className="flex items-center justify-center gap-2 text-green-700">
-                <Shield className="w-5 h-5" />
-                <p className="text-sm font-medium">
-                  Paiement 100% sécurisé par PayDunya
-                </p>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (orderComplete) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', duration: 0.6 }}
-          className="max-w-2xl w-full"
-        >
-          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-12 text-center">
-            {/* Icône de succès animée avec pulse */}
-            <div className="relative w-28 h-28 mx-auto mb-8">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: [0, 1.2, 1] }}
-                transition={{ delay: 0.1, duration: 0.6 }}
-                className="absolute inset-0 bg-green-100 rounded-full"
-              />
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                className="relative w-28 h-28 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-xl"
-              >
-                <CheckCircle2 className="w-16 h-16 text-white" />
-              </motion.div>
-            </div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-4"
-            >
-              Commande confirmée !
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-lg text-gray-600 mb-8"
-            >
-              Merci pour votre confiance. Vous recevrez un email de confirmation sous peu.
-            </motion.p>
-
-            {/* Numéro de commande */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 mb-8 border border-gray-200"
-            >
-              <p className="text-sm text-gray-600 mb-2">Numéro de commande</p>
-              <p className="text-3xl font-bold text-gray-900 tracking-wide">{orderNumber}</p>
-            </motion.div>
-
-            {/* Détails */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="space-y-4 mb-8 bg-gray-50 rounded-2xl p-6"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600">Email de confirmation</span>
-                </div>
-                <span className="font-semibold text-gray-900">{formData.email}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600">Livraison estimée</span>
-                </div>
-                <span className="font-semibold text-gray-900">
-                  {new Date(Date.now() + (deliveryOptions.find(d => d.id === selectedDelivery)?.estimatedDays || 3) * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Boutons d'action */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
-              <button
-                onClick={() => navigate('/')}
-                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                Retour à l'accueil
-              </button>
-            </motion.div>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">

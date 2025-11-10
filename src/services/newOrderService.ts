@@ -268,6 +268,18 @@ export class NewOrderService {
    * GET /orders/:id
    */
   async getOrderById(orderId: number): Promise<Order> {
+    // 🎨 Utiliser l'endpoint admin qui renvoie enrichedVendorProduct avec les délimitations
+    // Cela permet d'afficher les designs dans les détails de commande
+    try {
+      const response = await this.apiCall<{ orders: Order[] }>(`/orders/admin/all?page=1&limit=1&search=${orderId}`);
+      if (response.data.orders && response.data.orders.length > 0) {
+        return response.data.orders[0];
+      }
+    } catch (error) {
+      console.warn('Erreur avec endpoint admin, fallback sur endpoint standard:', error);
+    }
+
+    // Fallback sur l'endpoint standard si l'admin échoue
     const response = await this.apiCall<Order>(`/orders/${orderId}`);
     return response.data;
   }

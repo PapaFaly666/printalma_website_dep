@@ -12,6 +12,7 @@ export interface CartItem {
   productId: number;
   name: string;
   price: number;
+  suggestedPrice?: number; // Prix de vente défini par le vendeur
   color: string;
   colorCode: string;
   size: string;
@@ -31,4 +32,23 @@ export interface CartItem {
   };
   sizeId?: number;
   sizeName?: string;
+
+  // 🎨 NOUVEAUX CHAMPS POUR LA SAUVEGARDE DU DESIGN DANS LES COMMANDES
+  vendorProductId?: number;     // ID du produit vendeur
+  mockupUrl?: string;            // URL du mockup avec le design appliqué
+  designPositions?: {            // Coordonnées de placement du design
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+    designWidth?: number;
+    designHeight?: number;
+  };
+  designMetadata?: {             // Métadonnées complètes du design pour l'historique
+    designName?: string;
+    designCategory?: string;
+    designImageUrl?: string;
+    appliedAt?: string;
+  };
+  delimitation?: DelimitationData; // Zone de placement du design sur le produit
 }

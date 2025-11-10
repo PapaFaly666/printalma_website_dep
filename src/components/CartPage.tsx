@@ -36,6 +36,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../hooks/useCart';
 import { PaymentMethod } from '../types/order';
 import type { Order } from '../types/order';
+import { formatPriceInFRF } from '../utils/priceUtils';
 
 const WAVE_LOGO = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQm9rYPURKIok7K0ZF22oqFgMbzIHgNCauVQA&s";
 const ORANGE_MONEY_LOGO = "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/60/d2/b7/60d2b73d-8519-04dc-4826-6184ca34f49a/AppIcon-0-0-1x_U007emarketing-0-5-0-85-220.png/1200x630wa.png";
@@ -139,7 +140,7 @@ const CartPage: React.FC = () => {
         return {
           id: item.productId?.toString() || item.id?.toString(), // Plus robuste
           title: item.productName || item.name || item.title, // Plus robuste
-          price: typeof item.unitPrice === 'number' ? `${item.unitPrice} CFA` : item.price, // Plus robuste
+          price: typeof item.unitPrice === 'number' ? formatPriceInFRF(item.unitPrice) : item.price, // Plus robuste
           image: item.productImage || item.image, // Plus robuste
           quantity: item.quantity,
           size: finalSize,
@@ -249,7 +250,7 @@ const CartPage: React.FC = () => {
   };
 
   const formatPrice = (price: number): string => {
-    return price.toLocaleString('fr-FR') + ' CFA';
+    return formatPriceInFRF(price);
   };
 
   const handleContinueToShipping = (): void => {
@@ -421,7 +422,7 @@ const CartPage: React.FC = () => {
       // Afficher un message de succès avec les détails de la commande
       if (createdOrder) {
         toast.success(`Commande ${createdOrder.orderNumber} confirmée!`, {
-          description: `Total: ${createdOrder.totalAmount.toLocaleString()} FCFA`
+          description: `Total: ${formatPriceInFRF(createdOrder.totalAmount)}`
         });
       }
 
@@ -906,7 +907,7 @@ const CartPage: React.FC = () => {
                     <CheckCircle2 className="h-4 w-4 text-green-600 mr-2" />
                     <div className="text-sm text-green-800">
                       <p className="font-medium">Commande {createdOrder.orderNumber} créée</p>
-                      <p>Total: {createdOrder.totalAmount.toLocaleString()} FCFA</p>
+                      <p>Total: {formatPriceInFRF(createdOrder.totalAmount)}</p>
                     </div>
                   </div>
                 </div>

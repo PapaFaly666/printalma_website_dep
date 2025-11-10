@@ -51,12 +51,18 @@ const FilteredArticlesPage: React.FC = () => {
         });
 
         if (response.success) {
-          setProducts(response.data);
+          // Filtrer pour n'afficher que les produits publiés
+          const publishedProducts = response.data.filter(product =>
+            product.status && product.status.toLowerCase() === 'published'
+          );
+
+          setProducts(publishedProducts);
           setPagination({
-            total: response.pagination.total,
+            total: response.pagination.total, // Garder le total original pour la pagination
             hasMore: response.pagination.hasMore
           });
           console.log('✅ [FilteredArticlesPage] Produits chargés:', response.data.length);
+          console.log('📊 [FilteredArticlesPage] Produits publiés:', publishedProducts.length);
         } else {
           setError(response.message);
           setProducts([]);

@@ -33,10 +33,28 @@ export class PaymentStatusService {
         };
       }
 
-      // Déterminer le statut basé sur le code de réponse
-      const status = data.data.response_code
-        ? determinePaymentStatus(data.data.response_code)
-        : PaymentStatus.PENDING;
+      // IMPORTANT: Le vrai statut du paiement est dans data.data.status (pending, completed, cancelled, etc.)
+      // response_code "00" signifie seulement "Transaction Found", pas "Transaction Paid"
+      let status: PaymentStatus;
+
+      const paymentStatus = data.data.status?.toLowerCase();
+
+      if (paymentStatus === 'completed' || paymentStatus === 'paid') {
+        status = PaymentStatus.PAID;
+      } else if (paymentStatus === 'cancelled') {
+        status = PaymentStatus.CANCELLED;
+      } else if (paymentStatus === 'failed') {
+        status = PaymentStatus.FAILED;
+      } else if (paymentStatus === 'pending') {
+        status = PaymentStatus.PENDING;
+      } else {
+        // Fallback sur l'ancien système si le statut n'est pas reconnu
+        status = data.data.response_code
+          ? determinePaymentStatus(data.data.response_code)
+          : PaymentStatus.PENDING;
+      }
+
+      console.log(`🔍 [PaymentStatus] Statut déterminé: ${status} (depuis data.status: ${paymentStatus})`);
 
       return {
         success: true,

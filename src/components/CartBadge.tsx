@@ -3,6 +3,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { useCart } from '../hooks/useCart';
 import { useNavigate } from 'react-router-dom';
+import { formatPriceInFRF } from '../utils/priceUtils';
 
 export default function CartBadge() {
   const { getCartItemsCount, cartItems } = useCart();
@@ -21,7 +22,7 @@ export default function CartBadge() {
           product: {
             id: firstItem.productId.toString(),
             title: firstItem.productName,
-            price: `${firstItem.unitPrice} CFA`,
+            price: formatPriceInFRF(firstItem.unitPrice),
             image: firstItem.productImage
           },
           quantity: firstItem.quantity,

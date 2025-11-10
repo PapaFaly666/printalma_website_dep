@@ -73,6 +73,7 @@ export interface ProductInOrderDto {
   name: string;
   description?: string;
   price: number;
+  imageUrl?: string;
   designName?: string;
   designDescription?: string;
   designImageUrl?: string;
@@ -96,6 +97,101 @@ export interface OrderItemDto {
   productId?: number;
   productName?: string;
   productImage?: string;
+
+  // 🎨 DONNÉES DE DESIGN SAUVEGARDÉES (depuis la commande)
+  vendorProductId?: number;  // ID du produit vendeur pour récupération fallback
+  mockupUrl?: string;
+  designId?: number;
+  savedDesignPosition?: {  // Renommé pour éviter conflit avec designPositions array ci-dessous
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+    designWidth?: number;
+    designHeight?: number;
+    constraints?: {
+      maxScale: number;
+      minScale: number;
+    };
+  };
+  designMetadata?: {
+    designName?: string;
+    designCategory?: string;
+    designImageUrl?: string;
+    appliedAt?: string;
+  };
+  delimitation?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    coordinateType: 'PERCENTAGE' | 'PIXEL';
+  };
+
+  // 🎨 DONNÉES ENRICHIES DU PRODUIT VENDEUR (enrichedVendorProduct)
+  adminProduct?: {
+    id: number;
+    name: string;
+    description?: string;
+    price: number;
+    colorVariations?: Array<{
+      id: number;
+      name: string;
+      colorCode: string;
+      images?: Array<{
+        id: number;
+        url: string;
+        viewType: string;
+        delimitations?: any[];
+      }>;
+    }>;
+  };
+  designApplication?: {
+    hasDesign: boolean;
+    designUrl?: string;
+    positioning?: string;
+    scale?: number;
+    mode?: string;
+  };
+  designDelimitations?: Array<{
+    colorName: string;
+    colorCode: string;
+    imageUrl: string;
+    naturalWidth: number;
+    naturalHeight: number;
+    delimitations: any[];
+  }>;
+  designPositions?: Array<{
+    designId: number;
+    position: {
+      x: number;
+      y: number;
+      scale: number;
+      rotation: number;
+    };
+  }>;
+  images?: {
+    adminReferences?: Array<{
+      colorName: string;
+      colorCode: string;
+      adminImageUrl: string;
+      imageType: string;
+    }>;
+    total?: number;
+    primaryImageUrl?: string;
+  };
+  vendor?: {
+    id: number;
+    fullName: string;
+    shop_name: string;
+    profile_photo_url?: string | null;
+  };
+  colorVariation?: {
+    id: number;
+    name: string;
+    colorCode: string;
+  };
+  enrichedVendorProduct?: any; // Structure complète enrichie
 }
 
 export interface Order {

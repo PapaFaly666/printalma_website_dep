@@ -432,6 +432,17 @@ export default function VendorSidebar() {
 
                 {/* Footer */}
                 <div className="p-4 space-y-2 border-t border-gray-200">
+                    {/* Bouton Retour au site */}
+                    <NavItem
+                        icon={<Home size={20} />}
+                        label="Retour au site"
+                        collapsed={collapsed && !isMobile}
+                        active={false}
+                        onClick={() => navigate('/')}
+                        badge=""
+                        textColor="text-[#049be5]"
+                    />
+
                     <NavItem
                         icon={<User size={20} />}
                         label="Compte"

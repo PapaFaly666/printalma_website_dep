@@ -23,24 +23,18 @@ const Wrapper = ({ children }: WrapperProps) => {
     clearCart
   } = useCart();
 
-  // Liste des routes où le NavBar ne doit PAS apparaître
-  const hideNavbarRoutes = ["/admin/products","/admin/dashboard","/admin/payment-requests","/login","/admin/product-form","/admin/categories","/admin/clients","/forgot-password","admin/orders","/admin/orders","/admin/add-product","/admin/design-validation","/admin/product-validation","/admin/vendor-products-admin","/admin/vendor-products/create","/admin/vendor-products","/admin/trash","/admin/design-categories","/admin/users"];
-
-  // Vérifier si on est sur une route de détail produit (/products/:id ou /admin/products/:id)
-  const isProductDetailPage = /^\/(products|admin\/products)\/\d+$/.test(location.pathname);
-  // Vérifier si on est sur la page d'édition produit admin (/admin/products/:id/edit)
-  const isAdminProductEditPage = /^\/admin\/products\/\d+\/edit$/.test(location.pathname);
-  // Vérifier si on est sur une page de détail de commande admin (/admin/orders/:orderId)
-  const isAdminOrderDetailPage = /^\/admin\/orders\/\d+$/.test(location.pathname);
+  // Vérifier si on est sur une route admin (toute route commençant par /admin)
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   // Vérifier si on est sur une route vendeur
   const isVendorRoute = location.pathname.startsWith('/vendeur');
 
-  // Vérifier si on est sur une route de gestion des thèmes
-  const isThemeManagementRoute = location.pathname.startsWith('/admin/themes/') && location.pathname.includes('/products');
+  // Vérifier si on est sur des routes spéciales où la navbar ne doit pas apparaître
+  const isAuthRoute = location.pathname === '/login' || location.pathname === '/forgot-password';
 
-  // Cacher la navbar si la route est dans la liste, si c'est une page de détail produit, si c'est une route vendeur, ou si c'est une route de gestion des thèmes
-  const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname) || isProductDetailPage || isAdminProductEditPage || isAdminOrderDetailPage || isVendorRoute || isThemeManagementRoute;
+  // La NavBar s'affiche UNIQUEMENT sur les routes publiques
+  // Elle est cachée sur : /admin/*, /vendeur/*, /login, /forgot-password
+  const shouldHideNavbar = isAdminRoute || isVendorRoute || isAuthRoute;
 
   const handleCheckout = () => {
     // Fermer le panier
@@ -51,7 +45,7 @@ const Wrapper = ({ children }: WrapperProps) => {
 
   return (
     <div>
-      {!shouldHideNavbar && !isSuperAdmin() && <NavBar />}
+      {!shouldHideNavbar && <NavBar />}
       <div>{children}</div>
       <CartSidebar
         isOpen={isOpen}

@@ -7,6 +7,7 @@ import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { ArrowLeft, Package, User, MapPin, Phone, Copy, Printer } from 'lucide-react';
 import { getStatusIcon, formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
+import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrderProductPreview';
 
 const OrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -220,65 +221,188 @@ const OrderDetailPage: React.FC = () => {
                 </div>
 
                 <div className="divide-y divide-gray-100">
-                  {order.orderItems.map((item, index) => (
-                    <div key={item.id || index} className="p-6 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start space-x-6">
-                        {/* Image */}
-                        <div className="flex-shrink-0">
-                          {item.product?.designImageUrl ? (
-                            <img
-                              src={item.product.designImageUrl}
-                              alt={item.product.designName || item.product.name || 'Produit'}
-                              className="w-24 h-24 rounded-lg object-cover border border-gray-200"
-                            />
-                          ) : (
-                            <div className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center">
-                              <Package className="h-8 w-8 text-gray-400" />
+                  {order.orderItems.map((item, index) => {
+                    // Extraire les données enrichies
+                    const enriched = item.enrichedVendorProduct;
+
+                    console.log('🔍 [OrderDetail] Item:', item.id, {
+                      mockupUrl: item.mockupUrl,
+                      designId: item.designId,
+                      savedDesignPosition: item.savedDesignPosition,
+                      designMetadata: item.designMetadata,
+                      delimitation: item.delimitation,
+                      enriched: enriched
+                    });
+
+                    // Trouver l'image mockup pour la couleur commandée
+                    let mockupUrl = item.mockupUrl; // D'abord essayer mockupUrl sauvegardé
+                    if (!mockupUrl && enriched?.adminProduct?.colorVariations) {
+                      const colorVar = enriched.adminProduct.colorVariations.find(
+                        (cv: any) => cv.colorCode === item.colorVariation?.colorCode
+                      );
+                      mockupUrl = colorVar?.images?.[0]?.url || enriched.images?.primaryImageUrl;
+                    }
+
+                    // Extraire le design et sa position
+                    const hasDesign = enriched?.designApplication?.hasDesign || !!item.designId;
+                    const designUrl = enriched?.designApplication?.designUrl || item.designMetadata?.designImageUrl;
+
+                    console.log('🎨 [OrderDetail] Design info:', {
+                      hasDesign,
+                      designUrl,
+                      mockupUrl
+                    });
+
+                    // Utiliser savedDesignPosition sauvegardé en priorité, sinon depuis enrichedVendorProduct
+                    const designPosition = item.savedDesignPosition ||
+                      enriched?.designPositions?.[0]?.position || {
+                        x: 0, y: 0,
+                        scale: enriched?.designApplication?.scale || 0.8,
+                        rotation: 0
+                      };
+
+                    // Extraire les délimitations
+                    // Priorité 1: Délimitation sauvegardée dans l'item
+                    let delimitation = item.delimitation || null;
+
+                    // Priorité 2: Chercher dans enriched.designDelimitations
+                    if (!delimitation && enriched?.designDelimitations && enriched.designDelimitations.length > 0) {
+                      const delim = enriched.designDelimitations[0];
+                      if (delim.delimitations && delim.delimitations.length > 0) {
+                        const firstDelim = delim.delimitations[0];
+                        delimitation = {
+                          x: firstDelim.x,
+                          y: firstDelim.y,
+                          width: firstDelim.width,
+                          height: firstDelim.height,
+                          coordinateType: firstDelim.coordinateType || 'PERCENTAGE'
+                        };
+                      }
+                    }
+
+                    // Priorité 3: Chercher dans adminProduct.colorVariations
+                    if (!delimitation && enriched?.adminProduct?.colorVariations) {
+                      const colorVar = enriched.adminProduct.colorVariations.find(
+                        (cv: any) => cv.colorCode === item.colorVariation?.colorCode
+                      );
+                      if (colorVar?.images && colorVar.images.length > 0) {
+                        const img = colorVar.images[0];
+                        if (img.delimitations && img.delimitations.length > 0) {
+                          const firstDelim = img.delimitations[0];
+                          delimitation = {
+                            x: firstDelim.x,
+                            y: firstDelim.y,
+                            width: firstDelim.width,
+                            height: firstDelim.height,
+                            coordinateType: firstDelim.coordinateType || 'PERCENTAGE'
+                          };
+                        }
+                      }
+                    }
+
+                    console.log('📐 [OrderDetail] Delimitation:', delimitation);
+                    console.log('📍 [OrderDetail] Design Position:', designPosition);
+                    console.log('🆔 [OrderDetail] VendorProductId:', {
+                      fromItem: item.vendorProductId,
+                      fromEnriched: enriched?.id,
+                      final: item.vendorProductId || enriched?.id
+                    });
+
+                    return (
+                      <div key={item.id || index} className="p-6 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start space-x-6">
+                          {/* Preview du produit avec design - AGRANDI pour meilleure visibilité */}
+                          <div className="flex-shrink-0 w-64">
+                            {mockupUrl || designUrl ? (
+                              <EnrichedOrderProductPreview
+                                product={{
+                                  id: item.productId || item.id,
+                                  name: item.product?.name || enriched?.vendorName || 'Produit',
+                                  quantity: item.quantity,
+                                  unitPrice: item.unitPrice || 0,
+                                  colorName: item.colorVariation?.name || item.color,
+                                  colorCode: item.colorVariation?.colorCode,
+                                  size: item.size,
+                                  mockupImageUrl: mockupUrl,
+                                  designImageUrl: hasDesign ? designUrl : null,
+                                  designPosition: designPosition,
+                                  delimitation: delimitation || undefined,
+                                  vendorProductId: item.vendorProductId || enriched?.id // 🆕 Ajouter vendorProductId pour le fallback API
+                                }}
+                                className="w-64 h-64"
+                              />
+                            ) : (
+                              <div className="w-64 h-64 rounded-lg bg-gray-100 flex items-center justify-center">
+                                <Package className="h-16 w-16 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Détails */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-semibold text-black mb-2">
+                              {item.product?.name || enriched?.vendorName || 'Produit inconnu'}
+                            </h3>
+                            {item.product?.description && (
+                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                                {item.product.description}
+                              </p>
+                            )}
+
+                            <div className="flex flex-wrap gap-3 mb-3">
+                              {item.size && (
+                                <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                                  Taille: {item.size}
+                                </span>
+                              )}
+                              {(item.color || item.product?.orderedColorName) && (
+                                <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full flex items-center gap-1">
+                                  Couleur: {item.color || item.product?.orderedColorName}
+                                  {item.colorVariation?.colorCode && (
+                                    <span
+                                      className="w-3 h-3 rounded-full border border-gray-300"
+                                      style={{ backgroundColor: item.colorVariation.colorCode }}
+                                    />
+                                  )}
+                                </span>
+                              )}
+                              <span className="px-3 py-1 bg-black text-white text-xs font-medium rounded-full">
+                                Quantité: {item.quantity}
+                              </span>
                             </div>
-                          )}
-                        </div>
 
-                        {/* Détails */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-black mb-2">
-                            {item.product?.name || 'Produit inconnu'}
-                          </h3>
-                          {item.product?.description && (
-                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                              {item.product.description}
-                            </p>
-                          )}
-
-                          <div className="flex flex-wrap gap-3">
-                            {item.size && (
-                              <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                                Taille: {item.size}
-                              </span>
+                            {/* Informations du design */}
+                            {item.designMetadata && (
+                              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="text-xs font-semibold text-blue-900 mb-1">
+                                  🎨 Design personnalisé
+                                </div>
+                                <div className="text-xs text-blue-700">
+                                  {item.designMetadata.designName}
+                                </div>
+                                {item.designMetadata.designCategory && (
+                                  <div className="text-xs text-blue-600 mt-1">
+                                    Catégorie: {item.designMetadata.designCategory}
+                                  </div>
+                                )}
+                              </div>
                             )}
-                            {(item.color || item.product?.orderedColorName) && (
-                              <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                                Couleur: {item.color || item.product?.orderedColorName}
-                              </span>
-                            )}
-                            <span className="px-3 py-1 bg-black text-white text-xs font-medium rounded-full">
-                              Quantité: {item.quantity}
-                            </span>
                           </div>
-                        </div>
 
-                        {/* Prix */}
-                        <div className="text-right flex-shrink-0">
-                          <div className="text-sm text-gray-500 mb-1">Prix unitaire</div>
-                          <div className="text-lg font-semibold text-black mb-2">
-                            {formatCurrency(item.unitPrice)}
-                          </div>
-                          <div className="text-xl font-bold text-black">
-                            {formatCurrency(item.totalPrice || (item.quantity * item.unitPrice))}
+                          {/* Prix */}
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-sm text-gray-500 mb-1">Prix unitaire</div>
+                            <div className="text-lg font-semibold text-black mb-2">
+                              {formatCurrency(item.unitPrice)}
+                            </div>
+                            <div className="text-xl font-bold text-black">
+                              {formatCurrency(item.totalPrice || (item.quantity * item.unitPrice))}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

@@ -83,6 +83,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
 import NotificationCenter from '../../components/NotificationCenter';
 import { getStatusColor, getStatusIcon, formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
+import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrderProductPreview';
 
 // Import pour le drag-and-drop
 import {
@@ -303,6 +304,163 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order, onView }) => {
           </span>
         </div>
       </div>
+
+      {/* Aperçu des produits avec designs */}
+      {order.orderItems && order.orderItems.length > 0 && (
+        <div className="space-y-2 mb-2">
+          <div className="text-xs text-slate-500 font-medium">Produits:</div>
+          <div className="grid grid-cols-1 gap-2">
+            {order.orderItems.slice(0, 2).map((item, index) => (
+              <div key={item.id || index} className="flex items-center gap-2 p-1 bg-slate-50 rounded">
+                {/* Mini aperçu du produit avec design selon la documentation API */}
+                <div className="w-10 h-10 bg-white rounded border border-slate-200 flex-shrink-0 overflow-hidden relative">
+                  {(item.adminProduct || item.product) && (
+                    <>
+                      {/* Image du produit selon la structure enrichie */}
+                      <img
+                        src={
+                          // Priorité 1: images.primaryImageUrl (données enrichies)
+                          item.images?.primaryImageUrl ||
+                          // Priorité 2: adminProduct.colorVariations[0].images[0].url
+                          item.adminProduct?.colorVariations?.[0]?.images?.[0]?.url ||
+                          // Priorité 3: product.imageUrl (ancienne structure)
+                          item.product?.imageUrl ||
+                          // Fallback: image par défaut
+                          '/api/placeholder/40/40'
+                        }
+                        alt={
+                          item.adminProduct?.name ||
+                          item.product?.name ||
+                          'Produit'
+                        }
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/api/placeholder/40/40';
+                        }}
+                      />
+
+                      {/* Overlay du design selon designApplication */}
+                      {item.designApplication?.hasDesign && item.designApplication.designUrl && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <img
+                            src={item.designApplication.designUrl}
+                            alt="Design personnalisé"
+                            className="w-6 h-6 object-contain mix-blend-multiply"
+                            style={{
+                              transform: `translate(-50%, -50%) scale(${item.designApplication.scale || 0.6})`,
+                              left: '50%',
+                              top: '50%',
+                              filter: 'drop-shadow(0px 0px 1px rgba(0,0,0,0.3))'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Badge design si présent */}
+                      {item.designApplication?.hasDesign && (
+                        <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs rounded-bl px-1">
+                          🎨
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Détails du produit selon la documentation API */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-slate-900 truncate">
+                    {/* Priorité au nom du adminProduct (produit enrichi) */}
+                    {item.adminProduct?.name ||
+                     item.product?.name ||
+                     `Produit ${index + 1}`}
+
+                    {/* Indicateur vendeur si disponible */}
+                    {item.vendor?.shop_name && (
+                      <span className="text-xs text-blue-600 font-normal ml-1">
+                        ({item.vendor.shop_name})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    {/* Taille */}
+                    {item.size && (
+                      <span className="bg-white px-1 py-0.5 rounded text-slate-600">
+                        {item.size}
+                      </span>
+                    )}
+
+                    {/* Couleur - Priorité aux données enrichies */}
+                    {(item.color ||
+                      (item.adminProduct?.colorVariations?.find(cv => cv.id === item.colorId)?.name) ||
+                      (item.designDelimitations?.[0]?.colorName)
+                    ) && (
+                      <span className="bg-white px-1 py-0.5 rounded text-slate-600 flex items-center gap-1">
+                        {/* Swatch de couleur si disponible */}
+                        {(item.adminProduct?.colorVariations?.find(cv => cv.id === item.colorId)?.colorCode ||
+                          item.designDelimitations?.[0]?.colorCode) && (
+                          <span
+                            className="w-2 h-2 rounded-full border border-slate-300"
+                            style={{
+                              backgroundColor: item.adminProduct?.colorVariations?.find(cv => cv.id === item.colorId)?.colorCode ||
+                                          item.designDelimitations?.[0]?.colorCode || '#ccc'
+                            }}
+                          />
+                        )}
+                        {item.color ||
+                         item.adminProduct?.colorVariations?.find(cv => cv.id === item.colorId)?.name ||
+                         item.designDelimitations?.[0]?.colorName}
+                      </span>
+                    )}
+
+                    {/* Quantité */}
+                    <span className="text-slate-400">
+                      x{item.quantity || 1}
+                    </span>
+
+                    {/* Indicateur de design */}
+                    {item.designApplication?.hasDesign && (
+                      <span className="text-xs text-purple-600 font-medium">
+                        🎨
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Prix unitaire et informations supplémentaires */}
+                  <div className="flex items-center gap-2 text-xs text-slate-600">
+                    <span>Prix unitaire:</span>
+                    <span className="font-medium text-slate-800">
+                      {formatCurrency(item.unitPrice || 0)}
+                    </span>
+
+                    {/* Indicateur de prix suggéré si différent */}
+                    {item.adminProduct?.price &&
+                     item.adminProduct.price !== item.unitPrice && (
+                      <span className="text-xs text-green-600">
+                        (Vendeur: {formatCurrency(item.adminProduct.price)})
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-xs font-bold text-slate-900 flex-shrink-0 text-right">
+                  <div>{formatCurrency((item.unitPrice || 0) * (item.quantity || 1))}</div>
+                  {item.quantity > 1 && (
+                    <div className="text-xs text-slate-500 font-normal">
+                      ({item.quantity} × {formatCurrency(item.unitPrice || 0)})
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {order.orderItems.length > 2 && (
+              <div className="text-xs text-slate-500 italic text-center py-1">
+                +{order.orderItems.length - 2} autre{order.orderItems.length - 2 > 1 ? 's' : ''} produit{order.orderItems.length - 2 > 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <Separator className="my-2" />
 
@@ -1245,12 +1403,85 @@ const OrdersManagement = () => {
                             </TableCell>
 
                             <TableCell>
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Package className="h-3 w-3 text-slate-500" />
-                                  <span className="text-sm font-medium text-slate-900">
-                                    {(order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} article{((order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0) > 1 ? 's' : ''}
-                                  </span>
+                              <div className="flex items-center gap-3">
+                                {/* Product Preview */}
+                                {order.orderItems && order.orderItems.length > 0 && (() => {
+                                  const firstItem = order.orderItems[0];
+                                  const enriched = firstItem.enrichedVendorProduct;
+
+                                  // Extract mockup URL
+                                  let mockupUrl = firstItem.mockupUrl;
+                                  if (!mockupUrl && enriched?.images?.primaryImageUrl) {
+                                    mockupUrl = enriched.images.primaryImageUrl;
+                                  }
+                                  if (!mockupUrl && firstItem.product?.imageUrl) {
+                                    mockupUrl = firstItem.product.imageUrl;
+                                  }
+
+                                  // Extract design URL
+                                  const hasDesign = enriched?.designApplication?.hasDesign || false;
+                                  let designUrl: string | null = null;
+                                  if (hasDesign && enriched?.designApplication?.designUrl) {
+                                    designUrl = enriched.designApplication.designUrl;
+                                  }
+
+                                  // Extract design position
+                                  let designPosition = firstItem.savedDesignPosition || undefined;
+                                  if (!designPosition && enriched?.designPositions && enriched.designPositions.length > 0) {
+                                    const pos = enriched.designPositions[0].position;
+                                    designPosition = {
+                                      x: pos.x,
+                                      y: pos.y,
+                                      scale: pos.scale,
+                                      rotation: pos.rotation || 0
+                                    };
+                                  }
+
+                                  // Extract delimitation
+                                  let delimitation = firstItem.delimitation || null;
+                                  if (!delimitation && enriched?.designDelimitations && enriched.designDelimitations.length > 0) {
+                                    const delim = enriched.designDelimitations[0];
+                                    if (delim.delimitations && delim.delimitations.length > 0) {
+                                      const firstDelim = delim.delimitations[0];
+                                      delimitation = {
+                                        x: firstDelim.x,
+                                        y: firstDelim.y,
+                                        width: firstDelim.width,
+                                        height: firstDelim.height,
+                                        coordinateType: firstDelim.coordinateType || 'PERCENTAGE'
+                                      };
+                                    }
+                                  }
+
+                                  return (
+                                    <EnrichedOrderProductPreview
+                                      product={{
+                                        id: firstItem.productId || firstItem.id,
+                                        name: firstItem.product?.name || enriched?.vendorName || 'Produit',
+                                        quantity: firstItem.quantity,
+                                        unitPrice: firstItem.unitPrice || 0,
+                                        colorName: firstItem.colorVariation?.name || firstItem.color,
+                                        colorCode: firstItem.colorVariation?.colorCode,
+                                        size: firstItem.size,
+                                        mockupImageUrl: mockupUrl,
+                                        designImageUrl: hasDesign ? designUrl : null,
+                                        designPosition: designPosition,
+                                        delimitation: delimitation || undefined,
+                                        vendorProductId: firstItem.vendorProductId || enriched?.id
+                                      }}
+                                      className="w-12 h-12 flex-shrink-0"
+                                    />
+                                  );
+                                })()}
+
+                                {/* Article count */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <Package className="h-3 w-3 text-slate-500" />
+                                    <span className="text-sm font-medium text-slate-900">
+                                      {(order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} article{((order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0) > 1 ? 's' : ''}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                             </TableCell>

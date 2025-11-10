@@ -21,11 +21,37 @@ export interface ShippingDetails {
 
 export interface OrderItem {
   productId: number;
+  vendorProductId?: number; // ID du produit vendeur (optionnel)
   quantity: number;
   unitPrice?: number; // 🎯 Ajout du prix unitaire pour le calcul
   size?: string;
   color?: string;
   colorId?: number;
+
+  // 🎨 NOUVEAUX CHAMPS DE DESIGN (optionnels)
+  mockupUrl?: string;           // URL du mockup avec le design appliqué
+  designId?: number;            // ID du design utilisé
+  designPositions?: {           // Coordonnées de placement du design
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+    designWidth?: number;
+    designHeight?: number;
+  };
+  designMetadata?: {            // Métadonnées complètes du design pour l'historique
+    designName?: string;
+    designCategory?: string;
+    designImageUrl?: string;
+    appliedAt?: string;
+  };
+  delimitation?: {              // Zone de placement du design sur le produit
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    coordinateType: 'PERCENTAGE' | 'PIXEL';
+  };
 }
 
 export interface CreateOrderRequest {
@@ -254,6 +280,25 @@ export class OrderService {
     }
   }
 
+  // Obtenir une commande par son numéro de commande
+  async getOrderByNumber(orderNumber: string): Promise<Order> {
+    try {
+      const response = await fetch(`${this.baseUrl}/orders/number/${orderNumber}`, {
+        headers: this.getHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error: any) {
+      console.error('❌ [OrderService] Erreur lors de la récupération de la commande:', error);
+      throw new Error(error.message || 'Erreur lors de la récupération de la commande');
+    }
+  }
+
   // Mettre à jour le statut d'une commande (admin)
   async updateOrderStatus(orderId: number, status: string, notes?: string): Promise<Order> {
     try {
@@ -372,7 +417,9 @@ export class OrderService {
         if (!productId || productId <= 0) {
           throw new Error(`Invalid productId in cart item ${index}: ${item.productId}. Must be greater than 0`);
         }
-        return {
+
+        // 🎨 Construire l'objet orderItem avec les données de design si disponibles
+        const orderItem: any = {
           productId: productId,
           quantity: item.quantity || 1,
           unitPrice: item.price || item.unitPrice || 0, // Récupérer le prix
@@ -380,6 +427,40 @@ export class OrderService {
           color: item.color,
           colorId: item.colorId || 1
         };
+
+        // Ajouter vendorProductId si disponible
+        if (item.vendorProductId) {
+          orderItem.vendorProductId = item.vendorProductId;
+        }
+
+        // Ajouter mockupUrl si disponible
+        if (item.mockupUrl) {
+          orderItem.mockupUrl = item.mockupUrl;
+        }
+
+        // Ajouter designId si disponible
+        if (item.designId) {
+          orderItem.designId = item.designId;
+        }
+
+        // Ajouter designPositions si disponible
+        if (item.designPositions) {
+          orderItem.designPositions = item.designPositions;
+        }
+
+        // Ajouter designMetadata si disponible
+        if (item.designMetadata) {
+          orderItem.designMetadata = item.designMetadata;
+        }
+
+        // Ajouter delimitation si disponible
+        if (item.delimitation) {
+          orderItem.delimitation = item.delimitation;
+        }
+
+        console.log('🎨 [OrderService] OrderItem construit:', orderItem);
+
+        return orderItem;
       });
 
       const orderData: CreateOrderRequest = {

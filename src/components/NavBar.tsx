@@ -1,16 +1,43 @@
 import { useState, useEffect, useRef } from "react";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, LayoutDashboard } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { categoriesService, Category } from "../services/categoriesService";
+import { subCategoriesService, SubCategory } from "../services/subCategoriesService";
 
 const NavBar = () => {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const { itemCount, openCart } = useCart();
   const navigate = useNavigate();
+  const { user, isAuthenticated, isAdmin, isSuperAdmin, isVendeur, logout } = useAuth();
+
+  // Charger les catégories et sous-catégories
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [categoriesData, subCategoriesData] = await Promise.all([
+          categoriesService.getActiveCategories(),
+          subCategoriesService.getAllSubCategories()
+        ]);
+        setCategories(categoriesData);
+        setSubCategories(subCategoriesData.filter(sub => sub.isActive));
+      } catch (error) {
+        console.error('Erreur lors du chargement des catégories:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   // Debug pour voir les changements du panier
   useEffect(() => {
@@ -40,33 +67,15 @@ const NavBar = () => {
     };
   }, [lastScrollY]);
 
-  const handleCategoryClick = (category) => {
-    console.log(`Navigate to: /filtered-articles?category=${category}`);
+  const handleCategoryClick = (category?: Category, subCategory?: SubCategory) => {
+    if (subCategory) {
+      console.log(`Navigate to: /filtered-articles?category=${subCategory.name}`);
+      navigate(`/filtered-articles?category=${subCategory.name}`);
+    } else if (category) {
+      console.log(`Navigate to: /filtered-articles?category=${category.name}`);
+      navigate(`/filtered-articles?category=${category.name}`);
+    }
     setIsMobileMenuOpen(false);
-  };
-
-  const categories = {
-    vetements: {
-      name: "Vêtements",
-      subCategories: [
-        { name: "T-shirt", url: "/produits" },
-        { name: "Sweats", url: "/vetements/sweats" },
-        { name: "Vestes", url: "/vetements/vestes" },
-        { name: "Pantalons", url: "/vetements/pantalons" },
-      ],
-    },
-    accessoires: {
-      name: "Accessoires",
-      subCategories: [
-        { name: "Casquette", url: "/accessoires/casquettes" },
-        { name: "Sac", url: "/accessoires/sacs" },
-        { name: "Bijoux", url: "/accessoires/bijoux" },
-      ],
-    },
-    personnalisation: {
-      name: "Personnalisation",
-      subCategories: [],
-    },
   };
 
   return (
@@ -161,20 +170,68 @@ const NavBar = () => {
             <div className="hidden md:block relative group">
               <button className="text-gray-700 hover:bg-gray-100 flex items-center space-x-1 lg:space-x-2 px-2 py-1.5 lg:px-3 lg:py-2 xl:px-4 xl:py-2.5 rounded-md transition-all duration-200">
                 <img src="/connexion.svg" alt="connexion" className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6" />
-                <span className="hidden lg:inline text-sm lg:text-base xl:text-lg">Compte</span>
+                <span className="hidden lg:inline text-sm lg:text-base xl:text-lg">
+                  {isAuthenticated && user ? `${user.firstName} ${user.lastName}` : 'Compte'}
+                </span>
                 <svg className="h-3 w-3 lg:h-4 lg:w-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="py-2">
-                  <button className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm">
-                    Se connecter
-                  </button>
-                  <button className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm">
-                    S'inscrire
-                  </button>
+                  {isAuthenticated && user ? (
+                    <>
+                      {/* Bouton pour retourner à l'interface admin/vendeur */}
+                      {(isAdmin() || isSuperAdmin() || isVendeur()) && (
+                        <>
+                          <button
+                            onClick={() => {
+                              if (isVendeur()) {
+                                navigate('/vendeur/dashboard');
+                              } else if (isAdmin() || isSuperAdmin()) {
+                                navigate('/admin/dashboard');
+                              }
+                            }}
+                            className="w-full px-4 py-2.5 text-left hover:bg-[#049be5]/10 transition-colors text-sm flex items-center gap-2 text-[#049be5] font-medium"
+                          >
+                            <LayoutDashboard className="w-4 h-4" />
+                            {isVendeur() ? 'Mon espace vendeur' : 'Mon espace admin'}
+                          </button>
+                          <div className="border-t border-gray-100 my-1"></div>
+                        </>
+                      )}
+
+                      <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
+                        {user.email}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          logout();
+                          navigate('/');
+                        }}
+                        className="w-full px-4 py-2 text-left hover:bg-red-50 transition-colors text-sm text-red-600"
+                      >
+                        Se déconnecter
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => navigate('/login')}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm"
+                      >
+                        Se connecter
+                      </button>
+                      <button
+                        onClick={() => navigate('/register')}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-sm"
+                      >
+                        S'inscrire
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -220,112 +277,136 @@ const NavBar = () => {
           <div className="flex items-center justify-center h-full">
             {/* Navigation Desktop */}
             <div className="hidden lg:flex items-center space-x-8">
-              {Object.keys(categories).map((categoryKey) => (
-                <div key={categoryKey} className="relative group">
-                  {categories[categoryKey].subCategories.length > 0 ? (
-                    <>
-                      <button className="flex items-center space-x-1 lg:space-x-2 py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg">
-                        <span>{categories[categoryKey].name}</span>
-                        <svg className="h-3 w-3 lg:h-4 lg:w-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      {/* Dropdown */}
-                      <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                        <div className="p-6">
-                          <div className="grid grid-cols-2 gap-4">
-                            {categories[categoryKey].subCategories.map((subCategory) => (
-                              <button
-                                key={subCategory.name}
-                                onClick={() => handleCategoryClick(subCategory.name)}
-                                className="text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                              >
-                                <div className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
-                                  {subCategory.name}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <button
-                              onClick={() => handleCategoryClick(categories[categoryKey].name)}
-                              className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
-                            >
-                              Voir tout dans {categories[categoryKey].name} →
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => handleCategoryClick(categories[categoryKey].name)}
-                      className="py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg flex items-center space-x-1 lg:space-x-2"
-                    >
-                      {categoryKey === "personnalisation" ? (
+              {/* Bouton Personnalisation toujours visible avec icône fire */}
+              <button
+                onClick={() => handleCategoryClick()}
+                className="py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg flex items-center space-x-1 lg:space-x-2"
+              >
+                <img
+                  src="/fire.svg"
+                  alt="Fire"
+                  className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5"
+                />
+                <span>Personnalisation</span>
+              </button>
+
+              {loading ? (
+                <div className="flex items-center space-x-8">
+                  <div className="text-white/80 text-sm">Chargement...</div>
+                </div>
+              ) : (
+                categories.map((category) => {
+                  const categorySubCategories = subCategories.filter(sub => sub.categoryId === category.id);
+
+                  return (
+                    <div key={category.id} className="relative group">
+                      {categorySubCategories.length > 0 ? (
                         <>
-                          <img 
-                            src="/fire.svg" 
-                            alt="Fire" 
-                            className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5" 
-                          />
-                          <span>Personnalisation</span>
+                          <button className="flex items-center space-x-1 lg:space-x-2 py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg">
+                            <span>{category.name}</span>
+                            <svg className="h-3 w-3 lg:h-4 lg:w-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {/* Dropdown */}
+                          <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div className="p-6">
+                              <div className="grid grid-cols-2 gap-4">
+                                {categorySubCategories.map((subCategory) => (
+                                  <button
+                                    key={subCategory.id}
+                                    onClick={() => handleCategoryClick(category, subCategory)}
+                                    className="text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                                  >
+                                    <div className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                                      {subCategory.name}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="mt-4 pt-4 border-t border-gray-100">
+                                <button
+                                  onClick={() => handleCategoryClick(category)}
+                                  className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+                                >
+                                  Voir tout dans {category.name} →
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </>
                       ) : (
-                        <span>{categories[categoryKey].name}</span>
+                        <button
+                          onClick={() => handleCategoryClick(category)}
+                          className="py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg flex items-center space-x-1 lg:space-x-2"
+                        >
+                          <span>{category.name}</span>
+                        </button>
                       )}
-                    </button>
-                  )}
-                </div>
-              ))}
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {/* Navigation Medium */}
             <div className="hidden md:flex lg:hidden items-center space-x-4 lg:space-x-6">
-              {["Vêtements", "Accessoires", "Personnalisation"].map((categoryName) => (
-                <button
-                  key={categoryName}
-                  onClick={() => handleCategoryClick(categoryName)}
-                  className="py-2 lg:py-3 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base flex items-center space-x-1 lg:space-x-2"
-                >
-                  {categoryName === "Personnalisation" ? (
-                    <>
-                      <img 
-                        src="/fire.svg" 
-                        alt="Fire" 
-                        className="w-3 h-3 lg:w-4 lg:h-4" 
-                      />
-                      <span>Personnalisation</span>
-                    </>
-                  ) : (
-                    <span>{categoryName}</span>
-                  )}
-                </button>
-              ))}
+              {/* Bouton Personnalisation toujours visible avec icône fire */}
+              <button
+                onClick={() => handleCategoryClick()}
+                className="py-2 lg:py-3 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base flex items-center space-x-1 lg:space-x-2"
+              >
+                <img
+                  src="/fire.svg"
+                  alt="Fire"
+                  className="w-3 h-3 lg:w-4 lg:h-4"
+                />
+                <span>Personnalisation</span>
+              </button>
+
+              {loading ? (
+                <div className="text-white/80 text-sm">Chargement...</div>
+              ) : (
+                categories.slice(0, 2).map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category)}
+                    className="py-2 lg:py-3 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base flex items-center space-x-1 lg:space-x-2"
+                  >
+                    <span>{category.name}</span>
+                  </button>
+                ))
+              )}
             </div>
 
             {/* Navigation Mobile */}
             <div className="flex md:hidden items-center space-x-2 sm:space-x-3">
-              {["Vêtements", "Personnalisation"].map((categoryName) => (
-                <button
-                  key={categoryName}
-                  onClick={() => handleCategoryClick(categoryName)}
-                  className="py-2 sm:py-3 text-white hover:text-white/80 font-medium transition-colors text-xs sm:text-sm flex items-center space-x-1"
-                >
-                  {categoryName === "Personnalisation" ? (
-                    <>
-                      <img 
-                        src="/fire.svg" 
-                        alt="Fire" 
-                        className="w-2.5 h-2.5 sm:w-3 sm:h-3" 
-                      />
-                      <span>Perso</span>
-                    </>
-                  ) : (
-                    <span>{categoryName}</span>
-                  )}
-                </button>
-              ))}
+              {/* Bouton Personnalisation toujours visible avec icône fire */}
+              <button
+                onClick={() => handleCategoryClick()}
+                className="py-2 sm:py-3 text-white hover:text-white/80 font-medium transition-colors text-xs sm:text-sm flex items-center space-x-1"
+              >
+                <img
+                  src="/fire.svg"
+                  alt="Fire"
+                  className="w-2.5 h-2.5 sm:w-3 sm:h-3"
+                />
+                <span>Perso</span>
+              </button>
+
+              {loading ? (
+                <div className="text-white/80 text-xs">Chargement...</div>
+              ) : (
+                categories.slice(0, 1).map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category)}
+                    className="py-2 sm:py-3 text-white hover:text-white/80 font-medium transition-colors text-xs sm:text-sm flex items-center space-x-1"
+                  >
+                    <span>{category.name}</span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -347,27 +428,33 @@ const NavBar = () => {
                 </button>
               </div>
 
+              {/* Bouton Personnalisation toujours visible avec icône fire */}
+              <button
+                onClick={() => handleCategoryClick()}
+                className="w-full text-left py-3 px-4 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-2"
+              >
+                <img
+                  src="/fire.svg"
+                  alt="Fire"
+                  className="w-4 h-4"
+                />
+                <span>Personnalisation</span>
+              </button>
+
               {/* Categories */}
-              {Object.keys(categories).map((categoryKey) => (
-                <button
-                  key={categoryKey}
-                  onClick={() => handleCategoryClick(categories[categoryKey].name)}
-                  className="w-full text-left py-3 px-4 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-2"
-                >
-                  {categoryKey === "personnalisation" ? (
-                    <>
-                      <img 
-                        src="/fire.svg" 
-                        alt="Fire" 
-                        className="w-4 h-4" 
-                      />
-                      <span>Personnalisation</span>
-                    </>
-                  ) : (
-                    <span>{categories[categoryKey].name}</span>
-                  )}
-                </button>
-              ))}
+              {loading ? (
+                <div className="text-gray-500 text-sm py-3 px-4">Chargement des catégories...</div>
+              ) : (
+                categories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category)}
+                    className="w-full text-left py-3 px-4 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center space-x-2"
+                  >
+                    <span>{category.name}</span>
+                  </button>
+                ))
+              )}
 
               {/* Devenir Vendeur button mobile */}
               <button className="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-4 py-2 text-sm rounded-md flex items-center justify-center space-x-1">

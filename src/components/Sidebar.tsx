@@ -750,6 +750,17 @@ export default function Sidebar() {
 
                 {/* Footer */}
                 <div className="p-3 space-y-1">
+                    {/* Bouton Retour au site - visible pour tous */}
+                    <NavItem
+                        icon={<Home size={18} />}
+                        label="Retour au site"
+                        collapsed={collapsed && !isMobile}
+                        active={false}
+                        onClick={() => navigate('/')}
+                        badge=""
+                        textColor="text-[#049be5] dark:text-[#049be5]"
+                    />
+
                     {/* Paramètres - seulement pour les admins */}
                     {(isAdmin() || isSuperAdmin()) && (
                         <NavItem

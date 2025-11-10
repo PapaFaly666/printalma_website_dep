@@ -400,7 +400,7 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
         <img
           ref={imgRef}
           src={primaryImage}
-          alt={product.adminProduct?.name || product.vendorName}
+          alt={product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
           className="w-full h-full object-cover"
           onLoad={() => setImageLoaded(true)}
         />
@@ -519,7 +519,7 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
       {/* Informations du produit */}
       <div className="p-3">
         <h3 className="font-bold italic text-base mb-0.5 truncate">
-          {product.adminProduct?.name || product.vendorName}
+          {product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
         </h3>
         <p className="text-sm font-bold">
           {formatPrice(product.price)}

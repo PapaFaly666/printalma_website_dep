@@ -13,7 +13,7 @@ import {
   X
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
-import { formatPrice } from '../utils/priceUtils';
+import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -25,7 +25,7 @@ const CartPage: React.FC = () => {
 
   // Calculer les totaux
   const subtotal = getTotalPrice();
-  const shipping = subtotal > 50000 ? 0 : 1500; // Livraison gratuite au-delà de 50 000 FCFA
+  const shipping = subtotal > 50000 ? 0 : 1500; // Livraison gratuite au-delà de 50 000 fr
   const total = subtotal + shipping;
 
   // Si le panier est vide

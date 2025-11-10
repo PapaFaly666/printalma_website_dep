@@ -179,7 +179,21 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
 
   // ✅ Obtenir le nom d'affichage
   const getDisplayName = () => {
-    return product.vendorName || product.originalAdminName || 'Produit sans nom';
+    // Debug: Loguer toutes les possibilités de noms
+    console.log('🔍 [SimpleProductPreview] Debug noms disponibles:', {
+      productId: product.id,
+      vendorName: product.vendorName,
+      originalAdminName: product.originalAdminName,
+      adminProductName: product.adminProduct?.name,
+      // vendorFullName: product.vendor?.fullName,
+      // vendorShopName: product.vendor?.shop_name
+    });
+
+    // Priorité: vendorName (nom personnalisé du produit) > adminProductName > originalAdminName > fallback
+    const displayName = product.vendorName || product.adminProduct?.name || product.originalAdminName || 'Produit sans nom';
+
+    console.log('📝 [SimpleProductPreview] Nom affiché:', displayName);
+    return displayName;
   };
 
   // ✅ Obtenir toutes les images selon le type (pour les détails)

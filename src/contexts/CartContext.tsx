@@ -18,6 +18,7 @@ interface CartContextType {
     id: number;
     name: string;
     price: number;
+    suggestedPrice?: number;
     color: string;
     colorCode: string;
     size: string;
@@ -36,6 +37,24 @@ interface CartContextType {
     };
     sizeId?: number;
     sizeName?: string;
+    // 🎨 Nouveaux champs pour la sauvegarde du design
+    vendorProductId?: number;
+    mockupUrl?: string;
+    designPositions?: {
+      x: number;
+      y: number;
+      scale: number;
+      rotation: number;
+      designWidth?: number;
+      designHeight?: number;
+    };
+    designMetadata?: {
+      designName?: string;
+      designCategory?: string;
+      designImageUrl?: string;
+      appliedAt?: string;
+    };
+    delimitation?: DelimitationData;
   }) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -83,6 +102,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     id: number;
     name: string;
     price: number;
+    suggestedPrice?: number;
     color: string;
     colorCode: string;
     size: string;
@@ -99,6 +119,23 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     };
     sizeId?: number;
     sizeName?: string;
+    vendorProductId?: number;
+    mockupUrl?: string;
+    designPositions?: {
+      x: number;
+      y: number;
+      scale: number;
+      rotation: number;
+      designWidth?: number;
+      designHeight?: number;
+    };
+    designMetadata?: {
+      designName?: string;
+      designCategory?: string;
+      designImageUrl?: string;
+      appliedAt?: string;
+    };
+    delimitation?: DelimitationData;
   }) => {
     console.log('🛒 [CartContext] Ajout au panier:', product);
     // Utiliser la vraie taille si disponible, sinon la taille de base
@@ -155,6 +192,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           productId: product.id,
           name: product.name,
           price: product.price,
+          suggestedPrice: product.suggestedPrice,
           color: product.color,
           colorCode: product.colorCode,
           size: product.size,
@@ -170,7 +208,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           // Propriétés pour les vraies tailles de la base de données
           selectedSize: product.selectedSize,
           sizeId: product.sizeId,
-          sizeName: product.sizeName
+          sizeName: product.sizeName,
+          // 🎨 Nouveaux champs pour la sauvegarde du design dans les commandes
+          vendorProductId: product.vendorProductId,
+          mockupUrl: product.mockupUrl,
+          designPositions: product.designPositions,
+          designMetadata: product.designMetadata,
+          delimitation: product.delimitation
         };
 
         console.log('🛒 [CartContext] Nouvel article créé:', {
@@ -232,7 +276,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const clearCart = () => setItems([]);
 
   const getTotalPrice = () => {
-    return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    return items.reduce((sum, item) => sum + ((item.suggestedPrice || item.price) * item.quantity), 0);
   };
 
   const value: CartContextType = {

@@ -392,10 +392,40 @@ const PublicVendorProductDetailPage: React.FC = () => {
         }
       }
 
+      // Obtenir l'image mockup de la couleur sélectionnée
+      let mockupUrl = product.images.primaryImageUrl;
+      if (product.adminProduct && product.adminProduct.colorVariations) {
+        const colorVariation = product.adminProduct.colorVariations.find(cv => cv.id === selectedColorId);
+        if (colorVariation && colorVariation.images && colorVariation.images.length > 0) {
+          const mockupImage = colorVariation.images.find(img => img.viewType === 'Front') || colorVariation.images[0];
+          if (mockupImage) {
+            mockupUrl = mockupImage.url;
+          }
+        }
+      }
+
+      // Extraire les positions du design si disponibles
+      const designPositions = product.designPositions && product.designPositions.length > 0
+        ? product.designPositions[0].position
+        : undefined;
+
+      // Préparer les métadonnées du design si un design est appliqué
+      const designMetadata = product.designApplication?.hasDesign
+        ? {
+            designName: product.design?.name || product.vendorName || 'Design personnalisé',
+            designCategory: 'CUSTOM',
+            designImageUrl: product.designApplication?.designUrl,
+            appliedAt: new Date().toISOString()
+          }
+        : undefined;
+
+      // Extraire la première délimitation pour la sauvegarde
+      const delimitation = delimitations.length > 0 ? delimitations[0] : undefined;
+
       // Préparer les données du produit pour le formulaire de commande
       const productData = {
         id: product.id,
-        name: product.adminProduct?.name || product.vendorName,
+        name: product.vendorName || product.adminProduct?.name || 'Produit sans nom',
         price: product.price,
         color: selectedColor.name,
         colorCode: selectedColor.colorCode,
@@ -411,7 +441,14 @@ const PublicVendorProductDetailPage: React.FC = () => {
         // Propriétés pour les vraies tailles de la base de données
         selectedSize: selectedSize,
         sizeId: selectedSize.id,
-        sizeName: selectedSize.sizeName
+        sizeName: selectedSize.sizeName,
+
+        // 🎨 NOUVEAUX CHAMPS POUR LA SAUVEGARDE DU DESIGN DANS LES COMMANDES
+        vendorProductId: product.id,
+        mockupUrl: mockupUrl,
+        designPositions: designPositions,
+        designMetadata: designMetadata,
+        delimitation: delimitation
       };
 
       // Ajouter au panier et ouvrir le panier latéral
@@ -469,7 +506,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
           </button>
           <span>&gt;</span>
           <span className="text-gray-900 font-medium">
-            {product.adminProduct?.name || product.vendorName}
+            {product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
           </span>
         </div>
       </div>
@@ -557,7 +594,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
             {/* En-tête produit */}
             <div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3" style={{ fontStyle: 'italic' }}>
-                {product.adminProduct?.name || product.vendorName}
+                {product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
               </h1>
               <p className="text-xs sm:text-sm text-gray-600 mb-2" style={{ fontStyle: 'italic' }}>Détails</p>
               <div className="flex items-center gap-2 mb-1">

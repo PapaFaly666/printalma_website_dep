@@ -4,7 +4,7 @@ import { CartItem } from '../types/cart';
 import DesignPositionService from '../services/DesignPositionService';
 import { useAuth } from '../contexts/AuthContext';
 import { vendorProductService } from '../services/vendorProductService';
-import { formatPrice } from '../utils/priceUtils';
+import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
 
 interface CartSidebarProps {
   isOpen: boolean;
