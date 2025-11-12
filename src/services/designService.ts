@@ -2279,6 +2279,67 @@ class DesignService {
   }
 
   // ========================================================================
+
+  /**
+   * Récupérer les designs publics (pour les clients)
+   * Endpoint: GET /public/designs
+   */
+  async getPublicDesigns(filters?: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{
+    designs: any[];
+    pagination: any;
+    filters: any;
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.page) params.append('page', filters.page.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.category) params.append('category', filters.category);
+      if (filters?.minPrice) params.append('minPrice', filters.minPrice.toString());
+      if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
+
+      const response = await fetch(`${this.apiUrl}/public/designs?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      console.log('📦 Designs publics récupérés:', result.data);
+
+      return result.data;
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des designs publics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Alias pour getPublicDesigns (pour compatibilité avec le code existant)
+   */
+  async getDesigns(filters?: any): Promise<{ designs: any[] }> {
+    const result = await this.getPublicDesigns(filters);
+    return { designs: result.designs };
+  }
+
+  // ========================================================================
 }
 
 export const designService = new DesignService();

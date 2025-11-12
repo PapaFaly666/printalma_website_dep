@@ -1405,7 +1405,7 @@ const OrdersManagement = () => {
                         <TableRow className="bg-slate-50/80 hover:bg-slate-50 border-b-2 border-slate-200">
                           <TableHead className="font-semibold text-slate-900">Commande</TableHead>
                           <TableHead className="font-semibold text-slate-900">Client</TableHead>
-                          <TableHead className="font-semibold text-slate-900">Articles</TableHead>
+                          <TableHead className="font-semibold text-slate-900">Vendeur</TableHead>
                           <TableHead className="font-semibold text-slate-900">Paiement</TableHead>
                           <TableHead className="font-semibold text-slate-900">Statut</TableHead>
                           <TableHead className="font-semibold text-slate-900">Montant</TableHead>
@@ -1450,87 +1450,32 @@ const OrdersManagement = () => {
                               </div>
                             </TableCell>
 
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                {/* Product Preview */}
+  
+                              <TableCell>
+                              <div className="space-y-1">
                                 {order.orderItems && order.orderItems.length > 0 && (() => {
-                                  const firstItem = order.orderItems[0];
-                                  const enriched = firstItem.enrichedVendorProduct;
-
-                                  // Extract mockup URL
-                                  let mockupUrl = firstItem.mockupUrl;
-                                  if (!mockupUrl && enriched?.images?.primaryImageUrl) {
-                                    mockupUrl = enriched.images.primaryImageUrl;
-                                  }
-                                  if (!mockupUrl && firstItem.product?.imageUrl) {
-                                    mockupUrl = firstItem.product.imageUrl;
-                                  }
-
-                                  // Extract design URL
-                                  const hasDesign = enriched?.designApplication?.hasDesign || false;
-                                  let designUrl: string | null = null;
-                                  if (hasDesign && enriched?.designApplication?.designUrl) {
-                                    designUrl = enriched.designApplication.designUrl;
-                                  }
-
-                                  // Extract design position
-                                  let designPosition = firstItem.savedDesignPosition || undefined;
-                                  if (!designPosition && enriched?.designPositions && enriched.designPositions.length > 0) {
-                                    const pos = enriched.designPositions[0].position;
-                                    designPosition = {
-                                      x: pos.x,
-                                      y: pos.y,
-                                      scale: pos.scale,
-                                      rotation: pos.rotation || 0
-                                    };
-                                  }
-
-                                  // Extract delimitation
-                                  let delimitation = firstItem.delimitation || null;
-                                  if (!delimitation && enriched?.designDelimitations && enriched.designDelimitations.length > 0) {
-                                    const delim = enriched.designDelimitations[0];
-                                    if (delim.delimitations && delim.delimitations.length > 0) {
-                                      const firstDelim = delim.delimitations[0];
-                                      delimitation = {
-                                        x: firstDelim.x,
-                                        y: firstDelim.y,
-                                        width: firstDelim.width,
-                                        height: firstDelim.height,
-                                        coordinateType: firstDelim.coordinateType || 'PERCENTAGE'
-                                      };
-                                    }
-                                  }
+                                  const vendors = order.orderItems
+                                    .map(item => item.vendor?.shop_name || item.vendor?.name || 'Vendeur inconnu')
+                                    .filter((vendor, index, arr) => arr.indexOf(vendor) === index);
 
                                   return (
-                                    <EnrichedOrderProductPreview
-                                      product={{
-                                        id: firstItem.productId || firstItem.id,
-                                        name: firstItem.product?.name || enriched?.vendorName || 'Produit',
-                                        quantity: firstItem.quantity,
-                                        unitPrice: firstItem.unitPrice || 0,
-                                        colorName: firstItem.colorVariation?.name || firstItem.color,
-                                        colorCode: firstItem.colorVariation?.colorCode,
-                                        size: firstItem.size,
-                                        mockupImageUrl: mockupUrl,
-                                        designImageUrl: hasDesign ? designUrl : null,
-                                        designPosition: designPosition,
-                                        delimitation: delimitation || undefined,
-                                        vendorProductId: firstItem.vendorProductId || enriched?.id
-                                      }}
-                                      className="w-12 h-12 flex-shrink-0"
-                                    />
+                                    <div className="space-y-1">
+                                      {vendors.slice(0, 2).map((vendorName, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                          <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                                          <span className="text-sm font-medium text-slate-900 truncate">
+                                            {vendorName}
+                                          </span>
+                                        </div>
+                                      ))}
+                                      {vendors.length > 2 && (
+                                        <div className="text-xs text-slate-500 italic">
+                                          +{vendors.length - 2} autre{vendors.length - 2 > 1 ? 's' : ''} vendeur{vendors.length - 2 > 1 ? 's' : ''}
+                                        </div>
+                                      )}
+                                    </div>
                                   );
                                 })()}
-
-                                {/* Article count */}
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <Package className="h-3 w-3 text-slate-500" />
-                                    <span className="text-sm font-medium text-slate-900">
-                                      {(order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} article{((order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0) > 1 ? 's' : ''}
-                                    </span>
-                                  </div>
-                                </div>
                               </div>
                             </TableCell>
 

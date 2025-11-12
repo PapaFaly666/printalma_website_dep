@@ -3,9 +3,12 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import vendorProductsService, { VendorProduct } from '../services/vendorProductsService';
 import { ProductCardWithDesign } from '../components/ProductCardWithDesign';
+import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { formatPrice } from '../utils/priceUtils';
 import { categoriesService, Category } from '../services/categoriesService';
 import { subCategoriesService, SubCategory } from '../services/subCategoriesService';
+import ServiceFeatures from './ServiceFeatures ';
+import Footer from '../components/Footer';
 
 const FilteredArticlesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -27,6 +30,73 @@ const FilteredArticlesPage: React.FC = () => {
 
   const themes = ['Amour', 'Otaku', 'Sport', 'HipHop', 'Anniversaire', 'Drôle'];
 
+  // ============ GESTION DE L'HISTORIQUE PROFESSIONNEL ============
+  const HISTORY_STORAGE_KEY = 'vendor_products_history';
+  const MAX_HISTORY_ITEMS = 12; // Limite professionnelle comme les apps e-commerce
+  const MIN_DISPLAY_ITEMS = 4; // Minimum à afficher quand possible
+
+  // Charger l'historique depuis le localStorage
+  const loadHistory = (): VendorProduct[] => {
+    try {
+      const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Erreur chargement historique:', error);
+    }
+    return [];
+  };
+
+  // Sauvegarder l'historique dans le localStorage
+  const saveHistory = (history: VendorProduct[]) => {
+    try {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+    } catch (error) {
+      console.error('Erreur sauvegarde historique:', error);
+    }
+  };
+
+  // Ajouter un produit à l'historique avec comportement FIFO professionnel
+  const addToHistory = (product: VendorProduct) => {
+    const currentHistory = loadHistory();
+
+    // Supprimer le produit s'il existe déjà (pour éviter les doublons)
+    const filteredHistory = currentHistory.filter(p => p.id !== product.id);
+
+    // Ajouter le produit en tête de liste avec FIFO - écraser les plus anciens
+    const newHistory = [product, ...filteredHistory].slice(0, MAX_HISTORY_ITEMS);
+
+    saveHistory(newHistory);
+    setHistoryProducts(newHistory);
+
+    console.log('✅ Produit ajouté à l\'historique (mode FIFO):', product.id);
+    console.log('📊 Historique - Total:', newHistory.length, 'Récent:', newHistory.slice(0, 3).map(p => p.id));
+  };
+
+  // Supprimer tout l'historique
+  const clearHistory = () => {
+    localStorage.removeItem(HISTORY_STORAGE_KEY);
+    setHistoryProducts([]);
+    console.log('✅ Historique supprimé');
+  };
+
+  // Supprimer un produit spécifique de l'historique
+  const removeFromHistory = (productId: number) => {
+    const currentHistory = loadHistory();
+    const newHistory = currentHistory.filter(p => p.id !== productId);
+    saveHistory(newHistory);
+    setHistoryProducts(newHistory);
+    console.log('✅ Produit retiré de l\'historique:', productId);
+  };
+
+  // Charger l'historique au montage du composant
+  useEffect(() => {
+    const history = loadHistory();
+    setHistoryProducts(history);
+    console.log('📜 Historique chargé:', history.length, 'produits');
+  }, []);
+
   // États pour les catégories et sous-catégories
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
@@ -37,6 +107,21 @@ const FilteredArticlesPage: React.FC = () => {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [tempSelectedColors, setTempSelectedColors] = useState<string[]>([]);
   const [showColorSelector, setShowColorSelector] = useState(false);
+
+  // États pour le sélecteur de taille
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [tempSelectedSizes, setTempSelectedSizes] = useState<string[]>([]);
+  const [showSizeSelector, setShowSizeSelector] = useState(false);
+
+  // États pour le filtre de prix
+  const [minPrice, setMinPrice] = useState<number | ''>('');
+  const [maxPrice, setMaxPrice] = useState<number | ''>('');
+  const [tempMinPrice, setTempMinPrice] = useState<number | ''>('');
+  const [tempMaxPrice, setTempMaxPrice] = useState<number | ''>('');
+  const [showPriceSelector, setShowPriceSelector] = useState(false);
+
+  // États pour l'historique
+  const [historyProducts, setHistoryProducts] = useState<VendorProduct[]>([]);
 
   // Couleurs disponibles
   const availableColors = [
@@ -74,6 +159,62 @@ const FilteredArticlesPage: React.FC = () => {
   const clearColors = () => {
     setSelectedColors([]);
     setTempSelectedColors([]);
+  };
+
+  // Fonctions pour gérer la sélection de taille
+  const toggleTempSize = (size: string) => {
+    setTempSelectedSizes(prev =>
+      prev.includes(size)
+        ? prev.filter(s => s !== size)
+        : [...prev, size]
+    );
+  };
+
+  const applySizeSelection = () => {
+    setSelectedSizes(tempSelectedSizes);
+    setShowSizeSelector(false);
+  };
+
+  const cancelSizeSelection = () => {
+    setTempSelectedSizes(selectedSizes);
+    setShowSizeSelector(false);
+  };
+
+  const clearSizes = () => {
+    setSelectedSizes([]);
+    setTempSelectedSizes([]);
+  };
+
+  // Fonctions pour gérer le filtre de prix
+  const applyPriceFilter = () => {
+    setMinPrice(tempMinPrice);
+    setMaxPrice(tempMaxPrice);
+    setShowPriceSelector(false);
+  };
+
+  const cancelPriceFilter = () => {
+    setTempMinPrice(minPrice);
+    setTempMaxPrice(maxPrice);
+    setShowPriceSelector(false);
+  };
+
+  const clearPriceFilter = () => {
+    setMinPrice('');
+    setMaxPrice('');
+    setTempMinPrice('');
+    setTempMaxPrice('');
+  };
+
+  const hasPriceFilter = minPrice !== '' || maxPrice !== '';
+
+  // Formater le prix en FCFA
+  const formatPriceInFCFA = (price: number) => {
+    return new Intl.NumberFormat('fr-SN', {
+      style: 'currency',
+      currency: 'XOF',
+      maximumFractionDigits: 0,
+      currencyDisplay: 'symbol'
+    }).format(price);
   };
 
   // Fonction pour déterminer les couleurs disponibles dans les produits
@@ -119,6 +260,34 @@ const FilteredArticlesPage: React.FC = () => {
 
     // Filtrer availableColors pour ne garder que celles trouvées
     return availableColors.filter(color => colorSet.has(color.value));
+  };
+
+  // Fonction pour déterminer les tailles disponibles dans les produits
+  const getAvailableSizesFromProducts = () => {
+    const sizeSet = new Set<string>();
+
+    products.forEach(product => {
+      if (product.selectedSizes && Array.isArray(product.selectedSizes)) {
+        product.selectedSizes.forEach((sizeObj: any) => {
+          if (sizeObj.sizeName) {
+            sizeSet.add(sizeObj.sizeName.toUpperCase());
+          }
+        });
+      }
+    });
+
+    // Retourner les tailles triées par ordre logique
+    const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    const availableSizes = Array.from(sizeSet).sort((a, b) => {
+      const indexA = sizeOrder.indexOf(a);
+      const indexB = sizeOrder.indexOf(b);
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+
+    return availableSizes;
   };
 
   // Charger les catégories et sous-catégories
@@ -183,25 +352,23 @@ const FilteredArticlesPage: React.FC = () => {
             product.status && product.status.toLowerCase() === 'published'
           );
 
-          // Si des couleurs sont sélectionnées, filtrer pour n'afficher que les produits qui ont ces couleurs
-          if (selectedColors.length > 0) {
+          // Appliquer les filtres de couleur, taille et prix
+          if (selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) {
             console.log('🎨 [DEBUG] Couleurs sélectionnées:', selectedColors);
-            console.log(`🧠 [LOGIC] ${selectedColors.length} couleur(s) sélectionnée(s) -> ${selectedColors.length === 1 ? 'Logique ET (exact match)' : 'Logique OU (any match)'}`);
+            console.log('📏 [DEBUG] Tailles sélectionnées:', selectedSizes);
+            console.log('💰 [DEBUG] Prix min:', minPrice, 'Prix max:', maxPrice);
+
+            if (selectedColors.length > 0) {
+              console.log(`🧠 [LOGIC] ${selectedColors.length} couleur(s) sélectionnée(s) -> ${selectedColors.length === 1 ? 'Logique ET (exact match)' : 'Logique OU (any match)'}`);
+            }
+            if (selectedSizes.length > 0) {
+              console.log(`🧠 [LOGIC] ${selectedSizes.length} taille(s) sélectionnée(s) -> Logique OU (any match)`);
+            }
+            if (hasPriceFilter) {
+              console.log(`🧠 [LOGIC] Filtre de prix actif`);
+            }
 
             const filteredProducts = publishedProducts.filter(product => {
-              if (!product.adminProduct?.colorVariations) {
-                console.log(`❌ [DEBUG] Produit ${product.id} n'a pas de colorVariations`);
-                return false;
-              }
-
-              console.log(`🔍 [DEBUG] Produit ${product.id}:`, {
-                name: product.adminProduct.name,
-                variations: product.adminProduct.colorVariations.map(v => ({
-                  name: v.name,
-                  colorCode: v.colorCode
-                }))
-              });
-
               // Fonction pour normaliser les noms de couleurs et comparer
               const normalizeColorName = (colorName: string): string => {
                 return colorName.toLowerCase()
@@ -210,104 +377,120 @@ const FilteredArticlesPage: React.FC = () => {
                   .trim();
               };
 
-              // LOGIQUE CONDITIONNELLE :
-              // - 1 couleur : doit avoir EXACTEMENT cette couleur (ET)
-              // - 2+ couleurs : doit avoir AU MOINS UNE de ces couleurs (OU)
-              let hasMatchingColors: boolean;
+              // FILTRE PAR COULEUR
+              let passesColorFilter = selectedColors.length === 0; // Si aucune couleur sélectionnée, on passe
 
-              if (selectedColors.length === 1) {
-                // UNE SEULE COULEUR : Logique ET exacte
-                const selectedColor = selectedColors[0];
-                console.log(`\n  🎯 [1 COULEUR] Recherche exacte de: ${selectedColor}`);
+              if (selectedColors.length > 0) {
+                if (!product.adminProduct?.colorVariations) {
+                  passesColorFilter = false;
+                } else {
+                  // LOGIQUE CONDITIONNELLE :
+                  // - 1 couleur : doit avoir EXACTEMENT cette couleur (ET)
+                  // - 2+ couleurs : doit avoir AU MOINS UNE de ces couleurs (OU)
+                  let hasMatchingColors: boolean;
 
-                hasMatchingColors = product.adminProduct.colorVariations.some((variation: any) => {
-                  const variationName = normalizeColorName(variation.name);
-                  const selectedColorNormalized = normalizeColorName(selectedColor);
+                  if (selectedColors.length === 1) {
+                    // UNE SEULE COULEUR : Logique ET exacte
+                    const selectedColor = selectedColors[0];
 
-                  // Mapping des couleurs anglaises vers françaises
-                  const colorMapping: { [key: string]: string[] } = {
-                    'black': ['black', 'noir'],
-                    'white': ['white', 'blanc'],
-                    'red': ['red', 'rouge'],
-                    'blue': ['blue', 'bleu'],
-                    'green': ['green', 'vert'],
-                    'yellow': ['yellow', 'jaune'],
-                    'pink': ['pink', 'rose'],
-                    'purple': ['purple', 'violet'],
-                    'gray': ['gray', 'grey', 'gris'],
-                    'orange': ['orange']
-                  };
+                    hasMatchingColors = product.adminProduct.colorVariations.some((variation: any) => {
+                      const variationName = normalizeColorName(variation.name);
+                      const selectedColorNormalized = normalizeColorName(selectedColor);
 
-                  // Noms possibles pour cette couleur
-                  const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+                      const colorMapping: { [key: string]: string[] } = {
+                        'black': ['black', 'noir'],
+                        'white': ['white', 'blanc'],
+                        'red': ['red', 'rouge'],
+                        'blue': ['blue', 'bleu'],
+                        'green': ['green', 'vert'],
+                        'yellow': ['yellow', 'jaune'],
+                        'pink': ['pink', 'rose'],
+                        'purple': ['purple', 'violet'],
+                        'gray': ['gray', 'grey', 'gris'],
+                        'orange': ['orange']
+                      };
 
-                  const match = possibleNames.some(name => {
-                    const normalizedPossible = normalizeColorName(name);
-                    const isMatch = variationName === normalizedPossible ||
-                                   variationName.includes(normalizedPossible) ||
-                                   normalizedPossible.includes(variationName);
-                    return isMatch;
-                  });
+                      const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
 
-                  // Vérifier aussi par colorCode
-                  const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+                      const match = possibleNames.some(name => {
+                        const normalizedPossible = normalizeColorName(name);
+                        return variationName === normalizedPossible ||
+                               variationName.includes(normalizedPossible) ||
+                               normalizedPossible.includes(variationName);
+                      });
 
-                  const found = match || colorCodeMatch;
-                  console.log(`    - Variation "${variation.name}" (code: ${variation.colorCode}) -> match: ${found}`);
-                  return found;
-                });
-
-                console.log(`  ✅ [1 COULEUR] Couleur ${selectedColor} trouvée: ${hasMatchingColors}`);
-
-              } else {
-                // MULTIPLES COULEURS : Logique OU (au moins une couleur)
-                console.log(`\n  🎯 [MULTI COULEURS] Recherche AU MOINS UNE de: ${selectedColors.join(', ')}`);
-
-                hasMatchingColors = selectedColors.some(selectedColor => {
-                  const colorFound = product.adminProduct.colorVariations.some((variation: any) => {
-                    const variationName = normalizeColorName(variation.name);
-                    const selectedColorNormalized = normalizeColorName(selectedColor);
-
-                    // Mapping des couleurs anglaises vers françaises
-                    const colorMapping: { [key: string]: string[] } = {
-                      'black': ['black', 'noir'],
-                      'white': ['white', 'blanc'],
-                      'red': ['red', 'rouge'],
-                      'blue': ['blue', 'bleu'],
-                      'green': ['green', 'vert'],
-                      'yellow': ['yellow', 'jaune'],
-                      'pink': ['pink', 'rose'],
-                      'purple': ['purple', 'violet'],
-                      'gray': ['gray', 'grey', 'gris'],
-                      'orange': ['orange']
-                    };
-
-                    // Noms possibles pour cette couleur
-                    const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
-
-                    const match = possibleNames.some(name => {
-                      const normalizedPossible = normalizeColorName(name);
-                      const isMatch = variationName === normalizedPossible ||
-                                     variationName.includes(normalizedPossible) ||
-                                     normalizedPossible.includes(variationName);
-                      return isMatch;
+                      const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+                      return match || colorCodeMatch;
                     });
 
-                    // Vérifier aussi par colorCode
-                    const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+                  } else {
+                    // MULTIPLES COULEURS : Logique OU (au moins une couleur)
+                    hasMatchingColors = selectedColors.some(selectedColor => {
+                      return product.adminProduct.colorVariations.some((variation: any) => {
+                        const variationName = normalizeColorName(variation.name);
+                        const selectedColorNormalized = normalizeColorName(selectedColor);
 
-                    return match || colorCodeMatch;
-                  });
+                        const colorMapping: { [key: string]: string[] } = {
+                          'black': ['black', 'noir'],
+                          'white': ['white', 'blanc'],
+                          'red': ['red', 'rouge'],
+                          'blue': ['blue', 'bleu'],
+                          'green': ['green', 'vert'],
+                          'yellow': ['yellow', 'jaune'],
+                          'pink': ['pink', 'rose'],
+                          'purple': ['purple', 'violet'],
+                          'gray': ['gray', 'grey', 'gris'],
+                          'orange': ['orange']
+                        };
 
-                  console.log(`    - Couleur ${selectedColor} trouvée: ${colorFound}`);
-                  return colorFound;
-                });
+                        const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
 
-                console.log(`  ✅ [MULTI COULEURS] Au moins une couleur trouvée: ${hasMatchingColors}`);
+                        const match = possibleNames.some(name => {
+                          const normalizedPossible = normalizeColorName(name);
+                          return variationName === normalizedPossible ||
+                                 variationName.includes(normalizedPossible) ||
+                                 normalizedPossible.includes(variationName);
+                        });
+
+                        const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+                        return match || colorCodeMatch;
+                      });
+                    });
+                  }
+
+                  passesColorFilter = hasMatchingColors;
+                }
               }
 
-              console.log(`🏆 Produit ${product.id} (${product.adminProduct.name}) - Résultat final: ${hasMatchingColors}`);
-              return hasMatchingColors;
+              // FILTRE PAR TAILLE
+              let passesSizeFilter = selectedSizes.length === 0; // Si aucune taille sélectionnée, on passe
+
+              if (selectedSizes.length > 0) {
+                if (!product.selectedSizes || !Array.isArray(product.selectedSizes)) {
+                  passesSizeFilter = false;
+                } else {
+                  // Logique OU : le produit doit avoir AU MOINS UNE des tailles sélectionnées
+                  const productSizes = product.selectedSizes.map((s: any) => s.sizeName.toUpperCase());
+                  const hasMatchingSize = selectedSizes.some(selectedSize =>
+                    productSizes.includes(selectedSize.toUpperCase())
+                  );
+                  passesSizeFilter = hasMatchingSize;
+                }
+              }
+
+              // FILTRE PAR PRIX
+              let passesPriceFilter = !hasPriceFilter; // Si aucun filtre de prix, on passe
+
+              if (hasPriceFilter) {
+                const productPrice = product.price || 0;
+                const min = minPrice !== '' ? minPrice : 0;
+                const max = maxPrice !== '' ? maxPrice : Infinity;
+
+                passesPriceFilter = productPrice >= min && productPrice <= max;
+              }
+
+              // Le produit doit passer TOUS les filtres actifs (ET logique entre les filtres)
+              return passesColorFilter && passesSizeFilter && passesPriceFilter;
             });
 
             console.log(`📊 [DEBUG] Produits filtrés: ${filteredProducts.length} / ${publishedProducts.length}`);
@@ -317,12 +500,10 @@ const FilteredArticlesPage: React.FC = () => {
           setProducts(publishedProducts);
 
           // Calculer correctement la pagination pour les produits filtrés
-          if (selectedColors.length > 0) {
-            // Pour les filtres de couleur, nous avons besoin de compter tous les produits correspondants
-            // Pas juste ceux de la page actuelle - UTILISER LA MÊME LOGIQUE CONDITIONNELLE QUE CI-DESSUS
+          if (selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) {
+            // Pour les filtres, nous avons besoin de compter tous les produits correspondants
             const allFilteredProducts = response.data.filter(product => {
               if (!product.status || product.status.toLowerCase() !== 'published') return false;
-              if (!product.adminProduct?.colorVariations) return false;
 
               // Fonction pour normaliser les noms de couleurs et comparer (même fonction que ci-dessus)
               const normalizeColorName = (colorName: string): string => {
@@ -332,85 +513,109 @@ const FilteredArticlesPage: React.FC = () => {
                   .trim();
               };
 
-              // MÊME LOGIQUE CONDITIONNELLE :
-              // - 1 couleur : doit avoir EXACTEMENT cette couleur
-              // - 2+ couleurs : doit avoir AU MOINS UNE de ces couleurs
-              let hasMatchingColors: boolean;
+              // FILTRE PAR COULEUR
+              let passesColorFilter = selectedColors.length === 0;
 
-              if (selectedColors.length === 1) {
-                // UNE SEULE COULEUR : Logique exacte
-                const selectedColor = selectedColors[0];
+              if (selectedColors.length > 0) {
+                if (!product.adminProduct?.colorVariations) {
+                  passesColorFilter = false;
+                } else {
+                  let hasMatchingColors: boolean;
 
-                hasMatchingColors = product.adminProduct.colorVariations.some((variation: any) => {
-                  const variationName = normalizeColorName(variation.name);
-                  const selectedColorNormalized = normalizeColorName(selectedColor);
+                  if (selectedColors.length === 1) {
+                    const selectedColor = selectedColors[0];
+                    hasMatchingColors = product.adminProduct.colorVariations.some((variation: any) => {
+                      const variationName = normalizeColorName(variation.name);
+                      const selectedColorNormalized = normalizeColorName(selectedColor);
 
-                  const colorMapping: { [key: string]: string[] } = {
-                    'black': ['black', 'noir'],
-                    'white': ['white', 'blanc'],
-                    'red': ['red', 'rouge'],
-                    'blue': ['blue', 'bleu'],
-                    'green': ['green', 'vert'],
-                    'yellow': ['yellow', 'jaune'],
-                    'pink': ['pink', 'rose'],
-                    'purple': ['purple', 'violet'],
-                    'gray': ['gray', 'grey', 'gris'],
-                    'orange': ['orange']
-                  };
+                      const colorMapping: { [key: string]: string[] } = {
+                        'black': ['black', 'noir'],
+                        'white': ['white', 'blanc'],
+                        'red': ['red', 'rouge'],
+                        'blue': ['blue', 'bleu'],
+                        'green': ['green', 'vert'],
+                        'yellow': ['yellow', 'jaune'],
+                        'pink': ['pink', 'rose'],
+                        'purple': ['purple', 'violet'],
+                        'gray': ['gray', 'grey', 'gris'],
+                        'orange': ['orange']
+                      };
 
-                  const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+                      const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+                      const match = possibleNames.some(name => {
+                        const normalizedPossible = normalizeColorName(name);
+                        return variationName === normalizedPossible ||
+                               variationName.includes(normalizedPossible) ||
+                               normalizedPossible.includes(variationName);
+                      });
 
-                  const match = possibleNames.some(name => {
-                    const normalizedPossible = normalizeColorName(name);
-                    const isMatch = variationName === normalizedPossible ||
-                                   variationName.includes(normalizedPossible) ||
-                                   normalizedPossible.includes(variationName);
-                    return isMatch;
-                  });
-
-                  const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
-
-                  return match || colorCodeMatch;
-                });
-
-              } else {
-                // MULTIPLES COULEURS : Logique OU (au moins une couleur)
-                hasMatchingColors = selectedColors.some(selectedColor => {
-                  return product.adminProduct.colorVariations.some((variation: any) => {
-                    const variationName = normalizeColorName(variation.name);
-                    const selectedColorNormalized = normalizeColorName(selectedColor);
-
-                    const colorMapping: { [key: string]: string[] } = {
-                      'black': ['black', 'noir'],
-                      'white': ['white', 'blanc'],
-                      'red': ['red', 'rouge'],
-                      'blue': ['blue', 'bleu'],
-                      'green': ['green', 'vert'],
-                      'yellow': ['yellow', 'jaune'],
-                      'pink': ['pink', 'rose'],
-                      'purple': ['purple', 'violet'],
-                      'gray': ['gray', 'grey', 'gris'],
-                      'orange': ['orange']
-                    };
-
-                    const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
-
-                    const match = possibleNames.some(name => {
-                      const normalizedPossible = normalizeColorName(name);
-                      const isMatch = variationName === normalizedPossible ||
-                                     variationName.includes(normalizedPossible) ||
-                                     normalizedPossible.includes(variationName);
-                      return isMatch;
+                      const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+                      return match || colorCodeMatch;
                     });
+                  } else {
+                    hasMatchingColors = selectedColors.some(selectedColor => {
+                      return product.adminProduct.colorVariations.some((variation: any) => {
+                        const variationName = normalizeColorName(variation.name);
+                        const selectedColorNormalized = normalizeColorName(selectedColor);
 
-                    const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+                        const colorMapping: { [key: string]: string[] } = {
+                          'black': ['black', 'noir'],
+                          'white': ['white', 'blanc'],
+                          'red': ['red', 'rouge'],
+                          'blue': ['blue', 'bleu'],
+                          'green': ['green', 'vert'],
+                          'yellow': ['yellow', 'jaune'],
+                          'pink': ['pink', 'rose'],
+                          'purple': ['purple', 'violet'],
+                          'gray': ['gray', 'grey', 'gris'],
+                          'orange': ['orange']
+                        };
 
-                    return match || colorCodeMatch;
-                  });
-                });
+                        const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+                        const match = possibleNames.some(name => {
+                          const normalizedPossible = normalizeColorName(name);
+                          return variationName === normalizedPossible ||
+                                 variationName.includes(normalizedPossible) ||
+                                 normalizedPossible.includes(variationName);
+                        });
+
+                        const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+                        return match || colorCodeMatch;
+                      });
+                    });
+                  }
+
+                  passesColorFilter = hasMatchingColors;
+                }
               }
 
-              return hasMatchingColors;
+              // FILTRE PAR TAILLE
+              let passesSizeFilter = selectedSizes.length === 0;
+
+              if (selectedSizes.length > 0) {
+                if (!product.selectedSizes || !Array.isArray(product.selectedSizes)) {
+                  passesSizeFilter = false;
+                } else {
+                  const productSizes = product.selectedSizes.map((s: any) => s.sizeName.toUpperCase());
+                  const hasMatchingSize = selectedSizes.some(selectedSize =>
+                    productSizes.includes(selectedSize.toUpperCase())
+                  );
+                  passesSizeFilter = hasMatchingSize;
+                }
+              }
+
+              // FILTRE PAR PRIX
+              let passesPriceFilter = !hasPriceFilter;
+
+              if (hasPriceFilter) {
+                const productPrice = product.price || 0;
+                const min = minPrice !== '' ? minPrice : 0;
+                const max = maxPrice !== '' ? maxPrice : Infinity;
+
+                passesPriceFilter = productPrice >= min && productPrice <= max;
+              }
+
+              return passesColorFilter && passesSizeFilter && passesPriceFilter;
             });
 
             setPagination({
@@ -450,7 +655,7 @@ const FilteredArticlesPage: React.FC = () => {
     };
 
     loadProducts();
-  }, [categoryParam, searchTerm, currentPage, selectedColors]);
+  }, [categoryParam, searchTerm, currentPage, selectedColors, selectedSizes, minPrice, maxPrice]);
 
   // Calcul de la pagination
   const itemsPerPage = 9;
@@ -623,10 +828,10 @@ const FilteredArticlesPage: React.FC = () => {
     }
     setShowColorSelector(!showColorSelector);
   }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
                       selectedColors.length > 0
-                        ? 'bg-blue-500 text-white border-2 border-blue-500 shadow-md hover:bg-blue-600'
-                        : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -638,7 +843,7 @@ const FilteredArticlesPage: React.FC = () => {
                       )}
                       {selectedColors.length > 0 && (
                         <div className="flex items-center gap-1">
-                          {selectedColors.slice(0, 3).map((colorValue, index) => {
+                          {selectedColors.slice(0, 3).map((colorValue) => {
                             const color = availableColors.find(c => c.value === colorValue);
                             return color ? (
                               <div
@@ -745,13 +950,13 @@ const FilteredArticlesPage: React.FC = () => {
                           <div className="flex gap-2 border-t border-gray-200 pt-3">
                             <button
                               onClick={applyColorSelection}
-                              className="flex-1 px-3 py-1.5 bg-blue-500 text-white text-sm font-medium rounded hover:bg-blue-600 transition-colors"
+                              className="flex-1 px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
                             >
                               Enregistrer
                             </button>
                             <button
                               onClick={cancelColorSelection}
-                              className="flex-1 px-3 py-1.5 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300 transition-colors"
+                              className="flex-1 px-3 py-1.5 border-2 border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
                             >
                               Annuler
                             </button>
@@ -762,17 +967,250 @@ const FilteredArticlesPage: React.FC = () => {
                   )}
                 </div>
 
-                <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
-                  <span>Tailles</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      if (!showSizeSelector) {
+                        setTempSelectedSizes(selectedSizes);
+                      }
+                      setShowSizeSelector(!showSizeSelector);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                      selectedSizes.length > 0
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Tailles</span>
+                      {selectedSizes.length === 0 && (
+                        <span className="text-xs opacity-70">
+                          ({getAvailableSizesFromProducts().length})
+                        </span>
+                      )}
+                      {selectedSizes.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-semibold opacity-90">
+                            {selectedSizes.slice(0, 3).join(', ')}
+                          </span>
+                          {selectedSizes.length > 3 && (
+                            <span className="text-xs opacity-90">
+                              +{selectedSizes.length - 3}
+                            </span>
+                          )}
+                          <span className="text-xs opacity-90">
+                            ({selectedSizes.length})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showSizeSelector ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
 
-                <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
-                  <span>Prix</span>
-                  <span className="text-base">💰</span>
-                </button>
+                  {/* Size Dropdown */}
+                  {showSizeSelector && (
+                    <div className="absolute z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg w-64">
+                      <div className="p-3">
+                        {/* Sélection actuelle */}
+                        {tempSelectedSizes.length > 0 && (
+                          <div className="mb-3 p-2 bg-gray-50 rounded border border-gray-200">
+                            <div className="text-xs text-gray-600 mb-1">Sélectionné:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {tempSelectedSizes.map((size) => (
+                                <div
+                                  key={size}
+                                  className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded text-xs"
+                                >
+                                  <span className="text-gray-700 font-semibold">{size}</span>
+                                  <button
+                                    onClick={() => toggleTempSize(size)}
+                                    className="text-gray-400 hover:text-gray-600 ml-1"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Grille de tailles */}
+                        <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto mb-3">
+                          {getAvailableSizesFromProducts().map((size) => (
+                            <button
+                              key={size}
+                              onClick={() => toggleTempSize(size)}
+                              className={`px-3 py-2 text-sm font-semibold border-2 rounded-lg transition-all ${
+                                tempSelectedSizes.includes(size)
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              {size}
+                            </button>
+                          ))}
+                        </div>
+
+                        {getAvailableSizesFromProducts().length === 0 && (
+                          <div className="text-center py-3 text-sm text-gray-500">
+                            Aucune taille disponible
+                          </div>
+                        )}
+
+                        {/* Boutons Enregistrer/Annuler */}
+                        {getAvailableSizesFromProducts().length > 0 && (
+                          <div className="flex gap-2 border-t border-gray-200 pt-3">
+                            <button
+                              onClick={applySizeSelection}
+                              className="flex-1 px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                            >
+                              Enregistrer
+                            </button>
+                            <button
+                              onClick={cancelSizeSelection}
+                              className="flex-1 px-3 py-1.5 border-2 border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      if (!showPriceSelector) {
+                        setTempMinPrice(minPrice);
+                        setTempMaxPrice(maxPrice);
+                      }
+                      setShowPriceSelector(!showPriceSelector);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                      hasPriceFilter
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <span>Prix</span>
+                    {hasPriceFilter && (
+                      <span className="text-xs font-semibold opacity-90">
+                        {minPrice !== '' && maxPrice !== ''
+                          ? `${formatPriceInFCFA(Number(minPrice))} - ${formatPriceInFCFA(Number(maxPrice))}`
+                          : minPrice !== ''
+                          ? `>${formatPriceInFCFA(Number(minPrice))}`
+                          : maxPrice !== '' ? `<${formatPriceInFCFA(Number(maxPrice))}` : ''
+                        }
+                      </span>
+                    )}
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showPriceSelector ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Price Dropdown */}
+                  {showPriceSelector && (
+                    <div className="absolute z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg w-80">
+                      <div className="p-4">
+                        <div className="mb-3">
+                          <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            Filtrer par prix (FCFA)
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-gray-600 mb-1 block">Prix minimum</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1000"
+                                placeholder="Min"
+                                value={tempMinPrice === '' ? '' : tempMinPrice}
+                                onChange={(e) => setTempMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-purple-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 mb-1 block">Prix maximum</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1000"
+                                placeholder="Max"
+                                value={tempMaxPrice === '' ? '' : tempMaxPrice}
+                                onChange={(e) => setTempMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-purple-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Suggestions de plage de prix */}
+                        <div className="mb-3">
+                          <label className="text-xs text-gray-600 mb-2 block">Suggestions:</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              onClick={() => {
+                                setTempMinPrice('');
+                                setTempMaxPrice(10000);
+                              }}
+                              className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-purple-100 border border-gray-300 hover:border-purple-400 rounded transition-colors"
+                            >
+                              &lt; 10k
+                            </button>
+                            <button
+                              onClick={() => {
+                                setTempMinPrice(10000);
+                                setTempMaxPrice(25000);
+                              }}
+                              className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-purple-100 border border-gray-300 hover:border-purple-400 rounded transition-colors"
+                            >
+                              10k - 25k
+                            </button>
+                            <button
+                              onClick={() => {
+                                setTempMinPrice(25000);
+                                setTempMaxPrice('');
+                              }}
+                              className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-purple-100 border border-gray-300 hover:border-purple-400 rounded transition-colors"
+                            >
+                              &gt; 25k
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Boutons Appliquer/Annuler */}
+                        <div className="flex gap-2 border-t border-gray-200 pt-3">
+                          <button
+                            onClick={applyPriceFilter}
+                            className="flex-1 px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                          >
+                            Appliquer
+                          </button>
+                          <button
+                            onClick={cancelPriceFilter}
+                            className="flex-1 px-3 py-1.5 border-2 border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
                   <span>Matières</span>
@@ -785,50 +1223,106 @@ const FilteredArticlesPage: React.FC = () => {
 
             {/* Search and Display controls */}
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-              {/* Color selection info */}
-              {selectedColors.length > 0 && (
-                <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-blue-900">
-                          Couleurs sélectionnées:
-                        </span>
-                        <div className="flex gap-1">
-                          {selectedColors.map((colorValue) => {
-                            const color = availableColors.find(c => c.value === colorValue);
-                            return color ? (
-                              <div
-                                key={colorValue}
-                                className="flex items-center gap-1 px-2 py-1 bg-white rounded-full text-sm font-semibold text-blue-700 border border-blue-300"
-                              >
-                                <div
-                                  className="w-3 h-3 rounded-full border border-blue-300"
-                                  style={{ backgroundColor: color.hex }}
-                                />
-                                {color.name}
-                              </div>
-                            ) : null;
-                          })}
+              {/* Filters info */}
+              {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) && (
+                <div className="mb-4 space-y-2">
+                  {/* Color selection info */}
+                  {selectedColors.length > 0 && (
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-primary">
+                              Couleurs:
+                            </span>
+                            <div className="flex gap-1 flex-wrap">
+                              {selectedColors.map((colorValue) => {
+                                const color = availableColors.find(c => c.value === colorValue);
+                                return color ? (
+                                  <div
+                                    key={colorValue}
+                                    className="flex items-center gap-1 px-2 py-1 bg-white rounded-full text-sm font-semibold text-primary border border-primary/30"
+                                  >
+                                    <div
+                                      className="w-3 h-3 rounded-full border border-gray-300"
+                                      style={{ backgroundColor: color.hex }}
+                                    />
+                                    {color.name}
+                                  </div>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
                         </div>
+                        <button
+                          onClick={clearColors}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded-lg border border-primary/30 transition-all"
+                        >
+                          ×
+                        </button>
                       </div>
-                      <span className="text-xs text-gray-600 bg-white/60 px-2 py-1 rounded-full">
-                        {selectedColors.length === 1
-                          ? `Produits disponibles dans cette couleur`
-                          : `Produits disponibles dans au moins une de ces couleurs`
-                        }
-                      </span>
                     </div>
-                    <button
-                      onClick={clearColors}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-white/80 hover:bg-white text-sm font-medium text-blue-600 hover:text-blue-800 rounded-lg border border-blue-200 transition-all"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h16v16H4z" />
-                      </svg>
-                      Toutes les couleurs
-                    </button>
-                  </div>
+                  )}
+
+                  {/* Size selection info */}
+                  {selectedSizes.length > 0 && (
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-primary">
+                              Tailles:
+                            </span>
+                            <div className="flex gap-1 flex-wrap">
+                              {selectedSizes.map((size) => (
+                                <div
+                                  key={size}
+                                  className="px-2 py-1 bg-white rounded-full text-sm font-semibold text-primary border border-primary/30"
+                                >
+                                  {size}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={clearSizes}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded-lg border border-primary/30 transition-all"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price filter info */}
+                  {hasPriceFilter && (
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-primary">
+                              Prix:
+                            </span>
+                            <div className="px-3 py-1 bg-white rounded-full text-sm font-semibold text-primary border border-primary/30">
+                              {minPrice !== '' && maxPrice !== ''
+                                ? `${formatPriceInFCFA(Number(minPrice))} - ${formatPriceInFCFA(Number(maxPrice))}`
+                                : minPrice !== ''
+                                ? `À partir de ${formatPriceInFCFA(Number(minPrice))}`
+                                : maxPrice !== '' ? `Jusqu'à ${formatPriceInFCFA(Number(maxPrice))}` : ''
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={clearPriceFilter}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded-lg border border-primary/30 transition-all"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -903,21 +1397,39 @@ const FilteredArticlesPage: React.FC = () => {
                   <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600 font-medium">Aucun produit trouvé</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {selectedColors.length > 0 && categoryParam
-                      ? `Aucun produit "${selectedCategory?.name || categoryParam}" disponible ${selectedColors.length === 1 ? 'dans cette couleur' : 'dans ces couleurs'} : ${selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(selectedColors.length === 1 ? '' : ', ')}`
-                      : selectedColors.length > 0
-                      ? `Aucun produit disponible ${selectedColors.length === 1 ? 'dans cette couleur' : 'dans ces couleurs'} : ${selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(', ')}`
+                    {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter)
+                      ? `Aucun produit disponible avec les filtres sélectionnés`
                       : categoryParam
                       ? `Aucun produit pour la catégorie "${selectedCategory?.name || categoryParam}"`
                       : 'Essayez une autre recherche'}
                   </p>
-                  {selectedColors.length > 0 && (
-                    <button
-                      onClick={clearColors}
-                      className="mt-3 text-sm text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      Afficher tous les produits
-                    </button>
+                  {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) && (
+                    <div className="flex gap-2 justify-center mt-3 flex-wrap">
+                      {selectedColors.length > 0 && (
+                        <button
+                          onClick={clearColors}
+                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                        >
+                          Effacer les couleurs
+                        </button>
+                      )}
+                      {selectedSizes.length > 0 && (
+                        <button
+                          onClick={clearSizes}
+                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                        >
+                          Effacer les tailles
+                        </button>
+                      )}
+                      {hasPriceFilter && (
+                        <button
+                          onClick={clearPriceFilter}
+                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                        >
+                          Effacer le prix
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -927,11 +1439,25 @@ const FilteredArticlesPage: React.FC = () => {
                 <>
                   <div className="mb-4 text-sm text-gray-600">
                     {pagination.total} produit{pagination.total > 1 ? 's' : ''} trouvé{pagination.total > 1 ? 's' : ''}
-                    {selectedColors.length > 0 && categoryParam
-                      ? ` "${selectedCategory?.name || categoryParam}" ${selectedColors.length === 1 ? 'dans cette couleur' : 'dans ces couleurs'} : ${selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(', ')}`
-                      : selectedColors.length > 0
-                      ? ` ${selectedColors.length === 1 ? 'dans cette couleur' : 'dans ces couleurs'} : ${selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(', ')}`
-                      : categoryParam && ` pour "${selectedCategory?.name || categoryParam}"`}
+                    {categoryParam && ` pour "${selectedCategory?.name || categoryParam}"`}
+                    {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) && (
+                      <span className="font-medium"> avec les filtres:</span>
+                    )}
+                    {selectedColors.length > 0 && (
+                      <span> Couleurs: {selectedColors.map(c => availableColors.find(ac => ac.value === c)?.name).join(', ')}</span>
+                    )}
+                    {selectedSizes.length > 0 && (
+                      <span> • Tailles: {selectedSizes.join(', ')}</span>
+                    )}
+                    {hasPriceFilter && (
+                      <span> • Prix: {
+                        minPrice !== '' && maxPrice !== ''
+                          ? `${formatPriceInFCFA(Number(minPrice))} - ${formatPriceInFCFA(Number(maxPrice))}`
+                          : minPrice !== ''
+                          ? `à partir de ${formatPriceInFCFA(Number(minPrice))}`
+                          : maxPrice !== '' ? `jusqu'à ${formatPriceInFCFA(Number(maxPrice))}` : ''
+                      }</span>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {products.map((product) => (
@@ -940,6 +1466,8 @@ const FilteredArticlesPage: React.FC = () => {
                         product={product}
                         selectedColors={selectedColors}
                         onClick={() => {
+                          // Ajouter à l'historique avant de naviguer
+                          addToHistory(product);
                           // Navigation vers la page détails du produit
                           console.log('Navigation vers détail produit:', product.id);
                           navigate(`/vendor-product-detail/${product.id}`);
@@ -1080,37 +1608,99 @@ const FilteredArticlesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* History Section */}
-            <div className="mt-12">
+            {/* Section Historique */}
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-12 max-w-7xl">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-xl italic">Historique</span>
-                  <div className="bg-blue-500 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    !
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <h2 className="text-2xl lg:text-3xl font-bold text-gray-900" style={{ fontStyle: 'italic' }}>
+                    Historique
+                  </h2>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-cyan-400 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm sm:text-base font-semibold">
+                      {historyProducts.length}
+                    </span>
                   </div>
                 </div>
-                <button className="px-4 py-2 bg-blue-400 text-white rounded-md text-sm font-medium hover:bg-blue-500 flex items-center gap-2 transition-colors">
-                  Supprimer tout
-                  <span className="bg-white text-blue-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
-                </button>
+                {historyProducts.length > 0 && (
+                  <button
+                    onClick={clearHistory}
+                    className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 bg-cyan-400 text-white rounded-lg font-medium hover:bg-cyan-500 transition-colors flex items-center gap-1 sm:gap-2"
+                  >
+                    <span className="hidden sm:inline">Supprimer tout</span>
+                    <span className="sm:hidden">Supprimer</span>
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }, (_, i) => (
-                  <div key={`history-${i}`} className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-shadow border border-gray-200">
-                    <div className="relative bg-gradient-to-br from-pink-500 to-pink-600 aspect-square flex items-center justify-center">
-                      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
-                        <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="0.5" opacity="0.5" />
-                      </svg>
+              {/* Grille historique - Design original simple avec logique FIFO */}
+              {historyProducts.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-2xl">
+                  <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-gray-600 text-lg mb-2">Aucun produit dans l'historique</p>
+                  <p className="text-gray-500 text-sm">Les produits que vous consultez apparaîtront ici</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {historyProducts.map((historyProduct) => (
+                    <div
+                      key={historyProduct.id}
+                      className="group cursor-pointer relative"
+                      onClick={() => navigate(`/vendor-product-detail/${historyProduct.id}`)}
+                    >
+                      {/* Utiliser SimpleProductPreview pour un affichage cohérent avec le même positionnement que le produit principal */}
+                      <div className="aspect-square bg-white rounded-2xl overflow-hidden relative border border-gray-200 hover:shadow-lg transition-shadow">
+                        <SimpleProductPreview
+                          product={historyProduct}
+                          showColorSlider={false}
+                          showDelimitations={false}
+                          onProductClick={() => {}}
+                          hideValidationBadges={false}
+                          imageObjectFit="contain"
+                          initialColorId={historyProduct.selectedColors[0]?.id}
+                        />
+
+                        {/* Bouton supprimer en haut à droite */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromHistory(historyProduct.id);
+                          }}
+                          className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                        >
+                          <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Info produit */}
+                      <div className="mt-3">
+                        <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
+                          {historyProduct.vendorName || historyProduct.adminProduct?.name}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-gray-600">
+                          <span className="font-bold">{formatPrice(historyProduct.price)}</span>
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </main>
         </div>
       </div>
+
+      {/* ServiceFeatures section */}
+      <ServiceFeatures />
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

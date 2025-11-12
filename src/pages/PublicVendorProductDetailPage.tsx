@@ -5,6 +5,8 @@ import vendorProductsService, { VendorProduct, ProductGenre } from '../services/
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/priceUtils';
+import ServiceFeatures from './ServiceFeatures ';
+import Footer from '../components/Footer';
 
 const PublicVendorProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -1065,6 +1067,12 @@ const PublicVendorProductDetailPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ServiceFeatures section */}
+      <ServiceFeatures />
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

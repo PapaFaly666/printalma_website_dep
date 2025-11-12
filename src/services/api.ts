@@ -190,10 +190,14 @@ export const fetchProductById = async (id: number | string): Promise<Product> =>
 
 // Fonction de transformation pour convertir le format API vers le format Zod
 function transformApiProductToSchema(apiProduct: any): any {
-  const category = apiProduct.categories?.[0];
-  
+  // Supporter plusieurs formats de catégorie
+  const category = apiProduct.categories?.[0] ||
+                   apiProduct.category ||
+                   apiProduct.subCategory ||
+                   null;
+
   // Transformer les images en views selon le schéma Zod avec délimitations
-  const allViews = apiProduct.colorVariations?.flatMap((cv: any) => 
+  const allViews = apiProduct.colorVariations?.flatMap((cv: any) =>
     (cv.images || []).map((image: any) => ({
       id: image.id,
       viewType: mapViewToEnum(image.view), // Convertir view vers viewType enum
@@ -215,7 +219,7 @@ function transformApiProductToSchema(apiProduct: any): any {
       }))
     }))
   ) || [];
-  
+
   const mainImageUrl = allViews[0]?.imageUrl || apiProduct.imageUrl;
 
   return {
@@ -237,17 +241,21 @@ function transformApiProductToSchema(apiProduct: any): any {
     updatedAt: apiProduct.updatedAt,
 
     // Transformation pour Zod
-    categoryId: category?.id || 0,
-    category: category,
+    categoryId: category?.id || (apiProduct.categoryId || apiProduct.subCategoryId || 0),
+    category: category || {
+      id: apiProduct.categoryId || apiProduct.subCategoryId || 0,
+      name: category?.name || 'Non catégorisé',
+      slug: category?.slug || 'non-categorise'
+    },
     views: allViews,
-    colors: apiProduct.colorVariations?.map((c: any) => ({ 
-      id: c.id, 
-      name: c.name, 
+    colors: apiProduct.colorVariations?.map((c: any) => ({
+      id: c.id,
+      name: c.name,
       hexCode: c.colorCode,
       imageUrl: c.images?.[0]?.url || "",
       imagePublicId: c.images?.[0]?.publicId
     })) || [],
-    
+
     sizes: (apiProduct.sizes || []).map((s: any) => ({
       id: s.id,
       name: s.sizeName || s.name, // Supporter les deux formats

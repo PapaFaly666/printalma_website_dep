@@ -119,29 +119,31 @@ async function safeApiCall(endpoint: string, options: RequestInit = {}): Promise
       'Content-Type': 'application/json'
     };
 
-    // Ajouter l'authentification via headers en plus des cookies
-    try {
-      const storedAuth = localStorage.getItem('auth_session');
-      if (storedAuth) {
-        const authData = JSON.parse(storedAuth);
-        const userToken = btoa(JSON.stringify({
-          userId: authData.user.id,
-          email: authData.user.email,
-          role: authData.user.role,
-          timestamp: authData.timestamp
-        }));
+    // Détecter si c'est un endpoint public (pas de headers custom pour éviter CORS)
+    const isPublicEndpoint = endpoint.startsWith('/products') && !endpoint.includes('/admin') && !endpoint.includes('/vendor');
 
-        authHeaders['Authorization'] = `Bearer ${userToken}`;
-        authHeaders['X-User-ID'] = String(authData.user.id);
-        authHeaders['X-User-Email'] = authData.user.email;
-        authHeaders['X-User-Role'] = authData.user.role;
+    // Ajouter l'authentification via headers UNIQUEMENT pour endpoints privés
+    if (!isPublicEndpoint) {
+      try {
+        const storedAuth = localStorage.getItem('auth_session');
+        if (storedAuth) {
+          const authData = JSON.parse(storedAuth);
+          const userToken = btoa(JSON.stringify({
+            userId: authData.user.id,
+            email: authData.user.email,
+            role: authData.user.role,
+            timestamp: authData.timestamp
+          }));
+
+          authHeaders['Authorization'] = `Bearer ${userToken}`;
+        }
+      } catch (e) {
+        console.warn('⚠️ [safeApiCall] Headers auth non disponibles');
       }
-    } catch (e) {
-      console.warn('⚠️ [safeApiCall] Headers auth non disponibles');
     }
 
     const response = await fetch(`${API_BASE}${endpoint}`, {
-      credentials: 'include', // OBLIGATOIRE pour cookies HTTPS
+      credentials: isPublicEndpoint ? 'omit' : 'include', // Pas de credentials pour endpoints publics (évite CORS)
       headers: {
         ...authHeaders,
         ...options.headers

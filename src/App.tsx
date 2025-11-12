@@ -125,6 +125,10 @@ import { VendorValidationDemo } from './pages/vendor/VendorValidationDemo';
 
 // 🆕 Page de détails des produits vendeurs
 import VendorProductDetails from './pages/VendorProductDetails';
+import AdminMockupsPage from './pages/AdminMockupsPage';
+import CustomerProductCustomizationPage from './pages/CustomerProductCustomizationPage';
+import CustomerProductCustomizationPageV2 from './pages/CustomerProductCustomizationPageV2';
+import CustomerProductCustomizationPageV3 from './pages/CustomerProductCustomizationPageV3';
 import PublicVendorProductDetailPage from './pages/PublicVendorProductDetailPage';
 
 // Page de formulaire de commande
@@ -246,6 +250,10 @@ function App() {
                 <Route path="/vendor-product/:id" element={<VendorProductDetails />} />
                 <Route path="/vendor-product-detail/:id" element={<PublicVendorProductDetailPage />} />
                 <Route path='/filtered-articles' element={<FilteredArticlesPage />} />
+                <Route path='/customize-product' element={<AdminMockupsPage />} />
+                <Route path='/product/:id/customize' element={<CustomerProductCustomizationPageV3 />} />
+                <Route path='/product/:id/customize-v2' element={<CustomerProductCustomizationPageV2 />} />
+                <Route path='/product/:id/customize-v1' element={<CustomerProductCustomizationPage />} />
                 <Route path='/best-sellers' element={<BestSellersPage />} />
                 <Route path='/vendez-vos-oeuvres' element={<SellDesignPage />} />
                 <Route path='/cart' element={<CartPage />} />

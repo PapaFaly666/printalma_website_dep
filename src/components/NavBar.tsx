@@ -99,7 +99,7 @@ const NavBar = () => {
           <div className="flex-shrink-0 flex items-center">
             <div
               className="cursor-pointer flex items-center justify-center"
-              onClick={() => console.log("Navigate to: /")}
+              onClick={() => navigate("/")}
             >
               <img
                 src="/printalma_logo.svg"

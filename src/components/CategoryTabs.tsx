@@ -38,11 +38,11 @@ const CategoryTabs = () => {
       const handleCategoryClick = (category?: Category, subCategory?: SubCategory) => {
         if (subCategory) {
             setActiveCategory(subCategory.id);
-            // Rediriger vers la page des articles filtrés avec seulement la sous-catégorie
-            navigate(`/filtered-articles?category=${subCategory.name}`);
+            // Rediriger vers la page de personnalisation des mockups admin
+            navigate(`/customize-product?category=${subCategory.slug || subCategory.name}`);
         } else if (category) {
-            // Afficher tous les produits de la catégorie
-            navigate(`/filtered-articles?category=${category.name}`);
+            // Afficher tous les mockups admin de la catégorie pour personnalisation
+            navigate(`/customize-product?category=${category.slug || category.name}`);
         }
     };
 
