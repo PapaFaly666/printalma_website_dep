@@ -51,8 +51,8 @@ const EnhancedCarousel = () => {
   const [isPaused, setIsPaused] = useState(false);
 
   const handlePersonalize = () => {
-    // Rediriger vers la page des articles filtrés sans catégorie (tous les produits)
-    navigate('/filtered-articles');
+    // Rediriger vers la page de personnalisation des mockups admin sans filtres
+    navigate('/customize-product');
   };
 
   const handleDiscover = () => {

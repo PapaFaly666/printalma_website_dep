@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2,
@@ -21,7 +21,10 @@ import { Button } from '../components/ui/button';
 import { useToast } from '../components/ui/use-toast';
 import adminProductsService, { AdminProduct } from '../services/adminProductsService';
 import designService from '../services/designService';
+import customizationService from '../services/customizationService';
+import { normalizeProductFromApi } from '../utils/productNormalization';
 import ProductDesignEditor, { ProductDesignEditorRef } from '../components/ProductDesignEditor';
+import SizeQuantityModal from '../components/SizeQuantityModal';
 
 const CustomerProductCustomizationPageV3: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -53,6 +56,14 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   // Éléments de design
   const [designElements, setDesignElements] = useState<any[]>([]);
 
+  // Flag pour éviter la sauvegarde pendant la restauration
+  const isRestoringRef = useRef(false);
+  // Flag pour tracker si la restauration initiale est complète
+  const hasRestoredRef = useRef(false);
+
+  // Modal de sélection taille/quantité
+  const [showSizeModal, setShowSizeModal] = useState(false);
+
   // Charger le produit
   useEffect(() => {
     const loadProduct = async () => {
@@ -62,7 +73,8 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
         setLoading(true);
         setError(null);
         const productData = await adminProductsService.getProductById(Number(id));
-        setProduct(productData);
+        const normalizedProduct = normalizeProductFromApi(productData);
+        setProduct(normalizedProduct);
 
         if (productData.colorVariations && productData.colorVariations.length > 0) {
           const firstColor = productData.colorVariations[0];
@@ -83,55 +95,161 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     loadProduct();
   }, [id]);
 
-  // Charger les données depuis localStorage au démarrage
+  // ÉTAPE 1: Restaurer la couleur et la vue depuis localStorage au démarrage
   useEffect(() => {
-    if (!id || !product) return;
+    if (!id || !product || hasRestoredRef.current) return;
 
-    const storageKey = `design-data-product-${id}`;
-    const saved = localStorage.getItem(storageKey);
+    try {
+      const storageKey = `design-data-product-${id}`;
+      const saved = localStorage.getItem(storageKey);
 
-    if (saved) {
-      try {
+      if (saved) {
+        console.log('📦 [Customization] Lecture localStorage pour couleur/vue...');
         const data = JSON.parse(saved);
 
-        // Restaurer les éléments de design via le ref de l'éditeur
-        if (data.elements && data.elements.length > 0) {
-          setDesignElements(data.elements);
-          // Aussi passer au ProductDesignEditor via ref
-          setTimeout(() => {
-            editorRef.current?.setElements(data.elements);
-          }, 100);
-        }
+        // TOUJOURS activer le flag avant de restaurer couleur/vue
+        // pour éviter que la sauvegarde ne s'active pendant la restauration
+        console.log('🔒 [Customization] Activation du flag de restauration');
+        isRestoringRef.current = true;
 
-        // Restaurer la couleur et la vue sélectionnées
+        // Restaurer uniquement la couleur et la vue
         if (data.colorVariationId && product.colorVariations) {
           const savedColor = product.colorVariations.find(c => c.id === data.colorVariationId);
           if (savedColor) {
+            console.log('🎨 [Customization] Restauration couleur:', savedColor);
             setSelectedColorVariation(savedColor);
 
             if (data.viewId && savedColor.images) {
               const savedView = savedColor.images.find(img => img.id === data.viewId);
               if (savedView) {
+                console.log('🖼️ [Customization] Restauration vue:', savedView);
                 setSelectedView(savedView);
               }
             }
           }
         }
 
-        toast({
-          title: '✨ Design restauré',
-          description: 'Votre design a été récupéré automatiquement',
-          duration: 3000
-        });
-      } catch (err) {
-        console.error('Erreur lecture localStorage:', err);
+        // Si pas d'éléments à restaurer, marquer la restauration comme complète
+        if (!data.elements || data.elements.length === 0) {
+          console.log('⚠️ [Customization] Pas d\'éléments à restaurer, désactivation du flag');
+          setTimeout(() => {
+            isRestoringRef.current = false;
+            hasRestoredRef.current = true;
+            console.log('✅ [Customization] Flag désactivé (pas d\'éléments)');
+          }, 1000);
+        }
+      } else {
+        // Aucune donnée sauvegardée, marquer comme restauré
+        hasRestoredRef.current = true;
       }
+    } catch (err) {
+      console.error('❌ [Customization] Erreur lecture localStorage (couleur/vue):', err);
+      hasRestoredRef.current = true;
     }
-  }, [id, product, toast]);
+  }, [id, product]);
+
+  // ÉTAPE 2: Restaurer les éléments APRÈS que le canvas soit prêt
+  useEffect(() => {
+    if (!id || !product || !selectedColorVariation || !selectedView || hasRestoredRef.current) return;
+
+    // Attendre que l'éditor soit monté
+    const timer = setTimeout(() => {
+      try {
+        const storageKey = `design-data-product-${id}`;
+        const saved = localStorage.getItem(storageKey);
+
+        if (saved) {
+          const data = JSON.parse(saved);
+
+          if (data.elements && Array.isArray(data.elements) && data.elements.length > 0) {
+            console.log('✅ [Customization] Restauration des éléments:', data.elements);
+
+            // Le flag est déjà activé dans l'ÉTAPE 1
+            console.log('🔒 [Customization] Flag de restauration:', isRestoringRef.current);
+
+            // Restaurer dans le state parent
+            setDesignElements(data.elements);
+
+            // Puis dans l'éditeur après un petit délai pour que le canvas soit prêt
+            setTimeout(() => {
+              if (editorRef.current) {
+                console.log('🎨 [Customization] Application des éléments dans l\'éditeur');
+                editorRef.current.setElements(data.elements);
+
+                // Désactiver le flag après la restauration complète
+                setTimeout(() => {
+                  isRestoringRef.current = false;
+                  hasRestoredRef.current = true;
+                  console.log('✅ [Customization] Restauration terminée, sauvegarde réactivée');
+                }, 200);
+              } else {
+                // Si l'éditeur n'est pas prêt, désactiver quand même le flag
+                isRestoringRef.current = false;
+                hasRestoredRef.current = true;
+                console.log('⚠️ [Customization] Éditeur non prêt, flag désactivé');
+              }
+            }, 500);
+
+            toast({
+              title: '✨ Design restauré',
+              description: `${data.elements.length} élément(s) récupéré(s)`,
+              duration: 3000
+            });
+          } else {
+            // Pas d'éléments à restaurer
+            hasRestoredRef.current = true;
+          }
+        } else {
+          // Pas de données sauvegardées
+          hasRestoredRef.current = true;
+        }
+      } catch (err) {
+        console.error('❌ [Customization] Erreur restauration éléments:', err);
+        hasRestoredRef.current = true;
+        isRestoringRef.current = false;
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [id, product, selectedColorVariation, selectedView, toast]);
+
+  // Callback quand les éléments changent dans l'éditeur
+  const handleElementsChange = useCallback((newElements: typeof designElements) => {
+    console.log('🔄 [Customization] Éléments changés depuis l\'éditeur:', newElements);
+    console.log('🔄 [Customization] isRestoring:', isRestoringRef.current);
+
+    // Ne pas écraser les éléments si on est en train de restaurer
+    if (isRestoringRef.current) {
+      console.log('⏸️ [Customization] Ignoré car en cours de restauration');
+      return;
+    }
+
+    setDesignElements(newElements);
+  }, []);
 
   // Sauvegarder automatiquement dans localStorage à chaque modification
   useEffect(() => {
     if (!id) return;
+
+    console.log('📝 [Customization] useEffect sauvegarde déclenché:', {
+      designElements: designElements.length,
+      isRestoring: isRestoringRef.current,
+      hasRestored: hasRestoredRef.current,
+      colorId: selectedColorVariation?.id,
+      viewId: selectedView?.id
+    });
+
+    // Ne pas sauvegarder si on est en train de restaurer
+    if (isRestoringRef.current) {
+      console.log('⏸️ [Customization] Sauvegarde ignorée (restauration en cours)');
+      return;
+    }
+
+    // Ne pas sauvegarder tant que la restauration initiale n'est pas complète
+    if (!hasRestoredRef.current) {
+      console.log('⏸️ [Customization] Sauvegarde ignorée (restauration non terminée)');
+      return;
+    }
 
     // Sauvegarder même si aucun élément (pour garder la sélection de couleur/vue)
     const storageKey = `design-data-product-${id}`;
@@ -145,8 +263,10 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     localStorage.setItem(storageKey, JSON.stringify(dataToSave));
 
     // Log pour debug (à supprimer en production)
-    console.log('💾 Auto-sauvegarde:', dataToSave);
+    console.log('💾 Auto-sauvegarde localStorage:', dataToSave);
   }, [designElements, selectedColorVariation, selectedView, id]);
+
+  // Backend désactivé pour l'instant - focus sur localStorage uniquement
 
   // Gérer le plein écran
   const toggleFullscreen = () => {
@@ -183,24 +303,46 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   }, []);
 
   // Sauvegarder manuellement
-  const handleSave = () => {
-    if (!id) return;
+  const handleSave = async () => {
+    if (!id || !product) return;
 
-    const storageKey = `design-data-product-${id}`;
-    const dataToSave = {
-      elements: designElements,
-      colorVariationId: selectedColorVariation?.id,
-      viewId: selectedView?.id,
-      timestamp: Date.now()
-    };
+    try {
+      // Sauvegarder dans localStorage (backup)
+      const storageKey = `design-data-product-${id}`;
+      const dataToSave = {
+        elements: designElements,
+        colorVariationId: selectedColorVariation?.id,
+        viewId: selectedView?.id,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(storageKey, JSON.stringify(dataToSave));
 
-    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+      // Sauvegarder dans le backend
+      const customizationData = {
+        productId: product.id,
+        colorVariationId: selectedColorVariation?.id || 0,
+        viewId: selectedView?.id || 0,
+        designElements: designElements,
+        sessionId: customizationService.getOrCreateSessionId(),
+      };
 
-    toast({
-      title: '✅ Sauvegardé',
-      description: `${designElements.length} élément(s) sauvegardé(s) avec succès`,
-      duration: 2000
-    });
+      const result = await customizationService.saveCustomization(customizationData);
+
+      console.log('✅ Personnalisation sauvegardée:', result);
+
+      toast({
+        title: '✅ Sauvegardé',
+        description: `${designElements.length} élément(s) sauvegardé(s) (ID: ${result.id})`,
+        duration: 3000
+      });
+    } catch (error) {
+      console.error('Erreur sauvegarde:', error);
+      toast({
+        title: 'Erreur de sauvegarde',
+        description: 'Impossible de sauvegarder sur le serveur',
+        variant: 'destructive'
+      });
+    }
   };
 
   // Charger les designs vendeur
@@ -224,23 +366,55 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     }
   };
 
-  // Ajouter au panier
-  const handleAddToCart = () => {
-    if (designElements.length === 0) {
+  // Ouvrir le modal de sélection
+  const handleOpenSizeModal = () => {
+    // Le client peut acheter sans personnalisation
+    setShowSizeModal(true);
+  };
+
+  // Ajouter au panier avec les sélections
+  const handleAddToCart = async (selections: Array<{ size: string; quantity: number }>) => {
+    if (!id || !product) return;
+
+    try {
+      console.log('🛒 [Customization] Ajout au panier avec sélections:', selections);
+
+      // Sauvegarder la personnalisation avec les sélections de taille
+      const customizationData = {
+        productId: product.id,
+        colorVariationId: selectedColorVariation?.id || 0,
+        viewId: selectedView?.id || 0,
+        designElements: designElements,
+        sizeSelections: selections,
+        sessionId: customizationService.getOrCreateSessionId(),
+      };
+
+      const result = await customizationService.saveCustomization(customizationData);
+
+      console.log('✅ [Customization] Personnalisation sauvegardée avec ID:', result.id);
+
+      // Sauvegarder l'ID de la personnalisation dans localStorage pour le panier
+      localStorage.setItem(`customization-${product.id}`, JSON.stringify({
+        customizationId: result.id,
+        selections: selections,
+        timestamp: Date.now()
+      }));
+
       toast({
-        title: 'Design requis',
-        description: 'Veuillez ajouter au moins un élément',
+        title: 'Ajouté au panier',
+        description: `${selections.reduce((sum, s) => sum + s.quantity, 0)} article(s) ajouté(s) au panier`,
+      });
+
+      // TODO: Implémenter l'ajout réel au panier avec result.id
+      // navigate('/cart');
+    } catch (error) {
+      console.error('❌ [Customization] Erreur ajout au panier:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible d\'ajouter au panier',
         variant: 'destructive'
       });
-      return;
     }
-
-    toast({
-      title: 'Ajouté au panier',
-      description: 'Votre produit personnalisé a été ajouté au panier'
-    });
-
-    navigate('/cart');
   };
 
   if (loading) {
@@ -389,11 +563,12 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                 {selectedView && delimitation ? (
                   <div className="w-full max-w-4xl">
                     <ProductDesignEditor
+                      key={`editor-${id}`}
                       ref={editorRef}
                       productImageUrl={selectedView.url}
                       delimitation={delimitation}
                       initialElements={designElements}
-                      onElementsChange={setDesignElements}
+                      onElementsChange={handleElementsChange}
                       className="flex-row-reverse"
                     />
                   </div>
@@ -418,7 +593,11 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                   {selectedColorVariation.images.map((img: any, idx: number) => (
                     <button
                       key={img.id}
-                      onClick={() => setSelectedView(img)}
+                      onClick={() => {
+                        console.log('🖼️ [Customization] Changement de vue:', idx + 1);
+                        // Le changement de vue sauvegarde automatiquement via useEffect
+                        setSelectedView(img);
+                      }}
                       className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
                         selectedView?.id === img.id
                           ? 'bg-primary text-primary-foreground'
@@ -458,6 +637,8 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                   <button
                     key={color.id}
                     onClick={() => {
+                      console.log('🎨 [Customization] Changement de couleur:', color.name);
+                      // Le changement de couleur sauvegarde automatiquement via useEffect
                       setSelectedColorVariation(color);
                       if (color.images && color.images.length > 0) {
                         setSelectedView(color.images[0]);
@@ -480,14 +661,13 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">Prix</span>
               <span className="text-2xl font-bold text-gray-900">
-                {product.price.toLocaleString()} FCFA
+                {(product.suggestedPrice || product.price).toLocaleString()} FCFA
               </span>
             </div>
           </div>
 
           <Button
-            onClick={handleAddToCart}
-            disabled={designElements.length === 0}
+            onClick={handleOpenSizeModal}
             className="w-full py-6 text-lg"
           >
             <ShoppingCart className="w-5 h-5 mr-2" />
@@ -729,6 +909,16 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de sélection taille/quantité */}
+      <SizeQuantityModal
+        isOpen={showSizeModal}
+        onClose={() => setShowSizeModal(false)}
+        productPrice={product.suggestedPrice || product.price}
+        productName={product.name}
+        productSizes={product.sizes || []}
+        onAddToCart={handleAddToCart}
+      />
     </div>
   );
 };

@@ -14,9 +14,11 @@ import {
   Underline,
   X,
   Search,
-  ShoppingBag
+  ShoppingBag,
+  RotateCw
 } from 'lucide-react';
 import { Button } from './ui/button';
+import { useToast } from './ui/use-toast';
 import designService from '../services/designService';
 
 // Types pour les éléments
@@ -105,6 +107,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   initialElements = [],
   className = ''
 }, ref) => {
+  const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [elements, setElements] = useState<DesignElement[]>([]);
@@ -149,14 +152,30 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   // Initialiser les éléments avec migration
   useEffect(() => {
     if (initialElements.length > 0 && elements.length === 0) {
+      console.log('🔄 [ProductDesignEditor] Initialisation avec initialElements:', initialElements.length);
       setElements(migrateTextElements(initialElements));
     }
-  }, [initialElements]);
+  }, [initialElements, elements.length]);
+
+  // Ref pour tracker si c'est le premier render
+  const isFirstRenderRef = useRef(true);
 
   // Notifier le parent des changements
   useEffect(() => {
+    console.log('🎨 [ProductDesignEditor] elements changed:', elements.length, 'elements');
+
+    // Ne pas notifier au premier render si elements est vide
+    if (isFirstRenderRef.current && elements.length === 0) {
+      console.log('⏭️ [ProductDesignEditor] Premier render avec 0 éléments, ignoré');
+      isFirstRenderRef.current = false;
+      return;
+    }
+
+    isFirstRenderRef.current = false;
+    console.log('📤 [ProductDesignEditor] Notification parent avec', elements.length, 'éléments');
     onElementsChange?.(elements);
-  }, [elements, onElementsChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements]);
 
   // Exposer les méthodes via ref
   useImperativeHandle(ref, () => ({
@@ -210,8 +229,10 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       zIndex: elements.length
     };
 
+    console.log('➕ [ProductDesignEditor] Ajout texte, avant:', elements.length, '→ après:', elements.length + 1);
     setElements([...elements, newText]);
     setSelectedElementId(newText.id);
+    console.log('✅ [ProductDesignEditor] Texte ajouté:', newText.id);
   };
 
   // Ajouter une image
@@ -383,6 +404,55 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     };
   };
 
+  // Vérifier si un élément tourné sort de la délimitation
+  const checkRotatedElementBounds = (element: DesignElement): boolean => {
+    if (!canvasRef.current || !delimitation) return false;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = rect.width / delimitation.referenceWidth;
+    const scaleY = rect.height / delimitation.referenceHeight;
+
+    // Position du centre de l'élément en pixels
+    const centerX = element.x * rect.width;
+    const centerY = element.y * rect.height;
+
+    // Convertir la rotation en radians
+    const rotationRad = (element.rotation * Math.PI) / 180;
+
+    // Calculer les 4 coins du rectangle tourné
+    const halfWidth = element.width / 2;
+    const halfHeight = element.height / 2;
+
+    const corners = [
+      { x: -halfWidth, y: -halfHeight },
+      { x: halfWidth, y: -halfHeight },
+      { x: halfWidth, y: halfHeight },
+      { x: -halfWidth, y: halfHeight }
+    ];
+
+    // Appliquer la rotation à chaque coin
+    const rotatedCorners = corners.map(corner => ({
+      x: centerX + (corner.x * Math.cos(rotationRad) - corner.y * Math.sin(rotationRad)),
+      y: centerY + (corner.x * Math.sin(rotationRad) + corner.y * Math.cos(rotationRad))
+    }));
+
+    // Limites de la délimitation en pixels
+    const boundsX = delimitation.x * scaleX;
+    const boundsY = delimitation.y * scaleY;
+    const boundsWidth = delimitation.width * scaleX;
+    const boundsHeight = delimitation.height * scaleY;
+
+    // Vérifier si un des coins sort de la délimitation
+    const isOutOfBounds = rotatedCorners.some(corner =>
+      corner.x < boundsX ||
+      corner.x > boundsX + boundsWidth ||
+      corner.y < boundsY ||
+      corner.y > boundsY + boundsHeight
+    );
+
+    return isOutOfBounds;
+  };
+
   // Début du drag
   const handleMouseDown = (e: React.MouseEvent, elementId: string) => {
     e.preventDefault();
@@ -492,11 +562,22 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
       const newRotation = (rotateStart.angle + deltaAngle) % 360;
 
-      setElements(elements.map(el =>
-        el.id === selectedElementId
-          ? { ...el, rotation: newRotation }
-          : el
-      ));
+      // Appliquer la rotation et vérifier les limites
+      const updatedElements = elements.map(el => {
+        if (el.id === selectedElementId) {
+          return { ...el, rotation: newRotation };
+        }
+        return el;
+      });
+
+      setElements(updatedElements);
+
+      // Vérifier si l'élément tourné sort de la délimitation
+      const rotatedElement = updatedElements.find(el => el.id === selectedElementId);
+      if (rotatedElement) {
+        const isOutOfBounds = checkRotatedElementBounds(rotatedElement);
+        setIsAtBoundary(isOutOfBounds);
+      }
     }
   };
 
@@ -550,6 +631,28 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
   // Fin du drag/resize/rotate
   const handleMouseUp = () => {
+    // Si on termine une rotation et que l'élément sort de la zone, le recadrer
+    if (isRotating && isAtBoundary && selectedElementId) {
+      const element = elements.find(el => el.id === selectedElementId);
+      if (element) {
+        // Remettre la rotation à 0 pour que l'élément rentre dans la zone
+        const constrainedRotation = 0;
+        setElements(elements.map(el =>
+          el.id === selectedElementId
+            ? { ...el, rotation: constrainedRotation }
+            : el
+        ));
+
+        // Afficher un message à l'utilisateur
+        toast({
+          title: 'Rotation ajustée',
+          description: "L'élément a été remis dans la zone de personnalisation",
+          variant: 'destructive',
+          duration: 3000
+        });
+      }
+    }
+
     setIsDragging(false);
     setIsResizing(false);
     setIsRotating(false);
@@ -660,6 +763,13 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
             draggable={false}
           />
 
+          {/* Message d'avertissement si hors limites */}
+          {isAtBoundary && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse">
+              <p className="text-sm font-semibold">⚠️ L'élément sort de la zone de personnalisation</p>
+            </div>
+          )}
+
           {/* Délimitation visible */}
           {delimitation && canvasRef.current && (() => {
             const rect = canvasRef.current.getBoundingClientRect();
@@ -673,13 +783,15 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
             return (
               <div
-                className="absolute border-2 border-dashed border-blue-400 pointer-events-none"
+                className={`absolute border-2 border-dashed pointer-events-none transition-colors duration-200 ${
+                  isAtBoundary ? 'border-red-500' : 'border-blue-400'
+                }`}
                 style={{
                   left: `${leftPercent}%`,
                   top: `${topPercent}%`,
                   width: `${widthPercent}%`,
                   height: `${heightPercent}%`,
-                  backgroundColor: 'rgba(59, 130, 246, 0.05)'
+                  backgroundColor: isAtBoundary ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.05)'
                 }}
               />
             );
@@ -853,16 +965,56 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                         onMouseDown={(e) => handleResizeStart(e, element.id)}
                       />
 
-                      {/* Poignée de rotation (coin haut-droit) */}
-                      <div
-                        className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full cursor-grab active:cursor-grabbing"
+                      {/* Bouton de suppression (coin haut-gauche) */}
+                      <button
+                        className="absolute w-7 h-7 bg-red-500 hover:bg-red-600 border-2 border-white rounded-full cursor-pointer flex items-center justify-center shadow-lg transition-all hover:scale-110"
                         style={{
-                          right: '-6px',
-                          top: '-6px',
-                          pointerEvents: 'auto'
+                          left: '-14px',
+                          top: '-14px',
+                          pointerEvents: 'auto',
+                          zIndex: 10
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteElement(element.id);
+                        }}
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-white" />
+                      </button>
+
+                      {/* Bouton de duplication (coin haut-droit avant rotation) */}
+                      <button
+                        className="absolute w-7 h-7 bg-blue-500 hover:bg-blue-600 border-2 border-white rounded-full cursor-pointer flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        style={{
+                          right: '20px',
+                          top: '-14px',
+                          pointerEvents: 'auto',
+                          zIndex: 10
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          duplicateElement(element.id);
+                        }}
+                        title="Dupliquer"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-white" />
+                      </button>
+
+                      {/* Bouton de rotation (coin haut-droit) */}
+                      <div
+                        className="absolute w-7 h-7 bg-green-500 hover:bg-green-600 border-2 border-white rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        style={{
+                          right: '-14px',
+                          top: '-14px',
+                          pointerEvents: 'auto',
+                          zIndex: 10
                         }}
                         onMouseDown={(e) => handleRotateStart(e, element.id)}
-                      />
+                        title="Rotation"
+                      >
+                        <RotateCw className="w-3.5 h-3.5 text-white" />
+                      </div>
 
                       {/* Poignées aux 4 coins pour redimensionnement */}
                       <div

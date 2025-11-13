@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ShoppingCart, LayoutDashboard } from "lucide-react";
+import { ShoppingCart, LayoutDashboard, ChevronRight, X } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -14,6 +14,15 @@ const NavBar = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllCategoriesModal, setShowAllCategoriesModal] = useState(false);
+
+  const VISIBLE_CATEGORIES_LIMIT = 4;
+  // Filtrer pour n'afficher que les catégories avec des sous-catégories
+  const categoriesWithSubCategories = categories.filter(category =>
+    subCategories.some(sub => sub.categoryId === category.id)
+  );
+  const visibleCategories = categoriesWithSubCategories.slice(0, VISIBLE_CATEGORIES_LIMIT);
+  const hiddenCategories = categoriesWithSubCategories.slice(VISIBLE_CATEGORIES_LIMIT);
 
   const { itemCount, openCart } = useCart();
   const navigate = useNavigate();
@@ -74,8 +83,12 @@ const NavBar = () => {
     } else if (category) {
       console.log(`Navigate to: /filtered-articles?category=${category.name}`);
       navigate(`/filtered-articles?category=${category.name}`);
+    } else {
+      // Cas où on clique sur "Personnalisation" sans catégorie spécifique
+      navigate('/customize-product');
     }
     setIsMobileMenuOpen(false);
+    setShowAllCategoriesModal(false);
   };
 
   return (
@@ -295,57 +308,70 @@ const NavBar = () => {
                   <div className="text-white/80 text-sm">Chargement...</div>
                 </div>
               ) : (
-                categories.map((category) => {
-                  const categorySubCategories = subCategories.filter(sub => sub.categoryId === category.id);
+                <>
+                  {visibleCategories.map((category) => {
+                    const categorySubCategories = subCategories.filter(sub => sub.categoryId === category.id);
 
-                  return (
-                    <div key={category.id} className="relative group">
-                      {categorySubCategories.length > 0 ? (
-                        <>
-                          <button className="flex items-center space-x-1 lg:space-x-2 py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg">
-                            <span>{category.name}</span>
-                            <svg className="h-3 w-3 lg:h-4 lg:w-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                          {/* Dropdown */}
-                          <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                            <div className="p-6">
-                              <div className="grid grid-cols-2 gap-4">
-                                {categorySubCategories.map((subCategory) => (
+                    return (
+                      <div key={category.id} className="relative group">
+                        {categorySubCategories.length > 0 ? (
+                          <>
+                            <button className="flex items-center space-x-1 lg:space-x-2 py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg">
+                              <span>{category.name}</span>
+                              <svg className="h-3 w-3 lg:h-4 lg:w-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {/* Dropdown */}
+                            <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                              <div className="p-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                  {categorySubCategories.map((subCategory) => (
+                                    <button
+                                      key={subCategory.id}
+                                      onClick={() => handleCategoryClick(category, subCategory)}
+                                      className="text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                                    >
+                                      <div className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                                        {subCategory.name}
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-100">
                                   <button
-                                    key={subCategory.id}
-                                    onClick={() => handleCategoryClick(category, subCategory)}
-                                    className="text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                                    onClick={() => handleCategoryClick(category)}
+                                    className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
                                   >
-                                    <div className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
-                                      {subCategory.name}
-                                    </div>
+                                    Voir tout dans {category.name} →
                                   </button>
-                                ))}
-                              </div>
-                              <div className="mt-4 pt-4 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCategoryClick(category)}
-                                  className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
-                                >
-                                  Voir tout dans {category.name} →
-                                </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleCategoryClick(category)}
-                          className="py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg flex items-center space-x-1 lg:space-x-2"
-                        >
-                          <span>{category.name}</span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleCategoryClick(category)}
+                            className="py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg flex items-center space-x-1 lg:space-x-2"
+                          >
+                            <span>{category.name}</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Bouton "Voir plus" si plus de 4 catégories avec sous-catégories */}
+                  {categoriesWithSubCategories.length > VISIBLE_CATEGORIES_LIMIT && (
+                    <button
+                      onClick={() => setShowAllCategoriesModal(true)}
+                      className="flex items-center space-x-1 lg:space-x-2 py-2 lg:py-3 xl:py-4 text-white hover:text-white/80 font-medium transition-colors text-sm lg:text-base xl:text-lg"
+                    >
+                      <span>Plus</span>
+                      <ChevronRight className="h-3 w-3 lg:h-4 lg:w-4" />
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
@@ -518,6 +544,76 @@ const NavBar = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+      )}
+
+      {/* Modal pour afficher toutes les catégories */}
+      {showAllCategoriesModal && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Overlay */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowAllCategoriesModal(false)}
+          />
+
+          {/* Modal minimaliste */}
+          <div className="relative mx-auto w-full max-w-5xl bg-white m-4 max-h-[80vh] flex flex-col rounded-lg shadow-xl">
+            {/* Header simple */}
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="text-lg font-medium text-gray-900">
+                Toutes les catégories
+              </h3>
+              <button
+                onClick={() => setShowAllCategoriesModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content minimaliste */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-1">
+                {categoriesWithSubCategories.map((category) => {
+                  const categorySubCategories = subCategories.filter(sub => sub.categoryId === category.id);
+
+                  return (
+                    <div key={category.id} className="border-b border-gray-100">
+                      <button
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                        onClick={() => handleCategoryClick(category)}
+                      >
+                        <span className="font-medium text-gray-900">{category.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">
+                            {categorySubCategories.length}
+                          </span>
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* Sous-catégories toujours visibles */}
+                      <div className="px-4 pb-3 bg-gray-50">
+                        <div className="flex flex-wrap gap-2">
+                          {categorySubCategories.map((subCategory) => (
+                            <button
+                              key={subCategory.id}
+                              onClick={() => handleCategoryClick(category, subCategory)}
+                              className="px-3 py-1.5 text-sm text-gray-700 hover:bg-white hover:text-blue-600 rounded-md border border-gray-200 hover:border-blue-300 transition-colors"
+                            >
+                              {subCategory.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </>

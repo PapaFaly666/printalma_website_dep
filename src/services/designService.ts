@@ -2331,14 +2331,7 @@ class DesignService {
     }
   }
 
-  /**
-   * Alias pour getPublicDesigns (pour compatibilité avec le code existant)
-   */
-  async getDesigns(filters?: any): Promise<{ designs: any[] }> {
-    const result = await this.getPublicDesigns(filters);
-    return { designs: result.designs };
-  }
-
+  
   // ========================================================================
 }
 

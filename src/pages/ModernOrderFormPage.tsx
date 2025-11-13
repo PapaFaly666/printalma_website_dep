@@ -324,12 +324,10 @@ const ModernOrderFormPage: React.FC = () => {
 
       paymentStatusService.savePendingPayment(pendingPaymentData);
 
-      // Ouvrir PayDunya dans un nouvel onglet
-      window.open(retrievedPaymentUrl, '_blank', 'noopener,noreferrer');
-
-      // Rediriger vers la page de confirmation avec les paramètres
-      const confirmationUrl = `/order-confirmation?orderNumber=${encodeURIComponent(orderResponse.data.orderNumber)}&token=${encodeURIComponent(paymentData.token)}&paymentUrl=${encodeURIComponent(retrievedPaymentUrl)}&totalAmount=${encodeURIComponent(total)}&email=${encodeURIComponent(formData.email)}`;
-      navigate(confirmationUrl);
+      // Rediriger l'onglet actuel vers PayDunya
+      // PayDunya redirigera automatiquement vers /order-confirmation après le paiement
+      console.log('🔄 [ModernOrderForm] Redirection vers PayDunya:', retrievedPaymentUrl);
+      window.location.href = retrievedPaymentUrl;
 
     } catch (error: any) {
       console.error('Erreur lors du processus de commande:', error);
