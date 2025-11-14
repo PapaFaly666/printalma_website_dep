@@ -89,47 +89,7 @@ const ProductWithDesign: React.FC<{
     };
   };
 
-  // Fonction pour synchroniser les données localStorage vers la base de données (comme SimpleProductPreview)
-  const syncLocalStorageToDatabase = async (vendorProductId: number, designId: number, enrichedData: any) => {
-    if (!user?.id) return;
-
-    try {
-      // Vérifier si les données ont été enrichies depuis localStorage
-      if (enrichedData.source === 'localStorage' || enrichedData.designWidth || enrichedData.designHeight) {
-        console.log('🔄 [CartSidebar] Synchronisation des données enrichies vers la base de données...', {
-          vendorProductId,
-          designId,
-          data: {
-            x: enrichedData.x,
-            y: enrichedData.y,
-            scale: enrichedData.scale,
-            rotation: enrichedData.rotation,
-            designWidth: enrichedData.designWidth,
-            designHeight: enrichedData.designHeight,
-            constraints: enrichedData.constraints
-          }
-        });
-
-        // VRAIE SYNCHRONISATION vers la base de données
-        const positionPayload = {
-          x: enrichedData.x,
-          y: enrichedData.y,
-          scale: enrichedData.scale,
-          rotation: enrichedData.rotation || 0,
-          designWidth: enrichedData.designWidth,
-          designHeight: enrichedData.designHeight
-        };
-
-        // Sauvegarder via l'API vendorProductService
-        await vendorProductService.saveDesignPosition(vendorProductId, designId, positionPayload);
-
-        console.log('✅ [CartSidebar] Données synchronisées avec succès vers la base de données !');
-      }
-    } catch (error) {
-      console.error('❌ [CartSidebar] Erreur lors de la synchronisation vers la base de données:', error);
-    }
-  };
-
+  
   // Obtenir la position du design depuis localStorage (EXACTEMENT comme SimpleProductPreview)
   const getDesignPosition = () => {
     console.log('🎨 [CartSidebar] getDesignPosition - Début de la fonction', {
@@ -285,11 +245,34 @@ const ProductWithDesign: React.FC<{
       designUrl: item.designUrl,
       designId: item.designId,
       delimitations: delimitations.length,
-      imageMetrics: !!imageMetrics
+      imageMetrics: !!imageMetrics,
+      hasDesignElements: !!item.designElements,
+      designElementsCount: item.designElements?.length || 0,
+      customizationId: item.customizationId
     });
 
+    // Log détaillé pour les designElements (nouveau système)
+    if (item.designElements && item.designElements.length > 0) {
+      console.log('🎨 [CartSidebar] DesignElements (nouveau système):', {
+        count: item.designElements.length,
+        elements: item.designElements.map((el, idx) => ({
+          index: idx,
+          type: el.type,
+          text: el.text?.substring(0, 20),
+          imageUrl: el.imageUrl?.substring(0, 50),
+          x: el.x,
+          y: el.y,
+          width: el.width,
+          height: el.height
+        })),
+        delimitations: delimitations,
+        firstDelimitation: delimitations[0]
+      });
+    }
+
+    // Log pour l'ancien système
     if (item.designUrl && delimitations.length > 0) {
-      console.log('🎨 [CartSidebar] Informations design:', {
+      console.log('🎨 [CartSidebar] DesignUrl (ancien système):', {
         designPosition,
         delimitations,
         firstDelimitation: delimitations[0]
@@ -298,7 +281,7 @@ const ProductWithDesign: React.FC<{
   }, [item, imageMetrics, designPosition, delimitations]);
 
   return (
-    <div className="relative w-20 h-20 bg-white rounded-lg border border-gray-200 flex items-center justify-center p-2">
+    <div className="relative w-32 h-32 bg-white rounded-lg border border-gray-200 flex items-center justify-center p-2">
       {/* Conteneur principal */}
       <div
         ref={containerRef}
@@ -313,9 +296,166 @@ const ProductWithDesign: React.FC<{
           onLoad={() => setImageLoaded(true)}
         />
 
-        {/* Design superposé si présent */}
-        {item.designUrl && imageMetrics && delimitations.length > 0 && (() => {
-          console.log('🎨 [CartSidebar] Affichage du design - Conditions vérifiées');
+        {/* Personnalisations superposées (designElements) - Avec vraies délimitations */}
+        {item.designElements && item.designElements.length > 0 && (() => {
+          if (!containerRef.current) return null;
+
+          const rect = containerRef.current.getBoundingClientRect();
+          console.log('🎨 [CartSidebar] Affichage des personnalisations - Avec délimitations réelles');
+          console.log('📐 [CartSidebar] Canvas rect:', { width: rect.width, height: rect.height });
+
+          // Utiliser les vraies délimitations du produit
+          const delimitation = delimitations[0];
+          if (!delimitation) {
+            console.log('⚠️ [CartSidebar] Pas de délimitation trouvée, utilisation du mode fallback');
+            return null;
+          }
+
+          // Calculer les dimensions de la délimitation en pixels (comme ProductDesignEditor)
+          const scaleX = rect.width / delimitation.referenceWidth;
+          const scaleY = rect.height / delimitation.referenceHeight;
+
+          const delimitationPixels = {
+            x: delimitation.x * scaleX,
+            y: delimitation.y * scaleY,
+            width: delimitation.width * scaleX,
+            height: delimitation.height * scaleY
+          };
+
+          console.log('🔲 [CartSidebar] Délimitation:', {
+            reference: { width: delimitation.referenceWidth, height: delimitation.referenceHeight },
+            delimitation: { x: delimitation.x, y: delimitation.y, width: delimitation.width, height: delimitation.height },
+            scaleFactors: { x: scaleX.toFixed(2), y: scaleY.toFixed(2) },
+            pixels: delimitationPixels
+          });
+
+          return (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                zIndex: 2,
+              }}
+            >
+              {/* Conteneur de la délimitation */}
+              <div
+                className="absolute overflow-hidden"
+                style={{
+                  left: `${delimitationPixels.x}px`,
+                  top: `${delimitationPixels.y}px`,
+                  width: `${delimitationPixels.width}px`,
+                  height: `${delimitationPixels.height}px`,
+                }}
+              >
+                {item.designElements.map((element: any, idx: number) => {
+                  // Position dans le système de coordonnées de la délimitation (0-1)
+                  const elementX = element.x * delimitationPixels.width;
+                  const elementY = element.y * delimitationPixels.height;
+
+                  // Dimensions responsive basées sur la délimitation
+                  const responsiveWidth = element.width * scaleX;
+                  const responsiveHeight = element.height * scaleY;
+
+                  // Taille de police responsive
+                  const responsiveFontSize = element.type === 'text'
+                    ? element.fontSize * scaleX
+                    : undefined;
+
+                  const rotation = element.rotation || 0;
+
+                  console.log(`🎨 [CartSidebar] Élément ${idx} (avec délimitations):`, {
+                    type: element.type,
+                    relativePos: { x: element.x.toFixed(3), y: element.y.toFixed(3) },
+                    delimitationPos: { x: elementX.toFixed(1), y: elementY.toFixed(1) },
+                    originalSize: { w: element.width, h: element.height },
+                    responsiveSize: { w: responsiveWidth.toFixed(1), h: responsiveHeight.toFixed(1) },
+                    delimitationSize: { w: delimitationPixels.width.toFixed(1), h: delimitationPixels.height.toFixed(1) },
+                    rotation,
+                    responsiveFontSize: responsiveFontSize?.toFixed(1)
+                  });
+
+                  if (element.type === 'text') {
+                    return (
+                      <div
+                        key={`element-${idx}`}
+                        className="absolute pointer-events-none select-none"
+                        style={{
+                          left: `${elementX}px`,
+                          top: `${elementY}px`,
+                          transform: `translate(-50%, -50%)`,
+                          zIndex: element.zIndex || 0,
+                        }}
+                      >
+                        {/* Conteneur avec rotation */}
+                        <div
+                          className="relative"
+                          style={{
+                            transform: `rotate(${rotation}deg)`,
+                            transformOrigin: 'center',
+                            width: `${responsiveWidth}px`,
+                            height: `${responsiveHeight}px`,
+                            fontSize: `${responsiveFontSize}px`,
+                            color: element.color || '#000',
+                            fontFamily: element.fontFamily || 'Arial',
+                            fontWeight: element.fontWeight || 'normal',
+                            fontStyle: element.fontStyle || 'normal',
+                            textDecoration: element.textDecoration || 'none',
+                            textAlign: element.textAlign || 'center',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center',
+                            whiteSpace: 'nowrap',
+                            overflow: 'visible',
+                          }}
+                        >
+                          {element.text || ''}
+                        </div>
+                      </div>
+                    );
+                  } else if (element.type === 'image') {
+                    return (
+                      <div
+                        key={`element-${idx}`}
+                        className="absolute pointer-events-none select-none"
+                        style={{
+                          left: `${elementX}px`,
+                          top: `${elementY}px`,
+                          transform: `translate(-50%, -50%)`,
+                          zIndex: element.zIndex || 0,
+                        }}
+                      >
+                        {/* Conteneur avec rotation */}
+                        <div
+                          className="relative"
+                          style={{
+                            transform: `rotate(${rotation}deg)`,
+                            transformOrigin: 'center',
+                            width: `${responsiveWidth}px`,
+                            height: `${responsiveHeight}px`,
+                          }}
+                        >
+                          <img
+                            src={element.imageUrl}
+                            alt="Design element"
+                            className="w-full h-full object-contain"
+                            style={{
+                              pointerEvents: 'none',
+                              userSelect: 'none',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Design vendeur (ancien système) */}
+        {item.designUrl && !item.designElements && imageMetrics && delimitations.length > 0 && (() => {
+          console.log('🎨 [CartSidebar] Affichage du design vendeur - Conditions vérifiées');
 
           const delimitation = delimitations[0];
           if (!delimitation) {
@@ -544,23 +684,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                       </div>
                     </div>
 
-                    {/* Design si présent */}
-                    {item.designUrl && (
-                      <div className="mt-3 p-2 bg-gray-50 rounded-xl border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1 font-medium">Design personnalisé :</p>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-white rounded-lg p-1 shadow-sm">
-                            <img
-                              src={item.designUrl}
-                              alt="Design"
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <span className="text-xs text-gray-700">Inclus</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    </div>
                 ))}
               </div>
             )}

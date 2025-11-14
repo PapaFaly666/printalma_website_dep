@@ -51,4 +51,8 @@ export interface CartItem {
     appliedAt?: string;
   };
   delimitation?: DelimitationData; // Zone de placement du design sur le produit
+
+  // 🆕 ID de la personnalisation sauvegardée en base de données
+  customizationId?: number;      // Lien vers la table customizations
+  designElements?: any[];        // Éléments de design (texte, images) pour l'aperçu
 }

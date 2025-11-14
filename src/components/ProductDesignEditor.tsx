@@ -111,6 +111,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [elements, setElements] = useState<DesignElement[]>([]);
+  const elementsRef = useRef<DesignElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -119,6 +120,29 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, startX: 0, startY: 0, aspectRatio: 0, shiftPressed: false });
   const [rotateStart, setRotateStart] = useState({ angle: 0, startX: 0, startY: 0, centerX: 0, centerY: 0 });
   const [isAtBoundary, setIsAtBoundary] = useState(false);
+
+  // Forcer le re-render quand nécessaire
+  const [forceUpdateKey, setForceUpdateKey] = useState(0);
+  const forceUpdate = () => setForceUpdateKey(prev => prev + 1);
+
+  // Garder la référence à jour
+  useEffect(() => {
+    elementsRef.current = elements;
+  }, [elements]);
+
+  // Forcer le re-render au redimensionnement de la fenêtre pour le responsive
+  useEffect(() => {
+    const handleResize = () => {
+      console.log('🔄 [ProductDesignEditor] Redimensionnement fenêtre détecté');
+      forceUpdate();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [forceUpdate]);
+
+  // Mode édition : afficher les délimitations uniquement quand on édite
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // États pour la bibliothèque de designs
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
@@ -151,11 +175,16 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
   // Initialiser les éléments avec migration
   useEffect(() => {
-    if (initialElements.length > 0 && elements.length === 0) {
+    // Ne initialiser que si on n'a jamais initialisé et qu'il n'y a pas eu de suppression manuelle
+    const hasInitializedBefore = elementsRef.current.length > 0 || elements.length > 0;
+
+    if (initialElements.length > 0 && !hasInitializedBefore) {
       console.log('🔄 [ProductDesignEditor] Initialisation avec initialElements:', initialElements.length);
       setElements(migrateTextElements(initialElements));
+    } else if (initialElements.length > 0 && elements.length === 0) {
+      console.log('⚠️ [ProductDesignEditor] Éviter re-initialisation après suppression');
     }
-  }, [initialElements, elements.length]);
+  }, [initialElements]);
 
   // Ref pour tracker si c'est le premier render
   const isFirstRenderRef = useRef(true);
@@ -232,6 +261,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     console.log('➕ [ProductDesignEditor] Ajout texte, avant:', elements.length, '→ après:', elements.length + 1);
     setElements([...elements, newText]);
     setSelectedElementId(newText.id);
+    setIsEditMode(true); // Activer le mode édition lors de l'ajout
     console.log('✅ [ProductDesignEditor] Texte ajouté:', newText.id);
   };
 
@@ -282,6 +312,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
     setElements([...elements, newImage]);
     setSelectedElementId(newImage.id);
+    setIsEditMode(true); // Activer le mode édition lors de l'ajout
   };
 
   // Charger les designs vendeur
@@ -310,7 +341,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     img.src = design.imageUrl;
   };
 
-  // Contraindre la position dans la délimitation
+  // Contraindre la position dans la délimitation (en tenant compte de la rotation)
   const constrainToBounds = (element: DesignElement, newX: number, newY: number): { x: number; y: number } => {
     if (!canvasRef.current || !delimitation) return { x: newX, y: newY };
 
@@ -323,26 +354,241 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     const boundsY = delimitation.y * scaleY;
     const boundsWidth = delimitation.width * scaleX;
     const boundsHeight = delimitation.height * scaleY;
+    const boundsRight = boundsX + boundsWidth;
+    const boundsBottom = boundsY + boundsHeight;
 
-    // Position de l'élément en pixels
-    const elementPixelX = newX * rect.width - element.width / 2;
-    const elementPixelY = newY * rect.height - element.height / 2;
+    // Dimensions responsive de l'élément
+    const responsiveWidth = element.width * scaleX;
+    const responsiveHeight = element.height * scaleY;
 
-    // Contraindre
-    const constrainedX = Math.max(
-      boundsX + element.width / 2,
-      Math.min(boundsX + boundsWidth - element.width / 2, elementPixelX + element.width / 2)
-    );
+    // Position proposée en pixels
+    const proposedCenterX = newX * rect.width;
+    const proposedCenterY = newY * rect.height;
 
-    const constrainedY = Math.max(
-      boundsY + element.height / 2,
-      Math.min(boundsY + boundsHeight - element.height / 2, elementPixelY + element.height / 2)
-    );
+    // Rotation en radians
+    const rotationRad = (element.rotation * Math.PI) / 180;
+    const halfWidth = responsiveWidth / 2;
+    const halfHeight = responsiveHeight / 2;
+
+    // Calculer les 4 coins de l'élément tourné
+    const calculateRotatedCorners = (centerX: number, centerY: number) => {
+      const corners = [
+        { x: -halfWidth, y: -halfHeight }, // Top-left
+        { x: halfWidth, y: -halfHeight },  // Top-right
+        { x: halfWidth, y: halfHeight },   // Bottom-right
+        { x: -halfWidth, y: halfHeight }   // Bottom-left
+      ];
+
+      return corners.map(corner => {
+        // Appliquer la rotation au coin
+        const rotatedX = corner.x * Math.cos(rotationRad) - corner.y * Math.sin(rotationRad);
+        const rotatedY = corner.x * Math.sin(rotationRad) + corner.y * Math.cos(rotationRad);
+
+        return {
+          x: centerX + rotatedX,
+          y: centerY + rotatedY
+        };
+      });
+    };
+
+    // Vérifier si tous les coins sont dans la délimitation
+    const areAllCornersInside = (centerX: number, centerY: number): boolean => {
+      const corners = calculateRotatedCorners(centerX, centerY);
+
+      for (const corner of corners) {
+        if (corner.x < boundsX || corner.x > boundsRight ||
+            corner.y < boundsY || corner.y > boundsBottom) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    // Si pas de rotation, utiliser la contrainte simple
+    if (Math.abs(element.rotation) < 0.5) {
+      const constrainedX = Math.max(
+        boundsX + halfWidth,
+        Math.min(boundsRight - halfWidth, proposedCenterX)
+      );
+      const constrainedY = Math.max(
+        boundsY + halfHeight,
+        Math.min(boundsBottom - halfHeight, proposedCenterY)
+      );
+
+      return {
+        x: constrainedX / rect.width,
+        y: constrainedY / rect.height
+      };
+    }
+
+    // Vérifier d'abord si la position proposée est valide
+    if (areAllCornersInside(proposedCenterX, proposedCenterY)) {
+      return { x: newX, y: newY };
+    }
+
+    // La position proposée fait sortir l'élément
+    // Trouver la position maximale le long du vecteur de déplacement
+    const currentCenterX = element.x * rect.width;
+    const currentCenterY = element.y * rect.height;
+
+    const deltaX = proposedCenterX - currentCenterX;
+    const deltaY = proposedCenterY - currentCenterY;
+
+    // Si on n'a pas bougé, retourner la position actuelle
+    if (Math.abs(deltaX) < 0.1 && Math.abs(deltaY) < 0.1) {
+      return { x: element.x, y: element.y };
+    }
+
+    // Recherche dichotomique pour trouver la position maximale
+    let minRatio = 0;
+    let maxRatio = 1;
+    let bestX = currentCenterX;
+    let bestY = currentCenterY;
+
+    for (let i = 0; i < 25; i++) {
+      const midRatio = (minRatio + maxRatio) / 2;
+      const testX = currentCenterX + deltaX * midRatio;
+      const testY = currentCenterY + deltaY * midRatio;
+
+      if (areAllCornersInside(testX, testY)) {
+        // Cette position est valide, on peut aller plus loin
+        minRatio = midRatio;
+        bestX = testX;
+        bestY = testY;
+      } else {
+        // Cette position fait sortir, il faut reculer
+        maxRatio = midRatio;
+      }
+
+      // Convergence atteinte
+      if (maxRatio - minRatio < 0.0001) break;
+    }
+
+    // Appliquer une marge de sécurité de 99%
+    const finalX = currentCenterX + (bestX - currentCenterX) * 0.99;
+    const finalY = currentCenterY + (bestY - currentCenterY) * 0.99;
+
+    console.log('🔲 [DRAG CONSTRAINT]', {
+      rotation: element.rotation.toFixed(1) + '°',
+      requested: `(${proposedCenterX.toFixed(0)}, ${proposedCenterY.toFixed(0)})`,
+      constrained: `(${finalX.toFixed(0)}, ${finalY.toFixed(0)})`,
+      ratio: (minRatio * 100).toFixed(1) + '%'
+    });
 
     return {
-      x: constrainedX / rect.width,
-      y: constrainedY / rect.height
+      x: finalX / rect.width,
+      y: finalY / rect.height
     };
+  };
+
+  // Contraindre la courbure du texte pour qu'il reste dans la délimitation
+  const constrainCurveToBounds = (element: TextElement, newCurve: number): number => {
+    if (!canvasRef.current || !delimitation) return newCurve;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = rect.width / delimitation.referenceWidth;
+    const scaleY = rect.height / delimitation.referenceHeight;
+
+    // Position du centre de l'élément en pixels
+    const centerX = element.x * rect.width;
+    const centerY = element.y * rect.height;
+
+    // Dimensions responsive de l'élément
+    const responsiveWidth = element.width * scaleX;
+    const responsiveHeight = element.height * scaleY;
+    const responsiveFontSize = element.fontSize * scaleX;
+
+    // Limites de la délimitation
+    const boundsX = delimitation.x * scaleX;
+    const boundsY = delimitation.y * scaleY;
+    const boundsWidth = delimitation.width * scaleX;
+    const boundsHeight = delimitation.height * scaleY;
+
+    // Rotation de l'élément en radians
+    const rotationRad = (element.rotation * Math.PI) / 180;
+
+    // Marge de sécurité basée sur la taille de police (le texte a besoin d'espace vertical)
+    const textMargin = responsiveFontSize * 0.6;
+
+    // Fonction pour vérifier si une courbure fait sortir le texte
+    const checkCurveOutOfBounds = (curve: number): boolean => {
+      const controlY = responsiveHeight / 2 + (curve * responsiveHeight / 100);
+
+      // Échantillonner beaucoup de points sur la courbe (plus précis)
+      for (let t = 0; t <= 1; t += 0.05) {
+        // Courbe quadratique Bézier
+        const bezierX = (1 - t) * (1 - t) * 0 +
+                        2 * (1 - t) * t * (responsiveWidth / 2) +
+                        t * t * responsiveWidth;
+        const bezierY = (1 - t) * (1 - t) * (responsiveHeight / 2) +
+                        2 * (1 - t) * t * controlY +
+                        t * t * (responsiveHeight / 2);
+
+        // Vérifier avec marge de sécurité pour la hauteur du texte
+        // Le texte peut dépasser au-dessus et en-dessous du chemin
+        const checkPoints = [
+          { x: bezierX, y: bezierY - textMargin }, // Au-dessus du chemin
+          { x: bezierX, y: bezierY },              // Sur le chemin
+          { x: bezierX, y: bezierY + textMargin }  // En-dessous du chemin
+        ];
+
+        for (const point of checkPoints) {
+          // Transformer le point avec rotation
+          const relX = point.x - responsiveWidth / 2;
+          const relY = point.y - responsiveHeight / 2;
+
+          const rotatedX = relX * Math.cos(rotationRad) - relY * Math.sin(rotationRad);
+          const rotatedY = relX * Math.sin(rotationRad) + relY * Math.cos(rotationRad);
+
+          const globalX = centerX + rotatedX;
+          const globalY = centerY + rotatedY;
+
+          // Vérifier si le point sort de la délimitation
+          if (globalX < boundsX || globalX > boundsX + boundsWidth ||
+              globalY < boundsY || globalY > boundsY + boundsHeight) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    };
+
+    // Vérifier si la courbure demandée est acceptable
+    if (!checkCurveOutOfBounds(newCurve)) {
+      return newCurve; // La courbure est OK
+    }
+
+    // Si ça sort, chercher la courbure maximale acceptable par dichotomie
+    let minCurve = 0;
+    let maxCurve = Math.abs(newCurve);
+    const curveSign = newCurve >= 0 ? 1 : -1;
+
+    // Recherche dichotomique de la courbure maximale
+    for (let iteration = 0; iteration < 20; iteration++) {
+      const testCurve = (minCurve + maxCurve) / 2;
+
+      if (checkCurveOutOfBounds(testCurve * curveSign)) {
+        maxCurve = testCurve;
+      } else {
+        minCurve = testCurve;
+      }
+
+      if (maxCurve - minCurve < 0.5) break;
+    }
+
+    const constrainedCurve = minCurve * curveSign * 0.90; // 10% de marge de sécurité
+
+    console.log('🎨 [CURVE CONSTRAINT]', {
+      requested: newCurve.toFixed(0),
+      constrained: constrainedCurve.toFixed(0),
+      fontSize: responsiveFontSize.toFixed(0),
+      textMargin: textMargin.toFixed(0),
+      wasConstrained: Math.abs(newCurve - constrainedCurve) > 1
+    });
+
+    return Math.round(constrainedCurve);
   };
 
   // Contraindre le redimensionnement dans la délimitation
@@ -353,53 +599,66 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     const scaleX = rect.width / delimitation.referenceWidth;
     const scaleY = rect.height / delimitation.referenceHeight;
 
-    // Limites de la délimitation en pixels
+    // Position du centre de l'élément en pixels écran
+    const elementCenterPixelX = element.x * rect.width;
+    const elementCenterPixelY = element.y * rect.height;
+
+    // Limites de la délimitation en pixels écran
+    const boundsX = delimitation.x * scaleX;
+    const boundsY = delimitation.y * scaleY;
     const boundsWidth = delimitation.width * scaleX;
     const boundsHeight = delimitation.height * scaleY;
 
-    // Position actuelle de l'élément en coordonnées relatives (0-1)
-    const elementCenterX = element.x;
-    const elementCenterY = element.y;
+    // Nouvelles dimensions en pixels écran (responsive)
+    const newWidthResponsive = newWidth * scaleX;
+    const newHeightResponsive = newHeight * scaleY;
 
-    // Convertir en pixels
-    const elementCenterPixelX = elementCenterX * rect.width;
-    const elementCenterPixelY = elementCenterY * rect.height;
+    // Calculer l'espace disponible depuis le centre de l'élément
+    const spaceLeft = elementCenterPixelX - boundsX;
+    const spaceRight = (boundsX + boundsWidth) - elementCenterPixelX;
+    const spaceTop = elementCenterPixelY - boundsY;
+    const spaceBottom = (boundsY + boundsHeight) - elementCenterPixelY;
 
-    // Calculer l'espace disponible autour de l'élément (en pixels)
-    const spaceLeft = elementCenterPixelX - delimitation.x * scaleX;
-    const spaceRight = (delimitation.x + delimitation.width) * scaleX - elementCenterPixelX;
-    const spaceTop = elementCenterPixelY - delimitation.y * scaleY;
-    const spaceBottom = (delimitation.y + delimitation.height) * scaleY - elementCenterPixelY;
+    // Taille maximale possible (en pixels écran)
+    const maxWidthResponsive = Math.min(spaceLeft, spaceRight) * 2;
+    const maxHeightResponsive = Math.min(spaceTop, spaceBottom) * 2;
 
-    // L'espace maximum disponible (le plus petit des deux côtés opposés)
-    const maxHalfWidth = Math.max(30, Math.min(spaceLeft, spaceRight));
-    const maxHalfHeight = Math.max(30, Math.min(spaceTop, spaceBottom));
+    // Vérifier si on dépasse les limites
+    const exceedsWidth = newWidthResponsive > maxWidthResponsive;
+    const exceedsHeight = newHeightResponsive > maxHeightResponsive;
+    const isAtBoundary = exceedsWidth || exceedsHeight;
 
-    // Dimensions maximales autorisées
-    const maxWidth = maxHalfWidth * 2;
-    const maxHeight = maxHalfHeight * 2;
+    // Contraindre les dimensions (en pixels écran)
+    let constrainedWidthResponsive = newWidthResponsive;
+    let constrainedHeightResponsive = newHeightResponsive;
 
-    // Contraindre les nouvelles dimensions
-    const constrainedWidth = Math.max(30, Math.min(newWidth, maxWidth));
-    const constrainedHeight = Math.max(30, Math.min(newHeight, maxHeight));
+    // Pour garder le ratio d'aspect, utiliser la contrainte la plus restrictive
+    if (exceedsWidth || exceedsHeight) {
+      const scaleByWidth = maxWidthResponsive / newWidthResponsive;
+      const scaleByHeight = maxHeightResponsive / newHeightResponsive;
+      const finalScale = Math.min(scaleByWidth, scaleByHeight);
 
-    // Vérifier si on est à la limite
-    const isAtBoundary = (constrainedWidth < newWidth || constrainedHeight < newHeight);
+      constrainedWidthResponsive = newWidthResponsive * finalScale;
+      constrainedHeightResponsive = newHeightResponsive * finalScale;
+    }
 
-    console.log('🔲 [BOUNDARY] Element center:', elementCenterPixelX.toFixed(0) + 'x' + elementCenterPixelY.toFixed(0));
-    console.log('🔲 [BOUNDARY] Available space:', {
-      left: spaceLeft.toFixed(0),
-      right: spaceRight.toFixed(0),
-      top: spaceTop.toFixed(0),
-      bottom: spaceBottom.toFixed(0),
-      maxWidth: maxWidth.toFixed(0),
-      maxHeight: maxHeight.toFixed(0)
+    // Convertir en dimensions brutes (pixels de référence)
+    const constrainedWidth = constrainedWidthResponsive / scaleX;
+    const constrainedHeight = constrainedHeightResponsive / scaleY;
+
+    console.log('🔲 [RESIZE CONSTRAINT]', {
+      requested: { w: newWidth.toFixed(0), h: newHeight.toFixed(0) },
+      requestedResponsive: { w: newWidthResponsive.toFixed(0), h: newHeightResponsive.toFixed(0) },
+      maxResponsive: { w: maxWidthResponsive.toFixed(0), h: maxHeightResponsive.toFixed(0) },
+      constrained: { w: constrainedWidth.toFixed(0), h: constrainedHeight.toFixed(0) },
+      isAtBoundary,
+      center: { x: elementCenterPixelX.toFixed(0), y: elementCenterPixelY.toFixed(0) },
+      bounds: { x: boundsX.toFixed(0), y: boundsY.toFixed(0), w: boundsWidth.toFixed(0), h: boundsHeight.toFixed(0) }
     });
-    console.log('🔲 [BOUNDARY] Is at boundary:', isAtBoundary, 'Constrained dimensions:', constrainedWidth.toFixed(0) + 'x' + constrainedHeight.toFixed(0));
 
     return {
-      width: constrainedWidth,
-      height: constrainedHeight,
+      width: Math.max(10, constrainedWidth),
+      height: Math.max(10, constrainedHeight),
       isAtBoundary
     };
   };
@@ -419,9 +678,13 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     // Convertir la rotation en radians
     const rotationRad = (element.rotation * Math.PI) / 180;
 
-    // Calculer les 4 coins du rectangle tourné
-    const halfWidth = element.width / 2;
-    const halfHeight = element.height / 2;
+    // Dimensions responsive de l'élément (cohérent avec l'affichage)
+    const responsiveWidth = element.width * scaleX;
+    const responsiveHeight = element.height * scaleY;
+
+    // Calculer les 4 coins du rectangle tourné avec dimensions responsive
+    const halfWidth = responsiveWidth / 2;
+    const halfHeight = responsiveHeight / 2;
 
     const corners = [
       { x: -halfWidth, y: -halfHeight },
@@ -453,6 +716,73 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     return isOutOfBounds;
   };
 
+  // Trouver la rotation maximale qui garde l'élément dans la délimitation
+  const constrainRotationToBounds = (element: DesignElement, targetRotation: number): number => {
+    if (!canvasRef.current || !delimitation) return targetRotation;
+
+    // Créer un élément temporaire avec la rotation cible
+    const testElement = { ...element, rotation: targetRotation };
+
+    // Si ça rentre, on retourne la rotation demandée
+    if (!checkRotatedElementBounds(testElement)) {
+      return targetRotation;
+    }
+
+    console.log('🔄 [ROTATION CONSTRAINT] Target rotation causes out of bounds:', targetRotation.toFixed(0));
+
+    // Sinon, chercher la rotation la plus proche qui rentre par dichotomie
+    // On teste dans les deux directions (horaire et anti-horaire)
+    const originalRotation = element.rotation;
+
+    // Normaliser les angles entre 0 et 360
+    const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
+    const normalizedTarget = normalizeAngle(targetRotation);
+    const normalizedOriginal = normalizeAngle(originalRotation);
+
+    // Fonction pour tester si une rotation est valide
+    const isRotationValid = (rotation: number): boolean => {
+      const testEl = { ...element, rotation };
+      return !checkRotatedElementBounds(testEl);
+    };
+
+    // Calculer la direction de rotation (horaire ou anti-horaire)
+    let diff = normalizedTarget - normalizedOriginal;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+
+    // Recherche dichotomique
+    let bestRotation = normalizedOriginal;
+
+    if (Math.abs(diff) > 1) {
+      for (let iteration = 0; iteration < 25; iteration++) {
+        const testRotation = normalizedOriginal + (diff / 2);
+
+        if (isRotationValid(testRotation)) {
+          // Cette rotation est OK, on peut aller plus loin
+          bestRotation = testRotation;
+          diff = normalizedTarget - testRotation;
+        } else {
+          // Cette rotation fait sortir, on recule
+          diff = testRotation - normalizedOriginal;
+        }
+
+        if (Math.abs(diff) < 1) break; // Convergence atteinte
+      }
+    }
+
+    // Appliquer une petite marge de sécurité (98% de la rotation max)
+    const finalRotation = normalizedOriginal + (bestRotation - normalizedOriginal) * 0.98;
+
+    console.log('🔄 [ROTATION CONSTRAINT]', {
+      original: originalRotation.toFixed(0),
+      requested: targetRotation.toFixed(0),
+      constrained: finalRotation.toFixed(0),
+      wasConstrained: Math.abs(targetRotation - finalRotation) > 2
+    });
+
+    return finalRotation;
+  };
+
   // Début du drag
   const handleMouseDown = (e: React.MouseEvent, elementId: string) => {
     e.preventDefault();
@@ -462,6 +792,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     if (!element) return;
 
     setSelectedElementId(elementId);
+    setIsEditMode(true); // Activer le mode édition
     setIsDragging(true);
     setDragStart({
       x: e.clientX,
@@ -491,11 +822,23 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       // Appliquer la contrainte
       const constrained = constrainToBounds(element, newX, newY);
 
-      setElements(elements.map(el =>
-        el.id === selectedElementId
-          ? { ...el, x: constrained.x, y: constrained.y }
-          : el
-      ));
+      // Créer l'élément avec la nouvelle position pour vérifier les limites
+      const movedElement = { ...element, x: constrained.x, y: constrained.y };
+      const isOutOfBounds = checkRotatedElementBounds(movedElement);
+      setIsAtBoundary(isOutOfBounds);
+
+      setElements(elements.map(el => {
+        if (el.id === selectedElementId) {
+          // Si c'est un texte avec courbure, re-contraindre la courbure après déplacement
+          if (el.type === 'text' && el.curve !== 0) {
+            const newElement = { ...el, x: constrained.x, y: constrained.y };
+            const constrainedCurve = constrainCurveToBounds(newElement, el.curve);
+            return { ...newElement, curve: constrainedCurve };
+          }
+          return { ...el, x: constrained.x, y: constrained.y };
+        }
+        return el;
+      }));
     }
 
     // Redimensionnement - TOUJOURS PROPORTIONNEL AVEC CONTRAINTES
@@ -503,29 +846,29 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       const deltaX = e.clientX - resizeStart.startX;
       const deltaY = e.clientY - resizeStart.startY;
 
-      let newWidth = Math.max(30, resizeStart.width + deltaX);
-      let newHeight = Math.max(30, resizeStart.height + deltaY);
+      // Utiliser le delta le plus grand (en valeur absolue) pour le scale
+      const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
 
-      // 🎨 Comportement TOUJOURS proportionnel (plus besoin de Shift)
-      if (resizeStart.aspectRatio > 0) {
-        // Utiliser la plus grande variation pour déterminer l'échelle
-        const scaleX = newWidth / resizeStart.width;
-        const scaleY = newHeight / resizeStart.height;
-        const scale = Math.max(scaleX, scaleY);
+      // Calculer la nouvelle taille en gardant le ratio d'aspect
+      const aspectRatio = resizeStart.width / resizeStart.height;
+      let newWidth: number;
+      let newHeight: number;
 
-        // Appliquer le ratio d'aspect original
-        newWidth = Math.max(30, resizeStart.width * scale);
-        newHeight = Math.max(30, resizeStart.height * scale);
-
-        // Corriger pour respecter exactement le ratio
-        if (resizeStart.aspectRatio > 1) { // Format paysage
-          newHeight = newWidth / resizeStart.aspectRatio;
-        } else { // Format portrait
-          newWidth = newHeight * resizeStart.aspectRatio;
-        }
-
-        console.log('🔲 [PROPORTIONNEL] Resize - Ratio:', resizeStart.aspectRatio.toFixed(2), 'Scale:', scale.toFixed(2), 'Before constraint:', newWidth.toFixed(0) + 'x' + newHeight.toFixed(0));
+      if (aspectRatio >= 1) {
+        // Format paysage ou carré
+        newWidth = resizeStart.width + delta;
+        newHeight = newWidth / aspectRatio;
+      } else {
+        // Format portrait
+        newHeight = resizeStart.height + delta;
+        newWidth = newHeight * aspectRatio;
       }
+
+      // Taille minimale
+      newWidth = Math.max(30, newWidth);
+      newHeight = Math.max(30, newHeight);
+
+      console.log('🔲 [PROPORTIONNEL] Resize - Delta:', delta.toFixed(0), 'Ratio:', aspectRatio.toFixed(2), 'Size:', newWidth.toFixed(0) + 'x' + newHeight.toFixed(0));
 
       // 🚨 CONTRAINTE: Ne pas sortir de la délimitation
       const element = elements.find(el => el.id === selectedElementId);
@@ -533,6 +876,8 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
         const constrained = constrainResizeToBounds(element, newWidth, newHeight);
         newWidth = constrained.width;
         newHeight = constrained.height;
+
+        // Bloquer silencieusement sans afficher de message
         setIsAtBoundary(constrained.isAtBoundary);
       }
 
@@ -543,7 +888,16 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
             const widthRatio = newWidth / el.baseWidth;
             const newFontSize = Math.round(el.baseFontSize * widthRatio);
             console.log('📝 [TEXT SCALE] Width ratio:', widthRatio.toFixed(2), 'Base font:', el.baseFontSize, 'New font:', newFontSize);
-            return { ...el, width: newWidth, height: newHeight, fontSize: newFontSize };
+
+            const resizedElement = { ...el, width: newWidth, height: newHeight, fontSize: newFontSize };
+
+            // Si le texte a une courbure, re-contraindre après redimensionnement
+            if (el.curve !== 0) {
+              const constrainedCurve = constrainCurveToBounds(resizedElement, el.curve);
+              return { ...resizedElement, curve: constrainedCurve };
+            }
+
+            return resizedElement;
           }
           return { ...el, width: newWidth, height: newHeight };
         }
@@ -560,24 +914,36 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       const startAngle = Math.atan2(rotateStart.startY - centerY, rotateStart.startX - centerX);
       const deltaAngle = (angle - startAngle) * (180 / Math.PI);
 
-      const newRotation = (rotateStart.angle + deltaAngle) % 360;
+      let newRotation = (rotateStart.angle + deltaAngle) % 360;
 
-      // Appliquer la rotation et vérifier les limites
+      // Récupérer l'élément en cours de rotation
+      const element = elements.find(el => el.id === selectedElementId);
+      if (!element) return;
+
+      // Contraindre la rotation pour rester dans la délimitation
+      const constrainedRotation = constrainRotationToBounds(element, newRotation);
+
+      // Vérifier si on a atteint la limite
+      const wasConstrained = Math.abs(newRotation - constrainedRotation) > 2;
+      setIsAtBoundary(wasConstrained);
+
+      // Appliquer la rotation contrainte
       const updatedElements = elements.map(el => {
         if (el.id === selectedElementId) {
-          return { ...el, rotation: newRotation };
+          const rotatedElement = { ...el, rotation: constrainedRotation };
+
+          // Si c'est un texte avec courbure, re-contraindre la courbure après rotation
+          if (rotatedElement.type === 'text' && rotatedElement.curve !== 0) {
+            const constrainedCurve = constrainCurveToBounds(rotatedElement, rotatedElement.curve);
+            return { ...rotatedElement, curve: constrainedCurve };
+          }
+
+          return rotatedElement;
         }
         return el;
       });
 
       setElements(updatedElements);
-
-      // Vérifier si l'élément tourné sort de la délimitation
-      const rotatedElement = updatedElements.find(el => el.id === selectedElementId);
-      if (rotatedElement) {
-        const isOutOfBounds = checkRotatedElementBounds(rotatedElement);
-        setIsAtBoundary(isOutOfBounds);
-      }
     }
   };
 
@@ -585,9 +951,13 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const handleResizeStart = (e: React.MouseEvent, elementId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log('🔲 [RESIZE START] Starting resize for element:', elementId);
 
     const element = elements.find(el => el.id === elementId);
-    if (!element) return;
+    if (!element) {
+      console.log('❌ [RESIZE START] Element not found:', elementId);
+      return;
+    }
 
     // 🎨 Calculer le ratio d'aspect (toujours proportionnel)
     const aspectRatio = element.width / element.height;
@@ -631,28 +1001,6 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
   // Fin du drag/resize/rotate
   const handleMouseUp = () => {
-    // Si on termine une rotation et que l'élément sort de la zone, le recadrer
-    if (isRotating && isAtBoundary && selectedElementId) {
-      const element = elements.find(el => el.id === selectedElementId);
-      if (element) {
-        // Remettre la rotation à 0 pour que l'élément rentre dans la zone
-        const constrainedRotation = 0;
-        setElements(elements.map(el =>
-          el.id === selectedElementId
-            ? { ...el, rotation: constrainedRotation }
-            : el
-        ));
-
-        // Afficher un message à l'utilisateur
-        toast({
-          title: 'Rotation ajustée',
-          description: "L'élément a été remis dans la zone de personnalisation",
-          variant: 'destructive',
-          duration: 3000
-        });
-      }
-    }
-
     setIsDragging(false);
     setIsResizing(false);
     setIsRotating(false);
@@ -695,6 +1043,12 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
             baseWidth: el.width
           };
         }
+        // Si on modifie la courbure, appliquer la contrainte de délimitation
+        if (key === 'curve') {
+          const constrainedCurve = constrainCurveToBounds(el, value as number);
+          console.log('🎨 [CURVE UPDATE] Requested:', value, 'Constrained:', constrainedCurve);
+          return { ...el, curve: constrainedCurve };
+        }
         return { ...el, [key]: value };
       }
       return el;
@@ -703,8 +1057,60 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
   // Supprimer un élément
   const deleteElement = (id: string) => {
-    setElements(elements.filter(el => el.id !== id));
-    if (selectedElementId === id) setSelectedElementId(null);
+    console.log('🗑️ [ProductDesignEditor] Suppression élément:', id, 'total avant:', elements.length);
+    console.log('🗑️ [ProductDesignEditor] Éléments actuels:', elements.map(el => ({ id: el.id, type: el.type })));
+    console.log('🗑️ [ProductDesignEditor] selectedElementId:', selectedElementId);
+
+    // Vérifier si l'ID à supprimer existe bien
+    const elementExists = elements.some(el => el.id === id);
+    console.log('🗑️ [ProductDesignEditor] Élément existe:', elementExists);
+
+    if (!elementExists) {
+      console.error('❌ [ProductDesignEditor] ERREUR: Élément à supprimer non trouvé!');
+      return;
+    }
+
+    // D'abord, désélectionner l'élément pour éviter les conflits
+    if (selectedElementId === id) {
+      setSelectedElementId(null);
+      console.log('🗑️ [ProductDesignEditor] Désélection avant suppression (edit mode stays active)');
+    }
+
+    // CRÉER UN NOUVEAU TABLEAU directement pour éviter les problèmes de références
+    const currentElements = [...elements];
+    console.log('🗑️ [ProductDesignEditor] Copie des éléments:', currentElements.length);
+
+    const newElements = currentElements.filter(el => {
+      const shouldKeep = el.id !== id;
+      console.log('🗑️ [ProductDesignEditor] Filter élément:', el.id, 'keep?', shouldKeep);
+      return shouldKeep;
+    });
+
+    console.log('🗑️ [ProductDesignEditor] Nouveaux éléments:', newElements.length);
+    console.log('🗑️ [ProductDesignEditor] IDs des nouveaux éléments:', newElements.map(el => el.id));
+
+    // Mettre à jour la référence aussi
+    elementsRef.current = newElements;
+
+    // Utiliser directement le nouveau tableau
+    setElements(newElements);
+
+    // Notification pour le débogage
+    console.log('✅ [ProductDesignEditor] Suppression terminée - setElements appelé avec', newElements.length, 'éléments');
+
+    // Forcer la mise à jour avec des timeouts pour vérifier en utilisant la référence
+    setTimeout(() => {
+      console.log('🗑️ [ProductDesignEditor] Vérification 50ms - éléments ref:', elementsRef.current.length);
+      console.log('🗑️ [ProductDesignEditor] Vérification 50ms - éléments state:', elements.length);
+    }, 50);
+
+    setTimeout(() => {
+      console.log('🗑️ [ProductDesignEditor] Vérification 100ms - éléments ref:', elementsRef.current.length);
+      console.log('🗑️ [ProductDesignEditor] Vérification 100ms - éléments state:', elements.length);
+    }, 100);
+
+    // Forcer le re-render du composant pour garantir la mise à jour visuelle
+    forceUpdate();
   };
 
   // Dupliquer un élément
@@ -742,16 +1148,18 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   };
 
   return (
-    <div className={`flex gap-4 ${className}`}>
+    <div key={forceUpdateKey} className={`flex flex-col lg:flex-row gap-4 ${className}`}>
       {/* Canvas */}
-      <div className="flex-1">
+      <div className="flex-1 lg:flex-initial lg:flex-1">
         <div
           ref={canvasRef}
           className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-300"
           onClick={(e) => {
             // Ne désélectionner que si on clique directement sur le canvas (pas sur un enfant)
             if (e.target === e.currentTarget) {
+              console.log('🖱️ [CANVAS] Click - deselecting element and hiding delimitations');
               setSelectedElementId(null);
+              setIsEditMode(false); // Désactiver le mode édition (masquer délimitations et floutage)
             }
           }}
         >
@@ -763,15 +1171,58 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
             draggable={false}
           />
 
-          {/* Message d'avertissement si hors limites */}
-          {isAtBoundary && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse">
-              <p className="text-sm font-semibold">⚠️ L'élément sort de la zone de personnalisation</p>
-            </div>
-          )}
+          {/* Masque de flou pour les zones hors délimitation - UNIQUEMENT en mode édition */}
+          {isEditMode && delimitation && canvasRef.current && (() => {
+            const rect = canvasRef.current.getBoundingClientRect();
+            const scaleX = rect.width / delimitation.referenceWidth;
+            const scaleY = rect.height / delimitation.referenceHeight;
 
-          {/* Délimitation visible */}
-          {delimitation && canvasRef.current && (() => {
+            const delimX = delimitation.x * scaleX;
+            const delimY = delimitation.y * scaleY;
+            const delimWidth = delimitation.width * scaleX;
+            const delimHeight = delimitation.height * scaleY;
+
+            return (
+              <svg
+                className="absolute inset-0 pointer-events-none"
+                style={{ width: '100%', height: '100%' }}
+              >
+                <defs>
+                  {/* Filtre de flou léger */}
+                  <filter id="blur-filter">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+                  </filter>
+                  {/* Masque pour définir la zone nette (délimitation) */}
+                  <mask id="delimitation-mask">
+                    {/* Tout en blanc = flou */}
+                    <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                    {/* Zone de délimitation en noir = nette */}
+                    <rect
+                      x={delimX}
+                      y={delimY}
+                      width={delimWidth}
+                      height={delimHeight}
+                      fill="black"
+                    />
+                  </mask>
+                </defs>
+                {/* Rectangle semi-transparent avec flou, masqué par la délimitation */}
+                <rect
+                  x="0"
+                  y="0"
+                  width="100%"
+                  height="100%"
+                  fill="rgba(0, 0, 0, 0.15)"
+                  filter="url(#blur-filter)"
+                  mask="url(#delimitation-mask)"
+                />
+              </svg>
+            );
+          })()}
+
+
+          {/* Délimitation visible UNIQUEMENT en mode édition */}
+          {isEditMode && delimitation && canvasRef.current && (() => {
             const rect = canvasRef.current.getBoundingClientRect();
             const scaleX = rect.width / delimitation.referenceWidth;
             const scaleY = rect.height / delimitation.referenceHeight;
@@ -783,7 +1234,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
             return (
               <div
-                className={`absolute border-2 border-dashed pointer-events-none transition-colors duration-200 ${
+                className={`absolute border-2 border-dashed pointer-events-none transition-all duration-300 ${
                   isAtBoundary ? 'border-red-500' : 'border-blue-400'
                 }`}
                 style={{
@@ -805,6 +1256,32 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
             const pixelX = element.x * rect.width;
             const pixelY = element.y * rect.height;
 
+            // Calculer les dimensions responsive
+            const responsiveWidth = element.width * (rect.width / delimitation?.referenceWidth || 1);
+            const responsiveHeight = element.height * (rect.height / delimitation?.referenceHeight || 1);
+
+            // Logs pour déboguer le positionnement
+            if (element.id === selectedElementId || !selectedElementId) {
+              console.log('🎨 [RENDER] Element render:', {
+                id: element.id,
+                selected: element.id === selectedElementId,
+                mode: isEditMode ? 'EDIT' : 'VIEW',
+                relativePos: { x: element.x.toFixed(3), y: element.y.toFixed(3) },
+                pixelPos: { x: pixelX.toFixed(0), y: pixelY.toFixed(0) },
+                responsiveSize: { w: responsiveWidth.toFixed(0), h: responsiveHeight.toFixed(0) },
+                canvasSize: { w: rect.width.toFixed(0), h: rect.height.toFixed(0) },
+                scaleFactors: {
+                  x: (rect.width / delimitation?.referenceWidth || 1).toFixed(2),
+                  y: (rect.height / delimitation?.referenceHeight || 1).toFixed(2)
+                }
+              });
+            }
+
+            // Pour le texte, ajuster aussi la taille de police
+            const responsiveFontSize = element.type === 'text'
+              ? element.fontSize * (rect.width / delimitation?.referenceWidth || 1)
+              : undefined;
+
             const isSelected = element.id === selectedElementId;
 
             return (
@@ -825,31 +1302,43 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                   style={{
                     transform: `rotate(${element.rotation}deg)`,
                     transformOrigin: 'center',
-                    width: `${element.width}px`,
-                    height: `${element.height}px`,
+                    width: `${responsiveWidth}px`,
+                    height: `${responsiveHeight}px`,
                     pointerEvents: 'auto'
                   }}
-                  onMouseDown={(e) => handleMouseDown(e, element.id)}
+                  onMouseDown={(e) => {
+                    // Bloquer la propagation pour éviter la désélection
+                    e.stopPropagation();
+
+                    // Sélectionner l'élément et activer le mode édition
+                    if (selectedElementId !== element.id) {
+                      console.log('🖱️ [ELEMENT] MouseDown on', element.id, '- selecting element and showing delimitations');
+                      setSelectedElementId(element.id);
+                      setIsEditMode(true); // Activer le mode édition (montrer délimitations et floutage)
+                    }
+                    handleMouseDown(e, element.id);
+                  }}
                 >
                   {element.type === 'text' ? (
                     element.curve !== 0 ? (
                       // Rendu avec courbure (SVG)
                       <svg
-                        width={element.width}
-                        height={element.height}
-                        viewBox={`0 0 ${element.width} ${element.height}`}
+                        width={responsiveWidth}
+                        height={responsiveHeight}
+                        viewBox={`0 0 ${responsiveWidth} ${responsiveHeight}`}
                         style={{
                           overflow: 'visible',
-                          userSelect: 'none'
+                          userSelect: 'none',
+                          pointerEvents: 'none' // Laisser le parent gérer les clics
                         }}
                       >
                         <defs>
                           <path
                             id={`curve-${element.id}`}
                             d={(() => {
-                              // Calculer le chemin courbe
-                              const w = element.width;
-                              const h = element.height;
+                              // Calculer le chemin courbe avec dimensions responsive
+                              const w = responsiveWidth;
+                              const h = responsiveHeight;
                               const curveAmount = element.curve;
 
                               // Calculer la courbure (arc quadratique)
@@ -865,7 +1354,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                         <text
                           style={{
                             fontFamily: element.fontFamily,
-                            fontSize: `${element.fontSize}px`,
+                            fontSize: `${responsiveFontSize}px`,
                             fill: element.color,
                             fontWeight: element.fontWeight,
                             fontStyle: element.fontStyle,
@@ -886,7 +1375,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                       <div
                         style={{
                           fontFamily: element.fontFamily,
-                          fontSize: `${element.fontSize}px`,
+                          fontSize: `${responsiveFontSize}px`,
                           color: element.color,
                           fontWeight: element.fontWeight,
                           fontStyle: element.fontStyle,
@@ -895,7 +1384,8 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                           lineHeight: '1.2',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
-                          userSelect: 'none'
+                          userSelect: 'none',
+                          pointerEvents: 'none' // Laisser le parent gérer les clics
                         }}
                       >
                         {element.text}
@@ -906,6 +1396,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                       src={element.imageUrl}
                       alt="Design"
                       className="w-full h-full object-contain select-none"
+                      style={{ pointerEvents: 'none' }} // Laisser le parent gérer les clics
                       draggable={false}
                     />
                   )}
@@ -915,47 +1406,24 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                     <>
                       {/* Bordure */}
                       <div className={`absolute inset-0 border-2 ${
-                        isResizing
-                          ? isAtBoundary
-                            ? 'border-red-500'
-                            : 'border-green-500'
-                          : 'border-blue-500'
+                        isResizing ? 'border-green-500' : 'border-blue-500'
                       } pointer-events-none`} />
 
-                      {/* 🎨 Indicateurs de redimensionnement */}
+                      {/* 🎨 Indicateur mode proportionnel pendant redimensionnement */}
                       {isResizing && (
-                        <>
-                          {/* Indicateur mode proportionnel TOUJOURS ACTIF */}
-                          <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 ${isAtBoundary ? 'bg-orange-500' : 'bg-green-600'} text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg pointer-events-none`}>
-                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="4" y="4" width="16" height="16" rx="2" />
-                              <path d="M12 8v8m-4-4h8" />
-                            </svg>
-                            <span className="font-medium">
-                              {isAtBoundary ? 'LIMITE ATTEINTE' : 'PROPORTIONNEL'}
-                            </span>
-                          </div>
-
-                          {/* Indicateur visuel quand on est à la limite */}
-                          {isAtBoundary && (
-                            <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg pointer-events-none animate-pulse">
-                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 2v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 17.657l-.707-.707m12.728 0l-.707.707M6.343 6.343l-.707-.707" />
-                              </svg>
-                              <span className="font-medium">MAX TAILLE</span>
-                            </div>
-                          )}
-                        </>
+                        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg pointer-events-none">
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="4" y="4" width="16" height="16" rx="2" />
+                            <path d="M12 8v8m-4-4h8" />
+                          </svg>
+                          <span className="font-medium">PROPORTIONNEL</span>
+                        </div>
                       )}
 
                       {/* Poignée de redimensionnement (coin bas-droit) */}
                       <div
                         className={`absolute w-3 h-3 bg-white border-2 rounded-sm cursor-nwse-resize ${
-                          isResizing
-                            ? isAtBoundary
-                              ? 'border-red-500'
-                              : 'border-green-500'
-                            : 'border-blue-500'
+                          isResizing ? 'border-green-500' : 'border-blue-500'
                         }`}
                         style={{
                           right: '-6px',
@@ -967,7 +1435,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
                       {/* Bouton de suppression (coin haut-gauche) */}
                       <button
-                        className="absolute w-7 h-7 bg-red-500 hover:bg-red-600 border-2 border-white rounded-full cursor-pointer flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        className="absolute w-7 h-7 bg-red-500 hover:bg-red-600 border-2 border-white rounded-full cursor-pointer flex items-center justify-center shadow-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
                           left: '-14px',
                           top: '-14px',
@@ -975,8 +1443,14 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                           zIndex: 10
                         }}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
-                          deleteElement(element.id);
+                          console.log('🗑️ [ProductDesignEditor] Clic sur bouton suppression canvas:', element.id);
+
+                          // Utiliser un timeout pour éviter les problèmes de course
+                          setTimeout(() => {
+                            deleteElement(element.id);
+                          }, 0);
                         }}
                         title="Supprimer"
                       >
@@ -1019,11 +1493,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                       {/* Poignées aux 4 coins pour redimensionnement */}
                       <div
                         className={`absolute w-3 h-3 bg-white border-2 rounded-sm cursor-nwse-resize ${
-                          isResizing
-                            ? isAtBoundary
-                              ? 'border-red-500'
-                              : 'border-green-500'
-                            : 'border-blue-500'
+                          isResizing ? 'border-green-500' : 'border-blue-500'
                         }`}
                         style={{
                           left: '-6px',
@@ -1034,11 +1504,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                       />
                       <div
                         className={`absolute w-3 h-3 bg-white border-2 rounded-sm cursor-nesw-resize ${
-                          isResizing
-                            ? isAtBoundary
-                              ? 'border-red-500'
-                              : 'border-green-500'
-                            : 'border-blue-500'
+                          isResizing ? 'border-green-500' : 'border-blue-500'
                         }`}
                         style={{
                           right: '-6px',
@@ -1049,11 +1515,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                       />
                       <div
                         className={`absolute w-3 h-3 bg-white border-2 rounded-sm cursor-nesw-resize ${
-                          isResizing
-                            ? isAtBoundary
-                              ? 'border-red-500'
-                              : 'border-green-500'
-                            : 'border-blue-500'
+                          isResizing ? 'border-green-500' : 'border-blue-500'
                         }`}
                         style={{
                           left: '-6px',
@@ -1094,7 +1556,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       </div>
 
       {/* Panneau latéral */}
-      <div className="w-80 space-y-4">
+      <div className="w-full lg:w-80 space-y-4 flex-shrink-0">
         {/* Éditeur d'élément sélectionné */}
         {selectedElement && selectedElement.type === 'text' && (
           <div className="bg-white rounded-lg border p-4 space-y-3">
@@ -1246,7 +1708,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                   type="number"
                   value={Math.round(selectedElement.width)}
                   onChange={(e) => {
-                    const newWidth = Math.max(30, parseInt(e.target.value) || 30);
+                    const newWidth = parseInt(e.target.value) || selectedElement.width;
                     setElements(elements.map(el =>
                       el.id === selectedElementId ? { ...el, width: newWidth } : el
                     ));
@@ -1262,7 +1724,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                   type="number"
                   value={Math.round(selectedElement.height)}
                   onChange={(e) => {
-                    const newHeight = Math.max(30, parseInt(e.target.value) || 30);
+                    const newHeight = parseInt(e.target.value) || selectedElement.height;
                     setElements(elements.map(el =>
                       el.id === selectedElementId ? { ...el, height: newHeight } : el
                     ));
@@ -1280,10 +1742,23 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                   type="range"
                   value={selectedElement.rotation}
                   onChange={(e) => {
-                    const newRotation = parseInt(e.target.value);
-                    setElements(elements.map(el =>
-                      el.id === selectedElementId ? { ...el, rotation: newRotation } : el
-                    ));
+                    const requestedRotation = parseInt(e.target.value);
+                    const constrainedRotation = constrainRotationToBounds(selectedElement, requestedRotation);
+
+                    setElements(elements.map(el => {
+                      if (el.id === selectedElementId) {
+                        const rotatedElement = { ...el, rotation: constrainedRotation };
+
+                        // Si c'est un texte avec courbure, re-contraindre la courbure
+                        if (rotatedElement.type === 'text' && rotatedElement.curve !== 0) {
+                          const constrainedCurve = constrainCurveToBounds(rotatedElement, rotatedElement.curve);
+                          return { ...rotatedElement, curve: constrainedCurve };
+                        }
+
+                        return rotatedElement;
+                      }
+                      return el;
+                    }));
                   }}
                   min="0"
                   max="360"
@@ -1293,10 +1768,23 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                   type="number"
                   value={Math.round(selectedElement.rotation)}
                   onChange={(e) => {
-                    const newRotation = parseInt(e.target.value) || 0;
-                    setElements(elements.map(el =>
-                      el.id === selectedElementId ? { ...el, rotation: newRotation % 360 } : el
-                    ));
+                    const requestedRotation = (parseInt(e.target.value) || 0) % 360;
+                    const constrainedRotation = constrainRotationToBounds(selectedElement, requestedRotation);
+
+                    setElements(elements.map(el => {
+                      if (el.id === selectedElementId) {
+                        const rotatedElement = { ...el, rotation: constrainedRotation };
+
+                        // Si c'est un texte avec courbure, re-contraindre la courbure
+                        if (rotatedElement.type === 'text' && rotatedElement.curve !== 0) {
+                          const constrainedCurve = constrainCurveToBounds(rotatedElement, rotatedElement.curve);
+                          return { ...rotatedElement, curve: constrainedCurve };
+                        }
+
+                        return rotatedElement;
+                      }
+                      return el;
+                    }));
                   }}
                   min="0"
                   max="360"
@@ -1316,7 +1804,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
               Aucun élément.<br />Ajoutez du texte ou une image.
             </p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 min-h-[120px]">
               {[...elements].reverse().map((element, reverseIndex) => {
                 const actualIndex = elements.length - 1 - reverseIndex;
                 return (
@@ -1325,7 +1813,11 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                     className={`flex items-center gap-2 p-2 rounded border ${
                       element.id === selectedElementId ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                     }`}
-                    onClick={() => setSelectedElementId(element.id)}
+                    onClick={() => {
+                      console.log('🖱️ [ELEMENT] Click on element', element.id, '- selecting and showing delimitations');
+                      setSelectedElementId(element.id);
+                      setIsEditMode(true); // Activer le mode édition
+                    }}
                   >
                     <span className="text-xs flex-1 font-medium truncate">
                       {element.type === 'text' ? element.text : 'Image'}
@@ -1371,10 +1863,17 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                         variant="ghost"
                         size="sm"
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
-                          deleteElement(element.id);
+                          console.log('🗑️ [ProductDesignEditor] Clic sur bouton suppression calque:', element.id);
+
+                          // Utiliser un timeout pour éviter les problèmes de course
+                          setTimeout(() => {
+                            deleteElement(element.id);
+                          }, 0);
                         }}
-                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Supprimer cet élément"
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>

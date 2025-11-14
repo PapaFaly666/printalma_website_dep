@@ -55,6 +55,9 @@ interface CartContextType {
       appliedAt?: string;
     };
     delimitation?: DelimitationData;
+    // 🆕 Personnalisation
+    customizationId?: number;
+    designElements?: any[];
   }) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -79,7 +82,18 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        const parsedCart = JSON.parse(savedCart);
+        console.log('📥 [CartContext] Chargement panier depuis localStorage:', {
+          itemCount: parsedCart.length,
+          itemsWithCustomization: parsedCart.filter((i: CartItem) => i.customizationId).length,
+          itemsWithElements: parsedCart.filter((i: CartItem) => i.designElements && i.designElements.length > 0).length,
+          sample: parsedCart[0] ? {
+            id: parsedCart[0].id,
+            customizationId: parsedCart[0].customizationId,
+            designElementsCount: parsedCart[0].designElements?.length
+          } : null
+        });
+        setItems(parsedCart);
       } catch (error) {
         console.error('Erreur lors du chargement du panier:', error);
         localStorage.removeItem('cart');
@@ -90,6 +104,11 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   // Sauvegarder le panier dans le localStorage à chaque modification
   useEffect(() => {
     if (items.length > 0) {
+      console.log('💾 [CartContext] Sauvegarde panier dans localStorage:', {
+        itemCount: items.length,
+        itemsWithCustomization: items.filter(i => i.customizationId).length,
+        itemsWithElements: items.filter(i => i.designElements && i.designElements.length > 0).length
+      });
       localStorage.setItem('cart', JSON.stringify(items));
     } else {
       localStorage.removeItem('cart');
@@ -136,6 +155,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       appliedAt?: string;
     };
     delimitation?: DelimitationData;
+    customizationId?: number;
+    designElements?: any[];
   }) => {
     console.log('🛒 [CartContext] Ajout au panier:', product);
     // Utiliser la vraie taille si disponible, sinon la taille de base
@@ -214,8 +235,18 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           mockupUrl: product.mockupUrl,
           designPositions: product.designPositions,
           designMetadata: product.designMetadata,
-          delimitation: product.delimitation
+          delimitation: product.delimitation,
+          // 🆕 Personnalisation
+          customizationId: product.customizationId,
+          designElements: product.designElements
         };
+
+        console.log('🎨 [CartContext] Personnalisation incluse:', {
+          customizationId: newItem.customizationId,
+          hasDesignElements: !!newItem.designElements,
+          designElementsLength: newItem.designElements?.length,
+          designElements: newItem.designElements
+        });
 
         console.log('🛒 [CartContext] Nouvel article créé:', {
           id: newItem.id,

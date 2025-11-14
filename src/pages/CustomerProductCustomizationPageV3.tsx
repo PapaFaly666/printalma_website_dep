@@ -25,11 +25,13 @@ import customizationService from '../services/customizationService';
 import { normalizeProductFromApi } from '../utils/productNormalization';
 import ProductDesignEditor, { ProductDesignEditorRef } from '../components/ProductDesignEditor';
 import SizeQuantityModal from '../components/SizeQuantityModal';
+import { useCart } from '../contexts/CartContext';
 
 const CustomerProductCustomizationPageV3: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addToCart, openCart } = useCart();
   const editorRef = useRef<ProductDesignEditorRef>(null);
 
   // États du produit
@@ -379,12 +381,47 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     try {
       console.log('🛒 [Customization] Ajout au panier avec sélections:', selections);
 
+      // Récupérer les données complètes depuis localStorage
+      const storageKey = `design-data-product-${id}`;
+      let savedData = null;
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          savedData = JSON.parse(saved);
+          console.log('📦 [Customization] Données récupérées depuis localStorage:', savedData);
+        }
+      } catch (err) {
+        console.error('❌ [Customization] Erreur lecture localStorage:', err);
+      }
+
+      // Debug: Vérifier les délimitations
+      console.log('🔍 [Customization] Debug délimitations:', {
+        selectedView: selectedView,
+        delimitations: selectedView?.delimitations,
+        firstDelimitation: selectedView?.delimitations?.[0],
+        delimitationsCount: selectedView?.delimitations?.length || 0
+      });
+
+      // Utiliser les données localStorage si disponibles, sinon le state
+      const elementsToSave = savedData?.elements || designElements;
+      console.log('📝 [Customization] Éléments à sauvegarder:', elementsToSave);
+      console.log('📝 [Customization] Détail des éléments:', {
+        source: savedData?.elements ? 'localStorage' : 'state',
+        count: elementsToSave.length,
+        elements: elementsToSave.map((el: any) => ({
+          id: el.id,
+          type: el.type,
+          text: el.text,
+          imageUrl: el.imageUrl?.substring(0, 50)
+        }))
+      });
+
       // Sauvegarder la personnalisation avec les sélections de taille
       const customizationData = {
         productId: product.id,
         colorVariationId: selectedColorVariation?.id || 0,
         viewId: selectedView?.id || 0,
-        designElements: designElements,
+        designElements: elementsToSave,
         sizeSelections: selections,
         sessionId: customizationService.getOrCreateSessionId(),
       };
@@ -400,13 +437,57 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
         timestamp: Date.now()
       }));
 
-      toast({
-        title: 'Ajouté au panier',
-        description: `${selections.reduce((sum, s) => sum + s.quantity, 0)} article(s) ajouté(s) au panier`,
+      // Ajouter chaque sélection taille/quantité au panier
+      let totalAdded = 0;
+      for (const selection of selections) {
+        for (let i = 0; i < selection.quantity; i++) {
+          const cartItem = {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            suggestedPrice: product.suggestedPrice,
+            color: selectedColorVariation?.name || 'Défaut',
+            colorCode: selectedColorVariation?.colorCode || '#000000',
+            size: selection.size,
+            imageUrl: selectedView?.url || product.images?.[0]?.url || '',
+            customizationId: result.id,
+            designElements: elementsToSave, // Utiliser les éléments du localStorage
+            delimitations: selectedView?.delimitations || [] // Ajouter les délimitations pour l'affichage du design
+          };
+
+          console.log('🛒 [Customization] Ajout article au panier:', {
+            size: selection.size,
+            customizationId: result.id,
+            designElementsCount: elementsToSave.length,
+            designElements: cartItem.designElements,
+            delimitationsCount: cartItem.delimitations?.length || 0,
+            hasDelimitations: (cartItem.delimitations?.length || 0) > 0
+          });
+
+          addToCart(cartItem);
+          totalAdded++;
+        }
+      }
+
+      console.log('🛒 [Customization] Articles ajoutés au panier:', {
+        totalAdded,
+        customizationId: result.id,
+        elementsCount: elementsToSave.length
       });
 
-      // TODO: Implémenter l'ajout réel au panier avec result.id
-      // navigate('/cart');
+      toast({
+        title: '✅ Ajouté au panier',
+        description: `${totalAdded} article(s) ajouté(s) au panier`,
+      });
+
+      // Fermer le modal
+      setShowSizeModal(false);
+
+      // Ouvrir automatiquement le drawer du panier
+      setTimeout(() => {
+        openCart();
+      }, 300);
+
     } catch (error) {
       console.error('❌ [Customization] Erreur ajout au panier:', error);
       toast({
@@ -494,18 +575,18 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex h-full overflow-hidden">
             {/* Left Sidebar - Tools */}
-            <div className="w-20 bg-white border-r flex flex-col items-center py-6 gap-4">
+            <div className="w-12 sm:w-16 lg:w-20 bg-white border-r flex flex-row lg:flex-col items-center justify-center lg:justify-start py-2 lg:py-6 gap-2 lg:gap-4 overflow-x-auto lg:overflow-x-visible">
               <button
                 onClick={() => setActiveTab('designs')}
-                className={`flex flex-col items-center gap-1 px-4 py-3 rounded-lg transition-colors ${
+                className={`flex flex-col items-center gap-1 px-2 lg:px-4 py-2 lg:py-3 rounded-lg transition-colors ${
                   activeTab === 'designs'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 title="Produits"
               >
-                <Shirt className="w-6 h-6" />
-                <span className="text-xs font-medium">Produits</span>
+                <Shirt className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                <span className="text-xs font-medium hidden lg:block">Produits</span>
               </button>
 
               <button
@@ -513,15 +594,15 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                   setActiveTab('designs');
                   loadVendorDesigns();
                 }}
-                className={`flex flex-col items-center gap-1 px-4 py-3 rounded-lg transition-colors ${
+                className={`flex flex-col items-center gap-1 px-2 lg:px-4 py-2 lg:py-3 rounded-lg transition-colors ${
                   activeTab === 'designs' && showDesignLibrary
                     ? 'bg-primary text-primary-foreground'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 title="Designs"
               >
-                <ImageIcon className="w-6 h-6" />
-                <span className="text-xs font-medium">Designs</span>
+                <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                <span className="text-xs font-medium hidden lg:block">Designs</span>
               </button>
 
               <button
@@ -529,15 +610,15 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                   setActiveTab('text');
                   editorRef.current?.addText();
                 }}
-                className={`flex flex-col items-center gap-1 px-4 py-3 rounded-lg transition-colors ${
+                className={`flex flex-col items-center gap-1 px-2 lg:px-4 py-2 lg:py-3 rounded-lg transition-colors ${
                   activeTab === 'text'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 title="Texte"
               >
-                <Type className="w-6 h-6" />
-                <span className="text-xs font-medium">Texte</span>
+                <Type className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                <span className="text-xs font-medium hidden lg:block">Texte</span>
               </button>
 
               <button
@@ -545,23 +626,23 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                   setActiveTab('upload');
                   editorRef.current?.triggerImageUpload();
                 }}
-                className={`flex flex-col items-center gap-1 px-4 py-3 rounded-lg transition-colors ${
+                className={`flex flex-col items-center gap-1 px-2 lg:px-4 py-2 lg:py-3 rounded-lg transition-colors ${
                   activeTab === 'upload'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 title="Importer"
               >
-                <Upload className="w-6 h-6" />
-                <span className="text-xs font-medium">Importer</span>
+                <Upload className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                <span className="text-xs font-medium hidden lg:block">Importer</span>
               </button>
             </div>
 
             {/* Center - Product Display avec éditeur intégré */}
-            <div className="flex-1 flex flex-col p-8 overflow-y-auto">
+            <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto">
               <div className="flex-1 flex items-center justify-center">
                 {selectedView && delimitation ? (
-                  <div className="w-full max-w-4xl">
+                  <div className="w-full max-w-2xl lg:max-w-4xl">
                     <ProductDesignEditor
                       key={`editor-${id}`}
                       ref={editorRef}
@@ -569,7 +650,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                       delimitation={delimitation}
                       initialElements={designElements}
                       onElementsChange={handleElementsChange}
-                      className="flex-row-reverse"
+                      className="flex-col lg:flex-row-reverse"
                     />
                   </div>
                 ) : (
