@@ -53,6 +53,8 @@ export interface CartItem {
   delimitation?: DelimitationData; // Zone de placement du design sur le produit
 
   // 🆕 ID de la personnalisation sauvegardée en base de données
-  customizationId?: number;      // Lien vers la table customizations
-  designElements?: any[];        // Éléments de design (texte, images) pour l'aperçu
+  customizationId?: number;      // Lien vers la table customizations (premier ID pour compatibilité)
+  customizationIds?: Record<string, number>; // 🆕 Tous les IDs de personnalisation par vue (ex: {"1-5": 123, "1-6": 124})
+  designElements?: any[];        // @deprecated Utiliser designElementsByView
+  designElementsByView?: Record<string, any[]>; // 🆕 Éléments de design organisés par vue (ex: {"1-5": [...], "1-6": [...]})
 }

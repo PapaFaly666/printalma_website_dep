@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -49,6 +49,182 @@ interface PaymentMethod {
   description: string;
   type: 'mobile' | 'card' | 'transfer';
 }
+
+// 🆕 Composant pour afficher le produit avec navigation entre vues
+const ProductPreviewWithViews: React.FC<{
+  productData: any;
+}> = ({ productData }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [selectedViewIndex, setSelectedViewIndex] = useState(0);
+
+  // Traduire le viewType en français
+  const getViewName = (viewType: string): string => {
+    const viewNames: Record<string, string> = {
+      'FRONT': 'Devant',
+      'BACK': 'Arrière',
+      'LEFT': 'Gauche',
+      'RIGHT': 'Droite',
+      'TOP': 'Dessus',
+      'BOTTOM': 'Dessous',
+      'DETAIL': 'Détail',
+      'OTHER': 'Autre'
+    };
+    return viewNames[viewType?.toUpperCase()] || viewType || 'Vue';
+  };
+
+  // Récupérer toutes les vues disponibles
+  const availableViews = React.useMemo(() => {
+    if (!productData?.customizationIds) return [];
+
+    return Object.keys(productData.customizationIds).map(viewKey => {
+      const [colorId, viewId] = viewKey.split('-').map(Number);
+      const delimitation = productData.delimitations?.find((d: any) => d.viewId === viewId);
+
+      return {
+        viewKey,
+        colorId,
+        viewId,
+        viewType: delimitation?.viewType || 'OTHER',
+        delimitation,
+        imageUrl: delimitation?.imageUrl
+      };
+    });
+  }, [productData?.customizationIds, productData?.delimitations]);
+
+  const currentView = availableViews[selectedViewIndex];
+
+  // Récupérer les éléments pour la vue actuelle
+  const getCurrentViewElements = () => {
+    if (!currentView || !productData?.designElementsByView) return [];
+    return productData.designElementsByView[currentView.viewKey] || [];
+  };
+
+  const currentViewElements = getCurrentViewElements();
+  const currentDelimitation = currentView?.delimitation;
+  const currentImageUrl = currentDelimitation?.imageUrl || productData?.imageUrl;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Conteneur de l'image avec personnalisations */}
+      <div className="relative w-48 h-48 bg-white rounded-lg border border-gray-200 flex items-center justify-center p-2">
+        <div ref={containerRef} className="relative w-full h-full">
+          {/* Image du produit */}
+          <img
+            key={currentImageUrl}
+            ref={imgRef}
+            src={currentImageUrl}
+            alt={productData?.name}
+            className="w-full h-full object-contain rounded"
+            onLoad={() => setImageLoaded(true)}
+          />
+
+          {/* Personnalisations superposées */}
+          {imageLoaded && currentViewElements.length > 0 && currentDelimitation && (() => {
+            if (!containerRef.current) return null;
+
+            const rect = containerRef.current.getBoundingClientRect();
+            const refWidth = currentDelimitation.referenceWidth || 800;
+            const refHeight = currentDelimitation.referenceHeight || 800;
+            const scaleX = rect.width / refWidth;
+            const scaleY = rect.height / refHeight;
+            const scale = Math.min(scaleX, scaleY);
+
+            return (
+              <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
+                {currentViewElements.map((element: any, idx: number) => {
+                  const left = element.x * rect.width;
+                  const top = element.y * rect.height;
+                  const scaledWidth = element.width * scale;
+                  const scaledHeight = element.height * scale;
+                  const scaledFontSize = element.type === 'text' ? (element.fontSize || 24) * scale : 0;
+
+                  return (
+                    <div
+                      key={`element-${idx}`}
+                      style={{
+                        position: 'absolute',
+                        left: `${left}px`,
+                        top: `${top}px`,
+                        width: `${scaledWidth}px`,
+                        height: `${scaledHeight}px`,
+                        transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
+                        transformOrigin: 'center center',
+                        zIndex: element.zIndex || 0,
+                      }}
+                    >
+                      {element.type === 'text' ? (
+                        <div
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: element.textAlign || 'center',
+                            fontSize: `${scaledFontSize}px`,
+                            fontFamily: element.fontFamily || 'Arial',
+                            color: element.color || '#000000',
+                            fontWeight: element.fontWeight || 'normal',
+                            fontStyle: element.fontStyle || 'normal',
+                            textDecoration: element.textDecoration || 'none',
+                            textAlign: element.textAlign || 'center',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            lineHeight: 1,
+                          }}
+                        >
+                          {element.text}
+                        </div>
+                      ) : element.type === 'image' ? (
+                        <img
+                          src={element.imageUrl}
+                          alt="Design"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* Navigation entre les vues */}
+      {availableViews.length > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-1">
+          {availableViews.map((view, index) => (
+            <button
+              key={view.viewKey}
+              onClick={() => setSelectedViewIndex(index)}
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                selectedViewIndex === index
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={getViewName(view.viewType)}
+            >
+              {getViewName(view.viewType)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Badge informatif */}
+      {availableViews.length > 0 && (
+        <div className="text-center text-xs text-gray-500">
+          {availableViews.length} vue{availableViews.length > 1 ? 's' : ''} personnalisée{availableViews.length > 1 ? 's' : ''}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const OrderFormPage: React.FC = () => {
   const navigate = useNavigate();
@@ -391,12 +567,45 @@ const OrderFormPage: React.FC = () => {
           size: productData?.size,
           color: productData?.color,
           colorId: 1,
+          // 🎨 Ajouter les données de design/ personnalisation si disponibles
+          vendorProductId: productData?.vendorProductId,
+          mockupUrl: productData?.mockupUrl,
+          designId: productData?.designId,
+          designPositions: productData?.designPositions,
+          designMetadata: productData?.designMetadata,
+          delimitation: productData?.delimitation,
+          // 🆕 Ajouter les données de personnalisation
+          customizationId: productData?.customizationId,
+          customizationIds: productData?.customizationIds, // 🆕 Tous les IDs de personnalisation
+          designElements: productData?.designElements, // @deprecated
+          designElementsByView: productData?.designElementsByView, // 🆕 Organisé par vue
         }],
         paymentMethod: 'PAYDUNYA',
         initiatePayment: true, // IMPORTANT : Déclenche la création du paiement PayDunya
       };
 
       console.log('📦 [OrderForm] Données de commande PayDunya:', JSON.stringify(orderRequest, null, 2));
+
+      // 🎨 Vérifier les données de personnalisation
+      const hasCustomization = !!productData?.customizationId;
+      const hasCustomizationIds = !!productData?.customizationIds;
+      const hasDesignElements = !!(productData?.designElements && productData.designElements.length > 0);
+      const hasDesignElementsByView = !!productData?.designElementsByView;
+
+      console.log('🎨 [OrderForm] Personnalisation détectée:', {
+        hasCustomization,
+        hasCustomizationIds,
+        hasDesignElements,
+        hasDesignElementsByView,
+        customizationId: productData?.customizationId,
+        customizationIds: productData?.customizationIds,
+        customizationIdsCount: Object.keys(productData?.customizationIds || {}).length,
+        designElementsCount: productData?.designElements?.length,
+        designElementsByViewCount: Object.keys(productData?.designElementsByView || {}).length,
+        orderItemCustomizationId: orderRequest.orderItems[0]?.customizationId,
+        orderItemCustomizationIds: orderRequest.orderItems[0]?.customizationIds,
+        orderItemDesignElementsByView: orderRequest.orderItems[0]?.designElementsByView
+      });
 
       // Utiliser orderService qui gère automatiquement la normalisation des réponses
       console.log('🔄 [OrderForm] Envoi de la requête au backend...');
@@ -522,6 +731,18 @@ const OrderFormPage: React.FC = () => {
             size: productData?.size,
             color: productData?.color,
             colorId: 1,
+            // 🎨 Ajouter les données de design/ personnalisation si disponibles
+            vendorProductId: productData?.vendorProductId,
+            mockupUrl: productData?.mockupUrl,
+            designId: productData?.designId,
+            designPositions: productData?.designPositions,
+            designMetadata: productData?.designMetadata,
+            delimitation: productData?.delimitation,
+            // 🆕 Ajouter les données de personnalisation
+            customizationId: productData?.customizationId,
+            customizationIds: productData?.customizationIds, // 🆕 Tous les IDs de personnalisation
+            designElements: productData?.designElements, // @deprecated
+            designElementsByView: productData?.designElementsByView, // 🆕 Organisé par vue
           }],
           paymentMethod: 'CASH_ON_DELIVERY',
           initiatePayment: false,
@@ -607,8 +828,12 @@ const OrderFormPage: React.FC = () => {
                       Récapitulatif
                     </h2>
                     <div className="space-y-4">
-                      {/* Affichage du produit avec design si disponible */}
-                      {getProductForPreview() ? (
+                      {/* 🆕 Affichage du produit avec navigation entre vues */}
+                      {productData?.customizationIds && productData?.designElementsByView ? (
+                        <div className="flex justify-center">
+                          <ProductPreviewWithViews productData={productData} />
+                        </div>
+                      ) : getProductForPreview() ? (
                         <div className="flex justify-center">
                           <div className="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48">
                             <SimpleProductPreview

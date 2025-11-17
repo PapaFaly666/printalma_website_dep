@@ -64,7 +64,27 @@ class CustomizationService {
       });
 
       console.log('✅ [CustomizationService] Personnalisation sauvegardée:', response.data);
-      return response.data;
+
+      // 🔧 CONTOURNEMENT : Vérifier si les designElements sont corrects
+      const customization = response.data;
+      if (customization.designElements && customization.designElements.length > 0 &&
+          Array.isArray(customization.designElements[0]) && customization.designElements[0].length === 0) {
+        console.warn('⚠️ [CustomizationService] Backend bug détecté: designElements vide malgré envoi de données');
+
+        // 💾 Stocker les designElements dans localStorage comme backup
+        const backupKey = `customization-backup-${customization.id}`;
+        const backupData = {
+          designElements: data.designElements,
+          timestamp: Date.now(),
+          productId: data.productId,
+          sessionId: data.sessionId
+        };
+        localStorage.setItem(backupKey, JSON.stringify(backupData));
+
+        console.log('💾 [CustomizationService] Backup des designElements dans localStorage:', backupKey);
+      }
+
+      return customization;
     } catch (error: any) {
       console.error('❌ [CustomizationService] Erreur sauvegarde:', error);
       throw error;
@@ -77,7 +97,37 @@ class CustomizationService {
   async getCustomization(id: number): Promise<Customization> {
     try {
       const response = await axios.get(`${API_BASE}/customizations/${id}`);
-      return response.data;
+      let customization = response.data;
+
+      // 🔧 CONTOURNEMENT : Vérifier et restaurer les designElements depuis le backup si nécessaire
+      if (customization.designElements && customization.designElements.length > 0 &&
+          Array.isArray(customization.designElements[0]) && customization.designElements[0].length === 0) {
+
+        console.warn('⚠️ [CustomizationService] designElements vides détectés, tentative de restauration depuis backup');
+
+        const backupKey = `customization-backup-${id}`;
+        const backupDataStr = localStorage.getItem(backupKey);
+
+        if (backupDataStr) {
+          try {
+            const backupData = JSON.parse(backupDataStr);
+            console.log('✅ [CustomizationService] Restauration des designElements depuis backup:', {
+              backupElementsCount: backupData.designElements?.length || 0,
+              backupTimestamp: backupData.timestamp
+            });
+
+            // Restaurer les designElements depuis le backup
+            customization = {
+              ...customization,
+              designElements: backupData.designElements
+            };
+          } catch (backupError) {
+            console.error('❌ [CustomizationService] Erreur lecture backup:', backupError);
+          }
+        }
+      }
+
+      return customization;
     } catch (error) {
       console.error('❌ [CustomizationService] Erreur récupération:', error);
       throw error;

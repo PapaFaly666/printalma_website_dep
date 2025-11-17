@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -49,6 +49,184 @@ interface DeliveryOption {
 }
 
 type Step = 'customer-info' | 'delivery' | 'payment' | 'review';
+
+// 🆕 Composant pour afficher le produit avec navigation entre vues
+const ProductPreviewWithViews: React.FC<{
+  productData: any;
+}> = ({ productData }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [selectedViewIndex, setSelectedViewIndex] = useState(0);
+
+  // Traduire le viewType en français
+  const getViewName = (viewType: string): string => {
+    const viewNames: Record<string, string> = {
+      'FRONT': 'Devant',
+      'BACK': 'Arrière',
+      'LEFT': 'Gauche',
+      'RIGHT': 'Droite',
+      'TOP': 'Dessus',
+      'BOTTOM': 'Dessous',
+      'DETAIL': 'Détail',
+      'OTHER': 'Autre'
+    };
+    return viewNames[viewType?.toUpperCase()] || viewType || 'Vue';
+  };
+
+  // Récupérer toutes les vues disponibles
+  const availableViews = React.useMemo(() => {
+    if (!productData?.customizationIds) return [];
+
+    return Object.keys(productData.customizationIds).map(viewKey => {
+      const [colorId, viewId] = viewKey.split('-').map(Number);
+      const delimitation = productData.delimitations?.find((d: any) => d.viewId === viewId);
+
+      return {
+        viewKey,
+        colorId,
+        viewId,
+        viewType: delimitation?.viewType || 'OTHER',
+        delimitation,
+        imageUrl: delimitation?.imageUrl
+      };
+    });
+  }, [productData?.customizationIds, productData?.delimitations]);
+
+  const currentView = availableViews[selectedViewIndex];
+
+  // Récupérer les éléments pour la vue actuelle
+  const getCurrentViewElements = () => {
+    if (!currentView || !productData?.designElementsByView) return [];
+    return productData.designElementsByView[currentView.viewKey] || [];
+  };
+
+  const currentViewElements = getCurrentViewElements();
+  const currentDelimitation = currentView?.delimitation;
+  const currentImageUrl = currentDelimitation?.imageUrl || productData?.imageUrl;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Conteneur de l'image avec personnalisations */}
+      <div className="relative w-48 h-48 bg-white rounded-2xl border border-gray-200 flex items-center justify-center p-2">
+        <div ref={containerRef} className="relative w-full h-full">
+          {/* Image du produit */}
+          <img
+            key={currentImageUrl}
+            ref={imgRef}
+            src={currentImageUrl}
+            alt={productData?.name}
+            className="w-full h-full object-contain rounded"
+            onLoad={() => setImageLoaded(true)}
+          />
+
+          {/* Personnalisations superposées */}
+          {imageLoaded && currentViewElements.length > 0 && currentDelimitation && (() => {
+            if (!containerRef.current) return null;
+
+            const rect = containerRef.current.getBoundingClientRect();
+            const refWidth = currentDelimitation.referenceWidth || 800;
+            const refHeight = currentDelimitation.referenceHeight || 800;
+            const scaleX = rect.width / refWidth;
+            const scaleY = rect.height / refHeight;
+            const scale = Math.min(scaleX, scaleY);
+
+            return (
+              <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
+                {currentViewElements.map((element: any, idx: number) => {
+                  const left = element.x * rect.width;
+                  const top = element.y * rect.height;
+                  const scaledWidth = element.width * scale;
+                  const scaledHeight = element.height * scale;
+                  const scaledFontSize = element.type === 'text' ? (element.fontSize || 24) * scale : 0;
+
+                  return (
+                    <div
+                      key={`element-${idx}`}
+                      style={{
+                        position: 'absolute',
+                        left: `${left}px`,
+                        top: `${top}px`,
+                        width: `${scaledWidth}px`,
+                        height: `${scaledHeight}px`,
+                        transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
+                        transformOrigin: 'center center',
+                        zIndex: element.zIndex || 0,
+                      }}
+                    >
+                      {element.type === 'text' ? (
+                        <div
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: element.textAlign || 'center',
+                            fontSize: `${scaledFontSize}px`,
+                            fontFamily: element.fontFamily || 'Arial',
+                            color: element.color || '#000000',
+                            fontWeight: element.fontWeight || 'normal',
+                            fontStyle: element.fontStyle || 'normal',
+                            textDecoration: element.textDecoration || 'none',
+                            textAlign: element.textAlign || 'center',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            lineHeight: 1,
+                          }}
+                        >
+                          {element.text}
+                        </div>
+                      ) : element.type === 'image' ? (
+                        <img
+                          src={element.imageUrl}
+                          alt="Design"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* Navigation entre les vues */}
+      {availableViews.length > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {availableViews.map((view, index) => (
+            <button
+              key={view.viewKey}
+              onClick={() => setSelectedViewIndex(index)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                selectedViewIndex === index
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={getViewName(view.viewType)}
+            >
+              {getViewName(view.viewType)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Badge informatif */}
+      {availableViews.length > 0 && (
+        <div className="text-center">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            ✨ {availableViews.length} vue{availableViews.length > 1 ? 's' : ''} personnalisée{availableViews.length > 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ModernOrderFormPage: React.FC = () => {
   const navigate = useNavigate();
@@ -286,6 +464,11 @@ const ModernOrderFormPage: React.FC = () => {
           designPositions: productData?.designPositions,
           designMetadata: productData?.designMetadata,
           delimitation: productData?.delimitation,
+          // 🆕 Personnalisations
+          customizationId: productData?.customizationId,
+          customizationIds: productData?.customizationIds,
+          designElements: productData?.designElements,
+          designElementsByView: productData?.designElementsByView,
         }],
         paymentMethod: 'PAYDUNYA',
         initiatePayment: true,
@@ -387,6 +570,11 @@ const ModernOrderFormPage: React.FC = () => {
             designPositions: productData?.designPositions,
             designMetadata: productData?.designMetadata,
             delimitation: productData?.delimitation,
+            // 🆕 Personnalisations
+            customizationId: productData?.customizationId,
+            customizationIds: productData?.customizationIds,
+            designElements: productData?.designElements,
+            designElementsByView: productData?.designElementsByView,
           }],
           paymentMethod: 'CASH_ON_DELIVERY',
           initiatePayment: false,
@@ -995,9 +1183,12 @@ const ModernOrderFormPage: React.FC = () => {
               </div>
 
               {/* Produit avec preview */}
-              {getProductForPreview() && (
-                <div className="p-4 bg-gray-50 rounded-2xl">
-                  <div className="flex justify-center mb-4">
+              <div className="p-4 bg-gray-50 rounded-2xl">
+                <div className="flex justify-center mb-4">
+                  {/* 🆕 Utiliser ProductPreviewWithViews si customisations disponibles */}
+                  {productData?.customizationIds && productData?.designElementsByView ? (
+                    <ProductPreviewWithViews productData={productData} />
+                  ) : getProductForPreview() ? (
                     <div className="w-48 h-48">
                       <SimpleProductPreview
                         product={getProductForPreview()!}
@@ -1005,20 +1196,20 @@ const ModernOrderFormPage: React.FC = () => {
                         className="w-full h-full"
                       />
                     </div>
+                  ) : null}
+                </div>
+                <div className="text-center">
+                  <h4 className="font-bold text-gray-900 mb-2">{productData?.name}</h4>
+                  <div className="flex items-center justify-center gap-4 text-sm text-gray-600 mb-3">
+                    <span>Couleur: {productData?.color}</span>
+                    <span>•</span>
+                    <span>Taille: {productData?.size}</span>
                   </div>
-                  <div className="text-center">
-                    <h4 className="font-bold text-gray-900 mb-2">{productData?.name}</h4>
-                    <div className="flex items-center justify-center gap-4 text-sm text-gray-600 mb-3">
-                      <span>Couleur: {productData?.color}</span>
-                      <span>•</span>
-                      <span>Taille: {productData?.size}</span>
-                    </div>
-                    <div className="text-xl font-bold text-gray-900">
-                      {formatPrice(productPrice)}
-                    </div>
+                  <div className="text-xl font-bold text-gray-900">
+                    {formatPrice(productPrice)}
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Totaux */}
               <div className="border-t pt-4 space-y-4">

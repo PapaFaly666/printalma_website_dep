@@ -57,7 +57,9 @@ interface CartContextType {
     delimitation?: DelimitationData;
     // 🆕 Personnalisation
     customizationId?: number;
-    designElements?: any[];
+    customizationIds?: Record<string, number>; // 🆕 Plusieurs IDs de personnalisation
+    designElements?: any[]; // @deprecated
+    designElementsByView?: Record<string, any[]>; // 🆕 Organisé par vue
   }) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -156,7 +158,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     };
     delimitation?: DelimitationData;
     customizationId?: number;
-    designElements?: any[];
+    customizationIds?: Record<string, number>; // 🆕 Plusieurs IDs de personnalisation
+    designElements?: any[]; // @deprecated
+    designElementsByView?: Record<string, any[]>; // 🆕 Organisé par vue
   }) => {
     console.log('🛒 [CartContext] Ajout au panier:', product);
     // Utiliser la vraie taille si disponible, sinon la taille de base
@@ -238,14 +242,18 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           delimitation: product.delimitation,
           // 🆕 Personnalisation
           customizationId: product.customizationId,
-          designElements: product.designElements
+          customizationIds: product.customizationIds, // 🆕 Plusieurs IDs
+          designElements: product.designElements, // @deprecated
+          designElementsByView: product.designElementsByView // 🆕 Organisé par vue
         };
 
         console.log('🎨 [CartContext] Personnalisation incluse:', {
           customizationId: newItem.customizationId,
+          customizationIds: newItem.customizationIds,
           hasDesignElements: !!newItem.designElements,
           designElementsLength: newItem.designElements?.length,
-          designElements: newItem.designElements
+          hasDesignElementsByView: !!newItem.designElementsByView,
+          viewsCount: Object.keys(newItem.designElementsByView || {}).length
         });
 
         console.log('🛒 [CartContext] Nouvel article créé:', {

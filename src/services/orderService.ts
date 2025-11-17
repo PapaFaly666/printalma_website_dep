@@ -52,6 +52,12 @@ export interface OrderItem {
     height: number;
     coordinateType: 'PERCENTAGE' | 'PIXEL';
   };
+
+  // 🆕 PERSONNALISATION (API backend)
+  customizationId?: number;     // ID de la personnalisation sauvegardée (principal pour compatibilité)
+  customizationIds?: Record<string, number>; // 🆕 Tous les IDs de personnalisation par vue
+  designElements?: any[];       // @deprecated Utiliser designElementsByView
+  designElementsByView?: Record<string, any[]>; // 🆕 Éléments de design organisés par vue
 }
 
 export interface CreateOrderRequest {
@@ -456,6 +462,26 @@ export class OrderService {
         // Ajouter delimitation si disponible
         if (item.delimitation) {
           orderItem.delimitation = item.delimitation;
+        }
+
+        // 🆕 Ajouter customizationId si disponible
+        if (item.customizationId) {
+          orderItem.customizationId = item.customizationId;
+        }
+
+        // 🆕 Ajouter customizationIds si disponible (plusieurs vues)
+        if (item.customizationIds) {
+          orderItem.customizationIds = item.customizationIds;
+        }
+
+        // 🆕 Ajouter designElements si disponible (@deprecated)
+        if (item.designElements && item.designElements.length > 0) {
+          orderItem.designElements = item.designElements;
+        }
+
+        // 🆕 Ajouter designElementsByView si disponible (nouveau système)
+        if (item.designElementsByView) {
+          orderItem.designElementsByView = item.designElementsByView;
         }
 
         console.log('🎨 [OrderService] OrderItem construit:', orderItem);
