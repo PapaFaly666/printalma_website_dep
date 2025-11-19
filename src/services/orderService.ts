@@ -58,6 +58,15 @@ export interface OrderItem {
   customizationIds?: Record<string, number>; // 🆕 Tous les IDs de personnalisation par vue
   designElements?: any[];       // @deprecated Utiliser designElementsByView
   designElementsByView?: Record<string, any[]>; // 🆕 Éléments de design organisés par vue
+  viewsMetadata?: Array<{       // 🆕 Métadonnées des vues pour le backend
+    viewKey: string;           // Clé de la vue (format: "colorId-viewId")
+    colorId: number;           // ID de la variation de couleur
+    viewId: number;            // ID de la vue
+    viewType: string;          // Type de vue (FRONT, BACK, etc.)
+    imageUrl: string;          // URL de l'image de la vue
+    hasElements: boolean;      // Si la vue contient des éléments de design
+    elementsCount: number;     // Nombre d'éléments dans la vue
+  }>;
 }
 
 export interface CreateOrderRequest {

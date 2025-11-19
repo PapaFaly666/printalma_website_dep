@@ -5,10 +5,11 @@ import { Order } from '../../types/order';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import { ArrowLeft, Package, User, MapPin, Phone, Copy, Printer, Download, X, Eye } from 'lucide-react';
+import { ArrowLeft, Package, User, MapPin, Phone, Copy, Printer, Download, X, Eye, FileDown } from 'lucide-react';
 import { getStatusIcon, formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
 import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrderProductPreview';
 import { CustomizationPreview } from '../../components/order/CustomizationPreview';
+import { downloadDesignElementsAsPNG, exportAllViewsDesignElements } from '../../utils/printExport';
 
 const OrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -18,6 +19,7 @@ const OrderDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDesign, setSelectedDesign] = useState<{ url: string; name: string } | null>(null);
+  const [exportingItems, setExportingItems] = useState<Set<number>>(new Set());
 
   // Récupérer les données depuis le state de navigation si disponibles
   const orderDataFromState = location.state?.orderData as Order | undefined;
@@ -110,6 +112,69 @@ const OrderDetailPage: React.FC = () => {
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       console.error('Erreur lors du téléchargement:', error);
+    }
+  };
+
+  // Export des éléments de personnalisation pour l'impression (sans mockup)
+  const exportForPrint = async (
+    itemId: number,
+    elementsByView: Record<string, any[]>,
+    productName: string,
+    format: 'png' | 'pdf' = 'png',
+    delimitation?: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      coordinateType?: 'PERCENTAGE' | 'PIXEL';
+      referenceWidth?: number;
+      referenceHeight?: number;
+    }
+  ) => {
+    setExportingItems(prev => new Set(prev).add(itemId));
+
+    try {
+      const filename = `impression_${order?.orderNumber || 'commande'}_${productName.replace(/\s+/g, '_')}`;
+
+      // Vérifier s'il y a plusieurs vues ou une seule
+      const viewKeys = Object.keys(elementsByView);
+
+      if (viewKeys.length === 1) {
+        // Une seule vue - export simple
+        const elements = elementsByView[viewKeys[0]];
+        if (format === 'pdf') {
+          const { downloadDesignElementsAsPDF } = await import('../../utils/printExport');
+          await downloadDesignElementsAsPDF(elements, filename, {
+            width: 2000,
+            height: 2000,
+            delimitation
+          });
+        } else {
+          await downloadDesignElementsAsPNG(elements, filename, {
+            width: 2000,
+            height: 2000,
+            delimitation
+          });
+        }
+      } else {
+        // Plusieurs vues - export multiple
+        await exportAllViewsDesignElements(elementsByView, filename, format, {
+          width: 2000,
+          height: 2000,
+          delimitation
+        });
+      }
+
+      console.log(`✅ Export ${format.toUpperCase()} réussi pour ${productName}`);
+    } catch (error) {
+      console.error('Erreur lors de l\'export:', error);
+      alert('Erreur lors de l\'export. Veuillez réessayer.');
+    } finally {
+      setExportingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
     }
   };
 
@@ -552,6 +617,70 @@ const OrderDetailPage: React.FC = () => {
                                       </div>
                                     );
                                   })}
+
+                                  {/* Boutons d'export pour impression */}
+                                  <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center space-x-2">
+                                        <FileDown className="h-5 w-5 text-green-600" />
+                                        <span className="text-sm font-bold text-green-900">Export pour impression</span>
+                                      </div>
+                                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                        Sans mockup
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-green-700 mb-3">
+                                      Téléchargez uniquement les éléments de personnalisation (texte, images) pour l'impression.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      <button
+                                        onClick={() => exportForPrint(
+                                          item.id,
+                                          elementsByView,
+                                          item.product?.name || enriched?.vendorName || 'produit',
+                                          'png',
+                                          delimitation || undefined
+                                        )}
+                                        disabled={exportingItems.has(item.id)}
+                                        className="flex-1 sm:flex-initial px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm font-semibold rounded-lg transition-all flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+                                      >
+                                        {exportingItems.has(item.id) ? (
+                                          <>
+                                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <span>Export...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Download className="h-4 w-4" />
+                                            <span>PNG</span>
+                                          </>
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={() => exportForPrint(
+                                          item.id,
+                                          elementsByView,
+                                          item.product?.name || enriched?.vendorName || 'produit',
+                                          'pdf',
+                                          delimitation || undefined
+                                        )}
+                                        disabled={exportingItems.has(item.id)}
+                                        className="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-sm font-semibold rounded-lg transition-all flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+                                      >
+                                        {exportingItems.has(item.id) ? (
+                                          <>
+                                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <span>Export...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Download className="h-4 w-4" />
+                                            <span>PDF</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
                               ) : mockupUrl || designUrl ? (
                                 <div className="relative group-hover:scale-[1.02] transition-transform duration-300">

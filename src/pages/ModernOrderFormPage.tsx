@@ -304,6 +304,49 @@ const ModernOrderFormPage: React.FC = () => {
     return null;
   };
 
+  // 🆕 Fonction pour préparer les données multi-vues pour le backend
+  const prepareMultiViewDataForBackend = () => {
+    if (!productData) return {};
+
+    console.log('🔍 [ModernOrderForm] Préparation des données multi-vues:', {
+      hasCustomizationIds: !!productData.customizationIds,
+      hasDesignElementsByView: !!productData.designElementsByView,
+      hasDelimitations: !!productData.delimitations,
+      customizationIdsKeys: productData.customizationIds ? Object.keys(productData.customizationIds) : [],
+      designElementsByViewKeys: productData.designElementsByView ? Object.keys(productData.designElementsByView) : []
+    });
+
+    // Structurer les données multi-vues pour le backend
+    const multiViewData = {
+      // IDs de personnalisation par vue (format: "colorId-viewId": customizationId)
+      customizationIds: productData.customizationIds || {},
+
+      // Éléments de design par vue (format: "colorId-viewId": [elements])
+      designElementsByView: productData.designElementsByView || {},
+
+      // Métadonnées des vues pour aider le backend
+      viewsMetadata: Object.keys(productData.customizationIds || {}).map(viewKey => {
+        const [colorId, viewId] = viewKey.split('-').map(Number);
+
+        // Trouver la délimitation correspondante
+        const delimitation = productData.delimitations?.find((d: any) => d.viewId === viewId);
+
+        return {
+          viewKey,
+          colorId,
+          viewId,
+          viewType: delimitation?.viewType || 'OTHER',
+          imageUrl: delimitation?.imageUrl || productData.imageUrl,
+          hasElements: !!(productData.designElementsByView?.[viewKey]?.length > 0),
+          elementsCount: productData.designElementsByView?.[viewKey]?.length || 0
+        };
+      })
+    };
+
+    console.log('✅ [ModernOrderForm] Données multi-vues préparées:', multiViewData);
+    return multiViewData;
+  };
+
   // États
   const [currentStep, setCurrentStep] = useState<Step>('customer-info');
   const [formData, setFormData] = useState<OrderFormData>({
@@ -508,12 +551,17 @@ const ModernOrderFormPage: React.FC = () => {
       const delimitation = getDelimitationFromCart();
       const mockupUrl = getMockupUrlFromCart();
 
+      // 🆕 Préparer les données multi-vues pour le backend
+      const multiViewData = prepareMultiViewDataForBackend();
+
       console.log('🔍 [ModernOrderForm] Données enrichies:', {
         productId,
         delimitation,
         mockupUrl,
         hasCustomization: !!productData?.customizationIds,
-        designElementsCount: Object.keys(productData?.designElementsByView || {}).length
+        designElementsCount: Object.keys(productData?.designElementsByView || {}).length,
+        viewsCount: multiViewData.viewsMetadata?.length || 0,
+        multiViewData
       });
 
       const orderRequest: OrderRequest = {
@@ -544,11 +592,13 @@ const ModernOrderFormPage: React.FC = () => {
           designPositions: productData?.designPositions,
           designMetadata: productData?.designMetadata,
           delimitation: delimitation,
-          // 🆕 Personnalisations
+          // 🆕 Personnalisations multi-vues
           customizationId: productData?.customizationId,
-          customizationIds: productData?.customizationIds,
-          designElements: productData?.designElements,
-          designElementsByView: productData?.designElementsByView,
+          customizationIds: multiViewData.customizationIds,
+          designElements: productData?.designElements, // @deprecated
+          designElementsByView: multiViewData.designElementsByView,
+          // 🆕 Métadonnées des vues pour le backend
+          viewsMetadata: multiViewData.viewsMetadata,
         }],
         paymentMethod: 'PAYDUNYA',
         initiatePayment: true,
@@ -626,12 +676,17 @@ const ModernOrderFormPage: React.FC = () => {
         const delimitation = getDelimitationFromCart();
         const mockupUrl = getMockupUrlFromCart();
 
+        // 🆕 Préparer les données multi-vues pour le backend
+        const multiViewData = prepareMultiViewDataForBackend();
+
         console.log('🔍 [ModernOrderForm] Données enrichies (Cash on Delivery):', {
           productId: Number(productData?.productId),
           delimitation,
           mockupUrl,
           hasCustomization: !!productData?.customizationIds,
-          designElementsCount: Object.keys(productData?.designElementsByView || {}).length
+          designElementsCount: Object.keys(productData?.designElementsByView || {}).length,
+          viewsCount: multiViewData.viewsMetadata?.length || 0,
+          multiViewData
         });
 
         // Préparer les données de commande
@@ -663,11 +718,13 @@ const ModernOrderFormPage: React.FC = () => {
             designPositions: productData?.designPositions,
             designMetadata: productData?.designMetadata,
             delimitation: delimitation,
-            // 🆕 Personnalisations
+            // 🆕 Personnalisations multi-vues
             customizationId: productData?.customizationId,
-            customizationIds: productData?.customizationIds,
-            designElements: productData?.designElements,
-            designElementsByView: productData?.designElementsByView,
+            customizationIds: multiViewData.customizationIds,
+            designElements: productData?.designElements, // @deprecated
+            designElementsByView: multiViewData.designElementsByView,
+            // 🆕 Métadonnées des vues pour le backend
+            viewsMetadata: multiViewData.viewsMetadata,
           }],
           paymentMethod: 'CASH_ON_DELIVERY',
           initiatePayment: false,
