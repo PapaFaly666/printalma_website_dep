@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2,
@@ -15,7 +15,9 @@ import {
   X,
   Search,
   Star,
-  Flag
+  Flag,
+  Cloud,
+  CloudOff
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useToast } from '../components/ui/use-toast';
@@ -26,6 +28,18 @@ import { normalizeProductFromApi } from '../utils/productNormalization';
 import ProductDesignEditor, { ProductDesignEditorRef } from '../components/ProductDesignEditor';
 import SizeQuantityModal from '../components/SizeQuantityModal';
 import { useCart } from '../contexts/CartContext';
+
+// Fonction debounce pour l'auto-sauvegarde
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), wait);
+  };
+}
 
 const CustomerProductCustomizationPageV3: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -58,14 +72,27 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   // Éléments de design - organisés par vue
   // Structure: { "colorId-viewId": [...elements] }
   const [designElementsByView, setDesignElementsByView] = useState<Record<string, any[]>>({});
+  // Ref pour éviter les closures stale dans les callbacks async
+  const designElementsByViewRef = useRef<Record<string, any[]>>({});
 
   // Flag pour éviter la sauvegarde pendant la restauration
   const isRestoringRef = useRef(false);
   // Flag pour tracker si la restauration initiale est complète
   const hasRestoredRef = useRef(false);
 
+  // Synchroniser la ref avec le state
+  useEffect(() => {
+    designElementsByViewRef.current = designElementsByView;
+  }, [designElementsByView]);
+
   // Modal de sélection taille/quantité
   const [showSizeModal, setShowSizeModal] = useState(false);
+
+  // États de synchronisation avec la base de données
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const currentCustomizationIdRef = useRef<number | null>(null);
 
   // Fonction helper pour obtenir la clé de la vue actuelle
   const getCurrentViewKey = () => {
@@ -194,6 +221,164 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
   // Note: L'ÉTAPE 2 n'est plus nécessaire car on restaure tout dans l'ÉTAPE 1
 
+  // ÉTAPE 1.5: Charger le draft depuis la base de données
+  useEffect(() => {
+    const loadDraftFromDatabase = async () => {
+      if (!id || !product || !hasRestoredRef.current) return;
+
+      try {
+        console.log('🔍 [Customization] Recherche draft en base de données...');
+        const draft = await customizationService.getProductDraft(Number(id));
+
+        if (draft) {
+          console.log('📦 [Customization] Draft trouvé en BDD:', {
+            id: draft.id,
+            elementsCount: draft.designElements?.length || 0,
+            colorVariationId: draft.colorVariationId,
+            viewId: draft.viewId
+          });
+
+          // Sauvegarder l'ID pour les mises à jour futures
+          currentCustomizationIdRef.current = draft.id;
+
+          // Si le localStorage est vide mais qu'on a un draft en BDD, le restaurer
+          const storageKey = `design-data-product-${id}`;
+          const localData = localStorage.getItem(storageKey);
+
+          if (!localData || JSON.parse(localData).elementsByView === undefined) {
+            console.log('💾 [Customization] Restauration depuis BDD vers localStorage');
+
+            // Reconstruire le format elementsByView depuis le draft
+            const viewKey = `${draft.colorVariationId}-${draft.viewId}`;
+            let elementsToRestore = draft.designElements || [];
+
+            // 🔍 DEBUG: Vérifier la structure des éléments restaurés
+            console.log('🔍 DEBUG - Éléments depuis BDD:', {
+              isArray: Array.isArray(elementsToRestore),
+              length: elementsToRestore.length,
+              firstIsArray: elementsToRestore.length > 0 ? Array.isArray(elementsToRestore[0]) : false
+            });
+
+            // 🚨 Corriger le double wrapping si détecté dans les données BDD
+            if (elementsToRestore.length > 0 && Array.isArray(elementsToRestore[0])) {
+              console.warn('⚠️ Correction du double wrapping détecté dans BDD');
+              // Déballer le premier niveau si c'est un array imbriqué
+              elementsToRestore = elementsToRestore[0];
+            }
+
+            const restoredElements = {
+              [viewKey]: elementsToRestore
+            };
+
+            isRestoringRef.current = true;
+            setDesignElementsByView(restoredElements);
+
+            // Mettre à jour le localStorage
+            localStorage.setItem(storageKey, JSON.stringify({
+              elementsByView: restoredElements,
+              colorVariationId: draft.colorVariationId,
+              viewId: draft.viewId,
+              timestamp: Date.now()
+            }));
+
+            setTimeout(() => {
+              isRestoringRef.current = false;
+            }, 500);
+          }
+
+          setLastSyncTime(new Date(draft.updatedAt));
+        } else {
+          console.log('ℹ️ [Customization] Aucun draft trouvé en BDD');
+        }
+      } catch (error) {
+        console.error('❌ [Customization] Erreur chargement draft BDD:', error);
+      }
+    };
+
+    loadDraftFromDatabase();
+  }, [id, product, hasRestoredRef.current]);
+
+  // Fonction pour sauvegarder en base de données
+  const saveToDatabase = useCallback(async () => {
+    if (!id || !product || !selectedColorVariation || !selectedView) {
+      console.log('⏸️ [Customization] saveToDatabase ignoré - données manquantes');
+      return;
+    }
+
+    const viewKey = `${selectedColorVariation.id}-${selectedView.id}`;
+
+    // Utiliser la ref pour obtenir la valeur actuelle (évite stale closure)
+    const elementsToSave = designElementsByViewRef.current;
+    const currentElements = elementsToSave[viewKey] || [];
+
+    // Validation: Ne pas sauvegarder si aucun élément et pas de customization existante
+    if (currentElements.length === 0 && !currentCustomizationIdRef.current) {
+      console.log('⏸️ [Customization] Aucun élément à sauvegarder');
+      return;
+    }
+
+    // Validation supplémentaire des éléments
+    if (currentElements.length > 0) {
+      const hasInvalidElements = currentElements.some(el => !el.id || !el.type);
+      if (hasInvalidElements) {
+        console.error('❌ [Customization] Éléments invalides détectés:', currentElements);
+        return;
+      }
+    }
+
+    try {
+      setIsSyncing(true);
+      setSyncError(null);
+
+      const customizationData = {
+        productId: product.id,
+        colorVariationId: selectedColorVariation.id,
+        viewId: selectedView.id,
+        designElements: currentElements,
+        sessionId: customizationService.getOrCreateSessionId(),
+      };
+
+      // 🔍 DEBUG: Vérifier la structure avant envoi
+      console.log('☁️ [Customization] Auto-sauvegarde BDD:', {
+        viewKey,
+        elementsCount: currentElements.length,
+        isArray: Array.isArray(currentElements),
+        firstIsArray: currentElements.length > 0 ? Array.isArray(currentElements[0]) : false,
+        elements: currentElements.map(el => ({
+          id: el?.id,
+          type: el?.type,
+          isArray: Array.isArray(el)
+        }))
+      });
+
+      // 🚨 Bloquer si double wrapping détecté
+      if (currentElements.length > 0 && Array.isArray(currentElements[0])) {
+        console.error('🚨 BUG BLOQUÉ: Tentative d\'envoi de données corrompues (array imbriqué)');
+        setIsSyncing(false);
+        return;
+      }
+
+      const result = await customizationService.saveCustomization(customizationData);
+      currentCustomizationIdRef.current = result.id;
+      setLastSyncTime(new Date());
+
+      console.log('✅ [Customization] Sauvegardé en BDD, ID:', result.id);
+    } catch (error: any) {
+      console.error('❌ [Customization] Erreur auto-save BDD:', error);
+      setSyncError(error.message || 'Erreur de synchronisation');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [id, product, selectedColorVariation, selectedView]);
+
+  // Debounce la sauvegarde en BDD (3 secondes)
+  const debouncedSaveToDatabase = useMemo(
+    () => debounce(() => {
+      saveToDatabase();
+    }, 3000),
+    [saveToDatabase]
+  );
+
   // Callback quand les éléments changent dans l'éditeur
   const handleElementsChange = useCallback((newElements: any[]) => {
     const viewKey = getCurrentViewKey();
@@ -202,7 +387,23 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
       return;
     }
 
-    console.log('🔄 [Customization] Éléments changés pour la vue:', viewKey, '- Nb éléments:', newElements.length);
+    // 🔍 DEBUG: Vérifier la structure des éléments reçus
+    console.log('🔄 [Customization] Éléments changés pour la vue:', viewKey);
+    console.log('🔍 DEBUG - newElements:', {
+      isArray: Array.isArray(newElements),
+      length: newElements.length,
+      firstElementType: newElements.length > 0 ? typeof newElements[0] : 'N/A',
+      firstIsArray: newElements.length > 0 ? Array.isArray(newElements[0]) : false,
+      firstElement: newElements.length > 0 ? newElements[0] : null
+    });
+
+    // 🚨 Détecter le double wrapping
+    if (newElements.length > 0 && Array.isArray(newElements[0])) {
+      console.error('🚨 BUG DÉTECTÉ: newElements est un array imbriqué!', newElements);
+      // Ne pas sauvegarder des données corrompues
+      return;
+    }
+
     console.log('🔄 [Customization] isRestoring:', isRestoringRef.current);
 
     // Ne pas écraser les éléments si on est en train de restaurer
@@ -255,9 +456,11 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
     // Log pour debug (à supprimer en production)
     console.log('💾 Auto-sauvegarde localStorage:', dataToSave);
-  }, [designElementsByView, selectedColorVariation, selectedView, id]);
 
-  // Backend désactivé pour l'instant - focus sur localStorage uniquement
+    // Déclencher aussi la sauvegarde en base de données (debounced)
+    // La fonction utilise designElementsByViewRef pour avoir les données à jour
+    debouncedSaveToDatabase();
+  }, [designElementsByView, selectedColorVariation, selectedView, id, debouncedSaveToDatabase]);
 
   // Gérer le plein écran
   const toggleFullscreen = () => {
@@ -295,17 +498,53 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
   // Sauvegarder manuellement
   const handleSave = async () => {
-    if (!id || !product) return;
+    if (!id || !product || !selectedColorVariation || !selectedView) {
+      toast({
+        title: 'Erreur',
+        description: 'Veuillez sélectionner une couleur et une vue',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
-      const currentElements = getCurrentElements();
+      setIsSyncing(true);
+      setSyncError(null);
+
+      // Utiliser la ref pour obtenir les données actuelles
+      const viewKey = `${selectedColorVariation.id}-${selectedView.id}`;
+      const currentElements = designElementsByViewRef.current[viewKey] || [];
+
+      // Validation des éléments
+      if (currentElements.length === 0) {
+        toast({
+          title: 'Aucun élément',
+          description: 'Ajoutez des éléments avant de sauvegarder',
+          variant: 'default'
+        });
+        setIsSyncing(false);
+        return;
+      }
+
+      // Vérifier la validité des éléments
+      const invalidElements = currentElements.filter(el => !el.id || !el.type);
+      if (invalidElements.length > 0) {
+        console.error('❌ Éléments invalides:', invalidElements);
+        toast({
+          title: 'Erreur de données',
+          description: 'Certains éléments sont invalides',
+          variant: 'destructive'
+        });
+        setIsSyncing(false);
+        return;
+      }
 
       // Sauvegarder dans localStorage (backup)
       const storageKey = `design-data-product-${id}`;
       const dataToSave = {
-        elementsByView: designElementsByView,
-        colorVariationId: selectedColorVariation?.id,
-        viewId: selectedView?.id,
+        elementsByView: designElementsByViewRef.current,
+        colorVariationId: selectedColorVariation.id,
+        viewId: selectedView.id,
         timestamp: Date.now()
       };
       localStorage.setItem(storageKey, JSON.stringify(dataToSave));
@@ -313,28 +552,39 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
       // Sauvegarder dans le backend pour la vue actuelle
       const customizationData = {
         productId: product.id,
-        colorVariationId: selectedColorVariation?.id || 0,
-        viewId: selectedView?.id || 0,
+        colorVariationId: selectedColorVariation.id,
+        viewId: selectedView.id,
         designElements: currentElements,
         sessionId: customizationService.getOrCreateSessionId(),
       };
 
+      console.log('💾 [Customization] Sauvegarde manuelle:', {
+        viewKey,
+        elementsCount: currentElements.length,
+        elements: currentElements.map(el => ({ id: el.id, type: el.type }))
+      });
+
       const result = await customizationService.saveCustomization(customizationData);
+      currentCustomizationIdRef.current = result.id;
+      setLastSyncTime(new Date());
 
       console.log('✅ Personnalisation sauvegardée:', result);
 
       toast({
         title: '✅ Sauvegardé',
-        description: `${currentElements.length} élément(s) sauvegardé(s) pour cette vue (ID: ${result.id})`,
+        description: `${currentElements.length} élément(s) sauvegardé(s) en base de données (ID: ${result.id})`,
         duration: 3000
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur sauvegarde:', error);
+      setSyncError(error.message || 'Erreur de sauvegarde');
       toast({
         title: 'Erreur de sauvegarde',
-        description: 'Impossible de sauvegarder sur le serveur',
+        description: 'Impossible de sauvegarder sur le serveur. Les données sont sauvegardées localement.',
         variant: 'destructive'
       });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -373,12 +623,14 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
       console.log('🛒 [Customization] Ajout au panier avec sélections:', selections);
 
       // 🔧 NOUVEAU: Sauvegarder TOUTES les vues avec des éléments
-      const viewsWithElements = Object.entries(designElementsByView).filter(
-        ([_, elements]) => elements.length > 0
+      // Utiliser la ref pour obtenir les données actuelles
+      const currentElementsByView = designElementsByViewRef.current;
+      const viewsWithElements = Object.entries(currentElementsByView).filter(
+        ([, elements]) => elements.length > 0
       );
 
       console.log('📦 [Customization] Vues avec éléments:', {
-        totalViews: Object.keys(designElementsByView).length,
+        totalViews: Object.keys(currentElementsByView).length,
         viewsWithElements: viewsWithElements.length,
         views: viewsWithElements.map(([key, elements]) => ({
           viewKey: key,
@@ -581,6 +833,26 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
             </Button>
 
             <div className="flex items-center gap-2">
+              {/* Indicateur de synchronisation */}
+              <div className="flex items-center gap-1 text-xs text-gray-500 mr-2">
+                {isSyncing ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Sync...</span>
+                  </>
+                ) : syncError ? (
+                  <>
+                    <CloudOff className="w-3 h-3 text-red-500" />
+                    <span className="text-red-500">Erreur</span>
+                  </>
+                ) : lastSyncTime ? (
+                  <>
+                    <Cloud className="w-3 h-3 text-green-500" />
+                    <span className="text-green-500">Synced</span>
+                  </>
+                ) : null}
+              </div>
+
               <Button variant="ghost" size="sm">
                 <HelpCircle className="w-4 h-4 mr-2" />
                 Assistance

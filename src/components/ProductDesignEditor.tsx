@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, useCallback } from 'react';
 import {
   Type,
   Image as ImageIcon,
@@ -123,7 +123,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
   // Forcer le re-render quand nécessaire
   const [forceUpdateKey, setForceUpdateKey] = useState(0);
-  const forceUpdate = () => setForceUpdateKey(prev => prev + 1);
+  const forceUpdate = useCallback(() => setForceUpdateKey(prev => prev + 1), []);
 
   // Garder la référence à jour
   useEffect(() => {
@@ -132,13 +132,21 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
   // Forcer le re-render au redimensionnement de la fenêtre pour le responsive
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const handleResize = () => {
-      console.log('🔄 [ProductDesignEditor] Redimensionnement fenêtre détecté');
-      forceUpdate();
+      // Debounce pour éviter les appels répétés
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        forceUpdate();
+      }, 150);
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [forceUpdate]);
 
   // Mode édition : afficher les délimitations uniquement quand on édite
@@ -180,7 +188,23 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
     if (initialElements.length > 0 && !hasInitializedBefore) {
       console.log('🔄 [ProductDesignEditor] Initialisation avec initialElements:', initialElements.length);
-      setElements(migrateTextElements(initialElements));
+
+      // 🔍 DEBUG: Vérifier la structure des initialElements
+      console.log('🔍 DEBUG - initialElements:', {
+        isArray: Array.isArray(initialElements),
+        length: initialElements.length,
+        firstIsArray: Array.isArray(initialElements[0]),
+        firstElement: initialElements[0]
+      });
+
+      // 🚨 Corriger le double wrapping si détecté
+      let elementsToSet = initialElements;
+      if (initialElements.length > 0 && Array.isArray(initialElements[0])) {
+        console.warn('⚠️ [ProductDesignEditor] Correction du double wrapping détecté');
+        elementsToSet = initialElements[0];
+      }
+
+      setElements(migrateTextElements(elementsToSet));
     } else if (initialElements.length > 0 && elements.length === 0) {
       console.log('⚠️ [ProductDesignEditor] Éviter re-initialisation après suppression');
     }

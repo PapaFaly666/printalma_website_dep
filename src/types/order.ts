@@ -78,6 +78,11 @@ export interface ProductInOrderDto {
   designDescription?: string;
   designImageUrl?: string;
   categoryId?: number;
+  images?: Array<{
+    id?: number;
+    url: string;
+    viewType?: string;
+  }>;
   categoryName?: string;
   orderedColorName?: string;
   orderedColorHexCode?: string;
@@ -126,6 +131,8 @@ export interface OrderItemDto {
     width: number;
     height: number;
     coordinateType: 'PERCENTAGE' | 'PIXEL';
+    referenceWidth?: number;
+    referenceHeight?: number;
   };
 
   // 🎨 DONNÉES ENRICHIES DU PRODUIT VENDEUR (enrichedVendorProduct)
@@ -190,8 +197,34 @@ export interface OrderItemDto {
     id: number;
     name: string;
     colorCode: string;
+    images?: Array<{
+      id: number;
+      url: string;
+      viewType: string;
+      delimitations?: any[];
+    }>;
   };
   enrichedVendorProduct?: any; // Structure complète enrichie
+
+  // 🎨 DONNÉES DE PERSONNALISATION CLIENT
+  customizationId?: number;
+  customizationIds?: Record<string, number>; // {"colorId-viewId": customizationId}
+  designElementsByView?: Record<string, any[]>; // {"colorId-viewId": [elements]}
+  customization?: {
+    id: number;
+    designElements?: any[];
+    elementsByView?: Record<string, any[]>;
+    previewImageUrl?: string | null;
+    colorVariationId?: number;
+    viewId?: number;
+    sizeSelections?: Array<{ size: string; quantity: number }>;
+    status?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    isCustomized?: boolean;
+    hasDesignElements?: boolean;
+    hasMultiViewDesign?: boolean;
+  };
 }
 
 export interface Order {
@@ -326,6 +359,46 @@ export interface CartItem {
     imageUrl?: string;
   };
   customizations?: Record<string, any>;
+
+  // 🎨 Champs ajoutés pour le support des délimitations et mockups
+  size?: string;
+  color?: string;
+  colorCode?: string;
+  imageUrl?: string;
+  mockupUrl?: string;
+  vendorProductId?: number;
+  designId?: number;
+  designPositions?: any;
+  designMetadata?: any;
+  delimitation?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    coordinateType?: 'PERCENTAGE' | 'PIXEL';
+    referenceWidth?: number;
+    referenceHeight?: number;
+  };
+  delimitations?: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    coordinateType?: 'PERCENTAGE' | 'PIXEL';
+    referenceWidth?: number;
+    referenceHeight?: number;
+  }>;
+  images?: Array<{
+    url?: string;
+    adminImageUrl?: string;
+  }>;
+  suggestedPrice?: number;
+
+  // 🎨 Personnalisations
+  customizationId?: number;
+  customizationIds?: Record<string, number>;
+  designElements?: any[];
+  designElementsByView?: Record<string, any[]>;
 }
 
 export interface OrderTotals {

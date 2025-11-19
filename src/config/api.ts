@@ -94,6 +94,30 @@ export const API_ENDPOINTS = {
     CANCEL_ORDER: (orderId: number) => `/orders/${orderId}/cancel`,
     // Toutes les commandes (admin)
     ALL_ORDERS: '/orders/admin/all'
+  },
+  CUSTOMIZATIONS: {
+    // Sauvegarder une personnalisation
+    CREATE: '/customizations',
+    // Récupérer une personnalisation par ID
+    GET: (id: number) => `/customizations/${id}`,
+    // Mettre à jour une personnalisation
+    UPDATE: (id: number) => `/customizations/${id}`,
+    // Supprimer une personnalisation
+    DELETE: (id: number) => `/customizations/${id}`,
+    // Récupérer mes personnalisations (utilisateur connecté)
+    MY_CUSTOMIZATIONS: '/customizations/user/me',
+    // Récupérer les personnalisations d'une session (guest)
+    SESSION: (sessionId: string) => `/customizations/session/${sessionId}`,
+    // Rechercher des personnalisations
+    SEARCH: '/customizations/search',
+    // Récupérer le draft d'un produit
+    PRODUCT_DRAFT: (productId: number) => `/customizations/product/${productId}/draft`,
+    // Upload d'image
+    UPLOAD_IMAGE: '/customizations/upload-image',
+    // Upload de prévisualisation (base64)
+    UPLOAD_PREVIEW: '/customizations/upload-preview',
+    // Migrer les personnalisations guest vers utilisateur
+    MIGRATE: '/customizations/migrate'
   }
 };
 

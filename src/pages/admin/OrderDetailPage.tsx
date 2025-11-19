@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { ArrowLeft, Package, User, MapPin, Phone, Copy, Printer, Download, X, Eye } from 'lucide-react';
 import { getStatusIcon, formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
 import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrderProductPreview';
+import { CustomizationPreview } from '../../components/order/CustomizationPreview';
 
 const OrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -342,13 +343,27 @@ const OrderDetailPage: React.FC = () => {
                     // Extraire les données enrichies
                     const enriched = item.enrichedVendorProduct;
 
+                    // Vérifier si c'est un produit personnalisé avec designElementsByView
+                    const isCustomizedProduct = !!(
+                      item.designElementsByView &&
+                      Object.keys(item.designElementsByView).length > 0
+                    ) || !!(
+                      item.customization?.elementsByView &&
+                      Object.keys(item.customization.elementsByView).length > 0
+                    );
+
+                    // Récupérer les éléments de design par vue
+                    const elementsByView = item.designElementsByView || item.customization?.elementsByView || {};
+
                     console.log('🔍 [OrderDetail] Item:', item.id, {
                       mockupUrl: item.mockupUrl,
                       designId: item.designId,
                       savedDesignPosition: item.savedDesignPosition,
                       designMetadata: item.designMetadata,
                       delimitation: item.delimitation,
-                      enriched: enriched
+                      enriched: enriched,
+                      isCustomizedProduct,
+                      elementsByView: Object.keys(elementsByView)
                     });
 
                     // Trouver l'image mockup pour la couleur commandée
@@ -452,7 +467,93 @@ const OrderDetailPage: React.FC = () => {
                           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
                             {/* Preview du produit avec design - RESPONSIVE */}
                             <div className="flex-shrink-0 w-full lg:w-80 mx-auto lg:mx-0">
-                              {mockupUrl || designUrl ? (
+                              {isCustomizedProduct ? (
+                                // Affichage pour produits personnalisés avec designElementsByView
+                                <div className="space-y-4">
+                                  {Object.entries(elementsByView).map(([viewKey, elements]) => {
+                                    // Parser la clé pour obtenir colorVariationId et viewId
+                                    const [colorIdStr, viewIdStr] = viewKey.split('-');
+                                    const colorId = parseInt(colorIdStr);
+                                    const viewId = parseInt(viewIdStr);
+
+                                    // Trouver l'image de la vue
+                                    let viewImageUrl = mockupUrl;
+                                    let viewDelimitation = delimitation;
+
+                                    // Chercher dans les données de colorVariation
+                                    if (item.colorVariation?.images) {
+                                      const viewImage = item.colorVariation.images.find((img: any) => img.id === viewId);
+                                      if (viewImage) {
+                                        viewImageUrl = viewImage.url;
+                                        if (viewImage.delimitations && viewImage.delimitations.length > 0) {
+                                          const delim = viewImage.delimitations[0];
+                                          viewDelimitation = {
+                                            x: delim.x,
+                                            y: delim.y,
+                                            width: delim.width,
+                                            height: delim.height,
+                                            coordinateType: delim.coordinateType || 'PERCENTAGE',
+                                            referenceWidth: delim.referenceWidth || 800,
+                                            referenceHeight: delim.referenceHeight || 800
+                                          };
+                                        }
+                                      }
+                                    }
+
+                                    // Si pas trouvé, essayer dans enriched
+                                    if (!viewImageUrl && enriched?.adminProduct?.colorVariations) {
+                                      const colorVar = enriched.adminProduct.colorVariations.find(
+                                        (cv: any) => cv.id === colorId
+                                      );
+                                      if (colorVar?.images) {
+                                        const viewImage = colorVar.images.find((img: any) => img.id === viewId);
+                                        if (viewImage) {
+                                          viewImageUrl = viewImage.url;
+                                          if (viewImage.delimitations && viewImage.delimitations.length > 0) {
+                                            const delim = viewImage.delimitations[0];
+                                            viewDelimitation = {
+                                              x: delim.x,
+                                              y: delim.y,
+                                              width: delim.width,
+                                              height: delim.height,
+                                              coordinateType: delim.coordinateType || 'PERCENTAGE',
+                                              referenceWidth: delim.referenceWidth || 800,
+                                              referenceHeight: delim.referenceHeight || 800
+                                            };
+                                          }
+                                        }
+                                      }
+                                    }
+
+                                    // Utiliser l'URL de base si rien trouvé
+                                    if (!viewImageUrl) {
+                                      viewImageUrl = mockupUrl || item.product?.images?.[0]?.url;
+                                    }
+
+                                    return (
+                                      <div key={viewKey} className="relative group-hover:scale-[1.02] transition-transform duration-300">
+                                        <CustomizationPreview
+                                          productImageUrl={viewImageUrl}
+                                          designElements={elements as any[]}
+                                          delimitation={viewDelimitation as any}
+                                          productName={item.product?.name || enriched?.vendorName || 'Produit'}
+                                          colorName={item.colorVariation?.name || item.color}
+                                          colorCode={item.colorVariation?.colorCode}
+                                          size={item.size}
+                                          quantity={item.quantity}
+                                          className="w-full aspect-square lg:w-80 lg:h-80 rounded-2xl shadow-lg"
+                                          showInfo={true}
+                                        />
+                                        {Object.keys(elementsByView).length > 1 && (
+                                          <div className="absolute top-2 right-2 bg-gray-800 text-white px-2 py-1 rounded text-xs">
+                                            Vue {viewKey}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : mockupUrl || designUrl ? (
                                 <div className="relative group-hover:scale-[1.02] transition-transform duration-300">
                                   <EnrichedOrderProductPreview
                                     product={{

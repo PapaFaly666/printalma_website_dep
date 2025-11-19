@@ -5,6 +5,11 @@ interface DelimitationData {
   width: number;
   height: number;
   coordinateType: 'PERCENTAGE' | 'PIXEL';
+  // Champs ajoutés pour supporter les données de référence
+  referenceWidth?: number;
+  referenceHeight?: number;
+  viewType?: string;
+  imageUrl?: string;
 }
 
 export interface CartItem {

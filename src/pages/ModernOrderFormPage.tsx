@@ -237,6 +237,73 @@ const ModernOrderFormPage: React.FC = () => {
   const cartItem = cartItems[0];
   const productData = cartItem;
 
+  // 🆕 Fonction pour extraire et préparer les délimitations depuis le panier
+  const getDelimitationFromCart = () => {
+    if (!productData) return null;
+
+    // Priorité 1: delimitation directe dans le panier
+    if (productData.delimitation) {
+      return {
+        x: productData.delimitation.x,
+        y: productData.delimitation.y,
+        width: productData.delimitation.width,
+        height: productData.delimitation.height,
+        coordinateType: productData.delimitation.coordinateType || 'PERCENTAGE',
+        referenceWidth: productData.delimitation.referenceWidth || 800,
+        referenceHeight: productData.delimitation.referenceHeight || 800
+      };
+    }
+
+    // Priorité 2: chercher dans les délimitations des variations de couleur
+    if (productData.delimitations && productData.delimitations.length > 0) {
+      const firstDelim = productData.delimitations[0];
+      if (firstDelim) {
+        return {
+          x: firstDelim.x || 0.2,
+          y: firstDelim.y || 0.2,
+          width: firstDelim.width || 0.6,
+          height: firstDelim.height || 0.6,
+          coordinateType: firstDelim.coordinateType || 'PERCENTAGE',
+          referenceWidth: firstDelim.referenceWidth || 800,
+          referenceHeight: firstDelim.referenceHeight || 800
+        };
+      }
+    }
+
+    // Priorité 3: valeurs par défaut si aucune délimitation trouvée
+    return {
+      x: 0.2,
+      y: 0.2,
+      width: 0.6,
+      height: 0.6,
+      coordinateType: 'PERCENTAGE' as const,
+      referenceWidth: 800,
+      referenceHeight: 800
+    };
+  };
+
+  // 🆕 Fonction pour extraire l'URL du mockup depuis le panier
+  const getMockupUrlFromCart = () => {
+    if (!productData) return null;
+
+    // Priorité 1: mockupUrl directe dans le panier
+    if (productData.mockupUrl) {
+      return productData.mockupUrl;
+    }
+
+    // Priorité 2: imageUrl de base du produit
+    if (productData.imageUrl) {
+      return productData.imageUrl;
+    }
+
+    // Priorité 3: chercher dans les images du produit
+    if (productData.images && productData.images.length > 0) {
+      return productData.images[0].url || productData.images[0].adminImageUrl;
+    }
+
+    return null;
+  };
+
   // États
   const [currentStep, setCurrentStep] = useState<Step>('customer-info');
   const [formData, setFormData] = useState<OrderFormData>({
@@ -437,6 +504,18 @@ const ModernOrderFormPage: React.FC = () => {
         throw new Error(`Invalid productId: ${productData?.productId}`);
       }
 
+      // Extraire les délimitations et mockup préparés
+      const delimitation = getDelimitationFromCart();
+      const mockupUrl = getMockupUrlFromCart();
+
+      console.log('🔍 [ModernOrderForm] Données enrichies:', {
+        productId,
+        delimitation,
+        mockupUrl,
+        hasCustomization: !!productData?.customizationIds,
+        designElementsCount: Object.keys(productData?.designElementsByView || {}).length
+      });
+
       const orderRequest: OrderRequest = {
         email: formData.email,
         shippingDetails: {
@@ -459,11 +538,12 @@ const ModernOrderFormPage: React.FC = () => {
           colorId: 1,
           // 🎨 Données de design depuis le panier
           vendorProductId: productData?.vendorProductId,
-          mockupUrl: productData?.mockupUrl,
+          // 🆕 Utiliser les fonctions d'extraction pour garantir les données
+          mockupUrl: mockupUrl,
           designId: productData?.designId,
           designPositions: productData?.designPositions,
           designMetadata: productData?.designMetadata,
-          delimitation: productData?.delimitation,
+          delimitation: delimitation,
           // 🆕 Personnalisations
           customizationId: productData?.customizationId,
           customizationIds: productData?.customizationIds,
@@ -542,6 +622,18 @@ const ModernOrderFormPage: React.FC = () => {
       setIsSubmitting(true);
 
       try {
+        // Extraire les délimitations et mockup préparés
+        const delimitation = getDelimitationFromCart();
+        const mockupUrl = getMockupUrlFromCart();
+
+        console.log('🔍 [ModernOrderForm] Données enrichies (Cash on Delivery):', {
+          productId: Number(productData?.productId),
+          delimitation,
+          mockupUrl,
+          hasCustomization: !!productData?.customizationIds,
+          designElementsCount: Object.keys(productData?.designElementsByView || {}).length
+        });
+
         // Préparer les données de commande
         const orderRequest: OrderRequest = {
           email: formData.email,
@@ -565,11 +657,12 @@ const ModernOrderFormPage: React.FC = () => {
             colorId: 1,
             // 🎨 Données de design depuis le panier
             vendorProductId: productData?.vendorProductId,
-            mockupUrl: productData?.mockupUrl,
+            // 🆕 Utiliser les fonctions d'extraction pour garantir les données
+            mockupUrl: mockupUrl,
             designId: productData?.designId,
             designPositions: productData?.designPositions,
             designMetadata: productData?.designMetadata,
-            delimitation: productData?.delimitation,
+            delimitation: delimitation,
             // 🆕 Personnalisations
             customizationId: productData?.customizationId,
             customizationIds: productData?.customizationIds,

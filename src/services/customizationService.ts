@@ -220,6 +220,135 @@ class CustomizationService {
   }
 
   /**
+   * Récupérer le draft d'un produit
+   */
+  async getProductDraft(productId: number): Promise<Customization | null> {
+    try {
+      const sessionId = this.getOrCreateSessionId();
+      const token = this.getAuthToken();
+
+      const params: Record<string, string> = {};
+      if (sessionId) params.sessionId = sessionId;
+
+      const response = await axios.get(`${API_BASE}/customizations/product/${productId}/draft`, {
+        params,
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` })
+        }
+      });
+
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      console.error('❌ [CustomizationService] Erreur récupération draft:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Rechercher des personnalisations
+   */
+  async searchCustomizations(params: {
+    productId?: number;
+    sessionId?: string;
+    userId?: number;
+    status?: string;
+  }): Promise<Customization[]> {
+    try {
+      const response = await axios.get(`${API_BASE}/customizations/search`, {
+        params,
+        headers: {
+          ...(this.getAuthToken() && { Authorization: `Bearer ${this.getAuthToken()}` })
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ [CustomizationService] Erreur recherche:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload d'une image pour personnalisation
+   */
+  async uploadImage(file: File): Promise<{ url: string; publicId: string; width: number; height: number }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await axios.post(`${API_BASE}/customizations/upload-image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...(this.getAuthToken() && { Authorization: `Bearer ${this.getAuthToken()}` })
+        }
+      });
+
+      console.log('✅ [CustomizationService] Image uploadée:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [CustomizationService] Erreur upload image:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload d'une prévisualisation (base64)
+   */
+  async uploadPreview(imageData: string): Promise<{ url: string; publicId: string }> {
+    try {
+      const response = await axios.post(`${API_BASE}/customizations/upload-preview`, {
+        imageData
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.getAuthToken() && { Authorization: `Bearer ${this.getAuthToken()}` })
+        }
+      });
+
+      console.log('✅ [CustomizationService] Preview uploadée:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [CustomizationService] Erreur upload preview:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Migrer les personnalisations guest vers un utilisateur connecté
+   */
+  async migrateGuestData(): Promise<{ migrated: number; customizations: Customization[] }> {
+    try {
+      const sessionId = localStorage.getItem('guest-session-id');
+      const token = this.getAuthToken();
+
+      if (!sessionId || !token) {
+        return { migrated: 0, customizations: [] };
+      }
+
+      const response = await axios.post(`${API_BASE}/customizations/migrate`, {
+        sessionId
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      console.log('✅ [CustomizationService] Migration effectuée:', response.data);
+
+      // Nettoyer la session guest après migration réussie
+      localStorage.removeItem('guest-session-id');
+
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [CustomizationService] Erreur migration:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Récupérer le token d'authentification
    */
   private getAuthToken(): string | null {
