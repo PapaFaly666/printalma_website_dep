@@ -720,44 +720,52 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
         delimitations: allDelimitations
       });
 
-      // Ajouter chaque sélection taille/quantité au panier
-      let totalAdded = 0;
-      for (const selection of selections) {
-        for (let i = 0; i < selection.quantity; i++) {
-          const cartItem = {
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            suggestedPrice: product.suggestedPrice,
-            color: selectedColorVariation?.name || 'Défaut',
-            colorCode: selectedColorVariation?.colorCode || '#000000',
-            size: selection.size,
-            imageUrl: selectedView?.url || product.images?.[0]?.url || '',
-            // 🔧 NOUVEAU: Stocker tous les IDs de personnalisation
-            customizationIds: customizationIds,
-            // Pour compatibilité, stocker aussi le premier ID comme customizationId
-            customizationId: Object.values(customizationIds)[0] || undefined,
-            // 🆕 Stocker les éléments organisés par vue
-            designElementsByView: designElementsByViewKey,
-            // Stocker toutes les délimitations
-            delimitations: allDelimitations
-          };
+      // 🆕 Calculer la quantité totale
+      const totalQuantity = selections.reduce((sum, s) => sum + s.quantity, 0);
 
-          console.log('🛒 [Customization] Ajout article au panier:', {
-            size: selection.size,
-            customizationIds: customizationIds,
-            designElementsByView: Object.keys(designElementsByViewKey),
-            totalDelimitations: allDelimitations.length,
-            viewsCount: viewsWithElements.length
-          });
+      // 🆕 Créer UN SEUL article avec toutes les tailles sélectionnées
+      const cartItem = {
+        id: product.id,
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        suggestedPrice: product.suggestedPrice,
+        color: selectedColorVariation?.name || 'Défaut',
+        colorCode: selectedColorVariation?.colorCode || '#000000',
+        // Pour compatibilité, garder la première taille
+        size: selections[0]?.size || '',
+        quantity: totalQuantity,
+        imageUrl: selectedView?.url || product.images?.[0]?.url || '',
+        // 🆕 Stocker TOUTES les tailles sélectionnées avec leurs quantités
+        selectedSizes: selections.map(s => ({
+          size: s.size,
+          sizeId: s.sizeId,
+          quantity: s.quantity
+        })),
+        // 🔧 Stocker tous les IDs de personnalisation
+        customizationIds: customizationIds,
+        // Pour compatibilité, stocker aussi le premier ID comme customizationId
+        customizationId: Object.values(customizationIds)[0] || undefined,
+        // 🆕 Stocker les éléments organisés par vue
+        designElementsByView: designElementsByViewKey,
+        // Stocker toutes les délimitations
+        delimitations: allDelimitations
+      };
 
-          addToCart(cartItem);
-          totalAdded++;
-        }
-      }
+      console.log('🛒 [Customization] Ajout article au panier:', {
+        totalQuantity,
+        selectedSizes: cartItem.selectedSizes,
+        customizationIds: customizationIds,
+        designElementsByView: Object.keys(designElementsByViewKey),
+        totalDelimitations: allDelimitations.length,
+        viewsCount: viewsWithElements.length
+      });
 
-      console.log('🛒 [Customization] Articles ajoutés au panier:', {
-        totalAdded,
+      addToCart(cartItem);
+
+      console.log('🛒 [Customization] Article ajouté au panier avec tailles multiples:', {
+        totalQuantity,
+        sizesCount: selections.length,
         customizationIds: customizationIds,
         designElementsByView: Object.keys(designElementsByViewKey),
         viewsCount: viewsWithElements.length
@@ -765,7 +773,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
       toast({
         title: '✅ Ajouté au panier',
-        description: `${totalAdded} article(s) avec ${viewsWithElements.length} vue(s) personnalisée(s)`,
+        description: `${totalQuantity} article(s) en ${selections.length} taille(s) avec ${viewsWithElements.length} vue(s) personnalisée(s)`,
       });
 
       // Fermer le modal

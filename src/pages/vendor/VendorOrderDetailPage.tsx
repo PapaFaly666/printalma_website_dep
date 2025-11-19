@@ -34,6 +34,7 @@ import DefaultProductImage from '../../components/ui/DefaultProductImage';
 import { Order, OrderStatus } from '../../types/order';
 import { useToast } from '../../components/ui/use-toast';
 import { vendorOrderService } from '../../services/vendorOrderService';
+import { CustomizationPreview } from '../../components/order/CustomizationPreview';
 import '../../styles/order-timeline.css';
 
 // Composant pour afficher une image avec fallback
@@ -290,42 +291,127 @@ const VendorOrderDetailPage: React.FC = () => {
                 <div>
                   <h3 className="font-medium text-gray-900 mb-4">Produits commandés</h3>
                   <div className="space-y-4">
-                    {order.orderItems.map((item) => (
-                      <div key={item.id} className="flex items-start space-x-4 p-4 border border-gray-200 rounded-lg">
-                        <ProductImageWithFallback 
-                          src={item.productImage}
-                          alt={item.productName}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{item.productName}</h4>
-                          {item.product?.description && (
-                            <p className="text-sm text-gray-600 mt-1">{item.product.description}</p>
-                          )}
-                          <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                            <span>Quantité: {item.quantity}</span>
-                            {item.size && <span>Taille: {item.size}</span>}
-                            {item.color && <span>Couleur: {item.color}</span>}
-                          </div>
-                          {item.product?.designName && (
-                            <div className="mt-2 text-sm text-gray-600">
-                              <span className="font-medium">Design:</span> {item.product.designName}
+                    {order.orderItems.map((item) => {
+                      // Vérifier si c'est un produit personnalisé
+                      const elementsByView = item.designElementsByView || item.customization?.elementsByView || {};
+                      const isCustomized = Object.keys(elementsByView).length > 0;
+
+                      // Trouver l'image mockup
+                      let mockupUrl = item.mockupUrl || item.productImage;
+                      if (!mockupUrl && item.colorVariation?.images?.[0]) {
+                        mockupUrl = item.colorVariation.images[0].url;
+                      }
+
+                      // Récupérer la délimitation
+                      let delimitation = item.delimitation || null;
+                      if (!delimitation && item.colorVariation?.images?.[0]?.delimitations?.[0]) {
+                        const delim = item.colorVariation.images[0].delimitations[0];
+                        delimitation = {
+                          x: delim.x,
+                          y: delim.y,
+                          width: delim.width,
+                          height: delim.height,
+                          coordinateType: delim.coordinateType || 'PERCENTAGE',
+                          referenceWidth: delim.referenceWidth || 800,
+                          referenceHeight: delim.referenceHeight || 800
+                        };
+                      }
+
+                      return (
+                        <div key={item.id} className="flex items-start space-x-4 p-4 border border-gray-200 rounded-lg">
+                          {/* Image ou Preview avec personnalisation */}
+                          {isCustomized ? (
+                            <div className="w-24 h-24 flex-shrink-0">
+                              {Object.entries(elementsByView).map(([viewKey, elements], idx) => {
+                                // Pour la vue principale seulement
+                                if (idx > 0) return null;
+
+                                let viewImageUrl = mockupUrl;
+                                let viewDelimitation = delimitation;
+
+                                // Chercher l'image spécifique à la vue
+                                if (item.viewsMetadata) {
+                                  const viewMeta = item.viewsMetadata.find((v: any) => v.viewKey === viewKey);
+                                  if (viewMeta) {
+                                    viewImageUrl = viewMeta.imageUrl;
+                                  }
+                                }
+
+                                if (item.colorVariation?.images) {
+                                  const [, viewIdStr] = viewKey.split('-');
+                                  const viewId = parseInt(viewIdStr);
+                                  const viewImage = item.colorVariation.images.find((img: any) => img.id === viewId);
+                                  if (viewImage) {
+                                    viewImageUrl = viewImage.url;
+                                    if (viewImage.delimitations?.[0]) {
+                                      viewDelimitation = {
+                                        x: viewImage.delimitations[0].x,
+                                        y: viewImage.delimitations[0].y,
+                                        width: viewImage.delimitations[0].width,
+                                        height: viewImage.delimitations[0].height,
+                                        coordinateType: viewImage.delimitations[0].coordinateType || 'PERCENTAGE',
+                                        referenceWidth: viewImage.delimitations[0].referenceWidth || 800,
+                                        referenceHeight: viewImage.delimitations[0].referenceHeight || 800
+                                      };
+                                    }
+                                  }
+                                }
+
+                                return (
+                                  <CustomizationPreview
+                                    key={viewKey}
+                                    productImageUrl={viewImageUrl || ''}
+                                    designElements={elements as any[]}
+                                    delimitation={viewDelimitation as any}
+                                    productName={item.productName}
+                                    className="w-24 h-24 rounded-lg"
+                                    showInfo={false}
+                                  />
+                                );
+                              })}
                             </div>
+                          ) : (
+                            <ProductImageWithFallback
+                              src={item.productImage}
+                              alt={item.productName}
+                              className="w-16 h-16 object-cover rounded-lg"
+                            />
                           )}
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{item.productName}</h4>
+                            {item.product?.description && (
+                              <p className="text-sm text-gray-600 mt-1">{item.product.description}</p>
+                            )}
+                            <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                              <span>Quantité: {item.quantity}</span>
+                              {item.size && <span>Taille: {item.size}</span>}
+                              {item.color && <span>Couleur: {item.color}</span>}
+                            </div>
+                            {item.product?.designName && (
+                              <div className="mt-2 text-sm text-gray-600">
+                                <span className="font-medium">Design:</span> {item.product.designName}
+                              </div>
+                            )}
+                            {isCustomized && (
+                              <div className="mt-2 text-xs text-gray-500">
+                                {Object.keys(elementsByView).length} vue(s) personnalisée(s)
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-gray-900">
+                              {formatAmount(item.unitPrice)}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              x{item.quantity}
+                            </p>
+                            <p className="font-semibold text-gray-900 mt-1">
+                              {formatAmount(item.totalPrice || item.unitPrice * item.quantity)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium text-gray-900">
-                            {formatAmount(item.unitPrice)}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            x{item.quantity}
-                          </p>
-                          <p className="font-semibold text-gray-900 mt-1">
-                            {formatAmount(item.totalPrice || item.unitPrice * item.quantity)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

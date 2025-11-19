@@ -209,15 +209,8 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
 
       {/* Badge de quantité */}
       {quantity && quantity > 1 && (
-        <div className="absolute top-2 right-2 bg-[#049be5] text-white px-2 py-1 rounded-full text-xs font-bold">
+        <div className="absolute top-2 right-2 bg-black text-white px-2 py-1 rounded-full text-xs font-bold">
           x{quantity}
-        </div>
-      )}
-
-      {/* Badge personnalisé */}
-      {designElements.length > 0 && (
-        <div className="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-          Personnalisé
         </div>
       )}
 

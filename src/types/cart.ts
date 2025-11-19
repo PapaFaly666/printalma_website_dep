@@ -38,6 +38,13 @@ export interface CartItem {
   sizeId?: number;
   sizeName?: string;
 
+  // 🆕 Support pour plusieurs tailles avec la même personnalisation
+  selectedSizes?: Array<{
+    size: string;
+    sizeId?: number;
+    quantity: number;
+  }>;
+
   // 🎨 NOUVEAUX CHAMPS POUR LA SAUVEGARDE DU DESIGN DANS LES COMMANDES
   vendorProductId?: number;     // ID du produit vendeur
   mockupUrl?: string;            // URL du mockup avec le design appliqué

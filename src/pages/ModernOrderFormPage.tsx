@@ -347,6 +347,47 @@ const ModernOrderFormPage: React.FC = () => {
     return multiViewData;
   };
 
+  // 🆕 Fonction pour créer les orderItems (gère les tailles multiples)
+  const createOrderItems = (productId: number, mockupUrl: string | null, delimitation: any, multiViewData: any) => {
+    // Données de base partagées par tous les items
+    const baseItemData = {
+      productId: productId,
+      unitPrice: productPrice,
+      color: productData?.color,
+      colorId: 1,
+      vendorProductId: productData?.vendorProductId,
+      mockupUrl: mockupUrl,
+      designId: productData?.designId,
+      designPositions: productData?.designPositions,
+      designMetadata: productData?.designMetadata,
+      delimitation: delimitation,
+      customizationId: productData?.customizationId,
+      customizationIds: multiViewData.customizationIds,
+      designElements: productData?.designElements,
+      designElementsByView: multiViewData.designElementsByView,
+      viewsMetadata: multiViewData.viewsMetadata,
+    };
+
+    // 🆕 Si plusieurs tailles sélectionnées, créer un item par taille
+    if (productData?.selectedSizes && productData.selectedSizes.length > 0) {
+      console.log('🆕 [ModernOrderForm] Création de plusieurs items pour tailles multiples:', productData.selectedSizes);
+
+      return productData.selectedSizes.map((sizeSelection: { size: string; sizeId?: number; quantity: number }) => ({
+        ...baseItemData,
+        size: sizeSelection.size,
+        sizeId: sizeSelection.sizeId,
+        quantity: sizeSelection.quantity,
+      }));
+    }
+
+    // Sinon, créer un seul item avec la taille et quantité uniques
+    return [{
+      ...baseItemData,
+      size: productData?.size,
+      quantity: productData?.quantity || 1,
+    }];
+  };
+
   // États
   const [currentStep, setCurrentStep] = useState<Step>('customer-info');
   const [formData, setFormData] = useState<OrderFormData>({
@@ -466,8 +507,14 @@ const ModernOrderFormPage: React.FC = () => {
 
   // Calculs - Utiliser le prix suggéré par le vendeur si disponible, sinon le prix de base
   const productPrice = cartItem?.suggestedPrice || cartItem?.price || 0;
+
+  // 🆕 Calculer la quantité totale (prend en compte les tailles multiples)
+  const productQuantity = cartItem?.selectedSizes
+    ? cartItem.selectedSizes.reduce((sum, s) => sum + s.quantity, 0)
+    : (cartItem?.quantity || 1);
+
   const shippingFee = deliveryOptions.find(d => d.id === selectedDelivery)?.price || 0;
-  const subtotal = productPrice; // Pas de division par 100, le prix est déjà en FCFA
+  const subtotal = productPrice * productQuantity; // Multiplier par la quantité
   const total = subtotal + shippingFee;
 
   // Debug: afficher les valeurs de calcul
@@ -476,6 +523,7 @@ const ModernOrderFormPage: React.FC = () => {
     suggestedPrice: cartItem?.suggestedPrice,
     price: cartItem?.price,
     productPrice: productPrice,
+    quantity: productQuantity,
     subtotal: subtotal,
     shippingFee: shippingFee,
     total: total
@@ -564,6 +612,9 @@ const ModernOrderFormPage: React.FC = () => {
         multiViewData
       });
 
+      // 🆕 Créer les orderItems (gère les tailles multiples)
+      const orderItems = createOrderItems(productId, mockupUrl, delimitation, multiViewData);
+
       const orderRequest: OrderRequest = {
         email: formData.email,
         shippingDetails: {
@@ -577,29 +628,7 @@ const ModernOrderFormPage: React.FC = () => {
         },
         phoneNumber: formData.phone,
         notes: formData.notes || undefined,
-        orderItems: [{
-          productId: productId,
-          quantity: 1,
-          unitPrice: productData?.price || 0,
-          size: productData?.size,
-          color: productData?.color,
-          colorId: 1,
-          // 🎨 Données de design depuis le panier
-          vendorProductId: productData?.vendorProductId,
-          // 🆕 Utiliser les fonctions d'extraction pour garantir les données
-          mockupUrl: mockupUrl,
-          designId: productData?.designId,
-          designPositions: productData?.designPositions,
-          designMetadata: productData?.designMetadata,
-          delimitation: delimitation,
-          // 🆕 Personnalisations multi-vues
-          customizationId: productData?.customizationId,
-          customizationIds: multiViewData.customizationIds,
-          designElements: productData?.designElements, // @deprecated
-          designElementsByView: multiViewData.designElementsByView,
-          // 🆕 Métadonnées des vues pour le backend
-          viewsMetadata: multiViewData.viewsMetadata,
-        }],
+        orderItems: orderItems,
         paymentMethod: 'PAYDUNYA',
         initiatePayment: true,
       };
@@ -689,6 +718,9 @@ const ModernOrderFormPage: React.FC = () => {
           multiViewData
         });
 
+        // 🆕 Créer les orderItems (gère les tailles multiples)
+        const orderItems = createOrderItems(Number(productData?.productId), mockupUrl, delimitation, multiViewData);
+
         // Préparer les données de commande
         const orderRequest: OrderRequest = {
           email: formData.email,
@@ -703,29 +735,7 @@ const ModernOrderFormPage: React.FC = () => {
           },
           phoneNumber: formData.phone,
           notes: formData.notes || undefined,
-          orderItems: [{
-            productId: Number(productData?.productId),
-            quantity: 1,
-            unitPrice: productData?.price || 0,
-            size: productData?.size,
-            color: productData?.color,
-            colorId: 1,
-            // 🎨 Données de design depuis le panier
-            vendorProductId: productData?.vendorProductId,
-            // 🆕 Utiliser les fonctions d'extraction pour garantir les données
-            mockupUrl: mockupUrl,
-            designId: productData?.designId,
-            designPositions: productData?.designPositions,
-            designMetadata: productData?.designMetadata,
-            delimitation: delimitation,
-            // 🆕 Personnalisations multi-vues
-            customizationId: productData?.customizationId,
-            customizationIds: multiViewData.customizationIds,
-            designElements: productData?.designElements, // @deprecated
-            designElementsByView: multiViewData.designElementsByView,
-            // 🆕 Métadonnées des vues pour le backend
-            viewsMetadata: multiViewData.viewsMetadata,
-          }],
+          orderItems: orderItems,
           paymentMethod: 'CASH_ON_DELIVERY',
           initiatePayment: false,
         };
@@ -1352,11 +1362,44 @@ const ModernOrderFormPage: React.FC = () => {
                   <h4 className="font-bold text-gray-900 mb-2">{productData?.name}</h4>
                   <div className="flex items-center justify-center gap-4 text-sm text-gray-600 mb-3">
                     <span>Couleur: {productData?.color}</span>
-                    <span>•</span>
-                    <span>Taille: {productData?.size}</span>
+                    {/* 🆕 Affichage des tailles multiples ou unique */}
+                    {productData?.selectedSizes && productData.selectedSizes.length > 0 ? (
+                      <>
+                        <span>•</span>
+                        <span className="font-semibold text-blue-600">
+                          {productData.selectedSizes.length} taille{productData.selectedSizes.length > 1 ? 's' : ''}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span>•</span>
+                        <span>Taille: {productData?.size}</span>
+                      </>
+                    )}
+                    {productQuantity > 1 && (
+                      <>
+                        <span>•</span>
+                        <span className="font-semibold text-blue-600">Qté: {productQuantity}</span>
+                      </>
+                    )}
                   </div>
+
+                  {/* 🆕 Détail des tailles multiples */}
+                  {productData?.selectedSizes && productData.selectedSizes.length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+                      {productData.selectedSizes.map((s: { size: string; quantity: number }, idx: number) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-lg"
+                        >
+                          {s.size} × {s.quantity}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="text-xl font-bold text-gray-900">
-                    {formatPrice(productPrice)}
+                    {formatPrice(productPrice)} {productQuantity > 1 && <span className="text-sm font-normal text-gray-500">× {productQuantity}</span>}
                   </div>
                 </div>
               </div>
