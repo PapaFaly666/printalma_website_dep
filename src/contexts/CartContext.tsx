@@ -15,7 +15,7 @@ interface CartContextType {
   itemCount: number;
   isOpen: boolean;
   addToCart: (product: {
-    id: number;
+    id: number | string;
     name: string;
     price: number;
     suggestedPrice?: number;
@@ -23,6 +23,7 @@ interface CartContextType {
     colorCode: string;
     size: string;
     imageUrl: string;
+    quantity?: number;
     designUrl?: string;
     vendorName?: string;
     // Propriétés pour afficher le design
@@ -35,6 +36,11 @@ interface CartContextType {
       id: number;
       sizeName: string;
     };
+    selectedSizes?: Array<{
+      size: string;
+      sizeId?: number;
+      quantity: number;
+    }>;
     sizeId?: number;
     sizeName?: string;
     // 🎨 Nouveaux champs pour la sauvegarde du design
@@ -120,7 +126,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const addToCart = (product: {
-    id: number;
+    id: number | string;
     name: string;
     price: number;
     suggestedPrice?: number;
@@ -128,6 +134,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     colorCode: string;
     size: string;
     imageUrl: string;
+    quantity?: number;
     designUrl?: string;
     vendorName?: string;
     designId?: number;
@@ -138,6 +145,11 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       id: number;
       sizeName: string;
     };
+    selectedSizes?: Array<{
+      size: string;
+      sizeId?: number;
+      quantity: number;
+    }>;
     sizeId?: number;
     sizeName?: string;
     vendorProductId?: number;
@@ -181,16 +193,17 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       });
 
       if (existingItem) {
-        // Si le produit existe déjà avec la même taille, augmenter la quantité
-        console.log('🛒 [CartContext] Produit existant trouvé, incrémentation quantité:', {
+        // Si le produit existe déjà avec la même taille, ajouter la quantité spécifiée
+        console.log('🛒 [CartContext] Produit existant trouvé, ajout de la quantité:', {
           productId: product.id,
           color: product.color,
           size: sizeValue,
-          existingQuantity: existingItem.quantity
+          existingQuantity: existingItem.quantity,
+          addingQuantity: product.quantity || 1
         });
         const updatedItems = prevItems.map(item =>
           item.id === existingItem.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + (product.quantity || 1) }
             : item
         );
 
@@ -214,7 +227,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         console.log('🛒 [CartContext] Nouveau produit, ajout au panier');
         const newItem: CartItem = {
           id: cartItemId,
-          productId: product.id,
+          productId: typeof product.id === 'number' ? product.id : parseInt(product.id),
           name: product.name,
           price: product.price,
           suggestedPrice: product.suggestedPrice,
@@ -224,7 +237,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           imageUrl: product.imageUrl,
           designUrl: product.designUrl,
           vendorName: product.vendorName,
-          quantity: 1,
+          quantity: product.quantity || 1,
           // Nouvelles propriétés pour afficher le design
           designId: product.designId,
           adminProductId: product.adminProductId,
@@ -232,6 +245,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           delimitations: product.delimitations,
           // Propriétés pour les vraies tailles de la base de données
           selectedSize: product.selectedSize,
+          selectedSizes: product.selectedSizes, // 🆕 Support des tailles multiples
           sizeId: product.sizeId,
           sizeName: product.sizeName,
           // 🎨 Nouveaux champs pour la sauvegarde du design dans les commandes

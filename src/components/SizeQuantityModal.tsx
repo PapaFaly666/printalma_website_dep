@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 
 interface SizeQuantity {
   size: string;
+  sizeId?: number;
   quantity: number;
 }
 
@@ -69,7 +70,17 @@ const SizeQuantityModal: React.FC<SizeQuantityModalProps> = ({
   const handleAddToCart = () => {
     const selections = normalizedSizes
       .filter(size => quantities[size] > 0)
-      .map(size => ({ size, quantity: quantities[size] }));
+      .map((size, index) => {
+        // Trouver l'objet de taille original pour récupérer le sizeId
+        const originalSize = productSizes[index];
+        const sizeId = typeof originalSize === 'object' ? originalSize.id : undefined;
+
+        return {
+          size,
+          sizeId,
+          quantity: quantities[size]
+        };
+      });
 
     if (selections.length === 0) return;
 

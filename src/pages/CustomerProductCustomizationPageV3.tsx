@@ -616,7 +616,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   };
 
   // Ajouter au panier avec les sélections
-  const handleAddToCart = async (selections: Array<{ size: string; quantity: number }>) => {
+  const handleAddToCart = async (selections: Array<{ size: string; sizeId?: number; quantity: number }>) => {
     if (!id || !product) return;
 
     try {
@@ -720,52 +720,60 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
         delimitations: allDelimitations
       });
 
-      // 🆕 Calculer la quantité totale
-      const totalQuantity = selections.reduce((sum, s) => sum + s.quantity, 0);
+      // 🆕 NOUVEAU: Créer UN SEUL article avec TOUTES les tailles sélectionnées
+      const validSelections = selections.filter(s => s.quantity > 0);
+      const totalItemsAdded = selections.reduce((sum, s) => sum + s.quantity, 0);
 
-      // 🆕 Créer UN SEUL article avec toutes les tailles sélectionnées
-      const cartItem = {
-        id: product.id,
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        suggestedPrice: product.suggestedPrice,
-        color: selectedColorVariation?.name || 'Défaut',
-        colorCode: selectedColorVariation?.colorCode || '#000000',
-        // Pour compatibilité, garder la première taille
-        size: selections[0]?.size || '',
-        quantity: totalQuantity,
-        imageUrl: selectedView?.url || product.images?.[0]?.url || '',
-        // 🆕 Stocker TOUTES les tailles sélectionnées avec leurs quantités
-        selectedSizes: selections.map(s => ({
-          size: s.size,
-          sizeId: s.sizeId,
-          quantity: s.quantity
-        })),
-        // 🔧 Stocker tous les IDs de personnalisation
-        customizationIds: customizationIds,
-        // Pour compatibilité, stocker aussi le premier ID comme customizationId
-        customizationId: Object.values(customizationIds)[0] || undefined,
-        // 🆕 Stocker les éléments organisés par vue
-        designElementsByView: designElementsByViewKey,
-        // Stocker toutes les délimitations
-        delimitations: allDelimitations
-      };
+      if (validSelections.length > 0) {
+        // Préparer le tableau des tailles sélectionnées
+        const selectedSizesArray = validSelections.map(selection => ({
+          size: selection.size,
+          sizeId: selection.sizeId,
+          quantity: selection.quantity
+        }));
 
-      console.log('🛒 [Customization] Ajout article au panier:', {
-        totalQuantity,
-        selectedSizes: cartItem.selectedSizes,
-        customizationIds: customizationIds,
-        designElementsByView: Object.keys(designElementsByViewKey),
-        totalDelimitations: allDelimitations.length,
-        viewsCount: viewsWithElements.length
-      });
+        // Utiliser la première taille pour l'ID et les infos de base (pour compatibilité)
+        const firstSelection = validSelections[0];
 
-      addToCart(cartItem);
+        const cartItem = {
+          id: `${product.id}-${selectedColorVariation?.name || 'default'}-${firstSelection.size}`,
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          suggestedPrice: product.suggestedPrice,
+          color: selectedColorVariation?.name || 'Défaut',
+          colorCode: selectedColorVariation?.colorCode || '#000000',
+          // Pour compatibilité avec l'ancien système (taille unique)
+          size: firstSelection.size,
+          quantity: totalItemsAdded, // Quantité totale de toutes les tailles
+          imageUrl: selectedView?.url || selectedColorVariation?.images?.[0]?.url || '',
+          // 🆕 Stocker TOUTES les tailles sélectionnées
+          selectedSizes: selectedSizesArray,
+          // 🔧 Stocker tous les IDs de personnalisation
+          customizationIds: customizationIds,
+          // Pour compatibilité, stocker aussi le premier ID comme customizationId
+          customizationId: Object.values(customizationIds)[0] || undefined,
+          // 🆕 Stocker les éléments organisés par vue
+          designElementsByView: designElementsByViewKey,
+          // Stocker toutes les délimitations
+          delimitations: allDelimitations
+        };
 
-      console.log('🛒 [Customization] Article ajouté au panier avec tailles multiples:', {
-        totalQuantity,
-        sizesCount: selections.length,
+        console.log('🛒 [Customization] Ajout article unique au panier avec tailles multiples:', {
+          selectedSizes: selectedSizesArray,
+          totalQuantity: totalItemsAdded,
+          customizationIds: customizationIds,
+          designElementsByView: Object.keys(designElementsByViewKey),
+          totalDelimitations: allDelimitations.length,
+          viewsCount: viewsWithElements.length
+        });
+
+        addToCart(cartItem);
+      }
+
+      console.log('🛒 [Customization] Article ajouté au panier:', {
+        totalItemsAdded,
+        sizesCount: validSelections.length,
         customizationIds: customizationIds,
         designElementsByView: Object.keys(designElementsByViewKey),
         viewsCount: viewsWithElements.length
@@ -773,7 +781,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
       toast({
         title: '✅ Ajouté au panier',
-        description: `${totalQuantity} article(s) en ${selections.length} taille(s) avec ${viewsWithElements.length} vue(s) personnalisée(s)`,
+        description: `${totalItemsAdded} article(s) en ${selections.filter(s => s.quantity > 0).length} taille(s) avec ${viewsWithElements.length} vue(s) personnalisée(s)`,
       });
 
       // Fermer le modal
