@@ -4,7 +4,7 @@ import newOrderService from '../../services/newOrderService';
 import { Order } from '../../types/order';
 import { Button } from '../../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import { ArrowLeft, Package, Phone, Copy, Printer, Download, X, Eye, ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Package, Phone, Copy, Printer, Download, X, ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react';
 import { formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
 import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrderProductPreview';
 import { CustomizationPreview } from '../../components/order/CustomizationPreview';
@@ -246,34 +246,37 @@ const OrderDetailPage: React.FC = () => {
       const viewKeys = Object.keys(elementsByView);
 
       if (viewKeys.length === 1) {
-        // Une seule vue - export simple
+        // Une seule vue - export simple avec dimensions RÉELLES de la délimitation
         const elements = elementsByView[viewKeys[0]];
         if (format === 'pdf') {
           const { downloadDesignElementsAsPDF } = await import('../../utils/printExport');
           await downloadDesignElementsAsPDF(elements, filename, {
-            width: 2000,
-            height: 2000,
-            delimitation
+            delimitation,
+            useRealDimensions: true // Utilise les dimensions réelles pour qualité optimale
           });
         } else {
           await downloadDesignElementsAsPNG(elements, filename, {
-            width: 2000,
-            height: 2000,
-            delimitation
+            delimitation,
+            useRealDimensions: true // Utilise les dimensions réelles pour qualité optimale
           });
         }
       } else {
-        // Plusieurs vues - export multiple
+        // Plusieurs vues - export multiple avec dimensions RÉELLES
         await exportAllViewsDesignElements(elementsByView, filename, format, {
-          width: 2000,
-          height: 2000,
-          delimitation
+          delimitation,
+          useRealDimensions: true // Utilise les dimensions réelles pour qualité optimale
         });
       }
 
     } catch (error) {
-      console.error('Erreur lors de l\'export:', error);
-      alert('Erreur lors de l\'export. Veuillez réessayer.');
+      console.error('❌ [Export] Erreur détaillée:', error);
+
+      // Message d'erreur détaillé pour l'utilisateur
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      alert(
+        `Erreur lors de l'export:\n\n${errorMessage}\n\n` +
+        `Veuillez vérifier la console pour plus de détails.`
+      );
     } finally {
       setExportingItems(prev => {
         const newSet = new Set(prev);
@@ -547,8 +550,8 @@ if (loading) {
                           <div className="flex-shrink-0">
                             {isCustomizedProduct ? (
                               <div className="space-y-3">
-                                {/* Views Grid */}
-                                <div className={`grid gap-3 ${Object.keys(elementsByView).length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                {/* Views Grid - Taille augmentée et responsive */}
+                                <div className={`grid gap-4 ${Object.keys(elementsByView).length > 1 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                                   {Object.entries(elementsByView).map(([viewKey, elements]) => {
                                     const [colorIdStr, viewIdStr] = viewKey.split('-');
                                     const colorId = parseInt(colorIdStr);
@@ -645,7 +648,7 @@ if (loading) {
                                           colorCode={item.colorVariation?.colorCode}
                                           size={item.size}
                                           quantity={item.quantity}
-                                          className={`w-full aspect-square border border-gray-200 rounded-lg ${Object.keys(elementsByView).length > 1 ? 'max-w-[140px]' : 'max-w-[240px]'}`}
+                                          className={`w-full aspect-square border border-gray-200 rounded-lg ${Object.keys(elementsByView).length > 1 ? 'max-w-xs' : 'max-w-md'}`}
                                           showInfo={false}
                                         />
                                         {Object.keys(elementsByView).length > 1 && (
@@ -658,22 +661,8 @@ if (loading) {
                                   })}
                                 </div>
 
-                                {/* Actions */}
+                                {/* Actions - Téléchargements uniquement */}
                                 <div className="flex gap-2 flex-wrap">
-                                  <button
-                                    onClick={() => openProductModal(
-                                      item.product?.name || enriched?.vendorName || 'Produit',
-                                      elementsByView,
-                                      item,
-                                      enriched,
-                                      mockupUrl || '',
-                                      delimitation
-                                    )}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium rounded-lg transition-all duration-150 hover:scale-[1.02]"
-                                  >
-                                    <Eye className="h-3.5 w-3.5" />
-                                    Voir
-                                  </button>
                                   <button
                                     onClick={() => exportForPrint(
                                       item.id,
@@ -729,36 +718,18 @@ if (loading) {
                                     delimitation: delimitation || undefined,
                                     vendorProductId: item.vendorProductId || enriched?.id
                                   }}
-                                  className="w-full max-w-[240px] aspect-square border border-gray-200 rounded-lg"
+                                  className="w-full max-w-xs sm:max-w-md aspect-square border border-gray-200 rounded-lg"
                                 />
-                                {/* Actions for vendor products */}
-                                {(mockupUrl || hasDesign) && (
+                                {/* Actions for vendor products - Téléchargement uniquement */}
+                                {hasDesign && designUrl && (
                                   <div className="flex gap-2 flex-wrap">
                                     <button
-                                      onClick={() => setVendorProductModal({
-                                        isOpen: true,
-                                        productName: item.product?.name || enriched?.vendorName || 'Produit',
-                                        mockupUrl: mockupUrl || '',
-                                        designUrl: hasDesign ? designUrl || '' : '',
-                                        designName: item.designMetadata?.designName || 'Design',
-                                        designPosition: designPosition,
-                                        delimitation: delimitation || undefined,
-                                        zoom: 100
-                                      })}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium rounded-lg transition-all duration-150 hover:scale-[1.02]"
+                                      onClick={() => downloadDesign(designUrl, item.designMetadata?.designName || 'design')}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-medium rounded-lg transition-all duration-150 hover:scale-[1.02]"
                                     >
-                                      <Eye className="h-3.5 w-3.5" />
-                                      Voir
+                                      <Download className="h-3.5 w-3.5" />
+                                      Télécharger Design
                                     </button>
-                                    {hasDesign && designUrl && (
-                                      <button
-                                        onClick={() => downloadDesign(designUrl, item.designMetadata?.designName || 'design')}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-medium rounded-lg transition-all duration-150 hover:scale-[1.02]"
-                                      >
-                                        <Download className="h-3.5 w-3.5" />
-                                        Design
-                                      </button>
-                                    )}
                                   </div>
                                 )}
                               </div>
@@ -781,22 +752,13 @@ if (loading) {
                                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Design</div>
                                 <div className="text-sm font-medium text-gray-900 truncate">{item.designMetadata.designName}</div>
                               </div>
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => setSelectedDesign({ url: designUrl, name: item.designMetadata.designName })}
-                                  className="p-1.5 hover:bg-gray-200 rounded-md transition-colors duration-150"
-                                  title="Voir"
-                                >
-                                  <Eye className="h-4 w-4 text-gray-500" />
-                                </button>
-                                <button
-                                  onClick={() => downloadDesign(designUrl, item.designMetadata.designName)}
-                                  className="p-1.5 hover:bg-gray-200 rounded-md transition-colors duration-150"
-                                  title="Télécharger"
-                                >
-                                  <Download className="h-4 w-4 text-gray-500" />
-                                </button>
-                              </div>
+                              <button
+                                onClick={() => downloadDesign(designUrl, item.designMetadata.designName)}
+                                className="p-1.5 hover:bg-gray-200 rounded-md transition-colors duration-150"
+                                title="Télécharger"
+                              >
+                                <Download className="h-4 w-4 text-gray-500" />
+                              </button>
                             </div>
                           )}
                         </div>

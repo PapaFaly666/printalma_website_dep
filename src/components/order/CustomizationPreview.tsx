@@ -1,4 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { getElementWebStyle, getTextWebStyle } from '../../utils/positioningUtils';
+
+// Composant optimisé pour afficher les produits personnalisés avec un rendu pixel-perfect
+// Système de positionnement identique à CustomerProductCustomizationPageV3 pour garantir
+// que l'aperçu admin correspond exactement à ce que le client a défini
 
 // Types pour les éléments de design
 interface DesignElement {
@@ -63,7 +68,6 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [imageDisplaySize, setImageDisplaySize] = useState({ width: 0, height: 0, offsetX: 0, offsetY: 0 });
 
   // Calculer les dimensions d'affichage de l'image
@@ -91,7 +95,6 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
         offsetY = 0;
       }
 
-      setContainerSize({ width: container.width, height: container.height });
       setImageDisplaySize({ width: dispW, height: dispH, offsetX, offsetY });
     };
 
@@ -102,64 +105,33 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
     return () => resizeObserver.disconnect();
   }, [imageLoaded]);
 
-  // Convertir les coordonnées d'un élément pour l'affichage
+  // Utiliser la logique unifiée de positionnement pour garantir la cohérence
   const getElementStyle = (element: DesignElement): React.CSSProperties => {
     if (!imageLoaded || imageDisplaySize.width === 0) return { display: 'none' };
 
-    // Position en pixels dans le conteneur d'affichage
-    const left = imageDisplaySize.offsetX + (element.x * imageDisplaySize.width);
-    const top = imageDisplaySize.offsetY + (element.y * imageDisplaySize.height);
-
-    // Calculer le scale basé sur la taille de l'image de référence vs l'affichage
-    // Les éléments ont été créés avec une certaine taille de référence
-    const refWidth = delimitation?.referenceWidth || 800;
-    const refHeight = delimitation?.referenceHeight || 800;
-
-    const scaleX = imageDisplaySize.width / refWidth;
-    const scaleY = imageDisplaySize.height / refHeight;
-    const scale = Math.min(scaleX, scaleY);
-
-    const scaledWidth = element.width * scale;
-    const scaledHeight = element.height * scale;
-
-    return {
-      position: 'absolute',
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${scaledWidth}px`,
-      height: `${scaledHeight}px`,
-      transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
-      transformOrigin: 'center center',
-      zIndex: element.zIndex + 10,
-      pointerEvents: 'none',
+    // Utiliser l'utilitaire unifié qui garantit la cohérence avec ProductDesignEditor
+    const canvasDimensions = {
+      width: imageDisplaySize.width,
+      height: imageDisplaySize.height,
+      offsetX: imageDisplaySize.offsetX,
+      offsetY: imageDisplaySize.offsetY
     };
+
+    return getElementWebStyle(element as any, canvasDimensions, delimitation as any);
   };
 
-  // Calculer le style du texte
+  // Utiliser la logique unifiée pour le style du texte
   const getTextStyle = (element: DesignElement): React.CSSProperties => {
     if (!imageLoaded || imageDisplaySize.width === 0) return {};
 
-    const refWidth = delimitation?.referenceWidth || 800;
-    const scale = imageDisplaySize.width / refWidth;
-    const scaledFontSize = (element.fontSize || 24) * scale;
-
-    return {
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: element.textAlign || 'center',
-      fontSize: `${scaledFontSize}px`,
-      fontFamily: element.fontFamily || 'Arial',
-      color: element.color || '#000000',
-      fontWeight: element.fontWeight || 'normal',
-      fontStyle: element.fontStyle || 'normal',
-      textDecoration: element.textDecoration || 'none',
-      textAlign: element.textAlign || 'center',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      lineHeight: 1,
+    const canvasDimensions = {
+      width: imageDisplaySize.width,
+      height: imageDisplaySize.height,
+      offsetX: imageDisplaySize.offsetX,
+      offsetY: imageDisplaySize.offsetY
     };
+
+    return getTextWebStyle(element as any, canvasDimensions, delimitation as any);
   };
 
   if (!productImageUrl) {
@@ -181,9 +153,15 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
         onLoad={() => setImageLoaded(true)}
       />
 
-      {/* Éléments de design superposés */}
+      {/* Éléments de design superposés - Conteneur avec clipping strict */}
       {imageLoaded && designElements.length > 0 && (
-        <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            overflow: 'hidden',
+            clipPath: 'inset(0)',
+          }}
+        >
           {designElements.map((element) => (
             <div key={element.id} style={getElementStyle(element)}>
               {element.type === 'text' ? (
