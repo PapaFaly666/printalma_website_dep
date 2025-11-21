@@ -109,6 +109,7 @@ import AdminProductValidation from './pages/admin/AdminProductValidation';
 import AutoValidationDashboard from './pages/admin/AutoValidationDashboard';
 import DeliveryManagementPage from './pages/admin/DeliveryManagementPage';
 import AdminWizardValidation from './pages/admin/AdminWizardValidation';
+import ZonesLivraisonPage from './pages/admin/ZonesLivraisonPage';
 
 // 🎯 Démonstration du système de workflow moderne
 import WorkflowDemo from './pages/WorkflowDemo';
@@ -345,6 +346,7 @@ function App() {
                   <Route path="themes/:themeId/products" element={<ThemeProductsPage />} />
                   <Route path="stock" element={<AdminStockManagement />} />
                   <Route path="delivery" element={<DeliveryManagementPage />} />
+                  <Route path="livraison" element={<ZonesLivraisonPage />} />
                   <Route path="settings" element={<AdminSettingsPage />} />
                   <Route index element={<Navigate to="/test-auth" replace />} />
                 </Route>

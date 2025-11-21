@@ -42,7 +42,8 @@ import {
     Wallet,
     Banknote,
     PackageSearch,
-    Star
+    Star,
+    Truck
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -172,6 +173,8 @@ export default function Sidebar() {
             setActiveItem('featured-designers');
         } else if (location.pathname.includes('/admin/orders')) {
             setActiveItem('orders');
+        } else if (location.pathname.includes('/admin/livraison')) {
+            setActiveItem('livraison');
         } else if (location.pathname.includes('/admin/dashboard')) {
             setActiveItem('dashboard');
         } else if (location.pathname.includes('/admin/sales')) {
@@ -535,6 +538,15 @@ export default function Sidebar() {
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'orders'}
                             onClick={() => handleNavigation('orders')}
+                            badge=""
+                            textColor=""
+                        />
+                        <NavItem
+                            icon={<Truck size={18} />}
+                            label="Livraison"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'livraison'}
+                            onClick={() => handleNavigation('livraison')}
                             badge=""
                             textColor=""
                         />
