@@ -1,5 +1,6 @@
 import { CartItem } from '../../types/order';
 import { orderService } from '../../services/orderService';
+import { formatPriceInFRF as formatPrice } from '../../utils/priceUtils';
 
 interface CartSummaryProps {
   items: CartItem[];
@@ -13,11 +14,11 @@ export const CartSummary = ({ items, className = '' }: CartSummaryProps) => {
     <div className={`cart-summary ${className}`}>
       <div className="line-item">
         <span>Sous-total:</span>
-        <span>{totals.subtotal.toLocaleString()} FCFA</span>
+        <span>{formatPrice(totals.subtotal)}</span>
       </div>
       <div className="line-item">
         <span>TVA (18%):</span>
-        <span>{totals.taxAmount.toLocaleString()} FCFA</span>
+        <span>{formatPrice(totals.taxAmount)}</span>
       </div>
       <div className="line-item">
         <span>Livraison:</span>
@@ -25,7 +26,7 @@ export const CartSummary = ({ items, className = '' }: CartSummaryProps) => {
           {totals.freeShipping ? (
             <span className="free">Gratuite ✨</span>
           ) : (
-            `${totals.shippingAmount.toLocaleString()} FCFA`
+            formatPrice(totals.shippingAmount)
           )}
         </span>
       </div>
@@ -36,7 +37,7 @@ export const CartSummary = ({ items, className = '' }: CartSummaryProps) => {
       )}
       <div className="total">
         <strong>
-          Total: {totals.totalAmount.toLocaleString()} FCFA
+          Total: {formatPrice(totals.totalAmount)}
         </strong>
       </div>
     </div>

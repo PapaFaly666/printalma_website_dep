@@ -49,23 +49,49 @@ const ProductWithDesign: React.FC<{
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
 
   // 🆕 Récupérer toutes les vues disponibles depuis les customizationIds
+  // 🔧 Filtrer par couleur sélectionnée et dédupliquer par viewId
   const availableViews = React.useMemo(() => {
     if (!item.customizationIds) return [];
 
-    return Object.keys(item.customizationIds).map(viewKey => {
-      const [colorId, viewId] = viewKey.split('-').map(Number);
-      // Trouver la délimitation correspondante
-      const delimitation = item.delimitations?.find((d: any) => d.viewId === viewId);
+    // Map pour dédupliquer par viewId
+    const uniqueViewsMap = new Map<number, {
+      viewKey: string;
+      colorId: number;
+      viewId: number;
+      viewType: string;
+      delimitation: any;
+    }>();
 
-      return {
-        viewKey,
-        colorId,
-        viewId,
-        viewType: delimitation?.viewType || 'OTHER',
-        delimitation
-      };
+    Object.keys(item.customizationIds).forEach(viewKey => {
+      const [colorId, viewId] = viewKey.split('-').map(Number);
+
+      // 🔧 Si colorVariationId est défini, filtrer pour ne garder que cette couleur
+      if (item.colorVariationId && colorId !== item.colorVariationId) {
+        console.log(`🎨 [CartSidebar] Vue ${viewKey} ignorée (couleur ${colorId} != ${item.colorVariationId})`);
+        return;
+      }
+
+      // Ne garder que la première occurrence de chaque viewId
+      if (!uniqueViewsMap.has(viewId)) {
+        // Trouver la délimitation correspondante
+        const delimitation = item.delimitations?.find((d: any) => d.viewId === viewId);
+
+        uniqueViewsMap.set(viewId, {
+          viewKey,
+          colorId,
+          viewId,
+          viewType: delimitation?.viewType || 'OTHER',
+          delimitation
+        });
+
+        console.log(`✅ [CartSidebar] Vue ${viewKey} ajoutée (${delimitation?.viewType || 'OTHER'})`);
+      }
     });
-  }, [item.customizationIds, item.delimitations]);
+
+    const result = Array.from(uniqueViewsMap.values());
+    console.log(`📦 [CartSidebar] ${result.length} vue(s) disponible(s) pour la couleur ${item.colorVariationId || 'toutes'}`);
+    return result;
+  }, [item.customizationIds, item.delimitations, item.colorVariationId]);
 
   // Vue actuellement sélectionnée
   const currentView = availableViews[selectedViewIndex];
@@ -76,7 +102,22 @@ const ProductWithDesign: React.FC<{
 
     // Utiliser le nouveau système organisé par vue
     if (item.designElementsByView) {
-      return item.designElementsByView[currentView.viewKey] || [];
+      // 🔧 Chercher les éléments pour cette vue, peu importe la couleur
+      // Essayer d'abord avec le viewKey exact
+      let elements = item.designElementsByView[currentView.viewKey];
+
+      // Si pas trouvé, chercher par viewId dans tous les viewKey disponibles
+      if (!elements || elements.length === 0) {
+        for (const [key, value] of Object.entries(item.designElementsByView)) {
+          const [, viewId] = key.split('-').map(Number);
+          if (viewId === currentView.viewId && value.length > 0) {
+            elements = value;
+            break;
+          }
+        }
+      }
+
+      return elements || [];
     }
 
     // Fallback sur l'ancien système (pour compatibilité)
@@ -84,7 +125,7 @@ const ProductWithDesign: React.FC<{
   };
 
   // Traduire le viewType en français
-  const getViewName = (viewType: string): string => {
+  const getViewName = (viewType: string, totalViews: number = 1): string => {
     const viewNames: Record<string, string> = {
       'FRONT': 'Devant',
       'BACK': 'Arrière',
@@ -95,7 +136,20 @@ const ProductWithDesign: React.FC<{
       'DETAIL': 'Détail',
       'OTHER': 'Autre'
     };
-    return viewNames[viewType?.toUpperCase()] || viewType || 'Vue';
+
+    // Si c'est 'OTHER' et qu'il n'y a qu'une seule vue, utiliser un nom plus descriptif
+    if (viewType?.toUpperCase() === 'OTHER' && totalViews === 1) {
+      return 'Personnalisation';
+    }
+
+    // Si le viewType est reconnu, l'utiliser
+    const translatedName = viewNames[viewType?.toUpperCase()];
+    if (translatedName) {
+      return translatedName;
+    }
+
+    // Sinon, utiliser le viewType tel quel ou 'Vue' par défaut
+    return viewType || 'Vue';
   };
 
   // Calculer les métriques d'image
@@ -469,9 +523,9 @@ const ProductWithDesign: React.FC<{
                   ? 'bg-primary text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-              title={getViewName(view.viewType)}
+              title={getViewName(view.viewType, availableViews.length)}
             >
-              {getViewName(view.viewType)}
+              {getViewName(view.viewType, availableViews.length)}
             </button>
           ))}
         </div>
@@ -638,13 +692,13 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-sm text-gray-600">Sous-total ({totalItems} article{totalItems > 1 ? 's' : ''})</span>
                   <span className="text-base font-semibold text-gray-900">
-                    {(totalPrice / 100).toLocaleString('fr-FR')} FCFA
+                    {formatPrice(totalPrice)}
                   </span>
                 </div>
                 <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
                   <span className="text-lg font-bold text-gray-900">Total</span>
                   <span className="text-2xl font-bold text-gray-900">
-                    {(totalPrice / 100).toLocaleString('fr-FR')} FCFA
+                    {formatPrice(totalPrice)}
                   </span>
                 </div>
               </div>

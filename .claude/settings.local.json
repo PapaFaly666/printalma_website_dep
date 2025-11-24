@@ -1,11 +1,11 @@
 {
-   "env": {
+   /*"env": {
     "ANTHROPIC_AUTH_TOKEN": "5556c9f01cef46a4bfd13c5732a937b6.hQmfj2Gl0sEXPoCn",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
-  },  
+  },   */
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",

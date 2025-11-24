@@ -20,6 +20,7 @@ export interface CartItem {
   suggestedPrice?: number; // Prix de vente défini par le vendeur
   color: string;
   colorCode: string;
+  colorVariationId?: number; // 🆕 ID de la variation de couleur sélectionnée
   size: string;
   quantity: number;
   imageUrl: string;

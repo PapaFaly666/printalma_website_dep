@@ -35,10 +35,17 @@ export interface Region {
   updatedAt?: string;
 }
 
+// Type pour un pays dans une zone internationale (format API)
+export interface ZoneCountry {
+  id: string;
+  zoneId: string;
+  country: string;
+}
+
 export interface InternationalZone {
   id: string;
   name: string;
-  countries: string[];
+  countries: (string | ZoneCountry)[]; // L'API peut renvoyer soit des strings soit des objets
   status: 'active' | 'inactive';
   price: string; // API renvoie un Decimal en string (ex: "15000.00")
   deliveryTimeMin: number;
@@ -157,7 +164,7 @@ class DeliveryService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = AuthManager.getToken();
+    const token = AuthManager.getAccessToken();
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, TableProperties, ShoppingCart } from 'lucide-react';
 import { Button } from './ui/button';
+import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
 
 interface SizeQuantity {
   size: string;
@@ -212,7 +213,7 @@ const SizeQuantityModal: React.FC<SizeQuantityModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Prix de l'article</span>
               <span className="text-base font-semibold text-gray-900">
-                {productPrice.toLocaleString()} FCFA
+                {formatPrice(productPrice)}
               </span>
             </div>
           </div>
@@ -226,7 +227,7 @@ const SizeQuantityModal: React.FC<SizeQuantityModalProps> = ({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-lg font-bold text-gray-900">
-                Total: {totalPrice.toLocaleString()} FCFA
+                Total: {formatPrice(totalPrice)}
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1">hors frais de port</p>
