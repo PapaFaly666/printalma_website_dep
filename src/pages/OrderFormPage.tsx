@@ -21,6 +21,9 @@ import { paymentStatusService } from '../services/paymentStatusService';
 import { validatePaymentData } from '../types/payment';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
 import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
+import SimpleDeliveryForm from '../components/delivery/SimpleDeliveryForm';
+import { isSenegalCountry, generateDeliverySummary } from '../utils/deliveryInfoUtils';
+import type { DeliveryInfo } from '../types/order';
 
 interface OrderFormData {
   firstName: string;
@@ -335,6 +338,14 @@ const OrderFormPage: React.FC = () => {
   const [selectedPayment, setSelectedPayment] = useState<string>('paydunya'); // Défaut sur PayDunya
   const [selectedPayDunyaMethod, setSelectedPayDunyaMethod] = useState<string>('orange_money');
 
+  // 🆕 États pour la gestion des informations de livraison par pays
+  const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | undefined>();
+  const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [deliveryValidationErrors, setDeliveryValidationErrors] = useState<string[]>([]);
+
+  // Déterminer si c'est une commande internationale
+  const isInternational = !isSenegalCountry(formData.country, 'SN');
+
   // Obtenir les méthodes de paiement disponibles depuis le hook
   const availablePaymentMethods = getAvailableMethods();
 
@@ -409,7 +420,8 @@ const OrderFormPage: React.FC = () => {
 
   // Calculs - Utiliser le prix suggéré par le vendeur si disponible, sinon le prix de base
   const productPrice = cartItem?.suggestedPrice || cartItem?.price || 0;
-  const shippingFee = deliveryOptions.find(d => d.id === selectedDelivery)?.price || 0;
+  // 🆕 Utiliser les frais de livraison du système par pays, ou les frais standard si Sénégal
+  const shippingFee = isInternational ? deliveryFee : (deliveryOptions.find(d => d.id === selectedDelivery)?.price || 0);
   const totalAmount = productPrice + shippingFee;
 
   // Debug: afficher les valeurs de calcul
@@ -516,6 +528,11 @@ const OrderFormPage: React.FC = () => {
       newErrors.country = 'Le pays doit contenir au maximum 100 caractères';
     }
 
+    // 🆕 Validation des informations de livraison (seulement pour l'international)
+    if (deliveryValidationErrors.length > 0) {
+      newErrors.delivery = deliveryValidationErrors.join(', ');
+    }
+
     // Validation du paiement
     if (!selectedPayment) newErrors.payment = 'Veuillez sélectionner une méthode de paiement';
 
@@ -582,6 +599,8 @@ const OrderFormPage: React.FC = () => {
         }],
         paymentMethod: 'PAYDUNYA',
         initiatePayment: true, // IMPORTANT : Déclenche la création du paiement PayDunya
+        // 🆕 Ajouter les informations de livraison (important pour l'international)
+        deliveryInfo: deliveryInfo,
       };
 
       console.log('📦 [OrderForm] Données de commande PayDunya:', JSON.stringify(orderRequest, null, 2));
@@ -746,6 +765,8 @@ const OrderFormPage: React.FC = () => {
           }],
           paymentMethod: 'CASH_ON_DELIVERY',
           initiatePayment: false,
+          // 🆕 Ajouter les informations de livraison (important pour l'international)
+          deliveryInfo: deliveryInfo,
         };
 
         // Créer la commande
@@ -885,51 +906,67 @@ const OrderFormPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Options de livraison */}
+                  {/* 🆕 Options de livraison par pays */}
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                       <Truck className="w-4 h-4 sm:w-5 sm:h-5" />
                       Livraison
                     </h3>
-                    <div className="space-y-3">
-                      {deliveryOptions.map((option) => (
-                        <label
-                          key={option.id}
-                          className={`block p-3 sm:p-4 border rounded-lg cursor-pointer transition-all ${
-                            selectedDelivery === option.id
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <input
-                              type="radio"
-                              name="delivery"
-                              value={option.id}
-                              checked={selectedDelivery === option.id}
-                              onChange={(e) => setSelectedDelivery(e.target.value)}
-                              className="mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1 pr-2">
-                                  <p className="font-medium text-gray-900 text-sm sm:text-base">{option.name}</p>
-                                  <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2">{option.description}</p>
+
+                    {/* Options standard pour le Sénégal */}
+                    {!isInternational && (
+                      <div className="space-y-3 mb-4">
+                        {deliveryOptions.map((option) => (
+                          <label
+                            key={option.id}
+                            className={`block p-3 sm:p-4 border rounded-lg cursor-pointer transition-all ${
+                              selectedDelivery === option.id
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="radio"
+                                name="delivery"
+                                value={option.id}
+                                checked={selectedDelivery === option.id}
+                                onChange={(e) => setSelectedDelivery(e.target.value)}
+                                className="mt-1"
+                              />
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1 pr-2">
+                                    <p className="font-medium text-gray-900 text-sm sm:text-base">{option.name}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2">{option.description}</p>
+                                  </div>
+                                  <span className="font-semibold text-gray-900 text-sm sm:text-base whitespace-nowrap">
+                                    {option.price === 0 ? 'Gratuit' : formatPrice(option.price)}
+                                  </span>
                                 </div>
-                                <span className="font-semibold text-gray-900 text-sm sm:text-base whitespace-nowrap">
-                                  {option.price === 0 ? 'Gratuit' : formatPrice(option.price)}
-                                </span>
+                                {option.estimatedDays > 0 && (
+                                  <p className="text-xs text-blue-600 mt-2">
+                                    Livraison estimée: {option.estimatedDays} jour{option.estimatedDays > 1 ? 's' : ''}
+                                  </p>
+                                )}
                               </div>
-                              {option.estimatedDays > 0 && (
-                                <p className="text-xs text-blue-600 mt-2">
-                                  Livraison estimée: {option.estimatedDays} jour{option.estimatedDays > 1 ? 's' : ''}
-                                </p>
-                              )}
                             </div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Formulaire pour les informations de livraison par pays */}
+                    <SimpleDeliveryForm
+                      country={formData.country}
+                      countryCode={isSenegalCountry(formData.country) ? 'SN' : formData.country.toUpperCase()}
+                      onDeliveryInfoChange={setDeliveryInfo}
+                      onDeliveryFeeChange={setDeliveryFee}
+                      onValidationError={setDeliveryValidationErrors}
+                      disabled={isSubmitting || orderLoading || paydunyaLoading}
+                    />
+
+                    {/* Afficher les erreurs de validation */}
                     {errors.delivery && (
                       <p className="mt-2 text-sm text-red-600">{errors.delivery}</p>
                     )}

@@ -75,6 +75,18 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   // 📝 État pour l'élément sélectionné (pour l'édition de texte)
   const [selectedElement, setSelectedElement] = useState<any>(null);
 
+  // Récupérer l'élément sélectionné depuis l'éditeur
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (editorRef.current) {
+        const element = editorRef.current.getSelectedElement();
+        setSelectedElement(element || null);
+      }
+    }, 100); // Vérifier toutes les 100ms
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   // Filtres pour les designs
   const [showFreeOnly, setShowFreeOnly] = useState(false);
   const [showAllAudience, setShowAllAudience] = useState(true);
@@ -1156,141 +1168,355 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
               )}
             </div>
 
-            {/* RIGHT SIDEBAR - Product Info */}
+            {/* RIGHT SIDEBAR - Product Info / Text Editor */}
             <div className="order-2 lg:order-3 w-full lg:w-80 xl:w-96 lg:h-full bg-white border-t lg:border-t-0 lg:border-l overflow-y-auto shadow-xl lg:shadow-none">
               <div className="h-full flex flex-col p-4 sm:p-5 lg:p-6">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-3 lg:mb-4">{product.name}</h2>
+                {/* Afficher l'éditeur de texte si un élément texte est sélectionné */}
+                {selectedElement && selectedElement.type === 'text' ? (
+                  <>
+                    {/* En-tête de l'éditeur de texte - Desktop uniquement */}
+                    <div className="hidden lg:block mb-6 pb-4 border-b">
+                      <div className="flex items-center justify-between mb-2">
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Modifier le texte</h2>
+                        <button
+                          onClick={() => {
+                            // Désélectionner l'élément
+                            setSelectedElement(null);
+                          }}
+                          className="text-gray-500 hover:text-gray-700 p-1"
+                          title="Fermer l'éditeur"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-600">Personnalisez votre texte ci-dessous</p>
+                    </div>
 
-            <div className="flex items-center gap-2 mb-4 lg:mb-6">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <span key={star} className="text-yellow-400 text-sm lg:text-base">★</span>
-                ))}
-              </div>
-              <span className="text-xs sm:text-sm lg:text-base text-gray-600">(0 avis)</span>
-            </div>
+                    {/* En-tête compact pour mobile */}
+                    <div className="lg:hidden mb-4 pb-3 border-b">
+                      <h2 className="text-lg font-bold text-gray-900">Édition du texte</h2>
+                    </div>
 
-            {product.description && (
-              <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-4 sm:mb-6 lg:mb-8">{product.description}</p>
-            )}
+                    {/* Champ de texte */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">Texte</label>
+                      <textarea
+                        value={selectedElement.text}
+                        onChange={(e) => editorRef.current?.updateText(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary resize-none"
+                        rows={3}
+                        placeholder="Entrez votre texte..."
+                      />
+                    </div>
 
-            {/* Color Selection */}
-            {product.colorVariations && product.colorVariations.length > 1 && (
-              <div className="mb-6 lg:mb-8">
-                <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-base lg:text-lg">Couleur</h3>
-                <div className="flex flex-wrap gap-2 lg:gap-3">
-                {product.colorVariations.map((color) => (
-                  <button
-                    key={color.id}
-                    onClick={() => {
-                      console.log('🎨 [Customization] Changement de couleur:', color.name);
+                    {/* Police et taille */}
+                    <div className="mb-6 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">Police</label>
+                        <select
+                          value={selectedElement.fontFamily}
+                          onChange={(e) => editorRef.current?.updateTextProperty('fontFamily', e.target.value)}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                        >
+                          {FONTS.map(font => (
+                            <option key={font.value} value={font.value}>{font.name}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                      // 🔧 NOUVEAU: Copier les personnalisations de l'ancienne couleur vers la nouvelle
-                      if (selectedColorVariation && selectedColorVariation.id !== color.id) {
-                        console.log('📋 [Customization] Copie des personnalisations vers la nouvelle couleur');
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">Taille</label>
+                        <input
+                          type="number"
+                          value={selectedElement.fontSize}
+                          onChange={(e) => editorRef.current?.updateTextProperty('fontSize', parseInt(e.target.value))}
+                          min="10"
+                          max="100"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                        />
+                      </div>
+                    </div>
 
-                        // Récupérer les éléments de toutes les vues de l'ancienne couleur
-                        const oldColorViews = selectedColorVariation.images || [];
-                        const newColorViews = color.images || [];
+                    {/* Couleur */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">Couleur du texte</label>
+                      <div className="flex flex-wrap gap-2">
+                        {COLORS.map(color => (
+                          <button
+                            key={color}
+                            onClick={() => editorRef.current?.updateTextProperty('color', color)}
+                            className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 ${
+                              selectedElement.color === color ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                    </div>
 
-                        // Créer une copie du state actuel
-                        const newElementsByView = { ...designElementsByViewRef.current };
+                    {/* Style de texte */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">Style</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => editorRef.current?.updateTextProperty('fontWeight', selectedElement.fontWeight === 'bold' ? 'normal' : 'bold')}
+                          className={`flex-1 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                            selectedElement.fontWeight === 'bold'
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <Bold className="w-5 h-5 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => editorRef.current?.updateTextProperty('fontStyle', selectedElement.fontStyle === 'italic' ? 'normal' : 'italic')}
+                          className={`flex-1 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                            selectedElement.fontStyle === 'italic'
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <Italic className="w-5 h-5 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => editorRef.current?.updateTextProperty('textDecoration', selectedElement.textDecoration === 'underline' ? 'none' : 'underline')}
+                          className={`flex-1 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                            selectedElement.textDecoration === 'underline'
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <Underline className="w-5 h-5 mx-auto" />
+                        </button>
+                      </div>
+                    </div>
 
-                        // Pour chaque vue de l'ancienne couleur, copier vers la vue correspondante de la nouvelle couleur
-                        oldColorViews.forEach((oldView: any, index: number) => {
-                          const oldViewKey = `${selectedColorVariation.id}-${oldView.id}`;
-                          const elements = newElementsByView[oldViewKey];
+                    {/* Alignement */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">Alignement</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => editorRef.current?.updateTextProperty('textAlign', 'left')}
+                          className={`flex-1 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                            selectedElement.textAlign === 'left'
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <AlignLeft className="w-5 h-5 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => editorRef.current?.updateTextProperty('textAlign', 'center')}
+                          className={`flex-1 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                            selectedElement.textAlign === 'center'
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <AlignCenter className="w-5 h-5 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => editorRef.current?.updateTextProperty('textAlign', 'right')}
+                          className={`flex-1 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                            selectedElement.textAlign === 'right'
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <AlignRight className="w-5 h-5 mx-auto" />
+                        </button>
+                      </div>
+                    </div>
 
-                          // Si cette vue a des éléments et qu'il y a une vue correspondante dans la nouvelle couleur
-                          if (elements && elements.length > 0 && newColorViews[index]) {
-                            const newView = newColorViews[index];
-                            const newViewKey = `${color.id}-${newView.id}`;
+                    {/* Message info desktop */}
+                    <div className="hidden lg:block mt-6 p-3 sm:p-4 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-900 font-medium mb-2">ℹ️ Mode édition</p>
+                      <p className="text-xs text-blue-800">
+                        Terminez l'édition de votre texte pour continuer. Cliquez en dehors du texte pour désélectionner.
+                      </p>
+                    </div>
 
-                            console.log(`✨ [Customization] Copie ${elements.length} éléments de ${oldViewKey} vers ${newViewKey}`);
+                    {/* Spacer pour desktop */}
+                    <div className="hidden lg:block flex-1"></div>
 
-                            // Copier les éléments vers la nouvelle vue
-                            newElementsByView[newViewKey] = [...elements];
-                          }
-                        });
+                    {/* CTA Section - Desktop uniquement - BOUTON DÉSACTIVÉ */}
+                    <div className="hidden lg:block mt-auto space-y-4 pt-4 border-t">
+                      <Button
+                        disabled
+                        className="w-full py-4 sm:py-6 lg:py-7 text-base sm:text-lg lg:text-xl font-semibold opacity-50 cursor-not-allowed"
+                      >
+                        <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 mr-2" />
+                        <span className="hidden sm:inline">Choisir la quantité & taille</span>
+                        <span className="sm:hidden">Ajouter au panier</span>
+                      </Button>
+                    </div>
 
-                        // Mettre à jour le state avec les nouvelles copies
-                        setDesignElementsByView(newElementsByView);
-                      }
+                    {/* MOBILE: Badge indicateur mode édition */}
+                    <div className="lg:hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-40">
+                      <div className="bg-primary/90 backdrop-blur-sm text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                        <span className="text-sm font-medium">Mode édition</span>
+                      </div>
+                    </div>
 
-                      // Le changement de couleur sauvegarde automatiquement via useEffect
-                      setSelectedColorVariation(color);
-                      if (color.images && color.images.length > 0) {
-                        setSelectedView(color.images[0]);
-                      }
-                    }}
-                    className={`w-10 h-10 lg:w-12 lg:h-12 rounded-full border-2 transition-all ${
-                      selectedColorVariation?.id === color.id
-                        ? 'border-primary ring-2 ring-primary ring-offset-2'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    style={{ backgroundColor: color.colorCode }}
-                    title={color.name}
-                  />
-                ))}
-                </div>
-              </div>
-            )}
+                    {/* MOBILE: Bouton flottant de validation */}
+                    <div className="lg:hidden fixed bottom-20 right-4 z-40">
+                      <button
+                        onClick={() => {
+                          // Désélectionner l'élément
+                          setSelectedElement(null);
+                          toast({
+                            title: '✅ Texte validé',
+                            description: 'Votre personnalisation a été enregistrée'
+                          });
+                        }}
+                        className="bg-primary hover:bg-primary/90 text-white rounded-full shadow-2xl p-4 flex items-center gap-3 transition-all duration-200 hover:scale-105 active:scale-95"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="font-semibold pr-1">Valider</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Affichage normal des informations du produit */}
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-3 lg:mb-4">{product.name}</h2>
 
-            <div className="border-t pt-4 sm:pt-6 lg:pt-8 mb-4 sm:mb-6 lg:mb-8">
-              <div className="space-y-2 lg:space-y-3">
-                {/* Prix du produit */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm lg:text-base text-gray-600">Produit</span>
-                  <span className="text-base sm:text-lg lg:text-xl font-medium text-gray-900">
-                    {formatPrice(product.suggestedPrice || product.price)}
-                  </span>
-                </div>
+                    <div className="flex items-center gap-2 mb-4 lg:mb-6">
+                      <div className="flex">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span key={star} className="text-yellow-400 text-sm lg:text-base">★</span>
+                        ))}
+                      </div>
+                      <span className="text-xs sm:text-sm lg:text-base text-gray-600">(0 avis)</span>
+                    </div>
 
-                {/* Prix des designs (si applicable) */}
-                {getTotalDesignsPrice() > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm lg:text-base text-gray-600">
-                      Design{getTotalDesignsPrice() > (product.suggestedPrice || product.price) ? 's' : ''}
-                    </span>
-                    <span className="text-base sm:text-lg lg:text-xl font-medium text-blue-600">
-                      +{formatPrice(getTotalDesignsPrice())}
-                    </span>
-                  </div>
+                    {product.description && (
+                      <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-4 sm:mb-6 lg:mb-8">{product.description}</p>
+                    )}
+
+                    {/* Color Selection */}
+                    {product.colorVariations && product.colorVariations.length > 1 && (
+                      <div className="mb-6 lg:mb-8">
+                        <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-base lg:text-lg">Couleur</h3>
+                        <div className="flex flex-wrap gap-2 lg:gap-3">
+                          {product.colorVariations.map((color) => (
+                            <button
+                              key={color.id}
+                              onClick={() => {
+                                console.log('🎨 [Customization] Changement de couleur:', color.name);
+
+                                // 🔧 NOUVEAU: Copier les personnalisations de l'ancienne couleur vers la nouvelle
+                                if (selectedColorVariation && selectedColorVariation.id !== color.id) {
+                                  console.log('📋 [Customization] Copie des personnalisations vers la nouvelle couleur');
+
+                                  // Récupérer les éléments de toutes les vues de l'ancienne couleur
+                                  const oldColorViews = selectedColorVariation.images || [];
+                                  const newColorViews = color.images || [];
+
+                                  // Créer une copie du state actuel
+                                  const newElementsByView = { ...designElementsByViewRef.current };
+
+                                  // Pour chaque vue de l'ancienne couleur, copier vers la vue correspondante de la nouvelle couleur
+                                  oldColorViews.forEach((oldView: any, index: number) => {
+                                    const oldViewKey = `${selectedColorVariation.id}-${oldView.id}`;
+                                    const elements = newElementsByView[oldViewKey];
+
+                                    // Si cette vue a des éléments et qu'il y a une vue correspondante dans la nouvelle couleur
+                                    if (elements && elements.length > 0 && newColorViews[index]) {
+                                      const newView = newColorViews[index];
+                                      const newViewKey = `${color.id}-${newView.id}`;
+
+                                      console.log(`✨ [Customization] Copie ${elements.length} éléments de ${oldViewKey} vers ${newViewKey}`);
+
+                                      // Copier les éléments vers la nouvelle vue
+                                      newElementsByView[newViewKey] = [...elements];
+                                    }
+                                  });
+
+                                  // Mettre à jour le state avec les nouvelles copies
+                                  setDesignElementsByView(newElementsByView);
+                                }
+
+                                // Le changement de couleur sauvegarde automatiquement via useEffect
+                                setSelectedColorVariation(color);
+                                if (color.images && color.images.length > 0) {
+                                  setSelectedView(color.images[0]);
+                                }
+                              }}
+                              className={`w-10 h-10 lg:w-12 lg:h-12 rounded-full border-2 transition-all ${
+                                selectedColorVariation?.id === color.id
+                                  ? 'border-primary ring-2 ring-primary ring-offset-2'
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              style={{ backgroundColor: color.colorCode }}
+                              title={color.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="border-t pt-4 sm:pt-6 lg:pt-8 mb-4 sm:mb-6 lg:mb-8">
+                      <div className="space-y-2 lg:space-y-3">
+                        {/* Prix du produit */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm lg:text-base text-gray-600">Produit</span>
+                          <span className="text-base sm:text-lg lg:text-xl font-medium text-gray-900">
+                            {formatPrice(product.suggestedPrice || product.price)}
+                          </span>
+                        </div>
+
+                        {/* Prix des designs (si applicable) */}
+                        {getTotalDesignsPrice() > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs sm:text-sm lg:text-base text-gray-600">
+                              Design{getTotalDesignsPrice() > (product.suggestedPrice || product.price) ? 's' : ''}
+                            </span>
+                            <span className="text-base sm:text-lg lg:text-xl font-medium text-blue-600">
+                              +{formatPrice(getTotalDesignsPrice())}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Prix total */}
+                        <div className="flex items-center justify-between pt-2 lg:pt-3 border-t">
+                          <span className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900">Total</span>
+                          <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                            {formatPrice(getTotalPrice())}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Spacer pour pousser le bouton en bas */}
+                    <div className="flex-1"></div>
+
+                    {/* CTA Section - Fixed at bottom */}
+                    <div className="mt-auto space-y-4 pt-4 border-t">
+                      <Button
+                        onClick={handleOpenSizeModal}
+                        className="w-full py-4 sm:py-6 lg:py-7 text-base sm:text-lg lg:text-xl font-semibold"
+                      >
+                        <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 mr-2" />
+                        <span className="hidden sm:inline">Choisir la quantité & taille</span>
+                        <span className="sm:hidden">Ajouter au panier</span>
+                      </Button>
+
+                      <div className="p-3 sm:p-4 lg:p-5 bg-blue-50 rounded-lg hidden sm:block">
+                        <p className="text-sm lg:text-base text-blue-900 font-medium mb-2">💡 Comment utiliser:</p>
+                        <ul className="text-xs lg:text-sm text-blue-800 space-y-1">
+                          <li>• Utilisez la barre latérale pour ajouter des designs ou du texte</li>
+                          <li>• Cliquez et glissez pour déplacer les éléments</li>
+                          <li>• Utilisez les poignées pour redimensionner et pivoter</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </>
                 )}
-
-                {/* Prix total */}
-                <div className="flex items-center justify-between pt-2 lg:pt-3 border-t">
-                  <span className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                    {formatPrice(getTotalPrice())}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-                {/* Spacer pour pousser le bouton en bas */}
-                <div className="flex-1"></div>
-
-                {/* CTA Section - Fixed at bottom */}
-                <div className="mt-auto space-y-4 pt-4 border-t">
-                  <Button
-                    onClick={handleOpenSizeModal}
-                    className="w-full py-4 sm:py-6 lg:py-7 text-base sm:text-lg lg:text-xl font-semibold"
-                  >
-                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 mr-2" />
-                    <span className="hidden sm:inline">Choisir la quantité & taille</span>
-                    <span className="sm:hidden">Ajouter au panier</span>
-                  </Button>
-
-                  <div className="p-3 sm:p-4 lg:p-5 bg-blue-50 rounded-lg hidden sm:block">
-                    <p className="text-sm lg:text-base text-blue-900 font-medium mb-2">💡 Comment utiliser:</p>
-                    <ul className="text-xs lg:text-sm text-blue-800 space-y-1">
-                      <li>• Utilisez la barre latérale pour ajouter des designs ou du texte</li>
-                      <li>• Cliquez et glissez pour déplacer les éléments</li>
-                      <li>• Utilisez les poignées pour redimensionner et pivoter</li>
-                    </ul>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

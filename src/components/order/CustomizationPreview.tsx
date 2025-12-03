@@ -70,32 +70,28 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageDisplaySize, setImageDisplaySize] = useState({ width: 0, height: 0, offsetX: 0, offsetY: 0 });
 
-  // Calculer les dimensions d'affichage de l'image
+  // Calculer les dimensions du conteneur (IDENTIQUE à ProductDesignEditor)
+  // IMPORTANT: Utiliser les dimensions du CONTENEUR, pas de l'image affichée
+  // ProductDesignEditor utilise rect.width et rect.height directement
   useEffect(() => {
-    if (!imageLoaded || !imgRef.current || !containerRef.current) return;
+    if (!imageLoaded || !containerRef.current) return;
 
     const calculateDisplaySize = () => {
       const container = containerRef.current!.getBoundingClientRect();
-      const imgNaturalWidth = imgRef.current!.naturalWidth;
-      const imgNaturalHeight = imgRef.current!.naturalHeight;
 
-      const imgRatio = imgNaturalWidth / imgNaturalHeight;
-      const contRatio = container.width / container.height;
+      // ✅ CHANGEMENT CLÉ: Utiliser les dimensions du conteneur directement
+      // comme ProductDesignEditor (ligne 1341, 1343-1344)
+      // Pas de calcul d'offset car les éléments sont positionnés relatifs au conteneur
+      const dispW = container.width;
+      const dispH = container.height;
 
-      let dispW: number, dispH: number, offsetX: number, offsetY: number;
-      if (imgRatio > contRatio) {
-        dispW = container.width;
-        dispH = container.width / imgRatio;
-        offsetX = 0;
-        offsetY = (container.height - dispH) / 2;
-      } else {
-        dispH = container.height;
-        dispW = container.height * imgRatio;
-        offsetX = (container.width - dispW) / 2;
-        offsetY = 0;
-      }
+      console.log('📐 [CustomizationPreview] Container dimensions (matching ProductDesignEditor):', {
+        productName,
+        containerSize: { width: dispW, height: dispH },
+        delimitation
+      });
 
-      setImageDisplaySize({ width: dispW, height: dispH, offsetX, offsetY });
+      setImageDisplaySize({ width: dispW, height: dispH, offsetX: 0, offsetY: 0 });
     };
 
     calculateDisplaySize();
@@ -106,8 +102,14 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
   }, [imageLoaded]);
 
   // Utiliser la logique unifiée de positionnement pour garantir la cohérence
-  const getElementStyle = (element: DesignElement): React.CSSProperties => {
-    if (!imageLoaded || imageDisplaySize.width === 0) return { display: 'none' };
+  const getElementStyles = (element: DesignElement): { parentStyle: React.CSSProperties; childStyle: React.CSSProperties } => {
+    if (!imageLoaded || imageDisplaySize.width === 0) {
+      console.log('⏳ [CustomizationPreview] Element not ready:', { imageLoaded, imageDisplaySize });
+      return {
+        parentStyle: { display: 'none' },
+        childStyle: {}
+      };
+    }
 
     // Utiliser l'utilitaire unifié qui garantit la cohérence avec ProductDesignEditor
     const canvasDimensions = {
@@ -116,6 +118,25 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
       offsetX: imageDisplaySize.offsetX,
       offsetY: imageDisplaySize.offsetY
     };
+
+    console.log('🎨 [CustomizationPreview] Getting element styles:', {
+      productName,
+      elementId: element.id,
+      elementType: element.type,
+      elementPos: { x: element.x, y: element.y },
+      elementSize: { width: element.width, height: element.height },
+      elementRotation: element.rotation,
+      canvasDimensions,
+      delimitation: delimitation ? {
+        x: delimitation.x,
+        y: delimitation.y,
+        width: delimitation.width,
+        height: delimitation.height,
+        coordinateType: delimitation.coordinateType,
+        referenceWidth: delimitation.referenceWidth,
+        referenceHeight: delimitation.referenceHeight
+      } : null
+    });
 
     return getElementWebStyle(element as any, canvasDimensions, delimitation as any);
   };
@@ -162,26 +183,31 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
             clipPath: 'inset(0)',
           }}
         >
-          {designElements.map((element) => (
-            <div key={element.id} style={getElementStyle(element)}>
-              {element.type === 'text' ? (
-                <div style={getTextStyle(element)}>
-                  {element.text}
+          {designElements.map((element) => {
+            const { parentStyle, childStyle } = getElementStyles(element);
+            return (
+              <div key={element.id} style={parentStyle}>
+                <div style={childStyle}>
+                  {element.type === 'text' ? (
+                    <div style={getTextStyle(element)}>
+                      {element.text}
+                    </div>
+                  ) : element.type === 'image' && element.imageUrl ? (
+                    <img
+                      src={element.imageUrl}
+                      alt="Design"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                      }}
+                      draggable={false}
+                    />
+                  ) : null}
                 </div>
-              ) : element.type === 'image' && element.imageUrl ? (
-                <img
-                  src={element.imageUrl}
-                  alt="Design"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                  }}
-                  draggable={false}
-                />
-              ) : null}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
 

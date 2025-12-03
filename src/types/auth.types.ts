@@ -29,6 +29,12 @@ export interface LoginRequest {
 
 export interface LoginSuccessResponse {
   user: User;
+  token?: string;
+  jwt?: string;
+  accessToken?: string;
+  access_token?: string;
+  cookie?: string;
+  cookies?: string;
 }
 
 export interface LoginPasswordChangeRequiredResponse {

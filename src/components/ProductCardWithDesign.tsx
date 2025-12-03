@@ -283,7 +283,7 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
       console.log('📍 [ProductCardWithDesign] Position depuis designPositions:', designPos.position);
 
       // Enrichir avec localStorage si designWidth/designHeight manquent
-      let enrichedPosition: any = {
+      const enrichedPosition: any = {
         ...designPos.position,
         constraints: (designPos.position as any).constraints || {}
       };
@@ -330,7 +330,7 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
         console.log('📍 [ProductCardWithDesign] Position depuis designTransforms:', transform);
 
         // Enrichir avec localStorage si designWidth/designHeight manquent
-        let enrichedTransform: any = {
+        const enrichedTransform: any = {
           ...transform,
           constraints: (transform as any).constraints || {}
         };

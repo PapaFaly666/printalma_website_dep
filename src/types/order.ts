@@ -236,6 +236,71 @@ export interface OrderItemDto {
   };
 }
 
+export interface DeliveryInfo {
+  // 🇸🇳 POUR LE SÉNÉGAL (commandes nationales) - champs optionnels
+  // countryCode et countryName sont les seuls champs vraiment nécessaires
+
+  // 🌍 POUR L'INTERNATIONAL (commandes hors Sénégal) - champs obligatoires
+  deliveryType?: 'city' | 'region' | 'international'; // Obligatoire pour l'international
+
+  // Localisation (obligatoire selon deliveryType pour l'international)
+  cityId?: string;           // si deliveryType = 'city'
+  cityName?: string;
+  regionId?: string;         // si deliveryType = 'region'
+  regionName?: string;
+  zoneId?: string;           // si deliveryType = 'international'
+  zoneName?: string;
+
+  // Transporteur et tarif (obligatoires uniquement pour l'international)
+  transporteurId?: string;   // ID du transporteur (optionnel pour Sénégal)
+  transporteurName?: string;
+  transporteurLogo?: string;
+  zoneTarifId?: string;      // ID du tarif appliqué (optionnel pour Sénégal)
+  deliveryFee?: number;      // Frais de livraison en XOF (optionnel pour Sénégal)
+  deliveryTime?: string;      // ex: '24-48h'
+
+  // Métadonnées (toujours optionnel)
+  countryCode?: string;      // ex: 'SN', 'FR', 'US'
+  countryName?: string;
+  metadata?: {
+    availableCarriers?: any[];
+    selectedAt?: string;
+    calculationDetails?: any;
+    calculatedAt?: string;
+  };
+  // Métadonnées supplémentaires pour compatibilité
+  calculatedAt?: string;
+
+  // Compatibilité avec structure existante (legacy)
+  location?: {
+    type: 'city' | 'region' | 'international';
+    cityId?: number;
+    cityName?: string;
+    regionId?: number;
+    regionName?: string;
+    zoneId?: string | null;
+    zoneName?: string | null;
+    countryCode?: string;
+    countryName?: string;
+  };
+  transporteur?: {
+    id: string;
+    name: string;
+    logo?: string;
+    phone?: string | null;
+    email?: string | null;
+    status?: string;
+    description?: string | null;
+  };
+  tarif?: {
+    id: string;
+    amount: number;
+    currency?: string;
+    description?: string | null;
+    deliveryTime?: string;
+  };
+}
+
 export interface Order {
   id: number;
   orderNumber: string;
@@ -267,6 +332,7 @@ export interface Order {
   shippedAt?: string;
   deliveredAt?: string;
   orderItems: OrderItemDto[];
+  delivery_info?: DeliveryInfo;
 }
 
 export interface CreateOrderDto {

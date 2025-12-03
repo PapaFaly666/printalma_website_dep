@@ -41,9 +41,26 @@ import { vendorProductService } from '../../services/vendorProductService';
 import { vendorStatsService } from '../../services/vendorStatsService';
 import { formatDateShort } from '../../utils/dateUtils';
 
+// Interface pour les statistiques du backend
+interface OrderStatistics {
+  totalOrders: number;
+  totalAmount: number;
+  statusBreakdown: Record<string, number>;
+  paymentStatusBreakdown: Record<string, number>;
+  totalRevenue: number;
+  totalCommission: number;
+  totalVendorAmount: number;
+  monthlyRevenue: number;
+  annualRevenue: number;
+  monthlyOrders: number;
+  averageOrderValue: number;
+  conversionRate: number;
+}
+
 const VendorFundsRequestPage: React.FC = () => {
-  // États pour les données - Utiliser les nouvelles données de /vendor/stats
+  // États pour les données - Utiliser les nouvelles données de /orders/my-orders
   const [earnings, setEarnings] = useState<VendorEarnings | null>(null);
+  const [backendStatistics, setBackendStatistics] = useState<OrderStatistics | null>(null);
   const [statsData, setStatsData] = useState<any>(null); // Données de /vendor/stats pour cohérence
 
   const [fundsRequests, setFundsRequests] = useState<FundsRequest[]>([]);
@@ -85,9 +102,31 @@ const VendorFundsRequestPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      console.log('🔄 Chargement des données d\'appel de fonds avec /vendor/earnings...');
+      console.log('🔄 Chargement des données d\'appel de fonds avec /orders/my-orders...');
 
-      // 🎯 Utiliser /vendor/earnings en priorité car il fonctionne avec des données dynamiques réelles
+      // Fetch statistics from /orders/my-orders endpoint
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3004';
+      const token = localStorage.getItem('token');
+
+      const apiResponse = await fetch(`${apiUrl}/orders/my-orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (apiResponse.ok) {
+        const apiData = await apiResponse.json();
+        console.log('📊 Statistics reçues du backend (VendorFundsRequestPage):', apiData.data.statistics);
+        if (apiData.success && apiData.data.statistics) {
+          setBackendStatistics(apiData.data.statistics);
+          console.log('✅ totalVendorAmount (VendorFundsRequestPage):', apiData.data.statistics.totalVendorAmount);
+        }
+      }
+
+      // 🎯 Utiliser /vendor/earnings pour les montants disponibles et en attente
       const [earningsData, requestsData] = await Promise.all([
         vendorFundsService.getVendorEarnings(),
         vendorFundsService.getVendorFundsRequests(filters)
@@ -114,7 +153,7 @@ const VendorFundsRequestPage: React.FC = () => {
       });
 
     } catch (error) {
-      console.error('❌ Erreur lors du chargement des données depuis /vendor/earnings:', error);
+      console.error('❌ Erreur lors du chargement des données:', error);
       console.log('⚠️ Tentative de fallback vers /vendor/stats...');
 
       try {
@@ -383,17 +422,17 @@ const VendorFundsRequestPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card>
+            <Card className="bg-green-50 border-green-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gains Totaux</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-900">Gains Totaux</CardTitle>
                 <DollarSign className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">
-                  {loading ? '...' : vendorFundsService.formatCurrency(earnings?.totalEarnings || 0)}
+                <div className="text-2xl font-bold text-green-900">
+                  {loading ? '...' : vendorFundsService.formatCurrency(backendStatistics?.totalVendorAmount || 0)}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Ce mois: {vendorFundsService.formatCurrency(earnings?.thisMonthEarnings || 0)}
+                <div className="text-xs text-green-700 mt-1">
+                  Ce mois: {vendorFundsService.formatCurrency(backendStatistics?.monthlyRevenue || 0)}
                 </div>
               </CardContent>
             </Card>

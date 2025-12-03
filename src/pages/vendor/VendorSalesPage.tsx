@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Search,
   Filter,
-  DollarSign
+  DollarSign,
+  CreditCard
 } from 'lucide-react';
 import { ordersService, Order, OrderStatus, OrdersResponse } from '../../services/ordersService';
 import { toast } from 'sonner';
@@ -42,18 +43,19 @@ const statusConfig = {
   CANCELLED: { label: 'Annulée', icon: XCircle, color: 'bg-red-100 text-red-800' }
 };
 
+// Configuration pour le statut de paiement
+const paymentStatusConfig = {
+  PENDING: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
+  PAID: { label: 'Payée', color: 'bg-green-100 text-green-800' },
+  FAILED: { label: 'Échouée', color: 'bg-red-100 text-red-800' }
+};
+
 export const VendorSalesPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'ALL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 0
-  });
 
   // Charger les commandes
   const fetchOrders = async (showLoader = true) => {
@@ -61,15 +63,12 @@ export const VendorSalesPage: React.FC = () => {
       if (showLoader) setLoading(true);
 
       const filters = {
-        page: pagination.page,
-        limit: pagination.limit,
         ...(selectedStatus !== 'ALL' && { status: selectedStatus }),
         ...(searchTerm && { search: searchTerm })
       };
 
       const response: OrdersResponse = await ordersService.getMyOrders(filters);
       setOrders(response.orders);
-      setPagination(response.pagination);
     } catch (error: any) {
       console.error('Erreur lors du chargement des commandes:', error);
       toast.error(error.message || 'Erreur lors du chargement des commandes');
@@ -82,7 +81,7 @@ export const VendorSalesPage: React.FC = () => {
   // Chargement initial
   useEffect(() => {
     fetchOrders();
-  }, [pagination.page, selectedStatus]);
+  }, [selectedStatus]);
 
   // Polling toutes les 5 secondes
   useEffect(() => {
@@ -91,7 +90,7 @@ export const VendorSalesPage: React.FC = () => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [pagination.page, selectedStatus, searchTerm]);
+  }, [selectedStatus, searchTerm]);
 
   // Rafraîchissement manuel
   const handleRefresh = () => {
@@ -101,14 +100,35 @@ export const VendorSalesPage: React.FC = () => {
 
   // Recherche
   const handleSearch = () => {
-    setPagination(prev => ({ ...prev, page: 1 }));
     fetchOrders();
   };
 
-  // Calculer le total des revenus
+  // Calculer le total des revenus et des gains du vendeur
   const totalRevenue = orders.reduce((sum, order) => {
-    if (order.status !== 'CANCELLED') {
+    // Uniquement les commandes payées (PAID) comptent pour les revenus
+    if (order.status !== 'CANCELLED' && order.paymentStatus === 'PAID') {
       return sum + order.totalAmount;
+    }
+    return sum;
+  }, 0);
+
+  // LES GAINS DU VENDEUR = commission_amount (montant que la plateforme gagne)
+  // OU vendor_amount (montant que le vendeur reçoit après commission)
+  // IMPORTANT: Uniquement les commandes avec paymentStatus === 'PAID'
+  const totalCommissionAmount = orders.reduce((sum, order) => {
+    if (order.status !== 'CANCELLED' &&
+        order.paymentStatus === 'PAID' &&
+        order.commission_info?.commission_amount) {
+      return sum + order.commission_info.commission_amount;
+    }
+    return sum;
+  }, 0);
+
+  const totalVendorEarnings = orders.reduce((sum, order) => {
+    if (order.status !== 'CANCELLED' &&
+        order.paymentStatus === 'PAID' &&
+        order.commission_info?.vendor_amount) {
+      return sum + order.commission_info.vendor_amount;
     }
     return sum;
   }, 0);
@@ -132,14 +152,66 @@ export const VendorSalesPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Statistiques */}
+      {/* Statistiques des statuts de paiement */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">En attente</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900">
+              {orders.filter(o => o.status === 'PENDING').length}
+            </div>
+            <div className="text-xs text-gray-500">En attente de confirmation</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Paiements Échoués</CardTitle>
+            <XCircle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {orders.filter(o => o.paymentStatus === 'FAILED').length}
+            </div>
+            <div className="text-xs text-gray-500">Paiements non aboutis</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Confirmées</CardTitle>
+            <CheckCircle className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {orders.filter(o => o.status === 'CONFIRMED').length}
+            </div>
+            <div className="text-xs text-gray-500">Commandes confirmées</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Livrées</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {orders.filter(o => o.status === 'DELIVERED').length}
+            </div>
+            <div className="text-xs text-gray-500">Commandes livrées</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Statistiques financières */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Commandes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pagination.total}</div>
+            <div className="text-2xl font-bold">{orders.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -149,28 +221,32 @@ export const VendorSalesPage: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-1">
               <DollarSign className="h-5 w-5" />
-              {totalRevenue.toFixed(2)} €
+              {(totalRevenue / 100).toLocaleString()} F
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">En Cours</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Commissions (Gains plateforme)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {orders.filter(o => ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(o.status)).length}
+            <div className="text-2xl font-bold flex items-center gap-1 text-orange-600">
+              <DollarSign className="h-5 w-5" />
+              {(totalCommissionAmount / 100).toLocaleString()} F
             </div>
+            <p className="text-xs text-muted-foreground">Total des commissions</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Livrées</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Mes Gains Nets</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {orders.filter(o => o.status === 'DELIVERED').length}
+            <div className="text-2xl font-bold flex items-center gap-1 text-green-600">
+              <DollarSign className="h-5 w-5" />
+              {(totalVendorEarnings / 100).toLocaleString()} F
             </div>
+            <p className="text-xs text-muted-foreground">Après commission déduite</p>
           </CardContent>
         </Card>
       </div>
@@ -193,7 +269,7 @@ export const VendorSalesPage: React.FC = () => {
                   placeholder="N° commande, client..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   className="flex-1 px-3 py-2 border rounded-md"
                 />
                 <Button onClick={handleSearch} variant="outline">
@@ -225,9 +301,9 @@ export const VendorSalesPage: React.FC = () => {
       {/* Liste des commandes */}
       <Card>
         <CardHeader>
-          <CardTitle>Commandes ({pagination.total})</CardTitle>
+          <CardTitle>Toutes les commandes ({orders.length})</CardTitle>
           <CardDescription>
-            Page {pagination.page} sur {pagination.totalPages}
+            Affichage de toutes vos commandes
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -267,11 +343,29 @@ export const VendorSalesPage: React.FC = () => {
                             <CardDescription>
                               {formatDate(new Date(order.createdAt))}
                             </CardDescription>
+                            <div className="flex gap-2 mt-1">
+                              <Badge className={statusConfig[order.status].color}>
+                                <StatusIcon className="h-3 w-3 mr-1" />
+                                {statusConfig[order.status].label}
+                              </Badge>
+                              {/* Badge de statut de paiement */}
+                              {order.paymentStatus && (
+                                <Badge className={paymentStatusConfig[order.paymentStatus]?.color || 'bg-gray-100 text-gray-800'}>
+                                  <CreditCard className="h-3 w-3 mr-1" />
+                                  {paymentStatusConfig[order.paymentStatus]?.label || order.paymentStatus}
+                                </Badge>
+                              )}
+                            </div>
+                            {/* Message spécial pour les paiements échoués */}
+                            {order.paymentStatus === 'FAILED' && order.notes && (
+                              <Alert className="mt-2">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                  <strong>Paiement échoué</strong>: Voir les notes pour plus de détails
+                                </AlertDescription>
+                              </Alert>
+                            )}
                           </div>
-                          <Badge className={statusConfig[order.status].color}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {statusConfig[order.status].label}
-                          </Badge>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -309,10 +403,39 @@ export const VendorSalesPage: React.FC = () => {
                           <p className="text-sm text-muted-foreground">{order.shippingAddress}</p>
                         </div>
 
-                        {/* Total */}
+                        {/* Commission et Total */}
                         <div className="flex items-center justify-between pt-2 border-t">
-                          <p className="text-sm">Méthode de paiement: <span className="font-medium">{order.paymentMethod}</span></p>
-                          <p className="text-lg font-bold">{order.totalAmount.toFixed(2)} €</p>
+                          <div className="space-y-1">
+                            <p className="text-sm">Méthode: <span className="font-medium">{order.paymentMethod}</span></p>
+                            {order.commission_info && order.paymentStatus === 'PAID' ? (
+                              <>
+                                <p className="text-sm text-orange-600">
+                                  Commission ({order.commission_info.commission_rate}%):
+                                  <span className="font-medium"> {(order.commission_info.commission_amount / 100).toLocaleString()} F</span>
+                                </p>
+                                <p className="text-sm text-green-600 font-medium">
+                                  <strong>MES GAINS</strong>: <span className="font-bold">{(order.commission_info.vendor_amount / 100).toLocaleString()} F</span>
+                                </p>
+                              </>
+                            ) : order.paymentStatus === 'FAILED' ? (
+                              <p className="text-sm text-red-600 font-medium">
+                                <strong>PAIEMENT ÉCHOUÉ</strong> - Pas de gains pour cette commande
+                              </p>
+                            ) : (
+                              <p className="text-sm text-yellow-600">
+                                Paiement en attente
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold">{(order.totalAmount / 100).toLocaleString()} F</p>
+                            <p className="text-xs text-gray-500">Total commande</p>
+                            {order.commission_info && order.commission_info.has_custom_rate && (
+                              <Badge variant="secondary" className="mt-1">
+                                Taux personnalisé
+                              </Badge>
+                            )}
+                          </div>
                         </div>
 
                         {order.notes && (
@@ -331,31 +454,7 @@ export const VendorSalesPage: React.FC = () => {
             </ScrollArea>
           )}
 
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                disabled={pagination.page === 1}
-              >
-                Précédent
-              </Button>
-              <span className="text-sm">
-                Page {pagination.page} / {pagination.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                disabled={pagination.page === pagination.totalPages}
-              >
-                Suivant
-              </Button>
-            </div>
-          )}
-        </CardContent>
+          </CardContent>
       </Card>
     </div>
   );

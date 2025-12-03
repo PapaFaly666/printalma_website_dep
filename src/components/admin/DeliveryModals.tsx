@@ -21,7 +21,7 @@ import {
 } from '../ui/select';
 import { Badge } from '../ui/badge';
 import type { CreateCityPayload, CreateRegionPayload, CreateInternationalZonePayload } from '../../services/deliveryService';
-import { WORLD_COUNTRIES } from '../../data/countries';
+import { COUNTRIES } from '../../data/countries';
 
 // ========================================
 // Modal Ville (City)
@@ -366,12 +366,12 @@ export const ZoneModal: React.FC<ZoneModalProps> = ({
   isSaving = false,
 }) => {
   // Extraire les noms de pays déjà ajoutés (gérer format objet ou string)
-  const addedCountryNames = formData.countries.map(c =>
-    typeof c === 'string' ? c : c.country
+  const addedCountryNames = formData.countries.map((c: string | any) =>
+    typeof c === 'string' ? c : c.country || c
   );
 
   // Filtrer les pays disponibles (non encore ajoutés)
-  const availableCountries = WORLD_COUNTRIES.filter(
+  const availableCountries = COUNTRIES.map(c => c.name).filter(
     country => !addedCountryNames.includes(country)
   );
 
@@ -401,16 +401,10 @@ export const ZoneModal: React.FC<ZoneModalProps> = ({
             />
           </div>
 
-          <div className="col-span-2">
-            <Label htmlFor="zone-price">Prix de livraison (FCFA) *</Label>
-            <Input
-              id="zone-price"
-              type="number"
-              value={formData.price}
-              onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-              min="0"
-              step="1000"
-            />
+          <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <strong>ℹ️ Note :</strong> Les prix de livraison pour cette zone seront définis par transporteur dans l'onglet <strong>Tarifs</strong>.
+            </p>
           </div>
 
           <div>
@@ -477,7 +471,7 @@ export const ZoneModal: React.FC<ZoneModalProps> = ({
                   type="button"
                   onClick={onAddCountry}
                   size="sm"
-                  disabled={!countryInput || !WORLD_COUNTRIES.includes(countryInput)}
+                  disabled={!countryInput || !COUNTRIES.map(c => c.name).includes(countryInput)}
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
@@ -494,7 +488,7 @@ export const ZoneModal: React.FC<ZoneModalProps> = ({
               <div className="flex flex-wrap gap-2 mt-2">
                 {formData.countries.map((country, index) => {
                   // Gérer à la fois le format objet {id, zoneId, country} et string
-                  const countryName = typeof country === 'string' ? country : country.country;
+                  const countryName = typeof country === 'string' ? country : (country as any).country || country;
                   return (
                     <Badge key={index} variant="secondary" className="pl-3 pr-1">
                       {countryName}

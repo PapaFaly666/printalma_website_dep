@@ -5,6 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 
+declare global {
+  interface Window {
+    runAuthTest?: () => void;
+  }
+}
+
 const TestAuth: React.FC = () => {
   const { user, isAuthenticated, logout, isAdmin } = useAuth();
   const navigate = useNavigate();

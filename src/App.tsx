@@ -86,6 +86,7 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 
 // Nouvelles pages de gestion des fonds vendeur
 import VendorFundsRequestPage from './pages/vendor/VendorFundsRequestPage';
+import VendorWithdrawalsPage from './pages/vendor/VendorWithdrawalsPage';
 import AdminPaymentRequestsPage from './pages/admin/AdminPaymentRequestsPage';
 
 // Page de gestion des mockups
@@ -205,6 +206,18 @@ import TestAuth from './pages/TestAuth';
 // 🏆 Best Sellers
 import BestSellersPage from './pages/BestSellersPage';
 
+// 🎤 Artistes
+import ArtistesPage from './pages/ArtistesPage';
+
+// 🎬 Influenceurs
+import InfluenceursPage from './pages/InfluenceursPage';
+
+// 🎨 Designers
+import DesignersPage from './pages/DesignersPage';
+
+// 👤 Page de profil
+import ProfilePage from './pages/ProfilePage';
+
 // Créer une instance globale de QueryClient
 const queryClient = new QueryClient();
 
@@ -257,6 +270,10 @@ function App() {
                 <Route path='/product/:id/customize-v2' element={<CustomerProductCustomizationPageV2 />} />
                 <Route path='/product/:id/customize-v1' element={<CustomerProductCustomizationPage />} />
                 <Route path='/best-sellers' element={<BestSellersPage />} />
+                <Route path='/artistes' element={<ArtistesPage />} />
+                <Route path='/influenceurs' element={<InfluenceursPage />} />
+                <Route path='/designers' element={<DesignersPage />} />
+                <Route path='/profile/:type/:id' element={<ProfilePage />} />
                 <Route path='/vendez-vos-oeuvres' element={<SellDesignPage />} />
                 <Route path='/cart' element={<CartPage />} />
                 <Route path='/order-form' element={<ModernOrderFormPage />} />
@@ -347,7 +364,7 @@ function App() {
                   <Route path="stock" element={<AdminStockManagement />} />
                   <Route path="delivery" element={<DeliveryManagementPage />} />
                   <Route path="livraison" element={<ZonesLivraisonPage />} />
-                  <Route path="settings" element={<AdminSettingsPage />} />
+                  <Route path="settings" element={<AdminSettingsPage />} />/
                   <Route index element={<Navigate to="/test-auth" replace />} />
                 </Route>
                 
@@ -371,6 +388,7 @@ function App() {
                   <Route path="create-product" element={<CreateProductWizardPage />} />
                   <Route path="account" element={<VendorAccountPage />} />
                   <Route path="appel-de-fonds" element={<VendorFundsRequestPage />} />
+                  <Route path="retraits" element={<VendorWithdrawalsPage />} />
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 

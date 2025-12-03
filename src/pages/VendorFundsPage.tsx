@@ -2,9 +2,26 @@ import React from 'react';
 import { fundsRequestService, type CreateFundsRequestPayload, type FundsRequest } from '../services/fundsRequestService';
 import { toast } from 'sonner';
 
+// Interface pour les statistiques du backend
+interface OrderStatistics {
+  totalOrders: number;
+  totalAmount: number;
+  statusBreakdown: Record<string, number>;
+  paymentStatusBreakdown: Record<string, number>;
+  totalRevenue: number;
+  totalCommission: number;
+  totalVendorAmount: number;
+  monthlyRevenue: number;
+  annualRevenue: number;
+  monthlyOrders: number;
+  averageOrderValue: number;
+  conversionRate: number;
+}
+
 export const VendorFundsPage: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [earnings, setEarnings] = React.useState<{ availableAmount: number; pendingAmount: number; totalEarnings: number } | null>(null);
+  const [backendStatistics, setBackendStatistics] = React.useState<OrderStatistics | null>(null);
   const [requests, setRequests] = React.useState<FundsRequest[]>([]);
   const [page, setPage] = React.useState(1);
   const [limit] = React.useState(10);
@@ -32,6 +49,29 @@ export const VendorFundsPage: React.FC = () => {
   const loadAll = React.useCallback(async () => {
     try {
       setLoading(true);
+
+      // Fetch statistics from /orders/my-orders endpoint
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3004';
+      const token = localStorage.getItem('token');
+
+      const apiResponse = await fetch(`${apiUrl}/orders/my-orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (apiResponse.ok) {
+        const apiData = await apiResponse.json();
+        console.log('📊 Statistics reçues du backend (VendorFundsPage):', apiData.data.statistics);
+        if (apiData.success && apiData.data.statistics) {
+          setBackendStatistics(apiData.data.statistics);
+          console.log('✅ totalVendorAmount (VendorFundsPage):', apiData.data.statistics.totalVendorAmount);
+        }
+      }
+
       const [e, list] = await Promise.all([
         fundsRequestService.getEarnings(),
         fundsRequestService.list({ page, limit })
@@ -101,9 +141,14 @@ export const VendorFundsPage: React.FC = () => {
           <div className="text-sm text-gray-500">En attente</div>
           <div className="text-xl font-semibold">{earnings?.pendingAmount?.toLocaleString() || 0} FCFA</div>
         </div>
-        <div className="p-4 border rounded">
-          <div className="text-sm text-gray-500">Total</div>
-          <div className="text-xl font-semibold">{earnings?.totalEarnings?.toLocaleString() || 0} FCFA</div>
+        <div className="p-4 border rounded bg-green-50">
+          <div className="text-sm text-gray-500">Gains Totaux</div>
+          <div className="text-xl font-semibold text-green-700">
+            {(backendStatistics?.totalVendorAmount || 0).toLocaleString()} FCFA
+          </div>
+          <div className="text-xs text-gray-600 mt-1">
+            Ce mois: {(backendStatistics?.monthlyRevenue || 0).toLocaleString()} FCFA
+          </div>
         </div>
       </div>
 

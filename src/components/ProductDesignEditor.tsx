@@ -274,12 +274,12 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       text: 'Votre texte',
       x: centerX,
       y: centerY,
-      width: 150,
-      height: 40,
+      width: 300,            // Augmenté de 150 à 300
+      height: 80,            // Augmenté de 40 à 80
       rotation: 0,
-      fontSize: 24,
-      baseFontSize: 24,      // Taille de police de base
-      baseWidth: 150,         // Largeur de base
+      fontSize: 48,          // Augmenté de 24 à 48
+      baseFontSize: 48,      // Taille de police de base augmentée
+      baseWidth: 300,        // Largeur de base augmentée
       fontFamily: 'Arial, sans-serif',
       color: '#000000',
       fontWeight: 'normal',
@@ -313,8 +313,8 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       height: delimitation.height * scaleY
     };
 
-    const maxWidth = delimBounds.width * 0.6;
-    const maxHeight = delimBounds.height * 0.6;
+    const maxWidth = delimBounds.width * 0.95;  // Augmenté à 0.95 (95% de la délimitation)
+    const maxHeight = delimBounds.height * 0.95; // Augmenté à 0.95
     const aspectRatio = naturalWidth / naturalHeight;
 
     let imageWidth = maxWidth;
@@ -325,8 +325,34 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       imageWidth = maxHeight * aspectRatio;
     }
 
+    console.log('📐 [ProductDesignEditor] Calcul taille image:', {
+      delimBounds,
+      maxWidth,
+      maxHeight,
+      naturalWidth,
+      naturalHeight,
+      aspectRatio,
+      calculatedImageWidth: imageWidth,
+      calculatedImageHeight: imageHeight,
+      pourcentageWidth: (imageWidth / delimBounds.width * 100).toFixed(1) + '%',
+      pourcentageHeight: (imageHeight / delimBounds.height * 100).toFixed(1) + '%'
+    });
+
     const centerX = (delimBounds.x + delimBounds.width / 2) / rect.width;
     const centerY = (delimBounds.y + delimBounds.height / 2) / rect.height;
+
+    // IMPORTANT: Normaliser les dimensions (diviser par scaleX/scaleY car elles seront re-multipliées au rendu)
+    const normalizedWidth = imageWidth / scaleX;
+    const normalizedHeight = imageHeight / scaleY;
+
+    console.log('🔄 [ProductDesignEditor] Normalisation dimensions:', {
+      imageWidth,
+      imageHeight,
+      scaleX,
+      scaleY,
+      normalizedWidth,
+      normalizedHeight
+    });
 
     const newImage: ImageElement = {
       id: generateId(),
@@ -334,8 +360,8 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       imageUrl,
       x: centerX,
       y: centerY,
-      width: imageWidth,
-      height: imageHeight,
+      width: normalizedWidth,  // Utiliser les dimensions normalisées
+      height: normalizedHeight, // Utiliser les dimensions normalisées
       rotation: 0,
       naturalWidth,
       naturalHeight,
@@ -968,7 +994,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       const startAngle = Math.atan2(rotateStart.startY - centerY, rotateStart.startX - centerX);
       const deltaAngle = (angle - startAngle) * (180 / Math.PI);
 
-      let newRotation = (rotateStart.angle + deltaAngle) % 360;
+      const newRotation = (rotateStart.angle + deltaAngle) % 360;
 
       // Récupérer l'élément en cours de rotation
       const element = elements.find(el => el.id === selectedElementId);
@@ -1496,10 +1522,10 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
                       {/* Bouton de suppression (coin haut-gauche) */}
                       <button
-                        className="absolute w-7 h-7 bg-red-500 hover:bg-red-600 border-2 border-white rounded-full cursor-pointer flex items-center justify-center shadow-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="absolute w-5 h-5 sm:w-6 sm:h-6 bg-red-500 hover:bg-red-600 border border-white sm:border-2 rounded-full cursor-pointer flex items-center justify-center shadow-md sm:shadow-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
-                          left: '-14px',
-                          top: '-14px',
+                          left: '-10px',
+                          top: '-10px',
                           pointerEvents: 'auto',
                           zIndex: 10
                         }}
@@ -1515,15 +1541,15 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                         }}
                         title="Supprimer"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-white" />
+                        <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
                       </button>
 
                       {/* Bouton de duplication (coin haut-droit avant rotation) */}
                       <button
-                        className="absolute w-7 h-7 bg-blue-500 hover:bg-blue-600 border-2 border-white rounded-full cursor-pointer flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        className="absolute w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 hover:bg-blue-600 border border-white sm:border-2 rounded-full cursor-pointer flex items-center justify-center shadow-md sm:shadow-lg transition-all hover:scale-110"
                         style={{
-                          right: '20px',
-                          top: '-14px',
+                          right: '16px',
+                          top: '-10px',
                           pointerEvents: 'auto',
                           zIndex: 10
                         }}
@@ -1533,22 +1559,22 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                         }}
                         title="Dupliquer"
                       >
-                        <Copy className="w-3.5 h-3.5 text-white" />
+                        <Copy className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
                       </button>
 
                       {/* Bouton de rotation (coin haut-droit) */}
                       <div
-                        className="absolute w-7 h-7 bg-green-500 hover:bg-green-600 border-2 border-white rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        className="absolute w-5 h-5 sm:w-6 sm:h-6 bg-green-500 hover:bg-green-600 border border-white sm:border-2 rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center shadow-md sm:shadow-lg transition-all hover:scale-110"
                         style={{
-                          right: '-14px',
-                          top: '-14px',
+                          right: '-10px',
+                          top: '-10px',
                           pointerEvents: 'auto',
                           zIndex: 10
                         }}
                         onMouseDown={(e) => handleRotateStart(e, element.id)}
                         title="Rotation"
                       >
-                        <RotateCw className="w-3.5 h-3.5 text-white" />
+                        <RotateCw className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
                       </div>
 
                       {/* Poignées aux 4 coins pour redimensionnement */}

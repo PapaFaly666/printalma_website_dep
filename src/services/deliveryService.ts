@@ -10,6 +10,7 @@ import AuthManager from '../utils/authUtils';
 export interface City {
   id: string;
   name: string;
+  nom?: string; // Alias pour compatibilité (ancien nom)
   category: string;
   zoneType: 'dakar-ville' | 'banlieue';
   status: 'active' | 'inactive';
@@ -25,6 +26,7 @@ export interface City {
 export interface Region {
   id: string;
   name: string;
+  nom?: string; // Alias pour compatibilité (ancien nom)
   status: 'active' | 'inactive';
   price: string; // API renvoie un Decimal en string (ex: "3000.00")
   deliveryTimeMin: number;
@@ -45,6 +47,7 @@ export interface ZoneCountry {
 export interface InternationalZone {
   id: string;
   name: string;
+  nom?: string; // Alias pour compatibilité (ancien nom)
   countries: (string | ZoneCountry)[]; // L'API peut renvoyer soit des strings soit des objets
   status: 'active' | 'inactive';
   price: string; // API renvoie un Decimal en string (ex: "15000.00")
@@ -74,9 +77,45 @@ export interface ZoneTarif {
   prixStandardInternational: string; // API renvoie un Decimal en string
   delaiLivraisonMin: number;
   delaiLivraisonMax: number;
+  delaiLivraisonUnit?: string; // Unité de délai (heures, jours)
   status: 'active' | 'inactive';
   createdAt?: string;
   updatedAt?: string;
+  country?: string; // Pays pour le triage et l'affichage
+}
+
+// Type enrichi retourné par l'endpoint GET /delivery/zone-tarifs avec relations
+export interface ZoneTarifEnriched extends ZoneTarif {
+  internationalZone: {
+    id: string;
+    name: string;
+    status: 'active' | 'inactive';
+    price: string;
+    deliveryTimeMin: number;
+    deliveryTimeMax: number;
+    createdAt: string;
+    updatedAt: string;
+    countries: Array<{
+      id: number;
+      zoneId: string;
+      country: string;
+    }>;
+  };
+  transporteur: {
+    id: string;
+    name: string;
+    logoUrl: string | null;
+    status: 'active' | 'inactive';
+    createdAt: string;
+    updatedAt: string;
+  };
+  countries: string[]; // Liste des noms de pays
+  transporteurLogo: string; // URL du logo du transporteur
+  // Champs additionnels pour compatibilité
+  phone?: string;
+  email?: string;
+  successRate?: number;
+  joinedAt?: string;
 }
 
 export interface CreateCityPayload {
@@ -142,6 +181,7 @@ export interface CreateZoneTarifPayload {
   prixStandardInternational: number;
   delaiLivraisonMin: number;
   delaiLivraisonMax: number;
+  delaiLivraisonUnit?: string; // Unité de délai (heures, jours)
   status: 'active' | 'inactive';
 }
 
@@ -422,10 +462,10 @@ class DeliveryService {
   // ========================================
 
   /**
-   * Récupère tous les tarifs de zones
+   * Récupère tous les tarifs de zones (données enrichies avec relations)
    */
-  async getZoneTarifs(): Promise<ZoneTarif[]> {
-    return this.makeRequest<ZoneTarif[]>('/delivery/zone-tarifs');
+  async getZoneTarifs(): Promise<ZoneTarifEnriched[]> {
+    return this.makeRequest<ZoneTarifEnriched[]>('/delivery/zone-tarifs');
   }
 
   /**

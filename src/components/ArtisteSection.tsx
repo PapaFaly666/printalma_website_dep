@@ -1,6 +1,7 @@
-// import React from 'react'; // unused
+import { useNavigate } from 'react-router-dom';
 
 export default function ArtistesSection() {
+  const navigate = useNavigate();
   return (
     <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       {/* Titre principal et bouton sur la même ligne */}
@@ -10,7 +11,10 @@ export default function ArtistesSection() {
           <img src="x_artiste.svg" alt="Artistes" className="w-6 h-6 md:w-8 md:h-8" />
         </h2>
         
-        <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+        <button
+          onClick={() => navigate('/artistes')}
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+        >
           Voir Tous les artistes
         </button>
       </div>

@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import { Designer } from '../types/designer.types';
 import designerService from '../services/designerService';
 
 export default function DesignersSection() {
+  const navigate = useNavigate();
   const [designers, setDesigners] = useState<Designer[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -144,7 +146,10 @@ export default function DesignersSection() {
           <img src="/x_designer.svg" alt="Designer" className="w-6 h-6 md:w-8 md:h-8" />
         </h2>
         
-        <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+        <button
+          onClick={() => navigate('/designers')}
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+        >
           Voir Tous les designers
         </button>
       </div>

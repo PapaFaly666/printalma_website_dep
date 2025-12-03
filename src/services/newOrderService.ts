@@ -246,19 +246,22 @@ export class NewOrderService {
     orders: Order[];
     pagination: any;
   }> {
-    const params = new URLSearchParams({ 
-      page: page.toString(), 
-      limit: limit.toString() 
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
     });
-    
+
     if (status) {
       params.append('status', status);
     }
 
-    const response = await this.apiCall<PaginatedResponse<Order>>(`/orders/my-orders?${params}`);
-    
+    const response = await this.apiCall<PaginatedResponse<any>>(`/orders/my-orders?${params}`);
+
+    // ✅ Normaliser chaque commande pour mapper deliveryInfo -> delivery_info
+    const normalizedOrders = (response.data.orders || []).map(order => this.normalizeOrderData(order));
+
     return {
-      orders: response.data.orders || [],
+      orders: normalizedOrders,
       pagination: response.data.pagination
     };
   }
@@ -269,8 +272,51 @@ export class NewOrderService {
    */
   async getOrderById(orderId: number): Promise<Order> {
     // Utiliser directement l'endpoint standard qui renvoie une commande par son ID
-    const response = await this.apiCall<Order>(`/orders/${orderId}`);
-    return response.data;
+    const response = await this.apiCall<any>(`/orders/${orderId}`);
+    return this.normalizeOrderData(response.data);
+  }
+
+  /**
+   * Normaliser les données de commande pour mapper deliveryInfo -> delivery_info
+   */
+  private normalizeOrderData(orderData: any): Order {
+    // Cas 1: deliveryInfo existe (structure imbriquée moderne)
+    if (orderData.deliveryInfo && !orderData.delivery_info) {
+      console.log('🔄 [NewOrderService] Mapping deliveryInfo (structure imbriquée) -> delivery_info pour commande #' + orderData.orderNumber);
+      orderData.delivery_info = orderData.deliveryInfo;
+      delete orderData.deliveryInfo;
+    }
+    // Cas 2: deliveryInfo est null mais on a des champs plats (ex: Sénégal)
+    else if (!orderData.deliveryInfo && !orderData.delivery_info && orderData.deliveryType) {
+      console.log('🔄 [NewOrderService] Création delivery_info depuis champs plats pour commande #' + orderData.orderNumber);
+
+      // Construire delivery_info depuis les champs plats
+      orderData.delivery_info = {
+        deliveryType: orderData.deliveryType,
+
+        // Champs plats pour rétrocompatibilité
+        cityId: orderData.deliveryCityId,
+        cityName: orderData.deliveryCityName,
+        regionId: orderData.deliveryRegionId,
+        regionName: orderData.deliveryRegionName,
+        zoneId: orderData.deliveryZoneId,
+        zoneName: orderData.deliveryZoneName,
+        countryCode: orderData.shippingCountry === 'Sénégal' ? 'SN' : undefined,
+        countryName: orderData.shippingCountry,
+
+        transporteurId: orderData.transporteurId,
+        transporteurName: orderData.transporteurName,
+        transporteurLogo: orderData.transporteurLogo,
+
+        deliveryFee: orderData.deliveryFee,
+        deliveryTime: orderData.deliveryTime,
+
+        // Métadonnées si disponibles
+        metadata: orderData.deliveryMetadata || undefined
+      };
+    }
+
+    return orderData;
   }
 
   /**
@@ -284,15 +330,15 @@ export class NewOrderService {
   async getOrderByIdAdmin(orderId: number): Promise<Order> {
     try {
       // Essayer d'abord l'endpoint admin enrichi
-      const response = await this.apiCall<Order>(`/orders/admin/${orderId}`);
+      const response = await this.apiCall<any>(`/orders/admin/${orderId}`);
       console.log('✅ [NewOrderService] Commande chargée via /orders/admin/:id');
-      return response.data;
+      return this.normalizeOrderData(response.data);
     } catch (error: any) {
       // Si l'endpoint admin n'existe pas (404), utiliser l'endpoint standard
       if (error.message?.includes('404') || error.message?.includes('non trouvée')) {
         console.warn('⚠️ [NewOrderService] Endpoint /orders/admin/:id non disponible, fallback sur /orders/:id');
-        const response = await this.apiCall<Order>(`/orders/${orderId}`);
-        return response.data;
+        const response = await this.apiCall<any>(`/orders/${orderId}`);
+        return this.normalizeOrderData(response.data);
       }
       // Pour les autres erreurs, les propager
       throw error;
@@ -315,11 +361,11 @@ export class NewOrderService {
     limit: number;
   }> {
     const params = new URLSearchParams();
-    
+
     // Paramètres de pagination
     params.append('page', (filters.page || 1).toString());
     params.append('limit', (filters.limit || 10).toString());
-    
+
     // Filtres optionnels
     if (filters.status) params.append('status', filters.status);
     if (filters.userEmail) params.append('userEmail', filters.userEmail);
@@ -328,11 +374,14 @@ export class NewOrderService {
 
     console.log('🔍 Filtres getAllOrders:', Object.fromEntries(params));
 
-    const response = await this.apiCall<PaginatedResponse<Order>>(`/orders/admin/all?${params}`);
-    
+    const response = await this.apiCall<PaginatedResponse<any>>(`/orders/admin/all?${params}`);
+
+    // ✅ Normaliser chaque commande pour mapper deliveryInfo -> delivery_info
+    const normalizedOrders = (response.data.orders || []).map(order => this.normalizeOrderData(order));
+
     // ✅ Adapter le format pour le frontend
     return {
-      orders: response.data.orders || [],
+      orders: normalizedOrders,
       total: response.data.pagination?.total || 0,
       totalPages: response.data.pagination?.totalPages || 1,
       page: response.data.pagination?.page || 1,

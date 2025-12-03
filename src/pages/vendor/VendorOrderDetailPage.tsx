@@ -33,9 +33,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import DefaultProductImage from '../../components/ui/DefaultProductImage';
 import { Order, OrderStatus } from '../../types/order';
 import { useToast } from '../../components/ui/use-toast';
+import { FundsRequestForm } from '../../components/vendor/FundsRequestForm';
 import { vendorOrderService } from '../../services/vendorOrderService';
 import { CustomizationPreview } from '../../components/order/CustomizationPreview';
 import '../../styles/order-timeline.css';
+
 
 // Composant pour afficher une image avec fallback
 const ProductImageWithFallback: React.FC<{
@@ -71,6 +73,77 @@ const ProductImageWithFallback: React.FC<{
   );
 };
 
+// Fonction pour mapper les données de commande vers le format attendu par SimpleProductPreview
+const mapOrderItemToVendorProduct = (orderItem: any): any => {
+  // Si c'est un produit personnalisé avec mockupUrl, construire les données minimales
+  if ((orderItem as any).isCustomizedProduct && orderItem.mockupUrl) {
+    return {
+      id: orderItem.productId,
+      vendorName: orderItem.productName,
+      originalAdminName: orderItem.product?.name,
+      price: orderItem.unitPrice,
+      status: orderItem.product?.status || 'PUBLISHED',
+      isWizardProduct: false, // Produit avec design personnalisé
+      hideValidationBadges: true,
+
+      // Images pour SimpleProductPreview
+      images: {
+        adminReferences: [
+          {
+            colorName: orderItem.color || null,
+            colorCode: orderItem.colorVariation?.colorCode || null,
+            adminImageUrl: orderItem.mockupUrl,
+            imageType: 'mockup' as const
+          }
+        ],
+        total: 1,
+        primaryImageUrl: orderItem.mockupUrl
+      },
+
+      // Design application
+      designApplication: {
+        hasDesign: true,
+        designUrl: (orderItem as any).designMetadata?.designImageUrl || '',
+        positioning: '0.5,0.5',
+        scale: (orderItem as any).designPositions?.scale || 0.8
+      },
+
+      // Données de design
+      designId: (orderItem as any).designId || null,
+      designPositions: (orderItem as any).designPositions ? [orderItem.designPositions] : [],
+
+      // Couleurs disponibles (une seule couleur pour les commandes)
+      selectedColors: [
+        {
+          id: orderItem.colorId || 0,
+          name: orderItem.color || 'Standard',
+          colorCode: orderItem.colorVariation?.colorCode || '#000000'
+        }
+      ],
+
+      // Produit admin de référence (si disponible)
+      adminProduct: orderItem.product ? {
+        id: orderItem.product.id,
+        name: orderItem.product.name,
+        colorVariations: orderItem.colorVariation ? [{
+          id: orderItem.colorVariation.id,
+          name: orderItem.colorVariation.name,
+          colorCode: orderItem.colorVariation.colorCode,
+          images: orderItem.colorVariation.images || [{
+            id: 1,
+            url: orderItem.mockupUrl,
+            viewType: 'Front',
+            delimitations: orderItem.delimitations || [orderItem.delimitation].filter(Boolean)
+          }]
+        }] : []
+      } : null
+    };
+  }
+
+  // Produit standard sans design
+  return null; // SimpleProductPreview gère les cas null
+};
+
 const VendorOrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
@@ -92,13 +165,24 @@ const VendorOrderDetailPage: React.FC = () => {
       try {
         console.log('🔄 Chargement des détails de la commande:', orderId);
 
-        // Appel au service API
-        const orderData = await vendorOrderService.getVendorOrderDetails(parseInt(orderId));
+        // Appel direct à l'API pour contourner les données mock en développement
+        const response = await fetch(`http://localhost:3004/vendor/orders/${orderId}`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
 
-        console.log('✅ Détails de commande récupérés:', orderData);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-        setOrder(orderData);
-        // ❌ Suppression de la présélection de statut
+        const orderData = await response.json();
+        console.log('✅ Détails de commande récupérés (API directe):', orderData);
+
+        setOrder(orderData.data);
 
       } catch (error) {
         console.error('❌ Erreur lors du chargement de la commande:', error);
@@ -128,20 +212,7 @@ const VendorOrderDetailPage: React.FC = () => {
   // ❌ FONCTION SUPPRIMÉE: updateOrderStatus
   // Les vendeurs ne peuvent plus modifier les statuts des commandes
 
-  // Obtenir le label du statut
-  const getStatusLabel = (status: OrderStatus) => {
-    const statusLabels = {
-      PENDING: 'En attente',
-      CONFIRMED: 'Confirmée',
-      PROCESSING: 'En traitement',
-      SHIPPED: 'Expédiée',
-      DELIVERED: 'Livrée',
-      CANCELLED: 'Annulée',
-      REJECTED: 'Rejetée'
-    };
-    return statusLabels[status];
-  };
-
+  
   // Obtenir le badge de statut
   const getStatusBadge = (status: OrderStatus) => {
     const statusConfig = {
@@ -292,91 +363,54 @@ const VendorOrderDetailPage: React.FC = () => {
                   <h3 className="font-medium text-gray-900 mb-4">Produits commandés</h3>
                   <div className="space-y-4">
                     {order.orderItems.map((item) => {
-                      // Vérifier si c'est un produit personnalisé
-                      const elementsByView = item.designElementsByView || item.customization?.elementsByView || {};
-                      const isCustomized = Object.keys(elementsByView).length > 0;
-
-                      // Trouver l'image mockup
-                      let mockupUrl = item.mockupUrl || item.productImage;
-                      if (!mockupUrl && item.colorVariation?.images?.[0]) {
-                        mockupUrl = item.colorVariation.images[0].url;
-                      }
-
-                      // Récupérer la délimitation
-                      let delimitation = item.delimitation || null;
-                      if (!delimitation && item.colorVariation?.images?.[0]?.delimitations?.[0]) {
-                        const delim = item.colorVariation.images[0].delimitations[0];
-                        delimitation = {
-                          x: delim.x,
-                          y: delim.y,
-                          width: delim.width,
-                          height: delim.height,
-                          coordinateType: delim.coordinateType || 'PERCENTAGE',
-                          referenceWidth: delim.referenceWidth || 800,
-                          referenceHeight: delim.referenceHeight || 800
-                        };
-                      }
-
                       return (
                         <div key={item.id} className="flex items-start space-x-4 p-4 border border-gray-200 rounded-lg">
-                          {/* Image ou Preview avec personnalisation */}
-                          {isCustomized ? (
-                            <div className="w-24 h-24 flex-shrink-0">
-                              {Object.entries(elementsByView).map(([viewKey, elements], idx) => {
-                                // Pour la vue principale seulement
-                                if (idx > 0) return null;
-
-                                let viewImageUrl = mockupUrl;
-                                let viewDelimitation = delimitation;
-
-                                // Chercher l'image spécifique à la vue
-                                if (item.viewsMetadata) {
-                                  const viewMeta = item.viewsMetadata.find((v: any) => v.viewKey === viewKey);
-                                  if (viewMeta) {
-                                    viewImageUrl = viewMeta.imageUrl;
-                                  }
-                                }
-
-                                if (item.colorVariation?.images) {
-                                  const [, viewIdStr] = viewKey.split('-');
-                                  const viewId = parseInt(viewIdStr);
-                                  const viewImage = item.colorVariation.images.find((img: any) => img.id === viewId);
-                                  if (viewImage) {
-                                    viewImageUrl = viewImage.url;
-                                    if (viewImage.delimitations?.[0]) {
-                                      viewDelimitation = {
-                                        x: viewImage.delimitations[0].x,
-                                        y: viewImage.delimitations[0].y,
-                                        width: viewImage.delimitations[0].width,
-                                        height: viewImage.delimitations[0].height,
-                                        coordinateType: viewImage.delimitations[0].coordinateType || 'PERCENTAGE',
-                                        referenceWidth: viewImage.delimitations[0].referenceWidth || 800,
-                                        referenceHeight: viewImage.delimitations[0].referenceHeight || 800
-                                      };
-                                    }
-                                  }
-                                }
-
-                                return (
-                                  <CustomizationPreview
-                                    key={viewKey}
-                                    productImageUrl={viewImageUrl || ''}
-                                    designElements={elements as any[]}
-                                    delimitation={viewDelimitation as any}
-                                    productName={item.productName}
-                                    className="w-24 h-24 rounded-lg"
-                                    showInfo={false}
+                          {/* Image du produit */}
+                          <div className="w-24 h-24 flex-shrink-0">
+                            <div className="relative">
+                              {/* Si produit personnalisé avec mockupUrl */}
+                              {item.mockupUrl ? (
+                                <>
+                                  <img
+                                    src={item.mockupUrl}
+                                    alt={`${item.productName} (avec design)`}
+                                    className="w-24 h-24 object-cover rounded-lg"
+                                    onError={(e) => {
+                                      console.log('❌ Erreur de chargement mockupUrl:', item.mockupUrl);
+                                      // Fallback vers l'image produit standard
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = item.productImage || '/images/placeholder.jpg';
+                                    }}
                                   />
-                                );
-                              })}
+                                  {/* Badge indiquant que c'est personnalisé */}
+                                  {(item as any).isCustomizedProduct && (
+                                    <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                      🎨
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                // Produit standard - essayer colorVariation puis productImage
+                                (() => {
+                                  const imageUrl = item.colorVariation?.images?.[0]?.url || item.productImage;
+                                  return imageUrl ? (
+                                    <ProductImageWithFallback
+                                      src={imageUrl}
+                                      alt={item.productName}
+                                      className="w-24 h-24 object-cover rounded-lg"
+                                    />
+                                  ) : (
+                                    <DefaultProductImage
+                                      size="md"
+                                      alt={item.productName}
+                                      showText={false}
+                                      className="w-24 h-24 rounded-lg"
+                                    />
+                                  );
+                                })()
+                              )}
                             </div>
-                          ) : (
-                            <ProductImageWithFallback
-                              src={item.productImage}
-                              alt={item.productName}
-                              className="w-16 h-16 object-cover rounded-lg"
-                            />
-                          )}
+                          </div>
                           <div className="flex-1">
                             <h4 className="font-medium text-gray-900">{item.productName}</h4>
                             {item.product?.description && (
@@ -387,14 +421,14 @@ const VendorOrderDetailPage: React.FC = () => {
                               {item.size && <span>Taille: {item.size}</span>}
                               {item.color && <span>Couleur: {item.color}</span>}
                             </div>
-                            {item.product?.designName && (
+                            {(item as any).designMetadata?.designName && (
                               <div className="mt-2 text-sm text-gray-600">
-                                <span className="font-medium">Design:</span> {item.product.designName}
+                                <span className="font-medium">Design:</span> {(item as any).designMetadata.designName}
                               </div>
                             )}
-                            {isCustomized && (
+                            {(item as any).isCustomizedProduct && (
                               <div className="mt-2 text-xs text-gray-500">
-                                {Object.keys(elementsByView).length} vue(s) personnalisée(s)
+                                Produit personnalisé avec design
                               </div>
                             )}
                           </div>

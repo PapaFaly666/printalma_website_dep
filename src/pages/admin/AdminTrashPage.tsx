@@ -56,7 +56,7 @@ const AdminTrashPage: React.FC = () => {
       }
     }
     fetchDeleted();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [typeFilter, page, search]);
 
   // 2. Remplace le filtre par type par un filtre par catégorie

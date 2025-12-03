@@ -55,11 +55,15 @@ interface Transporter {
   id: string;
   name: string;
   avatar: string;
+  phone: string;
+  email: string;
   status: 'active' | 'inactive' | 'busy';
   rating: number;
   zones: string[];
   totalDeliveries: number;
   avgDeliveryTime: string;
+  successRate: number;
+  joinedAt: string;
 }
 
 const DeliveryManagementPage: React.FC = () => {
@@ -89,9 +93,9 @@ const DeliveryManagementPage: React.FC = () => {
 
   // États pour les transporteurs
   const [transporters, setTransporters] = useState<Transporter[]>([
-    { id: '1', name: 'Alpha Diallo', avatar: '', status: 'active', rating: 4.5, zones: ['1'], totalDeliveries: 156, avgDeliveryTime: '25 min' },
-    { id: '2', name: 'Fatou Sow', avatar: '', status: 'busy', rating: 4.8, zones: ['1', '2'], totalDeliveries: 203, avgDeliveryTime: '22 min' },
-    { id: '3', name: 'Mamadou Ba', avatar: '', status: 'inactive', rating: 4.2, zones: ['2'], totalDeliveries: 89, avgDeliveryTime: '30 min' },
+    { id: '1', name: 'Alpha Diallo', avatar: '', phone: '+221771234567', email: 'alpha@transport.sn', status: 'active', rating: 4.5, zones: ['1'], totalDeliveries: 156, avgDeliveryTime: '25 min', successRate: 98.5, joinedAt: '2023-01-15' },
+    { id: '2', name: 'Fatou Sow', avatar: '', phone: '+221772345678', email: 'fatou@transport.sn', status: 'busy', rating: 4.8, zones: ['1', '2'], totalDeliveries: 203, avgDeliveryTime: '22 min', successRate: 99.2, joinedAt: '2023-02-20' },
+    { id: '3', name: 'Mamadou Ba', avatar: '', phone: '+221773456789', email: 'mamadou@transport.sn', status: 'inactive', rating: 4.2, zones: ['2'], totalDeliveries: 89, avgDeliveryTime: '30 min', successRate: 95.8, joinedAt: '2023-03-10' },
   ]);
 
   const handleAddZone = () => {

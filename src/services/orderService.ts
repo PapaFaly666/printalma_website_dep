@@ -2,6 +2,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3004';
 import AuthManager from '../utils/authUtils';
 import { generatePaydunyaUrl, validatePaymentData } from '../types/payment';
+import type { DeliveryInfo } from '../types/order';
 
 // Structure conforme à la documentation API v2
 export interface ShippingDetails {
@@ -86,6 +87,9 @@ export interface CreateOrderRequest {
 
   // Notes additionnelles (optionnel)
   notes?: string;                // Commentaires sur la commande
+
+  // 🆕 INFORMATIONS DE LIVRAISON (transporteur, zone, tarifs)
+  deliveryInfo?: any; // Accepte DeliveryInfo ou format backend
 
   // DEPRECATED - Ne plus utiliser dans les nouvelles implémentations
   // Le backend calcule automatiquement le montant total

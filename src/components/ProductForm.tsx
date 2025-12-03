@@ -63,7 +63,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     // Debug - Afficher ce qui est envoyé
     console.log('🔍 Debug - productData:', productData);
     console.log('🔍 Debug - FormData entries:');
-    for (let [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries()) {
       console.log(`  ${key}:`, typeof value === 'string' ? value.substring(0, 100) + '...' : value);
     }
     
@@ -159,7 +159,7 @@ const testDirectUpload = async () => {
     // Debug - Afficher ce qui est envoyé
     console.log('🔍 Debug - productData:', productData);
     console.log('🔍 Debug - FormData entries:');
-    for (let [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries()) {
       console.log(`  ${key}:`, typeof value === 'string' ? value.substring(0, 100) + '...' : value);
     }
     

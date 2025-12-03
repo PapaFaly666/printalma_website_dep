@@ -11,6 +11,12 @@ export function normalizeProductFromApi(apiProduct: AnyProduct) {
   return {
     ...apiProduct,
     suggestedPrice: toNumberOrUndefined(suggestedRaw),
+    // Ensure required fields are present with default values if needed
+    id: apiProduct?.id ?? 0,
+    name: apiProduct?.name ?? '',
+    price: Number(apiProduct?.price ?? 0),
+    createdAt: apiProduct?.createdAt ?? apiProduct?.created_at ?? new Date().toISOString(),
+    updatedAt: apiProduct?.updatedAt ?? apiProduct?.updated_at ?? new Date().toISOString(),
   };
 }
 

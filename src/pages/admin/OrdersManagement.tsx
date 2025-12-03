@@ -4,6 +4,13 @@ import '../../styles/admin/orders-management.css';
 import { useAuth } from '../../contexts/AuthContext';
 import newOrderService from '../../services/newOrderService';
 import { Order, OrderStatus, OrderStatistics, ShippingAddressObjectDto } from '../../types/order';
+import {
+  useOrders,
+  useOrderStatistics,
+  useUpdateOrderStatus,
+  useRefreshOrders,
+  useUpdateOrderInCache
+} from '../../hooks/useOrders';
 
 // Types basés sur la structure RÉELLE de l'API
 interface PaymentInfo {
@@ -570,20 +577,35 @@ const OrdersManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // États principaux
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [statistics, setStatistics] = useState<OrderStatistics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const [exportPeriod, setExportPeriod] = useState<'all' | '24h' | '7d' | '30d'>('all');
-
   // États de filtrage et pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [pageSize] = useState(20);
+
+  // États pour l'export
+  const [exporting, setExporting] = useState(false);
+  const [exportPeriod, setExportPeriod] = useState<'all' | '24h' | '7d' | '30d'>('all');
+
+  // 🔥 HOOKS TANSTACK QUERY AVEC CACHING
+  const ordersQuery = useOrders({
+    page: currentPage,
+    limit: pageSize,
+    ...(statusFilter !== 'all' && { status: statusFilter }),
+    ...(searchTerm && { orderNumber: searchTerm })
+  });
+
+  const statisticsQuery = useOrderStatistics();
+  const updateOrderStatusMutation = useUpdateOrderStatus();
+  const { refreshOrders, refreshStatistics, refreshAll } = useRefreshOrders();
+  const { updateOrderStatus: updateOrderInCache } = useUpdateOrderInCache();
+
+  // Extraire les données des queries
+  const orders = ordersQuery.data?.orders || [];
+  const totalPages = ordersQuery.data?.totalPages || 1;
+  const loading = ordersQuery.isLoading || ordersQuery.isFetching;
+  const error = ordersQuery.error ? String(ordersQuery.error) : null;
+  const statistics = statisticsQuery.data || null;
 
   // États pour la vue
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -597,10 +619,6 @@ const OrdersManagement = () => {
       },
     })
   );
-
-  // États pour la gestion des rafraîchissements
-  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
-  const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // États pour la modal de changement de statut
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -631,63 +649,6 @@ const OrdersManagement = () => {
   };
 
   // ==========================================
-  // GESTION DES DONNÉES DE BASE
-  // ==========================================
-
-  const fetchOrders = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const filters = {
-        page: currentPage,
-        limit: pageSize,
-        ...(statusFilter !== 'all' && { status: statusFilter }),
-        ...(searchTerm && { orderNumber: searchTerm })
-      };
-
-      const result = await newOrderService.getAllOrders(filters);
-
-      setOrders(result.orders);
-      setTotalPages(result.totalPages);
-
-      console.log('✅ Commandes chargées:', result.orders.length);
-
-    } catch (error) {
-      const errorMessage = newOrderService.handleError(error, 'chargement commandes');
-      setError(errorMessage);
-      console.error('❌ Erreur chargement commandes:', error);
-
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(errorMessage, {
-          body: errorMessage,
-          icon: '/favicon.ico',
-          tag: 'error'
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, pageSize, statusFilter, searchTerm]);
-
-  const fetchStatistics = useCallback(async () => {
-    try {
-      const stats = await newOrderService.getStatistics();
-      setStatistics(stats);
-      console.log('📊 Statistiques chargées:', stats);
-    } catch (error) {
-      console.error('❌ Erreur statistiques:', error);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Statistiques indisponibles', {
-          body: 'Impossible de charger les statistiques',
-          icon: '/favicon.ico',
-          tag: 'warning'
-        });
-      }
-    }
-  }, []);
-
-  // ==========================================
   // FONCTIONS AVANCÉES
   // ==========================================
 
@@ -697,55 +658,24 @@ const OrdersManagement = () => {
     return match ? match[1].trim() : null;
   };
 
+  // 🔥 NOUVELLE FONCTION DE RAFRAÎCHISSEMENT AVEC DEBOUNCE
   const debouncedRefresh = useCallback(() => {
-    if (refreshTimeout) {
-      clearTimeout(refreshTimeout);
-    }
+    console.log('🔄 Rafraîchissement manuel des données...');
+    refreshAll(); // Invalide toutes les queries pour forcer un refetch
+  }, [refreshAll]);
 
-    const newTimeout = setTimeout(() => {
-      const now = Date.now();
-      if (now - lastRefreshTime > 2000) {
-        console.log('🔄 Rafraîchissement des commandes...');
-        fetchOrders();
-        setLastRefreshTime(now);
-      }
-    }, 1000);
-
-    setRefreshTimeout(newTimeout);
-  }, [fetchOrders, lastRefreshTime, refreshTimeout]);
-
+  // 🔥 NOUVELLE FONCTION DE MISE À JOUR DU STATUT AVEC MUTATION
   const updateOrderStatus = async (orderId: number, newStatus: OrderStatus, notes?: string) => {
     try {
-      await newOrderService.updateOrderStatus(orderId, newStatus, notes);
-
-      setOrders(prev =>
-        prev.map(order =>
-          order.id === orderId
-            ? { ...order, status: newStatus }
-            : order
-        )
-      );
-
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`Statut mis à jour`, {
-          body: `La commande #${orders.find(o => o.id === orderId)?.orderNumber || orderId} a été mise à jour vers ${getStatusLabel(newStatus)}`,
-          icon: '/favicon.ico',
-          tag: 'success'
-        });
-      }
-
-      fetchStatistics();
-
+      await updateOrderStatusMutation.mutateAsync({
+        orderId,
+        newStatus,
+        notes
+      });
+      // La mutation invalide automatiquement le cache et refetch les données
     } catch (error) {
-      const errorMessage = newOrderService.handleError(error, 'mise à jour statut');
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(errorMessage, {
-          body: errorMessage,
-          icon: '/favicon.ico',
-          tag: 'error'
-        });
-      }
-      throw error; // Re-throw pour que la modal puisse afficher l'erreur
+      // L'erreur est gérée par la mutation
+      throw error;
     }
   };
 
@@ -784,21 +714,9 @@ const OrdersManagement = () => {
 
     if (!activeOrder || !overOrder) return;
 
-    // Si les deux cartes sont dans des colonnes différentes, déplacer immédiatement
+    // Si les deux cartes sont dans des colonnes différentes, mise à jour optimiste locale
     if (activeOrder.status !== overOrder.status) {
-      setOrders(prev => {
-        const activeIndex = prev.findIndex(o => o.id === activeOrderId);
-        const overIndex = prev.findIndex(o => o.id === overOrderId);
-
-        const newOrders = [...prev];
-        newOrders[activeIndex] = { ...newOrders[activeIndex], status: overOrder.status };
-
-        // Réorganiser l'ordre
-        const [removed] = newOrders.splice(activeIndex, 1);
-        newOrders.splice(overIndex, 0, removed);
-
-        return newOrders;
-      });
+      updateOrderInCache(activeOrderId, overOrder.status);
     }
   };
 
@@ -857,50 +775,28 @@ const OrdersManagement = () => {
 
       webSocketService.onNewOrder = (notification) => {
         console.log('🆕 Nouvelle commande reçue:', notification);
-        debouncedRefresh();
-        fetchStatistics();
+        // 🔥 Rafraîchir automatiquement lors d'une nouvelle commande
+        refreshOrders();
+        refreshStatistics();
       };
 
       webSocketService.onOrderStatusChanged = (data) => {
         console.log('📝 Statut commande changé:', data);
 
+        // 🔥 Mise à jour optimiste du statut dans le cache
         if (data.data.orderId) {
-          setOrders(prev =>
-            prev.map(order =>
-              order.id === data.data.orderId
-                ? { ...order, status: data.data.newStatus as OrderStatus }
-                : order
-            )
-          );
+          updateOrderInCache(data.data.orderId, data.data.newStatus as OrderStatus);
         }
-        fetchStatistics();
+
+        // Rafraîchir les statistiques
+        refreshStatistics();
       };
 
       return () => {
         webSocketService.disconnect();
       };
     }
-  }, [user, debouncedRefresh, fetchStatistics]);
-
-  // ==========================================
-  // EFFETS
-  // ==========================================
-
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
-
-  useEffect(() => {
-    fetchStatistics();
-  }, [fetchStatistics]);
-
-  useEffect(() => {
-    return () => {
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
-    };
-  }, [refreshTimeout]);
+  }, [user, refreshOrders, refreshStatistics, updateOrderInCache]);
 
   // ==========================================
   // EXPORT CSV
@@ -1455,7 +1351,7 @@ const OrdersManagement = () => {
                               <div className="space-y-1">
                                 {order.orderItems && order.orderItems.length > 0 && (() => {
                                   const vendors = order.orderItems
-                                    .map(item => item.vendor?.shop_name || item.vendor?.name || 'Vendeur inconnu')
+                                    .map(item => item.vendor?.shop_name || item.vendor?.fullName || 'Vendeur inconnu')
                                     .filter((vendor, index, arr) => arr.indexOf(vendor) === index);
 
                                   return (

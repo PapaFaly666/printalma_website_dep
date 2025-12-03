@@ -278,8 +278,10 @@ export default function ModernTShirtEcommerce() {
             <div className="w-full bg-gray-50">
                 <CarousselContainer />
 
-                {/* CategoryTabs gère son propre container mais suit le fond uniforme */}
-                <CategoryTabs />
+                {/* CategoryTabs sticky qui suit le scroll */}
+                <div className="sticky top-0 z-40">
+                    <CategoryTabs />
+                </div>
 
                 {/* Section de personnalisation avec animation fadeUp fluide */}
                 <ScrollAnimation animation="fadeUp" delay={100}>

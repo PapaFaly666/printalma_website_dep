@@ -608,6 +608,339 @@ export class VendorOrderService {
       return 'Une erreur est survenue. Veuillez réessayer.';
     }
   }
+
+  // ==========================================
+  // MÉTHODES POUR LES RETRAITS VENDEUR
+  // ==========================================
+
+  /**
+   * Soumet une nouvelle demande de retrait
+   */
+  async submitWithdrawalRequest(withdrawalData: {
+    amount: number;
+    withdrawalMethod: 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'WAVE' | 'ORANGE';
+    withdrawalInfo: {
+      phoneNumber?: string;
+      bankName?: string;
+      accountNumber?: string;
+      accountName?: string;
+      iban?: string;
+      swift?: string;
+    };
+    notes?: string;
+  }): Promise<any> {
+    try {
+      const response = await this.apiCall<any>('/vendor/withdrawals', {
+        method: 'POST',
+        body: JSON.stringify(withdrawalData)
+      });
+      return response.data;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'DEVELOPMENT_MODE_FALLBACK') {
+        console.warn('⚠️ Mode développement: Simulation de demande de retrait');
+        return {
+          id: Math.floor(Math.random() * 1000),
+          ...withdrawalData,
+          status: 'PENDING',
+          requestedAt: new Date().toISOString(),
+          fees: Math.floor(withdrawalData.amount * 0.01), // 1% de frais
+          netAmount: withdrawalData.amount - Math.floor(withdrawalData.amount * 0.01)
+        };
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère l'historique des demandes de retrait du vendeur
+   */
+  async getWithdrawalHistory(filters?: {
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    withdrawals: any[];
+    stats: any;
+    total: number;
+    hasMore: boolean;
+  }> {
+    try {
+      let url = '/vendor/withdrawals';
+      const params = new URLSearchParams();
+
+      if (filters) {
+        if (filters.status) params.append('status', filters.status);
+        if (filters.startDate) params.append('startDate', filters.startDate);
+        if (filters.endDate) params.append('endDate', filters.endDate);
+        if (filters.limit) params.append('limit', filters.limit.toString());
+        if (filters.offset) params.append('offset', filters.offset.toString());
+      }
+
+      const queryString = params.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+
+      const response = await this.apiCall<any>(url);
+      return response.data;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'DEVELOPMENT_MODE_FALLBACK') {
+        console.warn('⚠️ Mode développement: Utilisation des données mock pour les retraits');
+        return this.getMockWithdrawals(filters);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère les détails d'une demande de retrait spécifique
+   */
+  async getWithdrawalDetails(withdrawalId: number): Promise<any> {
+    try {
+      const response = await this.apiCall<any>(`/vendor/withdrawals/${withdrawalId}`);
+      return response.data;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'DEVELOPMENT_MODE_FALLBACK') {
+        console.warn('⚠️ Mode développement: Utilisation des données mock pour les détails de retrait');
+        return this.getMockWithdrawalDetails(withdrawalId);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Exporte l'historique des retraits en PDF ou CSV
+   */
+  async exportWithdrawals(format: 'PDF' | 'CSV' = 'PDF', filters?: {
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+  }): Promise<Blob> {
+    let url = `/vendor/withdrawals/export?format=${format}`;
+    const params = new URLSearchParams();
+
+    if (filters) {
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+      if (filters.status) params.append('status', filters.status);
+    }
+
+    const queryString = params.toString();
+    if (queryString) {
+      url += `&${queryString}`;
+    }
+
+    const response = await fetch(`${this.baseURL}${url}`, {
+      credentials: 'include',
+      headers: {
+        'Accept': format === 'PDF' ? 'application/pdf' : 'text/csv',
+        ...this.getAuthHeader()
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur lors de l'export ${format}: ${response.statusText}`);
+    }
+
+    return response.blob();
+  }
+
+  /**
+   * Récupère les statistiques des retraits du vendeur
+   */
+  async getWithdrawalStatistics(): Promise<{
+    totalRequested: number;
+    totalCompleted: number;
+    totalPending: number;
+    totalFees: number;
+    averageProcessingTime: number;
+    thisMonthRequests: number;
+    thisMonthAmount: number;
+    lastMonthRequests: number;
+    lastMonthAmount: number;
+  }> {
+    try {
+      const response = await this.apiCall<any>('/vendor/withdrawals/statistics');
+      return response.data;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'DEVELOPMENT_MODE_FALLBACK') {
+        console.warn('⚠️ Mode développement: Utilisation des statistiques mock pour les retraits');
+        return this.getMockWithdrawalStatistics();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Annule une demande de retrait en attente
+   */
+  async cancelWithdrawalRequest(withdrawalId: number, reason?: string): Promise<void> {
+    try {
+      await this.apiCall<void>(`/vendor/withdrawals/${withdrawalId}/cancel`, {
+        method: 'PATCH',
+        body: JSON.stringify({ reason })
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'DEVELOPMENT_MODE_FALLBACK') {
+        console.warn('⚠️ Mode développement: Simulation d\'annulation de retrait');
+        return;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Vérifie l'éligibilité au retrait
+   * NOTE: Le solde disponible est calculé UNIQUEMENT sur les commandes LIVRÉES
+   */
+  async checkWithdrawalEligibility(): Promise<{
+    eligible: boolean;
+    minimumAmount: number;
+    availableBalance: number;
+    pendingWithdrawals: number;
+    deliveredOrdersTotal: number;
+    totalOrders: number;
+    deliveredOrdersCount: number;
+    reasons?: string[];
+  }> {
+    try {
+      const response = await this.apiCall<any>('/vendor/withdrawals/eligibility');
+      return response.data;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'DEVELOPMENT_MODE_FALLBACK') {
+        console.warn('⚠️ Mode développement: Simulation d\'éligibilité basée sur commandes livrées uniquement');
+
+        // En mode développement, on simule le calcul basé sur les commandes livrées
+        // Les 3 commandes livrées à 27 000 F total
+        const deliveredOrdersTotal = 27000; // 3 commandes livrées
+        const pendingWithdrawals = 0; // Pas de retraits en attente
+
+        return {
+          eligible: true,
+          minimumAmount: 1000, // Plus petit minimum pour les petits montants
+          availableBalance: deliveredOrdersTotal - pendingWithdrawals, // SEULEMENT les commandes livrées
+          pendingWithdrawals: pendingWithdrawals,
+          deliveredOrdersTotal: deliveredOrdersTotal,
+          totalOrders: deliveredOrdersTotal, // Même valeur car toutes les commandes sont livrées dans ce cas
+          deliveredOrdersCount: 3,
+          reasons: []
+        };
+      }
+      throw error;
+    }
+  }
+
+  // ==========================================
+  // MÉTHODES MOCK POUR LES RETRAITS
+  // ==========================================
+
+  private getMockWithdrawals(filters?: any): any {
+    const mockWithdrawals = [
+      {
+        id: 1,
+        amount: 50000,
+        withdrawalMethod: 'MOBILE_MONEY',
+        withdrawalInfo: {
+          phoneNumber: '+221770000001'
+        },
+        status: 'COMPLETED',
+        requestedAt: '2024-01-15T10:30:00Z',
+        processedAt: '2024-01-15T14:20:00Z',
+        processedBy: {
+          id: 1,
+          firstName: 'Admin',
+          lastName: 'System',
+          email: 'admin@printalma.com'
+        },
+        transactionId: 'TXN-2024-001',
+        fees: 500,
+        netAmount: 49500
+      },
+      {
+        id: 2,
+        amount: 75000,
+        withdrawalMethod: 'BANK_TRANSFER',
+        withdrawalInfo: {
+          bankName: 'Ecobank Sénégal',
+          accountNumber: '0145789012345678',
+          accountName: 'Entreprise ABC',
+          iban: 'SN01 0145 7890 1234 5678 9000'
+        },
+        status: 'PROCESSING',
+        requestedAt: '2024-01-18T09:15:00Z',
+        fees: 1500,
+        netAmount: 73500
+      },
+      {
+        id: 3,
+        amount: 30000,
+        withdrawalMethod: 'WAVE',
+        withdrawalInfo: {
+          phoneNumber: '+221770000002'
+        },
+        status: 'PENDING',
+        requestedAt: '2024-01-20T16:45:00Z',
+        fees: 300,
+        netAmount: 29700
+      }
+    ];
+
+    let filteredWithdrawals = [...mockWithdrawals];
+
+    if (filters?.status) {
+      filteredWithdrawals = filteredWithdrawals.filter(w => w.status === filters.status);
+    }
+
+    if (filters?.startDate) {
+      filteredWithdrawals = filteredWithdrawals.filter(w =>
+        new Date(w.requestedAt) >= new Date(filters.startDate)
+      );
+    }
+
+    if (filters?.endDate) {
+      filteredWithdrawals = filteredWithdrawals.filter(w =>
+        new Date(w.requestedAt) <= new Date(filters.endDate)
+      );
+    }
+
+    const offset = filters?.offset || 0;
+    const limit = filters?.limit || 10;
+    const paginatedWithdrawals = filteredWithdrawals.slice(offset, offset + limit);
+
+    return {
+      withdrawals: paginatedWithdrawals,
+      stats: this.getMockWithdrawalStatistics(),
+      total: filteredWithdrawals.length,
+      hasMore: offset + limit < filteredWithdrawals.length
+    };
+  }
+
+  private getMockWithdrawalDetails(withdrawalId: number): any {
+    const mockWithdrawals = this.getMockWithdrawals().withdrawals;
+    const withdrawal = mockWithdrawals.find(w => w.id === withdrawalId);
+
+    if (!withdrawal) {
+      throw new Error('Demande de retrait introuvable');
+    }
+
+    return withdrawal;
+  }
+
+  private getMockWithdrawalStatistics(): any {
+    return {
+      totalRequested: 155000,
+      totalCompleted: 50000,
+      totalPending: 105000,
+      totalFees: 2300,
+      averageProcessingTime: 3.8,
+      thisMonthRequests: 3,
+      thisMonthAmount: 155000,
+      lastMonthRequests: 2,
+      lastMonthAmount: 85000
+    };
+  }
 }
 
 // Export du service singleton

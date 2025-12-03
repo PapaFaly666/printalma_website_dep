@@ -25,7 +25,7 @@ const AdminMockupsPage: React.FC = () => {
         console.log('API Response:', response);
 
         // Vérifier si response.data existe, sinon utiliser response directement
-        let allProducts = Array.isArray(response.data) ? response.data :
+        const allProducts = Array.isArray(response.data) ? response.data :
                          Array.isArray(response) ? response : [];
 
         let filteredProducts = allProducts;

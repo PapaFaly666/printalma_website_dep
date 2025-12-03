@@ -156,7 +156,7 @@ export class AuthAPITester {
 ║ Global: ${results.summary.success ? '✅ SUCCÈS' : '❌ ÉCHEC'}
 ╚══════════════════════════════════════════════════════════════╝
 
-${results.notifications.data?.data?.[0] ? `Dernière notification: ${results.notifications.data.data[0].title}` : 'Aucune notification'}
+${results.notifications && 'data' in results.notifications && results.notifications.data && 'data' in results.notifications.data && results.notifications.data.data?.[0] ? `Dernière notification: ${results.notifications.data.data[0].title}` : 'Aucune notification'}
     `);
 
     return results;

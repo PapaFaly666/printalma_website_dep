@@ -367,7 +367,7 @@ const AdminDesignPositioner: React.FC<AdminDesignPositionerProps> = ({
     const imgW = naturalSize.width || 1;
     const imgH = naturalSize.height || 1;
 
-    let pct = {
+    const pct = {
       x: isPixel ? (delim.x / imgW) * 100 : delim.x,
       y: isPixel ? (delim.y / imgH) * 100 : delim.y,
       w: isPixel ? (delim.width / imgW) * 100 : delim.width,
@@ -552,8 +552,8 @@ const AdminDesignPositioner: React.FC<AdminDesignPositionerProps> = ({
           const minX = -(1 - t.scale) * pos.width / 2;
           const maxY = (1 - t.scale) * pos.height / 2;
           const minY = -(1 - t.scale) * pos.height / 2;
-          let x = Math.max(minX, Math.min(t.x, maxX));
-          let y = Math.max(minY, Math.min(t.y, maxY));
+          const x = Math.max(minX, Math.min(t.x, maxX));
+          const y = Math.max(minY, Math.min(t.y, maxY));
           
           return (
             <div
@@ -837,7 +837,7 @@ export const AdminCreateVendorProductPage: React.FC = () => {
 
   // Filtrer et trier les vendeurs
   const filteredAndSortedVendors = React.useMemo(() => {
-    let filtered = vendors.filter(vendor => {
+    const filtered = vendors.filter(vendor => {
       const matchesSearch = vendor.firstName.toLowerCase().includes(searchVendor.toLowerCase()) ||
         vendor.lastName.toLowerCase().includes(searchVendor.toLowerCase()) ||
         vendor.email.toLowerCase().includes(searchVendor.toLowerCase()) ||

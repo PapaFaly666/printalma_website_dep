@@ -249,7 +249,7 @@ const ProductWithDesign: React.FC<{
       // Synchroniser vers la base de données si on a un ID de produit vendeur
       if (item.id && typeof item.id === 'number') {
         console.log('🔄 [CartSidebar] DÉCLENCHEMENT de la synchronisation automatique...');
-        syncLocalStorageToDatabase(item.id, item.designId, result);
+        // syncLocalStorageToDatabase(item.id, item.designId, result); // TODO: Implementer si nécessaire
       }
 
       return result;

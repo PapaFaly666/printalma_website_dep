@@ -1305,9 +1305,9 @@ const normalizeProductDataForCreation = (formData: any) => {
   });
 
   // Utiliser les IDs extraits ou extraire depuis le format "Category > SubCategory > Variation"
-  let categoryId = formData.categoryId;
-  let subCategoryId = formData.subCategoryId;
-  let variationId = formData.variationId;
+  const categoryId = formData.categoryId;
+  const subCategoryId = formData.subCategoryId;
+  const variationId = formData.variationId;
 
   // Si les IDs ne sont pas définis, essayer de les extraire depuis categories
   if ((!categoryId || !subCategoryId || !variationId) && formData.categories && formData.categories.length > 0) {

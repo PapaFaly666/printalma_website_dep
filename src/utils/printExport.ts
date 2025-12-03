@@ -126,7 +126,15 @@ const drawTextElement = (
   if (!element.text) return;
 
   const canvasDimensions = { width: canvasWidth, height: canvasHeight };
-  const delimitation = { referenceWidth, referenceHeight };
+  const delimitation = {
+    id: 'temp-delimitation',
+    x: 0,
+    y: 0,
+    width: referenceWidth,
+    height: referenceHeight,
+    referenceWidth,
+    referenceHeight
+  };
 
   const transform = getElementCanvasTransform(element as any, canvasDimensions, delimitation);
 
@@ -188,7 +196,15 @@ const drawImageElement = async (
   if (!element.imageUrl) return;
 
   const canvasDimensions = { width: canvasWidth, height: canvasHeight };
-  const delimitation = { referenceWidth, referenceHeight };
+  const delimitation = {
+    id: 'temp-delimitation',
+    x: 0,
+    y: 0,
+    width: referenceWidth,
+    height: referenceHeight,
+    referenceWidth,
+    referenceHeight
+  };
 
   const transform = getElementCanvasTransform(element as any, canvasDimensions, delimitation);
 

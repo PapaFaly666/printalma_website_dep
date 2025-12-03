@@ -282,8 +282,8 @@ const ProductViewWithDesign: React.FC<ProductViewWithDesignProps> = ({
       const pos = computePxPosition(delim);
       
       // Calculer les nouvelles positions
-      let newX = initialTransform.x + deltaX;
-      let newY = initialTransform.y + deltaY;
+      const newX = initialTransform.x + deltaX;
+      const newY = initialTransform.y + deltaY;
       
       // En mode admin, contraindre strictement dans les délimitations
       if (isAdmin) {

@@ -18,6 +18,7 @@ import {
   UpdateVendorProfileResponse,
   VendorStatsByCountryResponse
 } from '../types/auth.types';
+import { hybridAuthService } from './hybridAuthService';
 
 class AuthService {
   private baseUrl = API_CONFIG.BASE_URL;
@@ -96,16 +97,59 @@ class AuthService {
     });
     
     // 🆕 Sauvegarder les données utilisateur complètes en localStorage
+    console.log('🔍 Structure de la réponse de login:', {
+      hasUser: 'user' in response && !!response.user,
+      hasToken: 'token' in response && !!response.token,
+      hasJwt: 'jwt' in response && !!response.jwt,
+      responseKeys: Object.keys(response),
+      fullResponse: response
+    });
+
     if ('user' in response && response.user) {
       const authData = {
         timestamp: Date.now(),
         user: response.user,
-        isAuthenticated: true
+        isAuthenticated: true,
+        token: undefined as string | undefined,
+        jwt: undefined as string | undefined
       };
+
+      // 🆕 Tenter d'extraire le token de différentes manières possibles
+      let tokenFound = response.token || response.jwt || response.accessToken || response.access_token;
+
+      // Si pas de token direct, chercher dans d'autres propriétés
+      if (!tokenFound) {
+        // Chercher dans les headers de cookies potentiels
+        if (response.cookie || response.cookies) {
+          const cookieStr = response.cookie || response.cookies;
+          const tokenMatch = cookieStr.match(/(?:jwt|token|access_token)=([^;]+)/);
+          if (tokenMatch) {
+            tokenFound = tokenMatch[1];
+            console.log('🔑 Token extrait depuis les cookies de la réponse');
+          }
+        }
+      }
+
+      // Ajouter le token aux données de session si trouvé
+      if (tokenFound) {
+        authData.token = tokenFound;
+        authData.jwt = tokenFound; // Pour compatibilité
+        console.log('🔑 Token trouvé et ajouté à la session:', tokenFound.substring(0, 20) + '...');
+      } else {
+        console.warn('⚠️ Aucun token trouvé dans la réponse de login');
+        console.log('📄 Structure complète de la réponse:', JSON.stringify(response, null, 2));
+      }
+
       localStorage.setItem('auth_session', JSON.stringify(authData));
       console.log('💾 Session utilisateur sauvegardée en localStorage');
+
+      // 🆕 Sauvegarder le token dans le service hybride pour le fallback
+      if (tokenFound) {
+        hybridAuthService.setToken(tokenFound);
+        console.log('🔑 Token sauvegardé dans le service hybride');
+      }
     }
-    
+
     return response;
   }
 
@@ -124,6 +168,10 @@ class AuthService {
       localStorage.removeItem('auth_session');
       localStorage.removeItem('auth_fallback');
       console.log('🗑️ Session utilisateur supprimée du localStorage');
+
+      // 🆕 Nettoyer le token du service hybride
+      hybridAuthService.clearToken();
+      console.log('🗑️ Token supprimé du service hybride');
       
       console.log('✅ Déconnexion réussie côté serveur:', response);
       return response;
@@ -148,6 +196,10 @@ class AuthService {
       localStorage.removeItem('auth_session');
       localStorage.removeItem('auth_fallback');
       console.log('🗑️ Session utilisateur supprimée du localStorage (mode erreur)');
+
+      // 🆕 Nettoyer le token du service hybride même en cas d'erreur
+      hybridAuthService.clearToken();
+      console.log('🗑️ Token supprimé du service hybride (mode erreur)');
       
       
       // Retourner un message même en cas d'erreur
@@ -172,20 +224,28 @@ class AuthService {
       
       const data = JSON.parse(stored);
       console.log('🔄 Données parsées:', data);
-      
+
       const now = Date.now();
       const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 jours
       const age = now - data.timestamp;
-      
+
       console.log(`⏰ Âge de la session: ${Math.round(age / 1000)} secondes (max: ${Math.round(maxAge / 1000)} secondes)`);
-      
+
       if (age > maxAge) {
         console.log('⏰ Session stockée expirée, suppression...');
         localStorage.removeItem('auth_session');
+        hybridAuthService.clearToken();
         return { isAuthenticated: false, user: null };
       }
-      
+
       console.log('✅ Session stockée valide trouvée:', data.user);
+
+      // 🆕 Charger le token dans le service hybride si disponible
+      if (data.token || data.jwt) {
+        hybridAuthService.setToken(data.token || data.jwt);
+        console.log('🔑 Token chargé dans le service hybride');
+      }
+
       console.log('📊 Retour:', { isAuthenticated: data.isAuthenticated, user: data.user });
       return { isAuthenticated: data.isAuthenticated, user: data.user };
     } catch (error) {

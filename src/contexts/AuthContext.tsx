@@ -8,6 +8,7 @@ import {
   ApiError 
 } from '../types/auth.types';
 import authService from '../services/auth.service';
+import { hybridAuthService } from '../services/hybridAuthService';
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginRequest) => Promise<{ success: boolean; mustChangePassword?: boolean; userId?: number; error?: string }>;

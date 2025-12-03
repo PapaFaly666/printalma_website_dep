@@ -32,7 +32,7 @@ const VendorSales: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL' | 'PAYMENT_FAILED'>('ALL');
   const [dateFilter, setDateFilter] = useState<string>('all');
 
   const [pagination, setPagination] = useState({
@@ -43,15 +43,19 @@ const VendorSales: React.FC = () => {
   });
 
   // Statistiques calculées localement
-  const statistics = useMemo(() => ({
-    totalOrders: pagination?.total || 0,
-    totalRevenue: orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
-    pendingOrders: orders.filter(o => o.status === 'PENDING').length,
-    processingOrders: orders.filter(o => o.status === 'PROCESSING').length,
-    shippedOrders: orders.filter(o => o.status === 'SHIPPED').length,
-    deliveredOrders: orders.filter(o => o.status === 'DELIVERED').length,
-    cancelledOrders: orders.filter(o => o.status === 'CANCELLED').length,
-  }), [orders, pagination]);
+  const statistics = useMemo(() => {
+    const paidOrders = orders.filter(order => order.paymentStatus === 'PAID');
+    return {
+      totalOrders: pagination?.total || 0,
+      totalRevenue: paidOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
+      totalVendorEarnings: paidOrders.reduce((sum, order) => sum + (order.commission_info?.vendor_amount || 0), 0),
+      pendingOrders: orders.filter(o => o.status === 'PENDING').length,
+      processingOrders: orders.filter(o => o.status === 'PROCESSING').length,
+      shippedOrders: orders.filter(o => o.status === 'SHIPPED').length,
+      deliveredOrders: orders.filter(o => o.status === 'DELIVERED').length,
+      cancelledOrders: orders.filter(o => o.status === 'CANCELLED').length,
+    };
+  }, [orders, pagination]);
 
   // Charger les données depuis le backend
   const loadOrders = async (showLoader = true) => {
@@ -61,7 +65,8 @@ const VendorSales: React.FC = () => {
       const filters: any = {
         page: pagination.page,
         limit: pagination.limit,
-        ...(statusFilter !== 'ALL' && { status: statusFilter }),
+        ...(statusFilter !== 'ALL' && statusFilter !== 'PAYMENT_FAILED' && { status: statusFilter }),
+        ...(statusFilter === 'PAYMENT_FAILED' && { paymentStatus: 'FAILED' }),
         ...(searchTerm && { search: searchTerm })
       };
 
@@ -139,7 +144,17 @@ const VendorSales: React.FC = () => {
   };
 
   // Badge de statut
-  const getStatusBadge = (status: OrderStatus) => {
+  const getStatusBadge = (status: OrderStatus, paymentStatus?: string) => {
+    // Si le paiement a échoué, afficher le badge de paiement échoué en priorité
+    if (paymentStatus === 'FAILED') {
+      return (
+        <Badge className="bg-red-100 text-red-800 border-0 font-medium">
+          <XCircle className="w-3 h-3 mr-1" />
+          Paiement échoué
+        </Badge>
+      );
+    }
+
     const statusConfig = {
       PENDING: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
       CONFIRMED: { label: 'Confirmée', color: 'bg-blue-100 text-blue-800', icon: CheckCircle },
@@ -226,7 +241,7 @@ const VendorSales: React.FC = () => {
         </Card>
 
         {/* Statistiques principales */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -263,7 +278,7 @@ const VendorSales: React.FC = () => {
                   {loading ? '...' : formatAmount(statistics.totalRevenue)}
                 </div>
                 <div className="text-xs text-gray-500">
-                  Revenu total
+                  Revenu total (commandes payées)
                 </div>
               </CardContent>
             </Card>
@@ -273,6 +288,27 @@ const VendorSales: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+          >
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Mes Gains</CardTitle>
+                <DollarSign className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-900">
+                  {loading ? '...' : formatAmount(statistics.totalVendorEarnings)}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Gains après commission (commandes payées)
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
           >
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -293,7 +329,7 @@ const VendorSales: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
           >
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -331,7 +367,7 @@ const VendorSales: React.FC = () => {
                 </div>
               </div>
 
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as OrderStatus | 'ALL')}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as OrderStatus | 'ALL' | 'PAYMENT_FAILED')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
@@ -343,6 +379,7 @@ const VendorSales: React.FC = () => {
                   <SelectItem value="SHIPPED">Expédiée</SelectItem>
                   <SelectItem value="DELIVERED">Livrée</SelectItem>
                   <SelectItem value="CANCELLED">Annulée</SelectItem>
+                  <SelectItem value="PAYMENT_FAILED">Paiement échoué</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -428,12 +465,21 @@ const VendorSales: React.FC = () => {
                               <h3 className="font-semibold text-lg text-gray-900">
                                 {order.orderNumber}
                               </h3>
-                              {getStatusBadge(order.status)}
+                              {getStatusBadge(order.status, order.paymentStatus)}
                             </div>
                             <div className="text-right">
                               <p className="text-lg font-bold text-gray-900">
                                 {formatAmount(order.totalAmount)}
                               </p>
+                              {order.paymentStatus === 'FAILED' ? (
+                                <p className="text-sm font-medium text-red-600">
+                                  ❌ Paiement échoué
+                                </p>
+                              ) : order.commission_info?.vendor_amount ? (
+                                <p className="text-sm font-medium text-blue-600">
+                                  +{formatAmount(order.commission_info.vendor_amount)} (mes gains)
+                                </p>
+                              ) : null}
                               <p className="text-sm text-gray-500">
                                 {formatDate(order.createdAt)}
                               </p>

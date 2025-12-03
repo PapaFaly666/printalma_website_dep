@@ -362,7 +362,7 @@ const handleAddRegion = async () => {
       price: 3000,
       deliveryTimeMin: 2,
       deliveryTimeMax: 4,
-      deliveryTimeUnit: 'jours' as 'jours',
+      deliveryTimeUnit: 'jours' as const,
       mainCities: '',
     });
 

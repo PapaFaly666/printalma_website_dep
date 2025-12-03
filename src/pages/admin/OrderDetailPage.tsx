@@ -4,11 +4,79 @@ import newOrderService from '../../services/newOrderService';
 import { Order } from '../../types/order';
 import { Button } from '../../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import { ArrowLeft, Package, Phone, Copy, Printer, Download, X, ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Package, Phone, Copy, Printer, Download, X, ZoomIn, ZoomOut, Maximize2, RotateCcw, Truck, MapPin, Clock, DollarSign, Calendar, Users } from 'lucide-react';
 import { formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
 import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrderProductPreview';
 import { CustomizationPreview } from '../../components/order/CustomizationPreview';
 import { downloadDesignElementsAsPNG, exportAllViewsDesignElements } from '../../utils/printExport';
+
+// Fonction utilitaire pour normaliser les délimitations en pixels
+const convertDelimitationToPixels = (delim: any, fallbackDelimitations?: any[]) => {
+  if (!delim) return null;
+
+  // 🔍 IMPORTANT: Conserver les vraies valeurs de référence
+  // Ne PAS utiliser de valeurs par défaut qui pourraient être incorrectes
+  let refWidth = delim.referenceWidth;
+  let refHeight = delim.referenceHeight;
+
+  // 🔧 WORKAROUND pour les anciennes commandes avec 800x800:
+  // Si on détecte 800x800 mais qu'on a des délimitations multi-vues avec d'autres valeurs,
+  // utiliser les valeurs des délimitations multi-vues comme référence
+  if ((refWidth === 800 || refHeight === 800) && fallbackDelimitations && fallbackDelimitations.length > 0) {
+    const firstViewDelim = fallbackDelimitations[0];
+    if (firstViewDelim.referenceWidth && firstViewDelim.referenceWidth !== 800) {
+      console.warn('⚠️ [convertDelimitation] Correction 800→' + firstViewDelim.referenceWidth + ' depuis delimitations[]');
+      refWidth = firstViewDelim.referenceWidth;
+      refHeight = firstViewDelim.referenceHeight;
+    }
+  }
+
+  // Si pas de référence, on ne peut pas convertir correctement
+  if (!refWidth || !refHeight) {
+    console.warn('⚠️ [convertDelimitation] Pas de referenceWidth/Height, retour tel quel');
+    return delim;
+  }
+
+  // 🔍 Détection automatique : si les valeurs sont <= 1, c'est du pourcentage (0-1)
+  // Sinon, ce sont déjà des pixels
+  const isPercentageFormat = delim.width <= 1 && delim.height <= 1 && delim.x <= 1 && delim.y <= 1;
+
+  console.log('🔄 [convertDelimitation]', {
+    input: { x: delim.x, y: delim.y, width: delim.width, height: delim.height },
+    coordinateType: delim.coordinateType,
+    isPercentageFormat,
+    referenceSize: { width: refWidth, height: refHeight },
+    corrected: refWidth !== delim.referenceWidth
+  });
+
+  // Si c'est au format pourcentage (valeurs 0-1), convertir en pixels
+  if (isPercentageFormat) {
+    const converted = {
+      x: delim.x * refWidth,
+      y: delim.y * refHeight,
+      width: delim.width * refWidth,
+      height: delim.height * refHeight,
+      coordinateType: delim.coordinateType || 'PERCENTAGE',
+      referenceWidth: refWidth,
+      referenceHeight: refHeight
+    };
+    console.log('✅ [convertDelimitation] Converted to pixels:', converted);
+    return converted;
+  }
+
+  // Sinon, retourner tel quel (déjà en pixels) AVEC les vraies références
+  const result = {
+    x: delim.x,
+    y: delim.y,
+    width: delim.width,
+    height: delim.height,
+    coordinateType: delim.coordinateType || 'PIXEL',
+    referenceWidth: refWidth,
+    referenceHeight: refHeight
+  };
+  console.log('✅ [convertDelimitation] Already in pixels:', result);
+  return result;
+};
 
 const OrderDetailPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -63,6 +131,46 @@ const OrderDetailPage: React.FC = () => {
   // Récupérer les données depuis le state de navigation si disponibles
   const orderDataFromState = location.state?.orderData as Order | undefined;
 
+  // Helper pour normaliser deliveryInfo -> delivery_info
+  const normalizeOrderData = (orderData: any): Order => {
+    // Cas 1: deliveryInfo existe (structure imbriquée moderne)
+    if (orderData.deliveryInfo && !orderData.delivery_info) {
+      console.log('🔄 [OrderDetailPage] Mapping deliveryInfo (structure imbriquée) -> delivery_info');
+      orderData.delivery_info = orderData.deliveryInfo;
+      delete orderData.deliveryInfo;
+    }
+    // Cas 2: deliveryInfo est null mais on a des champs plats (ex: Sénégal)
+    else if (!orderData.deliveryInfo && !orderData.delivery_info && orderData.deliveryType) {
+      console.log('🔄 [OrderDetailPage] Création delivery_info depuis champs plats');
+
+      // Construire delivery_info depuis les champs plats
+      orderData.delivery_info = {
+        deliveryType: orderData.deliveryType,
+
+        // Champs plats pour rétrocompatibilité
+        cityId: orderData.deliveryCityId,
+        cityName: orderData.deliveryCityName,
+        regionId: orderData.deliveryRegionId,
+        regionName: orderData.deliveryRegionName,
+        zoneId: orderData.deliveryZoneId,
+        zoneName: orderData.deliveryZoneName,
+        countryCode: orderData.shippingCountry === 'Sénégal' ? 'SN' : undefined,
+        countryName: orderData.shippingCountry,
+
+        transporteurId: orderData.transporteurId,
+        transporteurName: orderData.transporteurName,
+        transporteurLogo: orderData.transporteurLogo,
+
+        deliveryFee: orderData.deliveryFee,
+        deliveryTime: orderData.deliveryTime,
+
+        // Métadonnées si disponibles
+        metadata: orderData.deliveryMetadata || undefined
+      };
+    }
+    return orderData;
+  };
+
   useEffect(() => {
     if (orderId) {
       const fetchOrderDetails = async () => {
@@ -77,7 +185,9 @@ const OrderDetailPage: React.FC = () => {
 
           // Utiliser les données du state si disponibles (depuis OrdersManagement)
           if (orderDataFromState && orderDataFromState.id === numericOrderId) {
-            setOrder(orderDataFromState);
+            // Normaliser les données du state
+            const normalizedOrder = normalizeOrderData(orderDataFromState);
+            setOrder(normalizedOrder);
             setError(null);
             setLoading(false);
             return;
@@ -166,16 +276,7 @@ const OrderDetailPage: React.FC = () => {
           viewImageUrl = viewImage.url;
           viewType = viewImage.viewType || 'Autre';
           if (viewImage.delimitations?.[0]) {
-            const delim = viewImage.delimitations[0];
-            viewDelimitation = {
-              x: delim.x,
-              y: delim.y,
-              width: delim.width,
-              height: delim.height,
-              coordinateType: delim.coordinateType || 'PERCENTAGE',
-              referenceWidth: delim.referenceWidth || 800,
-              referenceHeight: delim.referenceHeight || 800
-            };
+            viewDelimitation = convertDelimitationToPixels(viewImage.delimitations[0]);
           }
         }
       }
@@ -400,7 +501,7 @@ if (loading) {
         {/* Summary Cards - Modern SaaS Dashboard Style */}
         <section className="mb-8">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-gray-200">
+            <div className="grid grid-cols-2 lg:grid-cols-3 divide-x divide-gray-200">
               <div className="px-6 py-5">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total</div>
                 <div className="text-2xl font-semibold text-gray-900">{formatCurrency(order.totalAmount)}</div>
@@ -408,10 +509,6 @@ if (loading) {
               <div className="px-6 py-5">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Client</div>
                 <div className="text-base font-medium text-gray-900 truncate">{order.user.firstName} {order.user.lastName}</div>
-              </div>
-              <div className="px-6 py-5">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Livraison</div>
-                <div className="text-base font-medium text-gray-900 truncate">{order.shippingAddress?.city || 'Non définie'}</div>
               </div>
               <div className="px-6 py-5">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Articles</div>
@@ -466,28 +563,39 @@ if (loading) {
                         rotation: 0
                       };
 
-                    // Extraire les délimitations
-                    // Priorité 1: Délimitation sauvegardée dans l'item
-                    let delimitation = item.delimitation || null;
+                    // 🔍 DEBUG: Source des délimitations
+                    console.log('🔍 [OrderDetailPage] Sources disponibles:', {
+                      'item.delimitation': item.delimitation,
+                      'item.colorVariation.images': item.colorVariation?.images?.length || 0,
+                      'enriched.designDelimitations': enriched?.designDelimitations,
+                      'item.designElementsByView keys': item.designElementsByView ? Object.keys(item.designElementsByView) : 'none'
+                    });
 
-                    // Priorité 2: Chercher dans enriched.designDelimitations
-                    if (!delimitation && enriched?.designDelimitations && enriched.designDelimitations.length > 0) {
-                      const delim = enriched.designDelimitations[0];
-                      if (delim.delimitations && delim.delimitations.length > 0) {
-                        const firstDelim = delim.delimitations[0];
-                        delimitation = {
-                          x: firstDelim.x,
-                          y: firstDelim.y,
-                          width: firstDelim.width,
-                          height: firstDelim.height,
-                          coordinateType: firstDelim.coordinateType || 'PERCENTAGE',
-                          referenceWidth: firstDelim.referenceWidth || 800,
-                          referenceHeight: firstDelim.referenceHeight || 800
-                        };
+                    // Extraire les délimitations et les convertir en pixels
+                    // Priorité 1: Délimitation principale sauvegardée dans l'item
+                    let delimitation = item.delimitation ? convertDelimitationToPixels(item.delimitation) : null;
+
+                    // Priorité 2: Chercher dans colorVariation.images[].delimitations (format backend)
+                    if (!delimitation && item.colorVariation?.images) {
+                      for (const image of item.colorVariation.images) {
+                        // @ts-ignore - delimitations existe dans le type mais TypeScript ne le voit pas
+                        if (image.delimitations && image.delimitations.length > 0) {
+                          console.log('🔍 [OrderDetailPage] Utilisation de colorVariation.images[].delimitations[0]:', image.delimitations[0]);
+                          delimitation = convertDelimitationToPixels(image.delimitations[0]);
+                          break;
+                        }
                       }
                     }
 
-                    // Priorité 3: Chercher dans adminProduct.colorVariations
+                    // Priorité 3: Chercher dans enriched.designDelimitations
+                    if (!delimitation && enriched?.designDelimitations && enriched.designDelimitations.length > 0) {
+                      const delim = enriched.designDelimitations[0];
+                      if (delim.delimitations && delim.delimitations.length > 0) {
+                        delimitation = convertDelimitationToPixels(delim.delimitations[0]);
+                      }
+                    }
+
+                    // Priorité 4: Chercher dans adminProduct.colorVariations
                     if (!delimitation && enriched?.adminProduct?.colorVariations) {
                       const colorVar = enriched.adminProduct.colorVariations.find(
                         (cv: any) => cv.colorCode === item.colorVariation?.colorCode
@@ -495,16 +603,7 @@ if (loading) {
                       if (colorVar?.images && colorVar.images.length > 0) {
                         const img = colorVar.images[0];
                         if (img.delimitations && img.delimitations.length > 0) {
-                          const firstDelim = img.delimitations[0];
-                          delimitation = {
-                            x: firstDelim.x,
-                            y: firstDelim.y,
-                            width: firstDelim.width,
-                            height: firstDelim.height,
-                            coordinateType: firstDelim.coordinateType || 'PERCENTAGE',
-                            referenceWidth: firstDelim.referenceWidth || 800,
-                            referenceHeight: firstDelim.referenceHeight || 800
-                          };
+                          delimitation = convertDelimitationToPixels(img.delimitations[0]);
                         }
                       }
                     }
@@ -547,7 +646,7 @@ if (loading) {
 
                         <div className="flex gap-4">
                           {/* Product Preview */}
-                          <div className="flex-shrink-0">
+                          <div className="w-full">
                             {isCustomizedProduct ? (
                               <div className="space-y-3">
                                 {/* Views Grid - Taille augmentée et responsive */}
@@ -561,12 +660,26 @@ if (loading) {
                                     let viewDelimitation = delimitation;
                                     let viewType = 'Autre';
 
-                                    // Get view metadata
+                                    // 🔍 NOUVEAU: Chercher la délimitation spécifique à cette vue dans colorVariation.images
+                                    if (item.colorVariation?.images) {
+                                      const viewImage = item.colorVariation.images.find((img: any) => img.id === viewId);
+                                      if (viewImage && viewImage.delimitations && viewImage.delimitations.length > 0) {
+                                        console.log(`🔍 [OrderDetailPage] viewImage.delimitations[0] AVANT conversion (view ${viewKey}):`, viewImage.delimitations[0]);
+                                        viewDelimitation = convertDelimitationToPixels(viewImage.delimitations[0]);
+                                        console.log(`🔍 [OrderDetailPage] viewDelimitation APRÈS conversion (view ${viewKey}):`, viewDelimitation);
+                                        viewImageUrl = viewImage.url || viewImageUrl;
+                                        viewType = viewImage.viewType || viewType;
+                                      }
+                                    }
+
+                                    // Get view metadata (fallback)
                                     if (item.viewsMetadata) {
                                       const viewMeta = item.viewsMetadata.find((v: any) => v.viewKey === viewKey);
                                       if (viewMeta) {
-                                        viewImageUrl = viewMeta.imageUrl;
-                                        viewType = viewMeta.viewType || 'Autre';
+                                        if (!viewImageUrl || viewImageUrl === mockupUrl) {
+                                          viewImageUrl = viewMeta.imageUrl;
+                                        }
+                                        viewType = viewMeta.viewType || viewType;
                                       }
                                     }
 
@@ -577,16 +690,7 @@ if (loading) {
                                           viewImageUrl = viewImage.url;
                                           viewType = viewImage.viewType || 'Autre';
                                           if (viewImage.delimitations && viewImage.delimitations.length > 0) {
-                                            const delim = viewImage.delimitations[0];
-                                            viewDelimitation = {
-                                              x: delim.x,
-                                              y: delim.y,
-                                              width: delim.width,
-                                              height: delim.height,
-                                              coordinateType: delim.coordinateType || 'PERCENTAGE',
-                                              referenceWidth: delim.referenceWidth || 800,
-                                              referenceHeight: delim.referenceHeight || 800
-                                            };
+                                            viewDelimitation = convertDelimitationToPixels(viewImage.delimitations[0]);
                                           }
                                         }
                                       }
@@ -603,16 +707,7 @@ if (loading) {
                                             viewImageUrl = viewImage.url;
                                             viewType = viewImage.viewType || 'Autre';
                                             if (viewImage.delimitations && viewImage.delimitations.length > 0) {
-                                              const delim = viewImage.delimitations[0];
-                                              viewDelimitation = {
-                                                x: delim.x,
-                                                y: delim.y,
-                                                width: delim.width,
-                                                height: delim.height,
-                                                coordinateType: delim.coordinateType || 'PERCENTAGE',
-                                                referenceWidth: delim.referenceWidth || 800,
-                                                referenceHeight: delim.referenceHeight || 800
-                                              };
+                                              viewDelimitation = convertDelimitationToPixels(viewImage.delimitations[0]);
                                             }
                                           }
                                         }
@@ -637,8 +732,32 @@ if (loading) {
                                       return viewNames[vt?.toUpperCase()] || vt || 'Vue';
                                     };
 
+                                    // 🔍 DEBUG: Logs pour vérifier les données passées
+                                    console.log(`🔍 [OrderDetailPage] Rendering view ${viewKey}:`, {
+                                      viewImageUrl,
+                                      elementsCount: elements.length,
+                                      viewDelimitation: viewDelimitation ? {
+                                        x: viewDelimitation.x,
+                                        y: viewDelimitation.y,
+                                        width: viewDelimitation.width,
+                                        height: viewDelimitation.height,
+                                        coordinateType: viewDelimitation.coordinateType,
+                                        referenceWidth: viewDelimitation.referenceWidth,
+                                        referenceHeight: viewDelimitation.referenceHeight
+                                      } : null,
+                                      firstElement: elements[0] ? {
+                                        id: elements[0].id,
+                                        type: elements[0].type,
+                                        x: elements[0].x,
+                                        y: elements[0].y,
+                                        width: elements[0].width,
+                                        height: elements[0].height,
+                                        rotation: elements[0].rotation
+                                      } : null
+                                    });
+
                                     return (
-                                      <div key={viewKey} className="relative">
+                                      <div key={viewKey} className="relative w-full aspect-square">
                                         <CustomizationPreview
                                           productImageUrl={viewImageUrl}
                                           designElements={elements as any[]}
@@ -648,7 +767,7 @@ if (loading) {
                                           colorCode={item.colorVariation?.colorCode}
                                           size={item.size}
                                           quantity={item.quantity}
-                                          className={`w-full aspect-square border border-gray-200 rounded-lg ${Object.keys(elementsByView).length > 1 ? 'max-w-xs' : 'max-w-md'}`}
+                                          className="w-full h-full border border-gray-200 rounded-lg"
                                           showInfo={false}
                                         />
                                         {Object.keys(elementsByView).length > 1 && (
@@ -703,23 +822,25 @@ if (loading) {
                               </div>
                             ) : mockupUrl || designUrl ? (
                               <div className="space-y-3">
-                                <EnrichedOrderProductPreview
-                                  product={{
-                                    id: item.productId || item.id,
-                                    name: item.product?.name || enriched?.vendorName || 'Produit',
-                                    quantity: item.quantity,
-                                    unitPrice: item.unitPrice || 0,
-                                    colorName: item.colorVariation?.name || item.color,
-                                    colorCode: item.colorVariation?.colorCode,
-                                    size: item.size,
-                                    mockupImageUrl: mockupUrl,
-                                    designImageUrl: hasDesign ? designUrl : null,
-                                    designPosition: designPosition,
-                                    delimitation: delimitation || undefined,
-                                    vendorProductId: item.vendorProductId || enriched?.id
-                                  }}
-                                  className="w-full max-w-xs sm:max-w-md aspect-square border border-gray-200 rounded-lg"
-                                />
+                                <div className="w-full aspect-square">
+                                  <EnrichedOrderProductPreview
+                                    product={{
+                                      id: item.productId || item.id,
+                                      name: item.product?.name || enriched?.vendorName || 'Produit',
+                                      quantity: item.quantity,
+                                      unitPrice: item.unitPrice || 0,
+                                      colorName: item.colorVariation?.name || item.color,
+                                      colorCode: item.colorVariation?.colorCode,
+                                      size: item.size,
+                                      mockupImageUrl: mockupUrl,
+                                      designImageUrl: hasDesign ? designUrl : null,
+                                      designPosition: designPosition,
+                                      delimitation: delimitation || undefined,
+                                      vendorProductId: item.vendorProductId || enriched?.id
+                                    }}
+                                    className="w-full h-full border border-gray-200 rounded-lg"
+                                  />
+                                </div>
                                 {/* Actions for vendor products - Téléchargement uniquement */}
                                 {hasDesign && designUrl && (
                                   <div className="flex gap-2 flex-wrap">
@@ -795,25 +916,6 @@ if (loading) {
                 )}
               </div>
 
-              {/* Shipping Address */}
-              <div className="bg-white border border-gray-200 rounded-lg p-5">
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Adresse de livraison</h3>
-                {order.shippingAddress ? (
-                  <div className="text-sm text-gray-600 space-y-1.5">
-                    {order.shippingAddress.name && (
-                      <div className="font-medium text-gray-900">{order.shippingAddress.name}</div>
-                    )}
-                    <div>{order.shippingAddress.street}</div>
-                    {order.shippingAddress.apartment && <div>{order.shippingAddress.apartment}</div>}
-                    <div>{order.shippingAddress.city}, {order.shippingAddress.region}</div>
-                    {order.shippingAddress.postalCode && <div>{order.shippingAddress.postalCode}</div>}
-                    <div className="font-medium text-gray-900 pt-1">{order.shippingAddress.country}</div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400">Aucune adresse</p>
-                )}
-              </div>
-
               {/* Order Total */}
               <div className="bg-gray-900 border border-gray-800 rounded-lg p-5 text-white">
                 <div className="flex justify-between items-center">
@@ -821,6 +923,239 @@ if (loading) {
                   <span className="text-2xl font-semibold">{formatCurrency(order.totalAmount)}</span>
                 </div>
               </div>
+
+              {/* Delivery Information */}
+              {order.delivery_info && (() => {
+                const delivery = order.delivery_info;
+
+                // Helper pour récupérer les valeurs avec fallback entre nouvelle et ancienne structure
+                const cityName = delivery.location?.cityName || delivery.cityName;
+                const regionName = delivery.location?.regionName || delivery.regionName;
+                const zoneName = delivery.location?.zoneName || delivery.zoneName;
+                const countryName = delivery.location?.countryName || delivery.countryName || order.shippingAddress?.country;
+                const transporteurName = delivery.transporteur?.name || delivery.transporteurName;
+                const transporteurLogo = delivery.transporteur?.logo || delivery.transporteurLogo;
+                const deliveryFee = delivery.tarif?.amount ?? delivery.deliveryFee ?? 0;
+                const deliveryTime = delivery.tarif?.deliveryTime || delivery.deliveryTime;
+
+                return (
+                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                    {/* Header Simple */}
+                    <div className="px-6 py-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-3">
+                          <Truck className="h-5 w-5 text-gray-700" />
+                          <h3 className="text-lg font-semibold text-gray-900">Informations de Livraison</h3>
+                        </div>
+                        {/* Badge Type de Livraison */}
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full border border-gray-300">
+                          <span className="text-sm">
+                            {delivery.deliveryType === 'city' && '🏙️ Livraison en ville'}
+                            {delivery.deliveryType === 'region' && '🌍 Livraison en région'}
+                            {delivery.deliveryType === 'international' && '✈️ Livraison internationale'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contenu Principal */}
+                    <div className="p-6">
+                      {/* Grid Principal : 3 colonnes sur desktop */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+
+                        {/* Colonne 1 : Destination */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            <MapPin className="h-4 w-4" />
+                            <span>Destination</span>
+                          </div>
+                          <div className="space-y-2 pl-6">
+                            {cityName && (
+                              <div>
+                                <div className="text-xs text-gray-500">Ville</div>
+                                <div className="font-medium text-gray-900">{cityName}</div>
+                              </div>
+                            )}
+                            {regionName && (
+                              <div>
+                                <div className="text-xs text-gray-500">Région</div>
+                                <div className="font-medium text-gray-900">{regionName}</div>
+                              </div>
+                            )}
+                            {zoneName && (
+                              <div>
+                                <div className="text-xs text-gray-500">Zone</div>
+                                <div className="font-medium text-gray-900">{zoneName}</div>
+                              </div>
+                            )}
+                            {countryName && (
+                              <div>
+                                <div className="text-xs text-gray-500">Pays</div>
+                                <div className="font-bold text-gray-900">{countryName}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Colonne 2 : Transporteur */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            <Truck className="h-4 w-4" />
+                            <span>Transporteur</span>
+                          </div>
+                          <div className="pl-6">
+                            {transporteurName ? (
+                              <div className="space-y-3">
+                                {transporteurLogo && (
+                                  <div className="w-20 h-20 border border-gray-200 rounded-lg bg-white p-2 flex items-center justify-center">
+                                    <img
+                                      src={transporteurLogo}
+                                      alt={transporteurName}
+                                      className="w-full h-full object-contain"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-bold text-gray-900">{transporteurName}</div>
+                                  {deliveryTime && (
+                                    <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-600">
+                                      <Clock className="h-3.5 w-3.5" />
+                                      <span>{deliveryTime}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-500 italic">
+                                Non sélectionné
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Colonne 3 : Tarification */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            <DollarSign className="h-4 w-4" />
+                            <span>Tarification</span>
+                          </div>
+                          <div className="pl-6 space-y-3">
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Frais de livraison</div>
+                              <div className="text-2xl font-bold text-gray-900">
+                                {deliveryFee === 0 ? (
+                                  <span className="text-green-600">Gratuit 🎉</span>
+                                ) : (
+                                  formatCurrency(deliveryFee)
+                                )}
+                              </div>
+                            </div>
+                            {deliveryTime && (
+                              <div className="pt-3 border-t border-gray-200">
+                                <div className="text-xs text-gray-500 mb-1">Délai estimé</div>
+                                <div className="font-medium text-gray-900">{deliveryTime}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Métadonnées (optionnel) */}
+                      {delivery.metadata && (Object.keys(delivery.metadata).length > 0) && (
+                        <>
+                          <div className="border-t border-gray-200 my-6"></div>
+
+                          {/* Dates */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                            {(delivery.metadata.selectedAt) && (
+                              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                                <Calendar className="h-4 w-4 text-gray-400 mt-0.5" />
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500">Sélectionné le</div>
+                                  <div className="font-medium text-gray-900 text-sm mt-0.5">
+                                    {new Date(delivery.metadata.selectedAt).toLocaleString('fr-FR', {
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {delivery.metadata.calculatedAt && (
+                              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                                <Clock className="h-4 w-4 text-gray-400 mt-0.5" />
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500">Calculé le</div>
+                                  <div className="font-medium text-gray-900 text-sm mt-0.5">
+                                    {new Date(delivery.metadata.calculatedAt).toLocaleString('fr-FR', {
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Liste des transporteurs disponibles */}
+                          {(delivery.metadata.availableCarriers) &&
+                           (delivery.metadata.availableCarriers?.length > 0) && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700">
+                                <Users className="h-4 w-4" />
+                                <span>Transporteurs disponibles ({(delivery.metadata.availableCarriers || []).length})</span>
+                              </div>
+                              <div className="space-y-2">
+                                {(delivery.metadata.availableCarriers || []).map((carrier: any, index: number) => (
+                                  <div
+                                    key={carrier.transporteurId || carrier.id || index}
+                                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                                      deliveryFee === carrier.fee
+                                        ? 'bg-green-50 border-green-200'
+                                        : 'bg-white border-gray-200 hover:border-gray-300'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-3 flex-1">
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {carrier.name}
+                                      </div>
+                                      {carrier.time && (
+                                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                                          <Clock className="h-3 w-3" />
+                                          <span>{carrier.time}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="font-bold text-gray-900">
+                                        {formatCurrency(carrier.fee)}
+                                      </div>
+                                      {deliveryFee === carrier.fee && (
+                                        <span className="px-2 py-0.5 bg-green-600 text-white text-xs font-medium rounded">
+                                          Choisi
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Notes */}
               {order.notes && (
@@ -1151,7 +1486,13 @@ if (loading) {
                         mockupImageUrl: vendorProductModal.mockupUrl,
                         designImageUrl: vendorProductModal.designUrl || null,
                         designPosition: vendorProductModal.designPosition,
-                        delimitation: vendorProductModal.delimitation
+                        delimitation: vendorProductModal.delimitation ? {
+                          x: vendorProductModal.delimitation.x,
+                          y: vendorProductModal.delimitation.y,
+                          width: vendorProductModal.delimitation.width,
+                          height: vendorProductModal.delimitation.height,
+                          coordinateType: vendorProductModal.delimitation.coordinateType || 'PERCENTAGE'
+                        } : undefined
                       }}
                       className="w-full h-full"
                     />

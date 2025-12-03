@@ -1,12 +1,13 @@
-import { 
-  DesignUploadResponse, 
-  DesignDeleteResponse, 
-  DesignStats, 
+import {
+  DesignUploadResponse,
+  DesignDeleteResponse,
+  DesignStats,
   BlankProductsResponse,
   DesignUploadOptions,
-  ProductFormData 
+  ProductFormData
 } from '../types/product';
 import { designCategoryService } from './designCategoryService';
+import { hybridAuthService } from './hybridAuthService';
 
 // Types pour la création de produits avec designs
 interface ProductCreationData {
@@ -149,11 +150,10 @@ class DesignService {
     this.vendorDesignBase = `${this.apiUrl}/vendor/designs`;
   }
 
-  // Supprimé - Utilise uniquement l'authentification par cookies
-
+  // Service d'authentification hybride pour la production
   private getAuthHeaders(extra: Record<string,string> = {}): Record<string, string> {
-    console.log('🍪 Utilisation de l\'authentification par cookies');
-    return { ...extra };
+    console.log('🔒 Authentification hybride - cookies + fallback token');
+    return hybridAuthService.getAuthHeaders(extra);
   }
 
   /**
@@ -1873,14 +1873,24 @@ class DesignService {
 
       let res: Response | null = null;
       for (const url of candidateUrls) {
-        res = await fetch(url, {
-          method: 'PUT',
-        credentials: 'include',
-        headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(payload),
-      });
+        // Utiliser le service hybride pour la validation avec retry automatique
+        try {
+          res = await hybridAuthService.makeAuthenticatedRequest(url, {
+            method: 'PUT',
+            headers: this.getAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(payload),
+          });
 
-        if (res.ok || res.status !== 404) break;
+          if (res.ok || res.status !== 404) break;
+        } catch (error: any) {
+          console.warn(`⚠️ Erreur tentative ${url}:`, error);
+          if (error?.status === 401 && res?.status === 401) {
+            // L'authentification hybride a déjà essayé le fallback
+            continue;
+          }
+          // Erreur réseau ou autre, essayer l'URL suivante
+          continue;
+        }
       }
 
       if (!res) throw new Error('Erreur réseau');

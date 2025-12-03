@@ -97,25 +97,27 @@ export const getElementCanvasTransform = (
   fontSize?: number;   // Taille de police en pixels (pour le texte)
   scale: number;       // Facteur d'échelle appliqué
 } => {
+  // 🔍 IMPORTANT: Utiliser referenceWidth/Height (taille de l'image de référence)
+  // comme dans ProductDesignEditor pour calculer le scale
   const refWidth = delimitation?.referenceWidth || 800;
   const refHeight = delimitation?.referenceHeight || 800;
 
-  // Facteurs d'échelle - même logique que ProductDesignEditor
+  // Facteurs d'échelle - IDENTIQUE à ProductDesignEditor ligne 257-258
+  // scaleX = taille d'affichage du canvas / taille de l'image de référence
   const scaleX = canvasDimensions.width / refWidth;
   const scaleY = canvasDimensions.height / refHeight;
-  const scale = Math.min(scaleX, scaleY);
 
-  // Position en pixels - même logique que ProductDesignEditor
+  // Position en pixels - relatif au canvas d'affichage
   const x = element.x * canvasDimensions.width;
   const y = element.y * canvasDimensions.height;
 
-  // Dimensions en pixels - même logique que ProductDesignEditor
-  const width = element.width * scale;
-  const height = element.height * scale;
+  // Dimensions en pixels - IMPORTANT: utiliser scaleX et scaleY pour adapter à l'affichage
+  const width = element.width * scaleX;
+  const height = element.height * scaleY;
 
-  // Taille de police pour le texte - même logique que ProductDesignEditor
+  // Taille de police pour le texte - utiliser scaleX pour garder les proportions
   const fontSize = element.type === 'text'
-    ? (element.fontSize || 24) * scale
+    ? (element.fontSize || 24) * scaleX
     : undefined;
 
   console.log('🎯 [PositioningUtils] Element transform calculated:', {
@@ -123,10 +125,19 @@ export const getElementCanvasTransform = (
     elementType: element.type,
     canvasSize: { width: canvasDimensions.width, height: canvasDimensions.height },
     referenceSize: { width: refWidth, height: refHeight },
-    scaleFactors: { scaleX: scaleX.toFixed(3), scaleY: scaleY.toFixed(3), scale: scale.toFixed(3) },
+    delimitation: delimitation ? {
+      x: delimitation.x,
+      y: delimitation.y,
+      width: delimitation.width,
+      height: delimitation.height,
+      referenceWidth: delimitation.referenceWidth,
+      referenceHeight: delimitation.referenceHeight
+    } : null,
+    scaleFactors: { scaleX: scaleX.toFixed(3), scaleY: scaleY.toFixed(3) },
+    elementOriginalSize: { width: element.width, height: element.height },
     relativePos: { x: element.x.toFixed(3), y: element.y.toFixed(3) },
     absolutePos: { x: x.toFixed(0), y: y.toFixed(0) },
-    dimensions: { width: width.toFixed(0), height: height.toFixed(0) },
+    scaledDimensions: { width: width.toFixed(0), height: height.toFixed(0) },
     fontSize: fontSize?.toFixed(0)
   });
 
@@ -136,33 +147,44 @@ export const getElementCanvasTransform = (
     width,
     height,
     fontSize,
-    scale
+    scale: scaleX  // Retourner scaleX comme valeur de scale
   };
 };
 
 /**
  * Génère le style CSS pour le rendu web (utilisé par CustomizationPreview)
  * Maintient la cohérence avec getElementCanvasTransform
+ * IMPORTANT: Retourne UN OBJET avec parentStyle et childStyle car ProductDesignEditor
+ * utilise 2 conteneurs imbriqués (parent pour position + translate, child pour rotation + dimensions)
  */
 export const getElementWebStyle = (
   element: DesignElement,
   containerDimensions: CanvasDimensions,
   delimitation?: Delimitation
-): React.CSSProperties => {
+): { parentStyle: React.CSSProperties; childStyle: React.CSSProperties } => {
   const transform = getElementCanvasTransform(element, containerDimensions, delimitation);
 
-  return {
+  // Style du conteneur parent - Position et centrage
+  const parentStyle: React.CSSProperties = {
     position: 'absolute',
     left: `${transform.x}px`,
     top: `${transform.y}px`,
-    width: `${transform.width}px`,
-    height: `${transform.height}px`,
-    transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
-    transformOrigin: 'center center',
+    transform: `translate(-50%, -50%)`,  // Centrage sur la position
     zIndex: element.zIndex + 10,
     pointerEvents: 'none',
-    overflow: 'hidden',
   };
+
+  // Style du conteneur enfant - Rotation et dimensions (comme ProductDesignEditor ligne 1387-1394)
+  const childStyle: React.CSSProperties = {
+    transform: `rotate(${element.rotation}deg)`,
+    transformOrigin: 'center center',
+    width: `${transform.width}px`,
+    height: `${transform.height}px`,
+    overflow: 'hidden',
+    position: 'relative',
+  };
+
+  return { parentStyle, childStyle };
 };
 
 /**

@@ -20,7 +20,8 @@ export type OrderStatus =
   | 'PROCESSING'
   | 'SHIPPED'
   | 'DELIVERED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'ALL';
 
 export interface OrderItem {
   id: number;
@@ -65,6 +66,15 @@ export interface Order {
     username: string;
     email: string;
   };
+  commission_info?: {
+    commission_rate: number;
+    commission_amount: number;
+    vendor_amount: number;
+    total_amount: number;
+    applied_rate: number;
+    has_custom_rate: boolean;
+    commission_applied_at: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -99,41 +109,121 @@ export const ordersService = {
    */
   getMyOrders: async (filters?: OrderFilters): Promise<OrdersResponse> => {
     try {
-      const params = new URLSearchParams();
-      if (filters?.status) params.append('status', filters.status);
-      if (filters?.page) params.append('page', filters.page.toString());
-      if (filters?.limit) params.append('limit', filters.limit.toString());
-      if (filters?.search) params.append('search', filters.search);
-      if (filters?.startDate) params.append('startDate', filters.startDate);
-      if (filters?.endDate) params.append('endDate', filters.endDate);
+      // Utiliser l'API directe avec fetch au lieu d'axios pour éviter les conversions
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
 
-      const response = await axios.get<{
-        success: boolean;
-        message: string;
-        data: Order[];
-      }>(
-        `${API_BASE_URL}/my-orders?${params.toString()}`,
-        {
-          headers: getAuthHeaders(),
-          withCredentials: true
-        }
-      );
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-      // Le backend retourne {success, message, data: Order[]}
-      // On doit transformer en {orders: Order[], pagination: {...}}
-      const orders = response.data.data || [];
-      const page = filters?.page || 1;
-      const limit = filters?.limit || 10;
-      const total = orders.length;
-      const totalPages = Math.ceil(total / limit);
+      // Construction des params - l'API my-orders ne supporte pas de filtres complexes
+      const response = await fetch(`${API_BASE_URL}/my-orders`, {
+        method: 'GET',
+        headers,
+        credentials: 'include'
+      });
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Erreur lors du chargement des commandes');
+      }
+
+      // Transformer les données de l'API vers le format attendu
+      const orders: Order[] = result.data.orders.map((order: any) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        userId: order.userId,
+        vendorId: order.vendorId,
+        status: order.status,
+        totalAmount: order.totalAmount,
+        shippingAddress: order.shippingAddressFull || `${order.shippingStreet}, ${order.shippingCity}`,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        paymentAttempts: order.paymentAttempts || 0,
+        phoneNumber: order.phoneNumber,
+        notes: order.notes,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        shippedAt: order.shippedAt,
+        confirmedAt: order.confirmedAt,
+        deliveredAt: order.deliveredAt,
+
+        // Mapping des items
+        items: order.orderItems?.map((item: any) => ({
+          id: item.id,
+          orderId: item.orderId,
+          productId: item.productId,
+          designId: item.designId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          productName: item.product?.name || 'Produit inconnu',
+          designName: item.designMetadata?.designName,
+          productImage: item.mockupUrl,
+          designImage: item.designMetadata?.designImageUrl,
+          size: item.size,
+          color: item.color
+        })) || [],
+
+        // User info - utiliser customer_info si disponible
+        user: {
+          id: order.userId,
+          username: order.customer_info?.full_name || order.user?.username || 'Client',
+          email: order.customer_info?.email || order.user?.email || order.email
+        },
+
+        // Commission info - C'EST CE QU'ON VEUT AFFICHER !
+        commission_info: (order.commissionRate !== undefined && order.commissionAmount !== undefined) ? {
+          commission_rate: order.commissionRate,
+          commission_amount: order.commissionAmount, // LES GAINS DU VENDEUR
+          vendor_amount: order.vendorAmount, // LE MONTANT PERÇU PAR LE VENDEUR
+          total_amount: order.totalAmount,
+          applied_rate: order.commissionRate,
+          has_custom_rate: false,
+          commission_applied_at: order.commissionAppliedAt
+        } : undefined,
+
+        // Vendor info
+        vendor: order.vendor ? {
+          id: order.vendor.id,
+          username: order.vendor.shopName || `${order.vendor.firstName} ${order.vendor.lastName}`,
+          email: order.vendor.email
+        } : undefined
+      }));
+
+      // Filtrage côté client car l'API ne supporte pas tous les filtres
+      let filteredOrders = orders;
+
+      if (filters?.status && filters.status !== 'ALL') {
+        filteredOrders = filteredOrders.filter(order => order.status === filters.status);
+      }
+
+      if (filters?.search) {
+        const searchLower = filters.search.toLowerCase();
+        filteredOrders = filteredOrders.filter(order =>
+          order.orderNumber.toLowerCase().includes(searchLower) ||
+          order.user?.username.toLowerCase().includes(searchLower) ||
+          order.user?.email.toLowerCase().includes(searchLower)
+        );
+      }
+
+      // Pas de pagination - retourner toutes les commandes
       return {
-        orders,
+        orders: filteredOrders,
         pagination: {
-          page,
-          limit,
-          total,
-          totalPages
+          page: 1,
+          limit: filteredOrders.length,
+          total: filteredOrders.length,
+          totalPages: 1
         }
       };
     } catch (error) {

@@ -406,7 +406,7 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
 
             if (foundData) {
               // 🔧 EXTRACTION CORRECTE des données selon la structure localStorage
-              let positionData = foundData.position || foundData;
+              const positionData = foundData.position || foundData;
               
               designDimensions = {
                 designWidth: positionData.designWidth ?? foundData.designWidth ?? 200,

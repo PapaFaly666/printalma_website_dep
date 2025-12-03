@@ -3,6 +3,9 @@ import {
   Check, X, Eye, Package, Calendar, Tag, DollarSign, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle, Filter, Palette
 } from 'lucide-react';
 import { designService, Design } from '../../services/designService';
+import { hybridAuthService } from '../../services/hybridAuthService';
+import { useTokenRefresh } from '../../hooks/useTokenRefresh';
+import { API_CONFIG, API_ENDPOINTS } from '../../config/api';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -68,6 +71,9 @@ interface ApiResponse<T> {
 }
 
 const AdminDesignValidation: React.FC = () => {
+  // 🆕 FORCER LE RECHARGEMENT DU TOKEN POUR CORRIGER LE 401
+  useTokenRefresh();
+
   const [designs, setDesigns] = useState<DesignWithValidation[]>([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -187,6 +193,9 @@ const AdminDesignValidation: React.FC = () => {
       return;
     }
 
+    console.log('🎯 Validation du design:', selectedDesign.id, '-', selectedDesign.name);
+    console.log('📋 Action:', validation.approved ? 'VALIDATION' : 'REJET');
+
     if (!validation.approved && !validation.reason.trim()) {
       toast.error('Veuillez entrer une raison de rejet.');
       return;
@@ -194,18 +203,24 @@ const AdminDesignValidation: React.FC = () => {
 
     setProcessing(true);
     try {
+      // 🔄 Utiliser le service d'authentification hybride pour gérer automatiquement
+      // l'authentification par cookies avec fallback JWT si nécessaire
+      const validationUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.DESIGNS.VALIDATE(Number(selectedDesign.id))}`;
+      console.log('🔄 Envoi de la requête de validation vers:', validationUrl);
 
-      const response = await fetch(`https://printalma-back-dep.onrender.com/api/designs/${selectedDesign.id}/validate`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: validation.approved ? 'VALIDATE' : 'REJECT',
-          rejectionReason: validation.approved ? undefined : validation.reason
-        })
-      });
+      const response = await hybridAuthService.makeAuthenticatedRequest(
+        validationUrl,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: validation.approved ? 'VALIDATE' : 'REJECT',
+            rejectionReason: validation.approved ? undefined : validation.reason
+          })
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));

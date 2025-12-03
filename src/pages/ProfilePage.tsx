@@ -1,0 +1,1534 @@
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import Footer from '../components/Footer';
+import CategoryTabs from '../components/CategoryTabs';
+import { designService, Design } from '../services/designService';
+import vendorProductsService, { VendorProduct } from '../services/vendorProductsService';
+import { ProductCardWithDesign } from '../components/ProductCardWithDesign';
+import { categoriesService, Category } from '../services/categoriesService';
+import { subCategoriesService, SubCategory } from '../services/subCategoriesService';
+
+// Icônes réseaux sociaux
+const SocialIcon = ({ network }: { network: string }) => {
+  const icons = {
+    facebook: (
+      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+        <path d="M18.77 7.46H14.5v-1.9c0-.9.6-1.1 1-1.1h3V.5h-4.33C10.24.5 9.5 3.44 9.5 5.32v2.15h-3v4h3v12h5v-12h3.85l.42-4z"/>
+      </svg>
+    ),
+    instagram: (
+      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+      </svg>
+    ),
+    x: (
+      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
+    ),
+    tiktok: (
+      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
+      </svg>
+    ),
+  };
+  return icons[network as keyof typeof icons] || null;
+};
+
+export default function ProfilePage() {
+  const { type, id } = useParams<{ type: string; id: string }>();
+  const navigate = useNavigate();
+  const [designs, setDesigns] = useState<Design[]>([]);
+  const [loadingDesigns, setLoadingDesigns] = useState(true);
+  const [vendorData, setVendorData] = useState<any>(null);
+  const [loadingVendor, setLoadingVendor] = useState(true);
+  const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [filteredProducts, setFilteredProducts] = useState<VendorProduct[]>([]);
+
+  // États pour les filtres
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [tempSelectedColors, setTempSelectedColors] = useState<string[]>([]);
+  const [showColorSelector, setShowColorSelector] = useState(false);
+
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [tempSelectedSizes, setTempSelectedSizes] = useState<string[]>([]);
+  const [showSizeSelector, setShowSizeSelector] = useState(false);
+
+  const [minPrice, setMinPrice] = useState<number | ''>('');
+  const [maxPrice, setMaxPrice] = useState<number | ''>('');
+  const [tempMinPrice, setTempMinPrice] = useState<number | ''>('');
+  const [tempMaxPrice, setTempMaxPrice] = useState<number | ''>('');
+  const [showPriceSelector, setShowPriceSelector] = useState(false);
+
+  // États pour les catégories et sous-catégories
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory | null>(null);
+
+  // Couleurs disponibles
+  const availableColors = [
+    { name: 'Noir', value: 'black', hex: '#000000' },
+    { name: 'Blanc', value: 'white', hex: '#FFFFFF' },
+    { name: 'Rouge', value: 'red', hex: '#EF4444' },
+    { name: 'Bleu', value: 'blue', hex: '#3B82F6' },
+    { name: 'Vert', value: 'green', hex: '#10B981' },
+    { name: 'Jaune', value: 'yellow', hex: '#F59E0B' },
+    { name: 'Rose', value: 'pink', hex: '#EC4899' },
+    { name: 'Violet', value: 'purple', hex: '#8B5CF6' },
+    { name: 'Gris', value: 'gray', hex: '#6B7280' },
+    { name: 'Orange', value: 'orange', hex: '#F97316' }
+  ];
+
+  // Fonctions de gestion des filtres de couleur
+  const toggleTempColor = (colorValue: string) => {
+    setTempSelectedColors(prev =>
+      prev.includes(colorValue)
+        ? prev.filter(c => c !== colorValue)
+        : [...prev, colorValue]
+    );
+  };
+
+  const applyColorSelection = () => {
+    setSelectedColors(tempSelectedColors);
+    setShowColorSelector(false);
+  };
+
+  const cancelColorSelection = () => {
+    setTempSelectedColors(selectedColors);
+    setShowColorSelector(false);
+  };
+
+  const clearColors = () => {
+    setSelectedColors([]);
+    setTempSelectedColors([]);
+  };
+
+  // Fonctions de gestion des filtres de taille
+  const toggleTempSize = (size: string) => {
+    setTempSelectedSizes(prev =>
+      prev.includes(size)
+        ? prev.filter(s => s !== size)
+        : [...prev, size]
+    );
+  };
+
+  const applySizeSelection = () => {
+    setSelectedSizes(tempSelectedSizes);
+    setShowSizeSelector(false);
+  };
+
+  const cancelSizeSelection = () => {
+    setTempSelectedSizes(selectedSizes);
+    setShowSizeSelector(false);
+  };
+
+  const clearSizes = () => {
+    setSelectedSizes([]);
+    setTempSelectedSizes([]);
+  };
+
+  // Fonctions de gestion du filtre de prix
+  const applyPriceFilter = () => {
+    setMinPrice(tempMinPrice);
+    setMaxPrice(tempMaxPrice);
+    setShowPriceSelector(false);
+  };
+
+  const cancelPriceFilter = () => {
+    setTempMinPrice(minPrice);
+    setTempMaxPrice(maxPrice);
+    setShowPriceSelector(false);
+  };
+
+  const clearPriceFilter = () => {
+    setMinPrice('');
+    setMaxPrice('');
+    setTempMinPrice('');
+    setTempMaxPrice('');
+  };
+
+  const hasPriceFilter = minPrice !== '' || maxPrice !== '';
+
+  // Formater le prix en FCFA
+  const formatPriceInFCFA = (price: number) => {
+    return new Intl.NumberFormat('fr-SN', {
+      style: 'currency',
+      currency: 'XOF',
+      maximumFractionDigits: 0,
+      currencyDisplay: 'symbol'
+    }).format(price);
+  };
+
+  // Fonction pour déterminer les couleurs disponibles dans les produits
+  const getAvailableColorsFromProducts = () => {
+    const colorSet = new Set<string>();
+
+    vendorProducts.forEach(product => {
+      if (product.adminProduct?.colorVariations) {
+        product.adminProduct.colorVariations.forEach((variation: any) => {
+          const variationName = variation.name.toLowerCase();
+
+          const colorMapping: { [key: string]: string } = {
+            'noir': 'black',
+            'blanc': 'white',
+            'rouge': 'red',
+            'bleu': 'blue',
+            'vert': 'green',
+            'jaune': 'yellow',
+            'rose': 'pink',
+            'violet': 'purple',
+            'gris': 'gray',
+            'orange': 'orange'
+          };
+
+          const mappedColor = colorMapping[variationName];
+          if (mappedColor && availableColors.find(c => c.value === mappedColor)) {
+            colorSet.add(mappedColor);
+          }
+
+          const directMatch = availableColors.find(c =>
+            c.value === variationName ||
+            variation.colorCode.toLowerCase().includes(c.value)
+          );
+          if (directMatch) {
+            colorSet.add(directMatch.value);
+          }
+        });
+      }
+    });
+
+    return availableColors.filter(color => colorSet.has(color.value));
+  };
+
+  // Fonction pour déterminer les tailles disponibles dans les produits
+  const getAvailableSizesFromProducts = () => {
+    const sizeSet = new Set<string>();
+
+    vendorProducts.forEach(product => {
+      if (product.selectedSizes && Array.isArray(product.selectedSizes)) {
+        product.selectedSizes.forEach((sizeObj: any) => {
+          if (sizeObj.sizeName) {
+            sizeSet.add(sizeObj.sizeName.toUpperCase());
+          }
+        });
+      }
+    });
+
+    const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    const availableSizes = Array.from(sizeSet).sort((a, b) => {
+      const indexA = sizeOrder.indexOf(a);
+      const indexB = sizeOrder.indexOf(b);
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+
+    return availableSizes;
+  };
+
+  // Effet pour charger les données du vendeur
+  useEffect(() => {
+    const loadVendorData = async () => {
+      try {
+        setLoadingVendor(true);
+
+        // Récupérer les données des vendeurs
+        const response = await fetch('http://localhost:3004/public/users/vendors', {
+          headers: {
+            'accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const vendors = data.data || [];
+
+          // Trouver le vendeur correspondant à l'ID
+          const vendor = vendors.find((v: any) => v.id === parseInt(id || '0'));
+
+          if (vendor) {
+            setVendorData(vendor);
+            console.log('Vendeur trouvé:', vendor);
+          } else {
+            console.warn('Vendeur non trouvé pour ID:', id);
+            // Utiliser des données par défaut si le vendeur n'est pas trouvé
+            setVendorData({
+              id: parseInt(id || '0'),
+              firstName: 'Vendeur',
+              lastName: 'Inconnu',
+              shop_name: 'Boutique Inconnue',
+              profile_photo_url: null,
+              vendeur_type: type?.toUpperCase() || 'ARTISTE',
+              about: `Profile ${type} - Description à compléter`
+            });
+          }
+        } else {
+          throw new Error('Impossible de récupérer les vendeurs');
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du vendeur:', error);
+        // Données par défaut en cas d'erreur
+        setVendorData({
+          id: parseInt(id || '0'),
+          firstName: 'Vendeur',
+          lastName: 'Inconnu',
+          shop_name: 'Boutique Inconnue',
+          profile_photo_url: null,
+          vendeur_type: type?.toUpperCase() || 'ARTISTE',
+          about: `Profile ${type} - Description à compléter`
+        });
+      } finally {
+        setLoadingVendor(false);
+      }
+    };
+
+    if (type && id) {
+      loadVendorData();
+    }
+  }, [type, id]);
+
+  // Charger les catégories et sous-catégories
+  useEffect(() => {
+    const loadCategoriesAndSubCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const [categoriesData, subCategoriesData] = await Promise.all([
+          categoriesService.getActiveCategories(),
+          subCategoriesService.getAllSubCategories()
+        ]);
+
+        setCategories(categoriesData);
+        setSubCategories(subCategoriesData.filter(sub => sub.isActive));
+      } catch (error) {
+        console.error('❌ Erreur lors du chargement des catégories:', error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    loadCategoriesAndSubCategories();
+  }, []);
+
+  // Effet pour charger les designs du vendeur
+  useEffect(() => {
+    const loadVendorDesigns = async () => {
+      try {
+        setLoadingDesigns(true);
+
+        // Essayer d'abord de récupérer les designs publics avec filtre par créateur
+        let allDesigns;
+        try {
+          const response = await designService.getPublicDesigns({
+            limit: 100 // Récupérer plus de designs pour pouvoir filtrer
+          });
+          allDesigns = response.designs || [];
+        } catch (apiError) {
+          console.warn('Impossible de récupérer depuis l API publique, utilisation des données mockées');
+          allDesigns = [];
+        }
+
+        // Filtrer les designs par ID du créateur (vendor)
+        // Le type de profil détermine comment on filtre
+        let filteredDesigns = [];
+
+        if (type === 'artiste' || type === 'influenceur' || type === 'designer') {
+          // Pour les profils vendeur, on filtre par l'ID du vendeur
+          // On essaie de trouver l'ID du vendeur dans l'URL ou on utilise un ID par défaut
+          const vendorId = id ? parseInt(id) : 3; // ID par défaut pour le développeur
+
+          filteredDesigns = allDesigns.filter(design => {
+            // Vérifier si le design appartient à ce vendeur
+            return design.creator && design.creator.id === vendorId;
+          });
+
+          console.log(`Filtrage des designs pour vendeur ID ${vendorId}:`, {
+            totalDesigns: allDesigns.length,
+            filteredDesigns: filteredDesigns.length,
+            vendorId
+          });
+        } else {
+          // Pour d'autres types, on utilise les designs mockés
+          filteredDesigns = [];
+        }
+
+        console.log('Designs récupérés pour la galerie:', filteredDesigns);
+        setDesigns(filteredDesigns.slice(0, 12)); // Limiter à 12 designs pour la galerie
+      } catch (error) {
+        console.error('Erreur lors du chargement des designs:', error);
+        // En cas d'erreur, on peut afficher des designs mockés ou laisser la galerie vide
+        setDesigns([]);
+      } finally {
+        setLoadingDesigns(false);
+      }
+    };
+
+    loadVendorDesigns();
+  }, [type, id]);
+
+  // Effet pour charger les produits du vendeur
+  useEffect(() => {
+    const loadVendorProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        const vendorId = id ? parseInt(id) : 3;
+
+        console.log(`🛍️ Chargement des produits pour le vendeur ID ${vendorId}`);
+
+        // Construire la requête avec filtre de sous-catégorie si sélectionnée
+        const searchQuery = selectedSubCategory ? selectedSubCategory.slug || selectedSubCategory.name : '';
+
+        const response = await vendorProductsService.searchProducts({
+          vendorId,
+          search: searchQuery, // Ajouter le filtre de recherche pour la sous-catégorie
+          limit: 100 // Charger plus de produits pour avoir tous les résultats
+        });
+
+        if (response.success && response.data) {
+          // Filtrer uniquement les produits publiés
+          const publishedProducts = response.data.filter(
+            product => product.status && product.status.toLowerCase() === 'published'
+          );
+          setVendorProducts(publishedProducts);
+          console.log(`✅ ${publishedProducts.length} produits publiés trouvés pour le vendeur`);
+        } else {
+          setVendorProducts([]);
+          console.log('⚠️ Aucun produit trouvé pour ce vendeur');
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors du chargement des produits du vendeur:', error);
+        setVendorProducts([]);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+
+    if (id) {
+      loadVendorProducts();
+    }
+  }, [id, selectedSubCategory]);
+
+  // Effet pour appliquer les filtres aux produits
+  useEffect(() => {
+    if (vendorProducts.length === 0) {
+      setFilteredProducts([]);
+      return;
+    }
+
+    let filtered = [...vendorProducts];
+
+    // Fonction pour normaliser les noms de couleurs
+    const normalizeColorName = (colorName: string): string => {
+      return colorName.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+    };
+
+    // Filtre par couleur
+    if (selectedColors.length > 0) {
+      filtered = filtered.filter(product => {
+        if (!product.adminProduct?.colorVariations) return false;
+
+        if (selectedColors.length === 1) {
+          // Une seule couleur : logique ET exacte
+          const selectedColor = selectedColors[0];
+          return product.adminProduct.colorVariations.some((variation: any) => {
+            const variationName = normalizeColorName(variation.name);
+            const selectedColorNormalized = normalizeColorName(selectedColor);
+
+            const colorMapping: { [key: string]: string[] } = {
+              'black': ['black', 'noir'],
+              'white': ['white', 'blanc'],
+              'red': ['red', 'rouge'],
+              'blue': ['blue', 'bleu'],
+              'green': ['green', 'vert'],
+              'yellow': ['yellow', 'jaune'],
+              'pink': ['pink', 'rose'],
+              'purple': ['purple', 'violet'],
+              'gray': ['gray', 'grey', 'gris'],
+              'orange': ['orange']
+            };
+
+            const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+            const match = possibleNames.some(name => {
+              const normalizedPossible = normalizeColorName(name);
+              return variationName === normalizedPossible ||
+                     variationName.includes(normalizedPossible) ||
+                     normalizedPossible.includes(variationName);
+            });
+
+            const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+            return match || colorCodeMatch;
+          });
+        } else {
+          // Plusieurs couleurs : logique OU (au moins une couleur)
+          return selectedColors.some(selectedColor => {
+            return product.adminProduct.colorVariations.some((variation: any) => {
+              const variationName = normalizeColorName(variation.name);
+              const selectedColorNormalized = normalizeColorName(selectedColor);
+
+              const colorMapping: { [key: string]: string[] } = {
+                'black': ['black', 'noir'],
+                'white': ['white', 'blanc'],
+                'red': ['red', 'rouge'],
+                'blue': ['blue', 'bleu'],
+                'green': ['green', 'vert'],
+                'yellow': ['yellow', 'jaune'],
+                'pink': ['pink', 'rose'],
+                'purple': ['purple', 'violet'],
+                'gray': ['gray', 'grey', 'gris'],
+                'orange': ['orange']
+              };
+
+              const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+              const match = possibleNames.some(name => {
+                const normalizedPossible = normalizeColorName(name);
+                return variationName === normalizedPossible ||
+                       variationName.includes(normalizedPossible) ||
+                       normalizedPossible.includes(variationName);
+              });
+
+              const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+              return match || colorCodeMatch;
+            });
+          });
+        }
+      });
+    }
+
+    // Filtre par taille
+    if (selectedSizes.length > 0) {
+      filtered = filtered.filter(product => {
+        if (!product.selectedSizes || !Array.isArray(product.selectedSizes)) return false;
+
+        const productSizes = product.selectedSizes.map((s: any) => s.sizeName.toUpperCase());
+        return selectedSizes.some(selectedSize =>
+          productSizes.includes(selectedSize.toUpperCase())
+        );
+      });
+    }
+
+    // Filtre par prix
+    if (hasPriceFilter) {
+      filtered = filtered.filter(product => {
+        const productPrice = product.price || 0;
+        const min = minPrice !== '' ? minPrice : 0;
+        const max = maxPrice !== '' ? maxPrice : Infinity;
+        return productPrice >= min && productPrice <= max;
+      });
+    }
+
+    // Note: Le filtre par sous-catégorie est déjà appliqué au niveau de l'API via le paramètre search
+    // On n'a pas besoin de filtrer à nouveau ici
+
+    console.log(`🔍 Filtrage des produits: ${filtered.length}/${vendorProducts.length}`);
+    setFilteredProducts(filtered);
+  }, [vendorProducts, selectedColors, selectedSizes, minPrice, maxPrice]);
+
+  // Générer les données du profil basées sur le vendeur
+  const getProfileData = () => {
+    if (vendorData) {
+      const sigleMap: { [key: string]: string } = {
+        'ARTISTE': 'ART',
+        'INFLUENCEUR': 'INF', // Support pour les deux orthographes
+        'DESIGNER': 'DES'
+      };
+
+      const colorMap: { [key: string]: string } = {
+        'ARTISTE': '#1A7CB8',
+        'INFLUENCEUR': '#E5042B',
+        'DESIGNER': '#F2D12E'
+      };
+
+      const vendeurType = vendorData.vendeur_type || 'ARTISTE';
+
+      return {
+        sigle: vendorData.shop_name ? vendorData.shop_name.substring(0, 3).toUpperCase() : sigleMap[vendeurType] || 'VEN',
+        name: vendorData.shop_name || `${vendorData.firstName} ${vendorData.lastName}`.trim(),
+        avatarColor: colorMap[vendeurType] || '#6B7280',
+        about: `Profile ${vendeurType.toLowerCase()} - ${vendorData.shop_name || `${vendorData.firstName} ${vendorData.lastName}`}`,
+        socialLinks: {
+          facebook: '#',
+          instagram: '#',
+          x: '#',
+          tiktok: '#',
+        },
+      };
+    } else {
+      // Données par défaut en cas de chargement
+      return {
+        sigle: type === 'artiste' ? 'ART' : type === 'influenceur' ? 'INF' : 'DES',
+        name: 'Chargement...',
+        avatarColor: type === 'artiste' ? '#1A7CB8' : type === 'influenceur' ? '#E5042B' : '#F2D12E',
+        about: 'Chargement des informations du vendeur...',
+        socialLinks: {
+          facebook: '#',
+          instagram: '#',
+          x: '#',
+          tiktok: '#',
+        },
+      };
+    }
+  };
+
+  const profile = getProfileData();
+
+  return (
+    <>
+      {/* CategoryTabs sticky qui suit le scroll */}
+      <div className="sticky top-0 z-40">
+        <CategoryTabs />
+      </div>
+
+      <div className="min-h-screen bg-white">
+        {(loadingVendor || loadingDesigns) && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600 text-center">Chargement du profil...</p>
+            </div>
+          </div>
+        )}
+        {/* Bouton de retour */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors duration-200 mb-6"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">Retour</span>
+          </button>
+        </div>
+
+        {/* Section profil - Deux blocs horizontaux */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+
+            {/* Bloc gauche - Carte de profil */}
+            <div
+              className="rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-lg"
+              style={{ backgroundColor: profile.avatarColor }}
+            >
+              {/* Avatar */}
+              <div className="w-32 h-32 rounded-full bg-gray-300 mb-6 flex items-center justify-center overflow-hidden">
+                {vendorData?.profile_photo_url ? (
+                  <img
+                    src={vendorData.profile_photo_url}
+                    alt={`${vendorData.firstName} ${vendorData.lastName}`.trim()}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-28 h-28 rounded-full bg-gray-400"></div>
+                )}
+              </div>
+
+              {/* Prénom du vendeur (firstName) */}
+              <h2 className="text-3xl font-bold text-white mb-2">
+                {vendorData?.firstName || profile.sigle}
+              </h2>
+
+              {/* Nom de la boutique (shop_name) */}
+              <p className="text-lg text-white/90 mb-6">
+                {vendorData?.shop_name || profile.name}
+              </p>
+
+              {/* Réseaux sociaux */}
+              <div className="flex items-center gap-4">
+                {Object.keys(profile.socialLinks).map((network) => (
+                  <a
+                    key={network}
+                    href={profile.socialLinks[network as keyof typeof profile.socialLinks]}
+                    className="text-blue-600 hover:text-blue-700 transition-colors duration-200"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <SocialIcon network={network} />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Bloc droite - A propos */}
+            <div className="flex flex-col justify-between">
+              <div>
+                <h3 className="text-3xl font-bold text-black mb-6">
+                  A propos
+                </h3>
+                <p className="text-gray-700 text-justify leading-relaxed whitespace-pre-line mb-6">
+                  {profile.about}
+                </p>
+              </div>
+
+              {/* Bouton CTA */}
+              <div className="flex justify-end">
+                <button className="bg-red-500 hover:bg-red-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors duration-200">
+                  Voir plus
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section Galerie */}
+          <div className="mb-12">
+            {/* Titre Galerie */}
+            <div className="flex items-center gap-3 mb-6">
+              <h3 className="text-3xl font-bold text-black">
+                Galerie
+              </h3>
+              <svg className="w-6 h-6 text-yellow-400 fill-current" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+            </div>
+
+            {/* Grille d'images - Designs du vendeur */}
+            <div className="grid grid-cols-4 grid-rows-2 gap-4 h-96">
+              {loadingDesigns ? (
+                // État de chargement
+                <>
+                  <div className="col-span-2 row-span-2 bg-gray-200 rounded-2xl flex items-center justify-center animate-pulse">
+                    <div className="text-center">
+                      <div className="w-24 h-24 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                      <span className="text-gray-500">Chargement...</span>
+                    </div>
+                  </div>
+                  {[2, 3, 4, 5].map((num) => (
+                    <div key={num} className="col-span-1 row-span-1 bg-gray-200 rounded-2xl flex items-center justify-center animate-pulse">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2"></div>
+                        <span className="text-gray-500 text-sm">Design {num}</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : designs.length > 0 ? (
+                // Afficher les designs réels
+                <>
+                  {designs.map((design, index) => {
+                    const isMainDesign = index === 0;
+                    return (
+                      <div
+                        key={design.id || index}
+                        className={`${isMainDesign ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'} rounded-2xl overflow-hidden bg-gray-100 hover:shadow-lg transition-all duration-300 cursor-pointer`}
+                      >
+                        {design.imageUrl ? (
+                            <img
+                              src={design.imageUrl}
+                              alt={`Design ${index + 1}`}
+                              className="w-full h-full object-contain max-w-full max-h-full transition-transform duration-300 hover:scale-105"
+                              style={{
+                                imageRendering: 'crisp-edges',
+                                WebkitFontSmoothing: 'antialiased',
+                                MozOsxFontSmoothing: 'grayscale'
+                              }}
+                              loading="eager"
+                              onLoad={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                img.style.opacity = '1';
+                              }}
+                              onError={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                img.style.display = 'none';
+                                const parent = img.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = `
+                                    <div class="w-full h-full flex items-center justify-center bg-gray-100">
+                                      <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  `;
+                                }
+                              }}
+                            />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Compléter la grille si moins de 5 designs */}
+                  {designs.length < 5 && Array.from({ length: 5 - designs.length }).map((_, emptyIndex) => (
+                    <div key={`empty-${emptyIndex}`} className="col-span-1 row-span-1 bg-gray-100 rounded-2xl flex items-center justify-center">
+                      <div className="text-center text-gray-400">
+                        <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span className="text-sm">Ajouter un design</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                // État vide - aucun design trouvé
+                <>
+                  <div className="col-span-2 row-span-2 bg-gray-100 rounded-2xl flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <svg className="w-24 h-24 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="text-lg font-medium mb-2">Aucun design trouvé</p>
+                      <p className="text-sm">Ce vendeur n'a pas encore publié de designs</p>
+                    </div>
+                  </div>
+                  {[2, 3, 4, 5].map((num) => (
+                    <div key={num} className="col-span-1 row-span-1 bg-gray-100 rounded-2xl flex items-center justify-center">
+                      <div className="text-center text-gray-400">
+                        <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span className="text-xs">Design {num}</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Section Produits avec Sidebar */}
+          <div className="mb-12">
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+              {/* Sidebar */}
+              <aside className="w-full lg:w-48 lg:flex-shrink-0">
+                {/* Mobile sidebar toggle pour plus tard */}
+                <div className="lg:hidden mb-4">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg w-full justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                      <span className="font-medium">Filtres</span>
+                    </div>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Sidebar Content */}
+                <div className="hidden lg:block">
+                  <div className="bg-white rounded-lg border border-gray-200 p-4">
+                    {/* Boutique Header */}
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-6">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        <h2 className="font-bold text-xl">Boutique</h2>
+                      </div>
+
+                      {/* Catégories */}
+                      <div className="mb-6">
+                        <button className="flex items-center justify-between w-full py-2 text-sm font-medium mb-3">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                            <span className="font-semibold">Catégories</span>
+                          </div>
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                        <div className="pl-6 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Hommes</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Femmes</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Enfants</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Bébés</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Accessoires</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Stickers</label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Produits */}
+                      <div>
+                        <button className="flex items-center justify-between w-full py-2 text-sm font-medium mb-3">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                            <span className="font-semibold">Produits</span>
+                          </div>
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                        <div className="pl-6 space-y-2 text-sm text-gray-700">
+                          {loadingCategories ? (
+                            <div className="flex items-center gap-2 py-1">
+                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                              <span className="text-gray-500">Chargement...</span>
+                            </div>
+                          ) : (
+                            <>
+                              {subCategories.length === 0 ? (
+                                <span className="text-gray-500 py-1">Aucune sous-catégorie</span>
+                              ) : (
+                                subCategories.map((subCategory) => (
+                                  <button
+                                    key={subCategory.id}
+                                    onClick={() => {
+                                      // Sélectionner la sous-catégorie pour filtrer localement
+                                      setSelectedSubCategory(
+                                        selectedSubCategory?.id === subCategory.id ? null : subCategory
+                                      );
+                                    }}
+                                    className={`text-left block w-full text-left py-1 transition-colors ${
+                                      selectedSubCategory?.id === subCategory.id
+                                        ? 'text-blue-600 font-semibold'
+                                        : 'hover:text-blue-600'
+                                    }`}
+                                  >
+                                    {subCategory.name}
+                                  </button>
+                                ))
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              {/* Main Content */}
+              <main className="flex-1 min-w-0">
+                {/* Titre Produits */}
+                <div className="flex items-center gap-3 mb-6">
+                  <h3 className="text-3xl font-bold text-black">
+                    Produits
+                  </h3>
+                  <svg className="w-6 h-6 text-blue-500 fill-current" viewBox="0 0 24 24">
+                    <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                  </svg>
+                </div>
+
+            {/* Barre de filtres */}
+            {!loadingProducts && vendorProducts.length > 0 && (
+              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    <span>Filtrer par</span>
+                  </button>
+
+                  {/* Filtre Couleurs */}
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        if (!showColorSelector) {
+                          setTempSelectedColors(selectedColors);
+                        }
+                        setShowColorSelector(!showColorSelector);
+                      }}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                        selectedColors.length > 0
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Couleurs</span>
+                        {selectedColors.length === 0 && (
+                          <span className="text-xs opacity-70">
+                            ({getAvailableColorsFromProducts().length})
+                          </span>
+                        )}
+                        {selectedColors.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            {selectedColors.slice(0, 3).map((colorValue) => {
+                              const color = availableColors.find(c => c.value === colorValue);
+                              return color ? (
+                                <div
+                                  key={colorValue}
+                                  className="w-3 h-3 rounded-full border border-white/30 shadow-sm"
+                                  style={{ backgroundColor: color.hex }}
+                                  title={color.name}
+                                />
+                              ) : null;
+                            })}
+                            {selectedColors.length > 3 && (
+                              <span className="text-xs opacity-90">
+                                +{selectedColors.length - 3}
+                              </span>
+                            )}
+                            <span className="text-xs opacity-90">
+                              ({selectedColors.length})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${showColorSelector ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {showColorSelector && (
+                      <div className="absolute z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg w-64">
+                        <div className="p-3">
+                          {tempSelectedColors.length > 0 && (
+                            <div className="mb-3 p-2 bg-gray-50 rounded border border-gray-200">
+                              <div className="text-xs text-gray-600 mb-1">Sélectionné:</div>
+                              <div className="flex flex-wrap gap-1">
+                                {tempSelectedColors.map((colorValue) => {
+                                  const color = availableColors.find(c => c.value === colorValue);
+                                  return color ? (
+                                    <div
+                                      key={colorValue}
+                                      className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded text-xs"
+                                    >
+                                      <div
+                                        className="w-3 h-3 rounded-full border border-gray-400"
+                                        style={{ backgroundColor: color.hex }}
+                                      />
+                                      <span className="text-gray-700">{color.name}</span>
+                                      <button
+                                        onClick={() => toggleTempColor(colorValue)}
+                                        className="text-gray-400 hover:text-gray-600 ml-1"
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  ) : null;
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-5 gap-1 max-h-32 overflow-y-auto mb-3">
+                            {getAvailableColorsFromProducts().map((color) => (
+                              <button
+                                key={color.value}
+                                onClick={() => toggleTempColor(color.value)}
+                                className={`group relative w-9 h-9 border transition-all hover:scale-105 ${
+                                  tempSelectedColors.includes(color.value)
+                                    ? 'border-blue-500 shadow-sm z-10'
+                                    : 'border-gray-300 hover:border-gray-400'
+                                }`}
+                                title={color.name}
+                              >
+                                <div
+                                  className="w-full h-full"
+                                  style={{ backgroundColor: color.hex }}
+                                />
+                                {tempSelectedColors.includes(color.value) && (
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center shadow-md">
+                                      <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+
+                          {getAvailableColorsFromProducts().length === 0 && (
+                            <div className="text-center py-3 text-sm text-gray-500">
+                              Aucune couleur disponible
+                            </div>
+                          )}
+
+                          {getAvailableColorsFromProducts().length > 0 && (
+                            <div className="flex gap-2 border-t border-gray-200 pt-3">
+                              <button
+                                onClick={applyColorSelection}
+                                className="flex-1 px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                              >
+                                Enregistrer
+                              </button>
+                              <button
+                                onClick={cancelColorSelection}
+                                className="flex-1 px-3 py-1.5 border-2 border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                              >
+                                Annuler
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filtre Tailles */}
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        if (!showSizeSelector) {
+                          setTempSelectedSizes(selectedSizes);
+                        }
+                        setShowSizeSelector(!showSizeSelector);
+                      }}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                        selectedSizes.length > 0
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Tailles</span>
+                        {selectedSizes.length === 0 && (
+                          <span className="text-xs opacity-70">
+                            ({getAvailableSizesFromProducts().length})
+                          </span>
+                        )}
+                        {selectedSizes.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-semibold opacity-90">
+                              {selectedSizes.slice(0, 3).join(', ')}
+                            </span>
+                            {selectedSizes.length > 3 && (
+                              <span className="text-xs opacity-90">
+                                +{selectedSizes.length - 3}
+                              </span>
+                            )}
+                            <span className="text-xs opacity-90">
+                              ({selectedSizes.length})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${showSizeSelector ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {showSizeSelector && (
+                      <div className="absolute z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg w-64">
+                        <div className="p-3">
+                          {tempSelectedSizes.length > 0 && (
+                            <div className="mb-3 p-2 bg-gray-50 rounded border border-gray-200">
+                              <div className="text-xs text-gray-600 mb-1">Sélectionné:</div>
+                              <div className="flex flex-wrap gap-1">
+                                {tempSelectedSizes.map((size) => (
+                                  <div
+                                    key={size}
+                                    className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded text-xs"
+                                  >
+                                    <span className="text-gray-700 font-semibold">{size}</span>
+                                    <button
+                                      onClick={() => toggleTempSize(size)}
+                                      className="text-gray-400 hover:text-gray-600 ml-1"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto mb-3">
+                            {getAvailableSizesFromProducts().map((size) => (
+                              <button
+                                key={size}
+                                onClick={() => toggleTempSize(size)}
+                                className={`px-3 py-2 text-sm font-semibold border-2 rounded-lg transition-all ${
+                                  tempSelectedSizes.includes(size)
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                {size}
+                              </button>
+                            ))}
+                          </div>
+
+                          {getAvailableSizesFromProducts().length === 0 && (
+                            <div className="text-center py-3 text-sm text-gray-500">
+                              Aucune taille disponible
+                            </div>
+                          )}
+
+                          {getAvailableSizesFromProducts().length > 0 && (
+                            <div className="flex gap-2 border-t border-gray-200 pt-3">
+                              <button
+                                onClick={applySizeSelection}
+                                className="flex-1 px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                              >
+                                Enregistrer
+                              </button>
+                              <button
+                                onClick={cancelSizeSelection}
+                                className="flex-1 px-3 py-1.5 border-2 border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                              >
+                                Annuler
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filtre Prix */}
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        if (!showPriceSelector) {
+                          setTempMinPrice(minPrice);
+                          setTempMaxPrice(maxPrice);
+                        }
+                        setShowPriceSelector(!showPriceSelector);
+                      }}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                        hasPriceFilter
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      <span>Prix</span>
+                      {hasPriceFilter && (
+                        <span className="text-xs font-semibold opacity-90">
+                          {minPrice !== '' && maxPrice !== ''
+                            ? `${formatPriceInFCFA(Number(minPrice))} - ${formatPriceInFCFA(Number(maxPrice))}`
+                            : minPrice !== ''
+                            ? `>${formatPriceInFCFA(Number(minPrice))}`
+                            : maxPrice !== '' ? `<${formatPriceInFCFA(Number(maxPrice))}` : ''
+                          }
+                        </span>
+                      )}
+                      <svg
+                        className={`w-4 h-4 transition-transform ${showPriceSelector ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {showPriceSelector && (
+                      <div className="absolute z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg w-80">
+                        <div className="p-4">
+                          <div className="mb-3">
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Filtrer par prix (FCFA)
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-gray-600 mb-1 block">Prix minimum</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1000"
+                                  placeholder="Min"
+                                  value={tempMinPrice === '' ? '' : tempMinPrice}
+                                  onChange={(e) => setTempMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600 mb-1 block">Prix maximum</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1000"
+                                  placeholder="Max"
+                                  value={tempMaxPrice === '' ? '' : tempMaxPrice}
+                                  onChange={(e) => setTempMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-purple-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 mb-2 block">Suggestions:</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              <button
+                                onClick={() => {
+                                  setTempMinPrice('');
+                                  setTempMaxPrice(10000);
+                                }}
+                                className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-purple-100 border border-gray-300 hover:border-purple-400 rounded transition-colors"
+                              >
+                                &lt; 10k
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTempMinPrice(10000);
+                                  setTempMaxPrice(25000);
+                                }}
+                                className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-purple-100 border border-gray-300 hover:border-purple-400 rounded transition-colors"
+                              >
+                                10k - 25k
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTempMinPrice(25000);
+                                  setTempMaxPrice('');
+                                }}
+                                className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-purple-100 border border-gray-300 hover:border-purple-400 rounded transition-colors"
+                              >
+                                &gt; 25k
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 border-t border-gray-200 pt-3">
+                            <button
+                              onClick={applyPriceFilter}
+                              className="flex-1 px-3 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                            >
+                              Appliquer
+                            </button>
+                            <button
+                              onClick={cancelPriceFilter}
+                              className="flex-1 px-3 py-1.5 border-2 border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Affichage des filtres actifs */}
+                {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter || selectedSubCategory) && (
+                  <div className="mt-4 space-y-2">
+                    {/* Sous-catégorie sélectionnée */}
+                    {selectedSubCategory && (
+                      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-primary">Catégorie:</span>
+                          <div className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-primary border border-primary/30">
+                            {selectedSubCategory.name}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSelectedSubCategory(null)}
+                          className="px-3 py-1 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded border border-primary/30"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+
+                    {selectedColors.length > 0 && (
+                      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-primary">Couleurs:</span>
+                          <div className="flex gap-1">
+                            {selectedColors.map((colorValue) => {
+                              const color = availableColors.find(c => c.value === colorValue);
+                              return color ? (
+                                <div
+                                  key={colorValue}
+                                  className="flex items-center gap-1 px-2 py-1 bg-white rounded-full text-xs font-semibold text-primary border border-primary/30"
+                                >
+                                  <div
+                                    className="w-3 h-3 rounded-full border border-gray-300"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+                                  {color.name}
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                        <button
+                          onClick={clearColors}
+                          className="px-3 py-1 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded border border-primary/30"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+
+                    {selectedSizes.length > 0 && (
+                      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-primary">Tailles:</span>
+                          <div className="flex gap-1">
+                            {selectedSizes.map((size) => (
+                              <div
+                                key={size}
+                                className="px-2 py-1 bg-white rounded-full text-xs font-semibold text-primary border border-primary/30"
+                              >
+                                {size}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          onClick={clearSizes}
+                          className="px-3 py-1 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded border border-primary/30"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+
+                    {hasPriceFilter && (
+                      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-primary">Prix:</span>
+                          <div className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-primary border border-primary/30">
+                            {minPrice !== '' && maxPrice !== ''
+                              ? `${formatPriceInFCFA(Number(minPrice))} - ${formatPriceInFCFA(Number(maxPrice))}`
+                              : minPrice !== ''
+                              ? `À partir de ${formatPriceInFCFA(Number(minPrice))}`
+                              : maxPrice !== '' ? `Jusqu'à ${formatPriceInFCFA(Number(maxPrice))}` : ''
+                            }
+                          </div>
+                        </div>
+                        <button
+                          onClick={clearPriceFilter}
+                          className="px-3 py-1 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded border border-primary/30"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Grille de produits */}
+            {loadingProducts ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Chargement des produits...</p>
+                </div>
+              </div>
+            ) : vendorProducts.length > 0 ? (
+              <>
+                {/* Compteur de résultats */}
+                <div className="mb-4 text-sm text-gray-600">
+                  {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} trouvé{filteredProducts.length > 1 ? 's' : ''}
+                  {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter || selectedSubCategory) && (
+                    <span className="font-medium"> avec les filtres actifs</span>
+                  )}
+                </div>
+
+                {filteredProducts.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProducts.map((product) => (
+                      <ProductCardWithDesign
+                        key={product.id}
+                        product={product}
+                        selectedColors={selectedColors}
+                        onClick={() => {
+                          console.log('Navigation vers détail produit:', product.id);
+                          navigate(`/vendor-product-detail/${product.id}`);
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg">
+                    <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    <p className="text-gray-600 text-lg mb-2">Aucun produit trouvé</p>
+                    <p className="text-gray-500 text-sm mb-4">
+                      Aucun produit ne correspond aux filtres sélectionnés
+                    </p>
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      {selectedSubCategory && (
+                        <button
+                          onClick={() => setSelectedSubCategory(null)}
+                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                        >
+                          Effacer la catégorie
+                        </button>
+                      )}
+                      {selectedColors.length > 0 && (
+                        <button
+                          onClick={clearColors}
+                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                        >
+                          Effacer les couleurs
+                        </button>
+                      )}
+                      {selectedSizes.length > 0 && (
+                        <button
+                          onClick={clearSizes}
+                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                        >
+                          Effacer les tailles
+                        </button>
+                      )}
+                      {hasPriceFilter && (
+                        <button
+                          onClick={clearPriceFilter}
+                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                        >
+                          Effacer le prix
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <p className="text-gray-600 text-lg mb-2">Aucun produit disponible</p>
+                <p className="text-gray-500 text-sm">Ce vendeur n'a pas encore publié de produits</p>
+              </div>
+            )}
+              </main>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Footer />
+    </>
+  );
+}

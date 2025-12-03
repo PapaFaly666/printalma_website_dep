@@ -65,6 +65,7 @@ interface Design {
   description?: string;
   price: number;
   themeId: number;
+  categoryId?: number; // Ajout de categoryId pour la compatibilité
   themeName?: string;
   imageUrl: string;
   thumbnailUrl: string;
@@ -73,7 +74,7 @@ interface Design {
     width: number;
     height: number;
   };
-  
+
   // Nouveaux statuts selon la documentation
   isPublished: boolean;
   isPending: boolean;
@@ -86,14 +87,20 @@ interface Design {
   submittedForValidationAt?: string;
   publishedAt?: string;
   isDelete: boolean; // Ajout de isDelete
-  
+
   // Métriques
   views: number;
   likes: number;
   earnings: number;
   usageCount: number;
   tags: string[];
-  
+
+  // Produits associés
+  products?: Array<{
+    id: number;
+    name: string;
+  }>;
+
   // Dates
   createdAt: string;
   updatedAt: string;
@@ -132,21 +139,31 @@ interface ApiResponse<T> {
 
 // Service API mis à jour selon la documentation
 class VendorDesignService {
-  private apiUrl = 'https://printalma-back-dep.onrender.com/api/designs';
-  
+  private apiUrl = 'http://localhost:3004/vendor/designs';
+
   private getFetchOptions(method: string = 'GET', body?: any): RequestInit {
     const options: RequestInit = {
       method,
       credentials: 'include', // 🍪 IMPORTANT: Include cookies
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
     };
-    
+
+    // Ajouter le token d'authentification depuis localStorage
+    const token = localStorage.getItem('token');
+    if (token) {
+      options.headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+      };
+    }
+
     if (body) {
       options.body = JSON.stringify(body);
     }
-    
+
     return options;
   }
 
@@ -167,25 +184,59 @@ class VendorDesignService {
     throw new Error(errorMessage);
   }
   
-  // Nouveau endpoint selon la documentation
+  // Endpoint selon l'API réelle
   async getMyDesigns(filters: {
-    page?: number;
+    offset?: number;
     limit?: number;
-    status?: DesignStatus;
   }): Promise<DesignsListResponse> {
     const params = new URLSearchParams();
-    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.offset !== undefined) params.append('offset', filters.offset.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
-    if (filters.status && filters.status !== DesignStatus.ALL) {
-      params.append('status', filters.status);
-    }
-    
-    const response = await fetch(`${this.apiUrl}/vendor/by-status?${params}`, 
+
+    const response = await fetch(`${this.apiUrl}?${params}`,
       this.getFetchOptions('GET')
     );
-    
+
     await this.handleError(response);
-    return response.json();
+    const result = await response.json();
+
+    // Transformer la réponse pour correspondre à l'interface attendue
+    return {
+      success: result.success,
+      data: {
+        designs: result.data.designs.map((design: any) => ({
+          ...design,
+          validationStatus: design.isValidated ? 'VALIDATED' :
+                          design.isPending ? 'PENDING' :
+                          design.isDraft ? 'DRAFT' : 'DRAFT',
+          views: design.views || 0,
+          likes: design.likes || 0,
+          earnings: design.earnings || 0,
+          usageCount: design.linkedProducts || 0,
+          price: design.price || 0,
+          dimensions: design.dimensions || { width: 0, height: 0 },
+          fileSize: design.fileSize || 0
+        })),
+        pagination: {
+          currentPage: Math.floor((result.data.pagination.offset || 0) / (result.data.pagination.limit || 20)) + 1,
+          totalPages: Math.ceil(result.data.pagination.total / (result.data.pagination.limit || 20)),
+          totalItems: result.data.pagination.total,
+          itemsPerPage: result.data.pagination.limit || 20
+        },
+        stats: {
+          total: result.data.designs.length,
+          published: result.data.designs.filter((d: any) => d.isValidated).length,
+          pending: result.data.designs.filter((d: any) => d.isPending).length,
+          draft: result.data.designs.filter((d: any) => d.isDraft).length,
+          validated: result.data.designs.filter((d: any) => d.isValidated).length,
+          rejected: 0, // L'API ne semble pas retourner de rejetés
+          totalEarnings: result.data.designs.reduce((sum: number, d: any) => sum + (d.earnings || 0), 0),
+          totalViews: result.data.designs.reduce((sum: number, d: any) => sum + (d.views || 0), 0),
+          totalLikes: result.data.designs.reduce((sum: number, d: any) => sum + (d.likes || 0), 0),
+          totalUsage: result.data.designs.reduce((sum: number, d: any) => sum + (d.linkedProducts || 0), 0)
+        }
+      }
+    };
   }
   
   async submitForValidation(designId: number): Promise<ApiResponse<Design>> {
@@ -457,18 +508,18 @@ export const VendorDesignsPage: React.FC = () => {
   // Charger les designs avec la nouvelle API
   const loadDesigns = async () => {
     setLoading(true);
+    const offset = (currentPage - 1) * 20; // Convertir page en offset
+
     const { success, data } = await handleApiCall(() =>
       vendorDesignService.getMyDesigns({
-        page: currentPage,
-        limit: 20,
-        status: filterStatus,
+        offset,
+        limit: 20
       })
     );
 
     if (success) {
       setDesigns(data.data.designs);
       setPagination(data.data.pagination);
-      // Les stats sont maintenant calculées localement car pas de recherche textuelle dans la nouvelle API
     }
 
     setLoading(false);
@@ -480,7 +531,7 @@ export const VendorDesignsPage: React.FC = () => {
 
     // Charger les thèmes admin une seule fois
     loadThemes();
-  }, [currentPage, filterStatus]);
+  }, [currentPage]); // Retirer filterStatus car l'API ne le supporte pas
 
   // 🆕 useEffect pour filtrer les designs côté client
   useEffect(() => {
@@ -494,13 +545,27 @@ export const VendorDesignsPage: React.FC = () => {
       );
     }
 
+    // Filtrer par statut (si différent de ALL)
+    if (filterStatus !== DesignStatus.ALL) {
+      filtered = filtered.filter(design => {
+        if (filterStatus === DesignStatus.VALIDATED) {
+          return design.validationStatus === 'VALIDATED' || design.isValidated;
+        } else if (filterStatus === DesignStatus.PENDING) {
+          return design.validationStatus === 'PENDING' || design.isPending;
+        } else if (filterStatus === DesignStatus.REJECTED) {
+          return design.validationStatus === 'REJECTED';
+        }
+        return true;
+      });
+    }
+
     // Filtrer par thème
     if (filterTheme !== null) {
-      filtered = filtered.filter(design => design.themeId === filterTheme);
+      filtered = filtered.filter(design => design.themeId === filterTheme || design.categoryId === filterTheme);
     }
 
     setFilteredDesigns(filtered);
-  }, [designs, searchTerm, filterTheme]);
+  }, [designs, searchTerm, filterTheme, filterStatus]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -746,6 +811,12 @@ export const VendorDesignsPage: React.FC = () => {
                         {design.validatedAt && (
                           <p className="text-xs text-green-600">
                             Validé le {new Date(design.validatedAt).toLocaleDateString('fr-FR')}
+                          </p>
+                        )}
+                        {/* Afficher les produits liés */}
+                        {design.products && design.products.length > 0 && (
+                          <p className="text-xs text-green-600">
+                            Lié à {design.products.length} produit(s): {design.products.map((p: any) => p.name).join(', ')}
                           </p>
                         )}
                       </div>

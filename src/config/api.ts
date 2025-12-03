@@ -118,6 +118,20 @@ export const API_ENDPOINTS = {
     UPLOAD_PREVIEW: '/customizations/upload-preview',
     // Migrer les personnalisations guest vers utilisateur
     MIGRATE: '/customizations/migrate'
+  },
+  DESIGNS: {
+    // Valider ou rejeter un design (admin)
+    VALIDATE: (designId: number) => `/api/designs/${designId}/validate`,
+    // Récupérer tous les designs avec filtres
+    GET_ALL: '/api/designs',
+    // Récupérer un design spécifique
+    GET: (designId: number) => `/api/designs/${designId}`,
+    // Créer un design (vendeur)
+    CREATE: '/api/designs',
+    // Mettre à jour un design (vendeur)
+    UPDATE: (designId: number) => `/api/designs/${designId}`,
+    // Supprimer un design (vendeur/admin)
+    DELETE: (designId: number) => `/api/designs/${designId}`
   }
 };
 

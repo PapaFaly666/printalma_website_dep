@@ -247,7 +247,7 @@ const AdminPaymentRequestsPage: React.FC = () => {
       };
 
       const maxPages = 100;
-      // eslint-disable-next-line no-constant-condition
+       
       while (true) {
         const resp = await adminFundsService.getAllFundsRequests({ ...baseFilters, page });
         if (Array.isArray(resp.requests)) {
