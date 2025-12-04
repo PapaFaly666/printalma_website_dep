@@ -23,7 +23,8 @@ import {
   Underline,
   AlignLeft,
   AlignCenter,
-  AlignRight
+  AlignRight,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useToast } from '../components/ui/use-toast';
@@ -36,6 +37,7 @@ import ProductDesignEditor, { ProductDesignEditorRef, FONTS, COLORS } from '../c
 import SizeQuantityModal from '../components/SizeQuantityModal';
 import { useCart } from '../contexts/CartContext';
 import Footer from '../components/Footer';
+import AIImageGenerator from '../components/ai-image-generator/AIImageGenerator';
 
 // Fonction debounce pour l'auto-sauvegarde
 function debounce<T extends (...args: any[]) => any>(
@@ -64,8 +66,9 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // États de l'interface
-  const [activeTab, setActiveTab] = useState<'designs' | 'text' | 'upload'>('designs');
+  const [activeTab, setActiveTab] = useState<'designs' | 'text' | 'upload' | 'ai'>('designs');
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [vendorDesigns, setVendorDesigns] = useState<any[]>([]);
   const [loadingDesigns, setLoadingDesigns] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -705,6 +708,33 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     }
   };
 
+  // Gérer l'image générée par l'IA
+  const handleAIImageGenerated = (imageUrl: string, description: string) => {
+    console.log('🤖 [Customization] Image IA générée:', description);
+
+    // Ajouter l'image générée à l'éditeur de design
+    if (editorRef.current) {
+      // Créer un objet de design pour l'image IA
+      const aiDesign = {
+        id: `ai-${Date.now()}`,
+        name: description,
+        imageUrl: imageUrl,
+        price: 0, // Gratuit car généré par l'utilisateur
+        isAI: true,
+        description: description
+      };
+
+      // Utiliser la méthode addVendorDesign pour ajouter l'image IA
+      editorRef.current.addVendorDesign(aiDesign);
+
+      toast({
+        title: '✅ Image IA ajoutée',
+        description: 'Votre image générée par IA a été ajoutée au design',
+        duration: 3000
+      });
+    }
+  };
+
   // Ouvrir le modal de sélection
   const handleOpenSizeModal = () => {
     // Le client peut acheter sans personnalisation
@@ -1004,6 +1034,22 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
             >
               <Upload className="w-5 h-5 lg:w-5 lg:h-5" />
               <span className="text-[9px] sm:text-[10px] font-medium hidden xl:block">Importer</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('ai');
+                setShowAIGenerator(true);
+              }}
+              className={`flex flex-col items-center gap-0.5 px-2 sm:px-3 py-2 lg:py-2.5 rounded-lg transition-all ${
+                activeTab === 'ai'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                  : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'
+              }`}
+              title="Générer par IA"
+            >
+              <Sparkles className="w-5 h-5 lg:w-5 lg:h-5" />
+              <span className="text-[9px] sm:text-[10px] font-medium hidden xl:block">IA</span>
             </button>
           </div>
 
@@ -1768,6 +1814,26 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
           productSizes={product.sizes || []}
           onAddToCart={handleAddToCart}
         />
+
+        {/* Panneau du générateur d'images IA */}
+        {showAIGenerator && (
+          <div className="fixed inset-0 z-50 flex">
+            {/* Overlay */}
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setShowAIGenerator(false)}
+            />
+
+            {/* Panneau */}
+            <div className="relative ml-auto w-full lg:max-w-3xl xl:max-w-4xl bg-white shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
+              <AIImageGenerator
+                onImageGenerated={handleAIImageGenerated}
+                onClose={() => setShowAIGenerator(false)}
+                className="m-6"
+              />
+            </div>
+          </div>
+        )}
         </div>
       </div>
 
