@@ -34,6 +34,12 @@ class StabilityService {
 
   constructor() {
     this.apiKey = STABILITY_API_KEY;
+
+    // 🔍 DEBUG: Vérifier le chargement de la clé API
+    console.log('🔑 [Stability AI] Initialisation du service...');
+    console.log('🔍 [Stability AI] Clé API disponible:', this.apiKey ? 'OUI ✅' : 'NON ❌');
+    console.log('🔍 [Stability AI] Longueur de la clé:', this.apiKey?.length || 0);
+    console.log('🔍 [Stability AI] Préfixe:', this.apiKey?.substring(0, 8));
   }
 
   // Mapper nos styles vers les style presets de Stability AI
