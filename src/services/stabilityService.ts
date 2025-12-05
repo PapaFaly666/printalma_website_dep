@@ -6,7 +6,10 @@ const STABILITY_API_KEY = import.meta.env.VITE_STABILITY_API_KEY;
 // Validation de la clé API au démarrage
 if (!STABILITY_API_KEY) {
   console.warn('⚠️ [Stability AI] AVERTISSEMENT: La clé API n\'est pas configurée.');
-  console.warn('💡 Pour activer la génération d\'images IA: VITE_STABILITY_API_KEY dans .env.local');
+  console.warn('💡 Pour activer la génération d\'images IA:');
+  console.warn('   - Développement: Ajoutez VITE_STABILITY_API_KEY dans .env.local');
+  console.warn('   - Production: Ajoutez VITE_STABILITY_API_KEY dans .env.production');
+  console.warn('   - Obtenez votre clé sur: https://platform.stability.ai/account/keys');
 }
 
 export interface StabilityImageRequest {
@@ -68,11 +71,16 @@ class StabilityService {
     try {
       // Vérifier la clé API
       if (!this.apiKey) {
+        const env = import.meta.env.MODE || 'development';
+        const envFile = env === 'production' ? '.env.production' : '.env.local';
         console.error('❌ [Stability AI] Clé API manquante');
+        console.error(`💡 Configuration requise dans ${envFile}:`);
+        console.error('   VITE_STABILITY_API_KEY=sk-votre_cle_ici');
+
         return {
           imageUrl: '',
           success: false,
-          error: 'Clé API Stability AI non configurée. Ajoutez VITE_STABILITY_API_KEY dans .env.local'
+          error: `Clé API Stability AI non configurée. Ajoutez VITE_STABILITY_API_KEY dans ${envFile}. Obtenez votre clé sur: https://platform.stability.ai/account/keys`
         };
       }
 
