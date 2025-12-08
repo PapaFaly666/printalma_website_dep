@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  VENDEUR
+}
+
+enum VendeurType {
+  DESIGNER
+  INFLUENCEUR
+  ARTISTE
+}
+
+model User {
+  id               Int        @id @default(autoincrement())
+  email            String     @unique
+  password         String
+  firstName        String     @map("first_name")
+  lastName         String     @map("last_name")
+  role             UserRole   @default(VENDEUR)
+  vendeur_type     VendeurType?
+  status           Boolean    @default(true)
+  must_change_password Boolean @default(false)
+  last_login_at    DateTime?  @map("last_login_at")
+  created_at       DateTime   @default(now()) @map("created_at")
+  updated_at       DateTime   @updatedAt @map("updated_at")
+  profile_photo_url String?  @map("profile_photo_url") @db.VarChar(500)
+
+  // Informations personnelles
+  phone            String?    @db.VarChar(20)
+  country          String?    @db.VarChar(100)
+  address          String?    @db.VarChar(500)
+  shop_name        String?    @map("shop_name") @db.VarChar(255)
+
+  // Réseaux sociaux
+  facebook_url     String?    @map("facebook_url") @db.VarChar(500)
+  instagram_url    String?    @map("instagram_url") @db.VarChar(500)
+  twitter_url      String?    @map("twitter_url") @db.VarChar(500)
+  tiktok_url       String?    @map("tiktok_url") @db.VarChar(500)
+  youtube_url      String?    @map("youtube_url") @db.VarChar(500)
+  linkedin_url     String?    @map("linkedin_url") @db.VarChar(500)
+
+  @@map("users")
+}

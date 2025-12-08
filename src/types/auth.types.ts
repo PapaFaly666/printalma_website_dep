@@ -320,6 +320,13 @@ export interface ExtendedVendorProfile {
   profile_photo_url?: string;
   created_at: string;
   last_login_at?: string;
+  // Réseaux sociaux
+  facebook_url?: string;
+  instagram_url?: string;
+  twitter_url?: string;
+  tiktok_url?: string;
+  youtube_url?: string;
+  linkedin_url?: string;
 }
 
 export interface ExtendedVendorProfileResponse {
@@ -334,6 +341,13 @@ export interface UpdateVendorProfileRequest {
   address?: string;
   shop_name?: string;
   profilePhoto?: File | null;
+  // Réseaux sociaux
+  facebook_url?: string;
+  instagram_url?: string;
+  twitter_url?: string;
+  tiktok_url?: string;
+  youtube_url?: string;
+  linkedin_url?: string;
 }
 
 export interface UpdateVendorProfileResponse {

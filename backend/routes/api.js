@@ -14,6 +14,7 @@ const router = express.Router();
 const { getNewArrivals } = require('../controllers/publicController');
 const { getVendorProducts, saveDesignPosition } = require('../controllers/vendorController');
 const { getPendingProducts, validateProduct, getValidationStats } = require('../controllers/adminController');
+const { updateVendorProfile, getVendorProfile, createVendorProfile } = require('../controllers/vendorProfileController');
 
 // ========================================================================
 // PUBLIC ROUTES - Fixed /public/new-arrivals

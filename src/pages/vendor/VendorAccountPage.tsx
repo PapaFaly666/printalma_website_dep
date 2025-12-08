@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { Badge } from '../../components/ui/badge';
 import { Slider } from '../../components/ui/slider';
+import SocialMediaManager from '../../components/vendor/SocialMediaManager';
 
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -71,6 +72,16 @@ const VendorAccountPage: React.FC = () => {
     country: { value: (user as any)?.country || '', isEditing: false, error: '', isChecking: false },
     address: { value: (user as any)?.address || '', isEditing: false, error: '', isChecking: false },
     shop_name: { value: (user as any)?.shop_name || '', isEditing: false, error: '', isChecking: false }
+  });
+
+  // États pour les réseaux sociaux
+  const [socialMedias, setSocialMedias] = useState<Record<string, string>>({
+    facebook_url: (user as any)?.facebook_url || '',
+    instagram_url: (user as any)?.instagram_url || '',
+    twitter_url: (user as any)?.twitter_url || '',
+    tiktok_url: (user as any)?.tiktok_url || '',
+    youtube_url: (user as any)?.youtube_url || '',
+    linkedin_url: (user as any)?.linkedin_url || ''
   });
 
   // États pour la photo de profil
@@ -272,6 +283,37 @@ const VendorAccountPage: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(error.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonction pour mettre à jour les réseaux sociaux
+  const handleUpdateSocialMedias = async (updatedSocialMedias: Record<string, string>) => {
+    if (!user) {
+      toast.error('Utilisateur non trouvé');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const updateData = {
+        userId: user.id,
+        ...updatedSocialMedias
+      };
+
+      const response = await authService.updateVendorProfile(updateData);
+      if (response.success) {
+        setSocialMedias(updatedSocialMedias);
+        toast.success('Réseaux sociaux mis à jour avec succès');
+        if (refreshUser) await refreshUser();
+      } else {
+        toast.error(response.message || 'Erreur lors de la mise à jour des réseaux sociaux');
+      }
+    } catch (error: any) {
+      console.error('Erreur mise à jour réseaux sociaux:', error);
+      toast.error(error.message || 'Erreur lors de la mise à jour des réseaux sociaux');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -928,6 +970,13 @@ const VendorAccountPage: React.FC = () => {
                 />
               </CardContent>
             </Card>
+
+            {/* Section Réseaux Sociaux */}
+            <SocialMediaManager
+              socialMedias={socialMedias}
+              onUpdate={handleUpdateSocialMedias}
+              isLoading={isLoading}
+            />
 
             {/* Section Sécurité */}
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">

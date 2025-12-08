@@ -74,6 +74,9 @@ import VendorAccountPage from './pages/vendor/VendorAccountPage';
 // Page de détail des commandes vendeur
 import VendorOrderDetailPage from './pages/vendor/VendorOrderDetailPage';
 
+// Pages de gestion des galeries vendeur
+import VendorGalleryPage from './pages/vendor/VendorGalleryPage';
+
 // Page de création de produits avec wizard
 import CreateProductWizardPage from './pages/vendor/CreateProductWizardPage';
 
@@ -273,7 +276,7 @@ function App() {
                 <Route path='/artistes' element={<ArtistesPage />} />
                 <Route path='/influenceurs' element={<InfluenceursPage />} />
                 <Route path='/designers' element={<DesignersPage />} />
-                <Route path='/profile/:type/:id' element={<ProfilePage />} />
+                <Route path='/profile/:type/:shopName' element={<ProfilePage />} />
                 <Route path='/vendez-vos-oeuvres' element={<SellDesignPage />} />
                 <Route path='/cart' element={<CartPage />} />
                 <Route path='/order-form' element={<ModernOrderFormPage />} />
@@ -379,6 +382,8 @@ function App() {
                   <Route path="products/:id" element={<VendorProductDetailPage />} />
                   <Route path="products/:id/edit" element={<EditVendorProductPage />} />
                   <Route path="designs" element={<VendorDesignsPage />} />
+                  <Route path="galleries" element={<VendorGalleryPage />} />
+                  <Route path="gallery" element={<Navigate to="/vendeur/galleries" replace />} />
                   <Route path="deleted-products" element={<VendorDeletedProducts />} />
                   <Route path="add-product" element={<AddProductPage />} />
                   <Route path="product-form" element={<AddProductPage />} />

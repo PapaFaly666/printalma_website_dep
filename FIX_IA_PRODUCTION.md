@@ -17,7 +17,7 @@ La clé API Stability AI (`VITE_STABILITY_API_KEY`) n'était **pas configurée**
 
 Ajout de la clé API Stability AI :
 ```env
-VITE_STABILITY_API_KEY=sk-gWC4XEXAbuXxUjp5JMX7nTKVDx5RueYlEe2Ay5z2FS10wDaZ
+VITE_STABILITY_API_KEY=sk-C4ZyKMA9D5kN7p4BeeaUqWDsG5dv0WDlzbjWDvqe1ioJ8EFn
 ```
 
 ### 2. Sécurité Renforcée

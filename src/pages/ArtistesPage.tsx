@@ -133,8 +133,17 @@ export default function ArtistesPage() {
     loadArtists();
   }, []);
 
-  const handleViewShop = (artistId: number) => {
-    navigate(`/profile/artiste/${artistId}`);
+  const handleViewShop = (artist: Artist) => {
+    // Utiliser le nom de la boutique si disponible, sinon le firstName
+    const shopName = artist.shopName || artist.firstName || artist.name;
+    // Convertir en URL-friendly (remplacer les espaces et caractères spéciaux)
+    const urlFriendlyName = shopName.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Garder seulement lettres, chiffres, espaces et tirets
+      .replace(/\s+/g, '-') // Remplacer les espaces par des tirets
+      .replace(/-+/g, '-') // Éviter les tirets multiples
+      .replace(/^-|-$/g, ''); // Éviter les tirets au début/fin
+
+    navigate(`/profile/artiste/${urlFriendlyName}`);
   };
 
   if (loading) {
@@ -232,7 +241,7 @@ export default function ArtistesPage() {
 
                   {/* Bouton CTA */}
                   <button
-                    onClick={() => handleViewShop(artist.id)}
+                    onClick={() => handleViewShop(artist)}
                     className="bg-white text-black font-bold text-xs px-5 py-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 uppercase tracking-wide"
                   >
                     VOIR MA BOUTIQUE

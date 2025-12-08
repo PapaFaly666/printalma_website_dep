@@ -1,34 +1,35 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Footer from '../components/Footer';
 import CategoryTabs from '../components/CategoryTabs';
-import { designService, Design } from '../services/designService';
 import vendorProductsService, { VendorProduct } from '../services/vendorProductsService';
 import { ProductCardWithDesign } from '../components/ProductCardWithDesign';
 import { categoriesService, Category } from '../services/categoriesService';
 import { subCategoriesService, SubCategory } from '../services/subCategoriesService';
+import { galleryService } from '../services/gallery.service';
+import { VendorGallery } from '../types/gallery';
 
 // Icônes réseaux sociaux
 const SocialIcon = ({ network }: { network: string }) => {
   const icons = {
     facebook: (
-      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
         <path d="M18.77 7.46H14.5v-1.9c0-.9.6-1.1 1-1.1h3V.5h-4.33C10.24.5 9.5 3.44 9.5 5.32v2.15h-3v4h3v12h5v-12h3.85l.42-4z"/>
       </svg>
     ),
     instagram: (
-      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
         <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
       </svg>
     ),
     x: (
-      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
       </svg>
     ),
     tiktok: (
-      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
         <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
       </svg>
     ),
@@ -36,11 +37,18 @@ const SocialIcon = ({ network }: { network: string }) => {
   return icons[network as keyof typeof icons] || null;
 };
 
+// Fonction utilitaire pour convertir le nom URL-friendly en nom normal
+const urlNameToNormalName = (urlName: string): string => {
+  return urlName
+    .replace(/-/g, ' ') // Remplacer les tirets par des espaces
+    .replace(/\b\w/g, l => l.toUpperCase()); // Mettre en majuscule chaque premier mot
+};
+
 export default function ProfilePage() {
-  const { type, id } = useParams<{ type: string; id: string }>();
+  const { type, shopName } = useParams<{ type: string; shopName: string }>();
   const navigate = useNavigate();
-  const [designs, setDesigns] = useState<Design[]>([]);
-  const [loadingDesigns, setLoadingDesigns] = useState(true);
+  const [gallery, setGallery] = useState<VendorGallery | null>(null);
+  const [loadingGallery, setLoadingGallery] = useState(true);
   const [vendorData, setVendorData] = useState<any>(null);
   const [loadingVendor, setLoadingVendor] = useState(true);
   const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
@@ -248,20 +256,43 @@ export default function ProfilePage() {
           const data = await response.json();
           const vendors = data.data || [];
 
-          // Trouver le vendeur correspondant à l'ID
-          const vendor = vendors.find((v: any) => v.id === parseInt(id || '0'));
+          // Convertir le nom URL en nom normal pour la recherche
+          const normalizedName = urlNameToNormalName(shopName || '');
+
+          // Fonction pour convertir un nom en format URL-friendly
+          const nameToUrlFriendly = (name: string): string => {
+            return name.toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-|-$/g, '');
+          };
+
+          // Chercher le vendeur par nom de boutique d'abord, puis par firstName
+          let vendor = vendors.find((v: any) => {
+            if (v.shop_name && nameToUrlFriendly(v.shop_name) === shopName) {
+              return true;
+            }
+            if (v.firstName && nameToUrlFriendly(v.firstName) === shopName) {
+              return true;
+            }
+            if (v.lastName && nameToUrlFriendly(v.lastName) === shopName) {
+              return true;
+            }
+            return false;
+          });
 
           if (vendor) {
             setVendorData(vendor);
             console.log('Vendeur trouvé:', vendor);
           } else {
-            console.warn('Vendeur non trouvé pour ID:', id);
+            console.warn('Vendeur non trouvé pour le nom:', shopName);
             // Utiliser des données par défaut si le vendeur n'est pas trouvé
             setVendorData({
-              id: parseInt(id || '0'),
-              firstName: 'Vendeur',
-              lastName: 'Inconnu',
-              shop_name: 'Boutique Inconnue',
+              id: 0,
+              firstName: normalizedName,
+              lastName: '',
+              shop_name: normalizedName,
               profile_photo_url: null,
               vendeur_type: type?.toUpperCase() || 'ARTISTE',
               about: `Profile ${type} - Description à compléter`
@@ -273,11 +304,12 @@ export default function ProfilePage() {
       } catch (error) {
         console.error('Erreur lors du chargement du vendeur:', error);
         // Données par défaut en cas d'erreur
+        const normalizedName = urlNameToNormalName(shopName || '');
         setVendorData({
-          id: parseInt(id || '0'),
-          firstName: 'Vendeur',
-          lastName: 'Inconnu',
-          shop_name: 'Boutique Inconnue',
+          id: 0,
+          firstName: normalizedName,
+          lastName: '',
+          shop_name: normalizedName,
           profile_photo_url: null,
           vendeur_type: type?.toUpperCase() || 'ARTISTE',
           about: `Profile ${type} - Description à compléter`
@@ -287,10 +319,10 @@ export default function ProfilePage() {
       }
     };
 
-    if (type && id) {
+    if (type && shopName) {
       loadVendorData();
     }
-  }, [type, id]);
+  }, [type, shopName]);
 
   // Charger les catégories et sous-catégories
   useEffect(() => {
@@ -314,68 +346,47 @@ export default function ProfilePage() {
     loadCategoriesAndSubCategories();
   }, []);
 
-  // Effet pour charger les designs du vendeur
+  // Effet pour charger la galerie du vendeur
   useEffect(() => {
-    const loadVendorDesigns = async () => {
+    const loadVendorGallery = async () => {
       try {
-        setLoadingDesigns(true);
+        setLoadingGallery(true);
 
-        // Essayer d'abord de récupérer les designs publics avec filtre par créateur
-        let allDesigns;
-        try {
-          const response = await designService.getPublicDesigns({
-            limit: 100 // Récupérer plus de designs pour pouvoir filtrer
-          });
-          allDesigns = response.designs || [];
-        } catch (apiError) {
-          console.warn('Impossible de récupérer depuis l API publique, utilisation des données mockées');
-          allDesigns = [];
-        }
-
-        // Filtrer les designs par ID du créateur (vendor)
-        // Le type de profil détermine comment on filtre
-        let filteredDesigns = [];
-
+        // Pour les profils vendeur, on récupère la galerie du vendeur
         if (type === 'artiste' || type === 'influenceur' || type === 'designer') {
-          // Pour les profils vendeur, on filtre par l'ID du vendeur
-          // On essaie de trouver l'ID du vendeur dans l'URL ou on utilise un ID par défaut
-          const vendorId = id ? parseInt(id) : 3; // ID par défaut pour le développeur
+          // Attendre que vendorData soit chargé pour avoir l'ID
+          if (vendorData && vendorData.id) {
+            console.log(`Récupération de la galerie pour vendeur ID ${vendorData.id}`);
+            const vendorGallery = await galleryService.getPublicVendorGallery(vendorData.id);
 
-          filteredDesigns = allDesigns.filter(design => {
-            // Vérifier si le design appartient à ce vendeur
-            return design.creator && design.creator.id === vendorId;
-          });
-
-          console.log(`Filtrage des designs pour vendeur ID ${vendorId}:`, {
-            totalDesigns: allDesigns.length,
-            filteredDesigns: filteredDesigns.length,
-            vendorId
-          });
-        } else {
-          // Pour d'autres types, on utilise les designs mockés
-          filteredDesigns = [];
+            setGallery(vendorGallery);
+            console.log('Galerie récupérée:', vendorGallery);
+          }
         }
-
-        console.log('Designs récupérés pour la galerie:', filteredDesigns);
-        setDesigns(filteredDesigns.slice(0, 12)); // Limiter à 12 designs pour la galerie
       } catch (error) {
-        console.error('Erreur lors du chargement des designs:', error);
-        // En cas d'erreur, on peut afficher des designs mockés ou laisser la galerie vide
-        setDesigns([]);
+        console.error('Erreur lors du chargement de la galerie:', error);
+        // En cas d'erreur, on laisse la galerie vide
+        setGallery(null);
       } finally {
-        setLoadingDesigns(false);
+        setLoadingGallery(false);
       }
     };
 
-    loadVendorDesigns();
-  }, [type, id]);
+    loadVendorGallery();
+  }, [type, vendorData]);
 
   // Effet pour charger les produits du vendeur
   useEffect(() => {
     const loadVendorProducts = async () => {
       try {
         setLoadingProducts(true);
-        const vendorId = id ? parseInt(id) : 3;
+
+        // Attendre que vendorData soit chargé pour avoir l'ID
+        if (!vendorData || !vendorData.id) {
+          return;
+        }
+
+        const vendorId = vendorData.id;
 
         console.log(`🛍️ Chargement des produits pour le vendeur ID ${vendorId}`);
 
@@ -407,10 +418,10 @@ export default function ProfilePage() {
       }
     };
 
-    if (id) {
+    if (vendorData && vendorData.id) {
       loadVendorProducts();
     }
-  }, [id, selectedSubCategory]);
+  }, [vendorData, selectedSubCategory]);
 
   // Effet pour appliquer les filtres aux produits
   useEffect(() => {
@@ -586,89 +597,143 @@ export default function ProfilePage() {
       </div>
 
       <div className="min-h-screen bg-white">
-        {(loadingVendor || loadingDesigns) && (
+        {(loadingVendor || loadingGallery) && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600 text-center">Chargement du profil...</p>
+            <div className="bg-white rounded-lg p-4 sm:p-5 max-w-sm mx-4 shadow-2xl">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-blue-600 mx-auto mb-2 sm:mb-3"></div>
+              <p className="text-gray-600 text-center text-xs sm:text-sm font-medium" style={{ fontFamily: "'Inter', sans-serif" }}>Chargement du profil...</p>
             </div>
           </div>
         )}
-        {/* Bouton de retour */}
+        {/* Fil d'Ariane */}
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors duration-200 mb-6"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Retour</span>
-          </button>
+          <nav className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 mb-6">
+            {/* Accueil */}
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1 hover:text-blue-600 transition-colors duration-200"
+            >
+              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              <span className="hidden xs:inline">Accueil</span>
+            </button>
+
+            {/* Séparateur */}
+            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+
+            {/* Designers */}
+            <button
+              onClick={() => navigate('/designers')}
+              className="hover:text-blue-600 transition-colors duration-200"
+            >
+              Designers
+            </button>
+
+            {/* Séparateur */}
+            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+
+            {/* Nom du designer actuel */}
+            <span className="text-gray-900 font-medium capitalize truncate max-w-[120px] sm:max-w-none">
+              {vendorData ?
+                (vendorData.shop_name || `${vendorData.firstName} ${vendorData.lastName}`.trim()) :
+                (type ? type : 'Designer')
+              }
+            </span>
+          </nav>
         </div>
 
-        {/* Section profil - Deux blocs horizontaux */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        {/* Section profil - Structure optimisée */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
+          {/* Hero Profile Section */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-8">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
 
-            {/* Bloc gauche - Carte de profil */}
-            <div
-              className="rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-lg"
-              style={{ backgroundColor: profile.avatarColor }}
-            >
-              {/* Avatar */}
-              <div className="w-32 h-32 rounded-full bg-gray-300 mb-6 flex items-center justify-center overflow-hidden">
-                {vendorData?.profile_photo_url ? (
-                  <img
-                    src={vendorData.profile_photo_url}
-                    alt={`${vendorData.firstName} ${vendorData.lastName}`.trim()}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-28 h-28 rounded-full bg-gray-400"></div>
-                )}
+              {/* Photo de profil */}
+              <div className="flex-shrink-0">
+                <div
+                  className="w-32 h-32 sm:w-40 sm:h-40 rounded-3xl flex items-center justify-center p-4 relative"
+                  style={{
+                    backgroundColor: profile.avatarColor
+                  }}
+                >
+                  {/* Avatar rond à l'intérieur */}
+                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden shadow-lg">
+                    {vendorData?.profile_photo_url ? (
+                      <img
+                        src={vendorData.profile_photo_url}
+                        alt={`${vendorData.firstName} ${vendorData.lastName}`.trim()}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <svg className="w-16 h-16 sm:w-20 sm:h-20 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Prénom du vendeur (firstName) */}
-              <h2 className="text-3xl font-bold text-white mb-2">
-                {vendorData?.firstName || profile.sigle}
-              </h2>
+              {/* Informations du vendeur */}
+              <div className="flex-1 min-w-0">
+                <div className="space-y-3 sm:space-y-4">
 
-              {/* Nom de la boutique (shop_name) */}
-              <p className="text-lg text-white/90 mb-6">
-                {vendorData?.shop_name || profile.name}
-              </p>
+                  {/* Nom et rating sur la même ligne */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 leading-none" style={{ fontFamily: "'Inter', sans-serif" }}>
+                      {vendorData?.shop_name || `${vendorData?.firstName || 'Designer'} ${vendorData?.lastName || ''}`.trim()}
+                    </h1>
+                    <div className="flex items-center gap-1">
+                      <svg className="w-4 h-4 text-gray-900 fill-current" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                      <span className="text-sm font-semibold text-gray-900">4.8</span>
+                    </div>
+                  </div>
 
-              {/* Réseaux sociaux */}
-              <div className="flex items-center gap-4">
-                {Object.keys(profile.socialLinks).map((network) => (
-                  <a
-                    key={network}
-                    href={profile.socialLinks[network as keyof typeof profile.socialLinks]}
-                    className="text-blue-600 hover:text-blue-700 transition-colors duration-200"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <SocialIcon network={network} />
-                  </a>
-                ))}
-              </div>
-            </div>
+                  {/* Titre/Fonction */}
+                  <p className="text-sm text-gray-600 italic" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    {vendorData?.shop_name ? 'Créateur de designs personnalisés' : 'Graphic Designer'}
+                  </p>
 
-            {/* Bloc droite - A propos */}
-            <div className="flex flex-col justify-between">
-              <div>
-                <h3 className="text-3xl font-bold text-black mb-6">
-                  A propos
-                </h3>
-                <p className="text-gray-700 text-justify leading-relaxed whitespace-pre-line mb-6">
-                  {profile.about}
-                </p>
-              </div>
+                  {/* Section À propos */}
+                  <div className="space-y-2">
+                    <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+                      À propos
+                    </h2>
+                    <div className="space-y-2 text-gray-700 text-sm leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
+                      <p>
+                        {vendorData?.about || profile.about || 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.'}
+                      </p>
+                      <p>
+                        Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis.
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Bouton CTA */}
-              <div className="flex justify-end">
-                <button className="bg-red-500 hover:bg-red-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors duration-200">
-                  Voir plus
-                </button>
+                  {/* Réseaux sociaux */}
+                  <div className="flex items-center gap-2">
+                    {Object.keys(profile.socialLinks).map((network) => (
+                      <a
+                        key={network}
+                        href={profile.socialLinks[network as keyof typeof profile.socialLinks]}
+                        className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+                        style={{ backgroundColor: profile.avatarColor }}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <div className="text-white">
+                          <SocialIcon network={network} />
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+
+                </div>
               </div>
             </div>
           </div>
@@ -676,120 +741,119 @@ export default function ProfilePage() {
           {/* Section Galerie */}
           <div className="mb-12">
             {/* Titre Galerie */}
-            <div className="flex items-center gap-3 mb-6">
-              <h3 className="text-3xl font-bold text-black">
+            <div className="flex items-center gap-2 mb-6">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Galerie
               </h3>
-              <svg className="w-6 h-6 text-yellow-400 fill-current" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
               </svg>
             </div>
 
-            {/* Grille d'images - Designs du vendeur */}
-            <div className="grid grid-cols-4 grid-rows-2 gap-4 h-96">
-              {loadingDesigns ? (
+            {/* Grille d'images - Galerie du vendeur */}
+            {/* Mobile: grille 2x3, Tablet+: grille 4x2 avec image principale */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+              {loadingGallery ? (
                 // État de chargement
                 <>
-                  <div className="col-span-2 row-span-2 bg-gray-200 rounded-2xl flex items-center justify-center animate-pulse">
-                    <div className="text-center">
-                      <div className="w-24 h-24 bg-gray-300 rounded-full mx-auto mb-4"></div>
-                      <span className="text-gray-500">Chargement...</span>
+                  {/* Mobile: toutes les images même taille, Tablet+: image principale 2x2 */}
+                  <div className="col-span-2 row-span-1 sm:row-span-2 aspect-[2/1] sm:aspect-auto sm:h-[400px] bg-gray-200 rounded-xl sm:rounded-2xl flex items-center justify-center animate-pulse">
+                    <div className="text-center px-4">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-gray-300 rounded-full mx-auto mb-2 sm:mb-3"></div>
+                      <span className="text-gray-500 text-[11px] sm:text-xs font-medium" style={{ fontFamily: "'Inter', sans-serif" }}>Chargement de la galerie...</span>
                     </div>
                   </div>
                   {[2, 3, 4, 5].map((num) => (
-                    <div key={num} className="col-span-1 row-span-1 bg-gray-200 rounded-2xl flex items-center justify-center animate-pulse">
+                    <div key={num} className="col-span-1 row-span-1 aspect-square sm:aspect-auto sm:h-[195px] bg-gray-200 rounded-xl sm:rounded-2xl flex items-center justify-center animate-pulse">
                       <div className="text-center">
-                        <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2"></div>
-                        <span className="text-gray-500 text-sm">Design {num}</span>
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-14 lg:h-14 bg-gray-300 rounded-full mx-auto mb-1 sm:mb-2"></div>
+                        <span className="text-gray-500 text-[10px] hidden sm:block">Image {num}</span>
                       </div>
                     </div>
                   ))}
                 </>
-              ) : designs.length > 0 ? (
-                // Afficher les designs réels
+              ) : gallery && gallery.images && gallery.images.length > 0 ? (
+                // Afficher la galerie
                 <>
-                  {designs.map((design, index) => {
-                    const isMainDesign = index === 0;
+                  {gallery.images.slice(0, 5).map((image, index) => {
+                    const isMainImage = index === 0;
                     return (
                       <div
-                        key={design.id || index}
-                        className={`${isMainDesign ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'} rounded-2xl overflow-hidden bg-gray-100 hover:shadow-lg transition-all duration-300 cursor-pointer`}
+                        key={image.id || index}
+                        className={`${
+                          isMainImage
+                            ? 'col-span-2 row-span-1 sm:row-span-2 aspect-[2/1] sm:aspect-auto sm:h-[400px]'
+                            : 'col-span-1 row-span-1 aspect-square sm:aspect-auto sm:h-[195px]'
+                        } rounded-xl sm:rounded-2xl overflow-hidden bg-gray-900 hover:shadow-2xl transition-all duration-300 cursor-pointer group relative`}
                       >
-                        {design.imageUrl ? (
-                            <img
-                              src={design.imageUrl}
-                              alt={`Design ${index + 1}`}
-                              className="w-full h-full object-contain max-w-full max-h-full transition-transform duration-300 hover:scale-105"
-                              style={{
-                                imageRendering: 'crisp-edges',
-                                WebkitFontSmoothing: 'antialiased',
-                                MozOsxFontSmoothing: 'grayscale'
-                              }}
-                              loading="eager"
-                              onLoad={(e) => {
-                                const img = e.target as HTMLImageElement;
-                                img.style.opacity = '1';
-                              }}
-                              onError={(e) => {
-                                const img = e.target as HTMLImageElement;
-                                img.style.display = 'none';
-                                const parent = img.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = `
-                                    <div class="w-full h-full flex items-center justify-center bg-gray-100">
-                                      <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                      </svg>
-                                    </div>
-                                  `;
-                                }
-                              }}
-                            />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
+                        {/* Image de fond avec blur pour effet professionnel */}
+                        <div
+                          className="absolute inset-0 bg-cover bg-center blur-sm scale-110 opacity-30"
+                          style={{ backgroundImage: `url(${image.imageUrl || image.url})` }}
+                        />
+
+                        {/* Image principale centrée */}
+                        <img
+                          src={image.imageUrl || image.url}
+                          alt={image.caption || `Image ${index + 1}`}
+                          className="relative w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          style={{
+                            imageRendering: 'auto',
+                            WebkitFontSmoothing: 'antialiased',
+                            MozOsxFontSmoothing: 'grayscale'
+                          }}
+                          loading="eager"
+                          onError={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            img.style.display = 'none';
+                            const parent = img.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `
+                                <div class="w-full h-full flex items-center justify-center bg-gray-800">
+                                  <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
+                              `;
+                            }
+                          }}
+                        />
+
+                        {/* Overlay sombre au hover */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
+
+                        {/* Icône d'agrandissement au hover */}
+                        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-white/90 backdrop-blur-sm rounded-full p-1.5 sm:p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                          </svg>
+                        </div>
+
+                        {image.caption && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent text-white text-xs sm:text-sm p-2 sm:p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <p className="font-medium line-clamp-2">{image.caption}</p>
                           </div>
                         )}
                       </div>
                     );
                   })}
-                  {/* Compléter la grille si moins de 5 designs */}
-                  {designs.length < 5 && Array.from({ length: 5 - designs.length }).map((_, emptyIndex) => (
-                    <div key={`empty-${emptyIndex}`} className="col-span-1 row-span-1 bg-gray-100 rounded-2xl flex items-center justify-center">
-                      <div className="text-center text-gray-400">
-                        <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span className="text-sm">Ajouter un design</span>
-                      </div>
-                    </div>
-                  ))}
+                  {/* Compléter la grille si moins de 5 images - Masquer les slots vides */}
                 </>
               ) : (
-                // État vide - aucun design trouvé
-                <>
-                  <div className="col-span-2 row-span-2 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <svg className="w-24 h-24 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p className="text-lg font-medium mb-2">Aucun design trouvé</p>
-                      <p className="text-sm">Ce vendeur n'a pas encore publié de designs</p>
+                // État vide - aucune galerie trouvée - Affichage compact
+                <div className="col-span-2 sm:col-span-4">
+                  <div className="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center border border-gray-200">
+                    <div className="max-w-md mx-auto">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center">
+                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-800 mb-1.5 tracking-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>Galerie à venir</h3>
+                      <p className="text-[11px] sm:text-xs text-gray-600 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>Ce vendeur enrichira bientôt sa galerie avec ses meilleures créations</p>
                     </div>
                   </div>
-                  {[2, 3, 4, 5].map((num) => (
-                    <div key={num} className="col-span-1 row-span-1 bg-gray-100 rounded-2xl flex items-center justify-center">
-                      <div className="text-center text-gray-400">
-                        <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span className="text-xs">Design {num}</span>
-                      </div>
-                    </div>
-                  ))}
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -818,10 +882,10 @@ export default function ProfilePage() {
                     {/* Boutique Header */}
                     <div className="mb-6">
                       <div className="flex items-center gap-2 mb-6">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
-                        <h2 className="font-bold text-xl">Boutique</h2>
+                        <h2 className="font-bold text-base sm:text-lg tracking-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>Boutique</h2>
                       </div>
 
                       {/* Catégories */}
@@ -928,11 +992,11 @@ export default function ProfilePage() {
               {/* Main Content */}
               <main className="flex-1 min-w-0">
                 {/* Titre Produits */}
-                <div className="flex items-center gap-3 mb-6">
-                  <h3 className="text-3xl font-bold text-black">
+                <div className="flex items-center gap-2 mb-6">
+                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                     Produits
                   </h3>
-                  <svg className="w-6 h-6 text-blue-500 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 fill-current" viewBox="0 0 24 24">
                     <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                   </svg>
                 </div>
@@ -1439,17 +1503,17 @@ export default function ProfilePage() {
             {loadingProducts ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Chargement des produits...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-blue-600 mx-auto mb-2 sm:mb-3"></div>
+                  <p className="text-gray-600 text-xs sm:text-sm font-medium" style={{ fontFamily: "'Inter', sans-serif" }}>Chargement des produits...</p>
                 </div>
               </div>
             ) : vendorProducts.length > 0 ? (
               <>
                 {/* Compteur de résultats */}
-                <div className="mb-4 text-sm text-gray-600">
+                <div className="mb-4 text-[11px] sm:text-xs text-gray-600 font-medium" style={{ fontFamily: "'Inter', sans-serif" }}>
                   {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} trouvé{filteredProducts.length > 1 ? 's' : ''}
                   {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter || selectedSubCategory) && (
-                    <span className="font-medium"> avec les filtres actifs</span>
+                    <span className="font-semibold"> avec les filtres actifs</span>
                   )}
                 </div>
 
@@ -1468,19 +1532,19 @@ export default function ProfilePage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg">
-                    <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="text-center py-12 bg-gray-50 rounded-lg px-4">
+                    <svg className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     </svg>
-                    <p className="text-gray-600 text-lg mb-2">Aucun produit trouvé</p>
-                    <p className="text-gray-500 text-sm mb-4">
+                    <p className="text-gray-600 text-xs sm:text-sm lg:text-base mb-1.5 font-semibold" style={{ fontFamily: "'Poppins', sans-serif" }}>Aucun produit trouvé</p>
+                    <p className="text-gray-500 text-[11px] sm:text-xs mb-4 font-normal" style={{ fontFamily: "'Inter', sans-serif" }}>
                       Aucun produit ne correspond aux filtres sélectionnés
                     </p>
                     <div className="flex gap-2 justify-center flex-wrap">
                       {selectedSubCategory && (
                         <button
                           onClick={() => setSelectedSubCategory(null)}
-                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="text-xs sm:text-sm text-primary hover:text-primary/80 font-medium transition-colors"
                         >
                           Effacer la catégorie
                         </button>
@@ -1488,7 +1552,7 @@ export default function ProfilePage() {
                       {selectedColors.length > 0 && (
                         <button
                           onClick={clearColors}
-                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="text-xs sm:text-sm text-primary hover:text-primary/80 font-medium transition-colors"
                         >
                           Effacer les couleurs
                         </button>
@@ -1496,7 +1560,7 @@ export default function ProfilePage() {
                       {selectedSizes.length > 0 && (
                         <button
                           onClick={clearSizes}
-                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="text-xs sm:text-sm text-primary hover:text-primary/80 font-medium transition-colors"
                         >
                           Effacer les tailles
                         </button>
@@ -1504,7 +1568,7 @@ export default function ProfilePage() {
                       {hasPriceFilter && (
                         <button
                           onClick={clearPriceFilter}
-                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="text-xs sm:text-sm text-primary hover:text-primary/80 font-medium transition-colors"
                         >
                           Effacer le prix
                         </button>
@@ -1514,12 +1578,12 @@ export default function ProfilePage() {
                 )}
               </>
             ) : (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="text-center py-12 bg-gray-50 rounded-lg px-4">
+                <svg className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
-                <p className="text-gray-600 text-lg mb-2">Aucun produit disponible</p>
-                <p className="text-gray-500 text-sm">Ce vendeur n'a pas encore publié de produits</p>
+                <p className="text-gray-600 text-xs sm:text-sm lg:text-base mb-1.5 font-semibold" style={{ fontFamily: "'Poppins', sans-serif" }}>Aucun produit disponible</p>
+                <p className="text-gray-500 text-[11px] sm:text-xs font-normal" style={{ fontFamily: "'Inter', sans-serif" }}>Ce vendeur n'a pas encore publié de produits</p>
               </div>
             )}
               </main>

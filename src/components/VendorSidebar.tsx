@@ -29,7 +29,8 @@ import {
     TrendingUp,
     Image,
     User,
-    Banknote
+    Banknote,
+    Layers
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -383,6 +384,16 @@ export default function VendorSidebar() {
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'designs'}
                             onClick={() => handleNavigation('designs')}
+                            badge=""
+                            textColor=""
+                        />
+
+                        <NavItem
+                            icon={<Layers size={20} />}
+                            label="Mes Galeries"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'galleries'}
+                            onClick={() => handleNavigation('galleries')}
                             badge=""
                             textColor=""
                         />

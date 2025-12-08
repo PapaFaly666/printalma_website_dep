@@ -1,7 +1,7 @@
-// Service pour la génération d'images avec Stability AI
-// Ce service fait le pont entre l'interface utilisateur et Stability AI
+// Service pour la génération d'images avec Google Gemini AI
+// Ce service fait le pont entre l'interface utilisateur et Google Gemini
 
-import stabilityService from './stabilityService';
+import googleAIService from './googleAIService';
 
 export interface GeminiImageRequest {
   prompt: string;
@@ -21,31 +21,30 @@ class GeminiService {
     try {
       console.log('🎨 [AI Generator] Génération d\'image avec prompt:', request.prompt);
 
-      // Vérifier si Stability AI est disponible
-      if (!stabilityService.isAvailable()) {
-        console.warn('⚠️ [AI Generator] Stability AI non disponible, utilisation du fallback');
+      // Vérifier si Google AI est disponible
+      if (!googleAIService.isAvailable()) {
+        console.warn('⚠️ [AI Generator] Google Gemini AI non disponible, utilisation du fallback');
         return this.generateFallbackImage(request);
       }
 
-      // Utiliser Stability AI pour générer une vraie image
-      console.log('🚀 [AI Generator] Utilisation de Stability AI...');
-      const stabilityResponse = await stabilityService.generateImage({
+      // Utiliser Google Gemini AI pour générer une vraie image
+      console.log('🚀 [AI Generator] Utilisation de Google Gemini AI...');
+      const googleResponse = await googleAIService.generateImage({
         prompt: request.prompt,
         style: request.style,
-        aspectRatio: '1:1',
-        outputFormat: 'png'
+        aspectRatio: '1:1'
       });
 
-      if (stabilityResponse.success && stabilityResponse.imageUrl) {
-        console.log('✅ [AI Generator] Image générée avec succès par Stability AI');
+      if (googleResponse.success && googleResponse.imageUrl) {
+        console.log('✅ [AI Generator] Image générée avec succès par Google Gemini AI');
         return {
-          imageUrl: stabilityResponse.imageUrl,
-          description: request.prompt,
+          imageUrl: googleResponse.imageUrl,
+          description: googleResponse.enhancedPrompt || request.prompt,
           success: true
         };
       } else {
-        // Si Stability AI échoue, utiliser le fallback
-        console.warn('⚠️ [AI Generator] Stability AI a échoué, utilisation du fallback');
+        // Si Google AI échoue, utiliser le fallback
+        console.warn('⚠️ [AI Generator] Google Gemini AI a échoué, utilisation du fallback');
         return this.generateFallbackImage(request);
       }
 

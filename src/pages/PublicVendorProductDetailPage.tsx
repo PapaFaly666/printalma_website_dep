@@ -5,6 +5,7 @@ import vendorProductsService, { VendorProduct, ProductGenre } from '../services/
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/priceUtils';
+import ProductBreadcrumb from '../components/ProductBreadcrumb';
 import ServiceFeatures from './ServiceFeatures ';
 import Footer from '../components/Footer';
 
@@ -514,7 +515,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Colonne gauche : Images du produit */}
           <div className="space-y-6">
             {/* Image principale */}
@@ -563,31 +564,6 @@ const PublicVendorProductDetailPage: React.FC = () => {
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Tabs Description / Caractéristiques / Avis */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <div className="flex gap-6 border-b border-gray-200 mb-6">
-                <button className="pb-3 px-2 border-b-2 border-blue-500 text-blue-600 font-semibold">
-                  Description
-                </button>
-                <button className="pb-3 px-2 text-gray-600 hover:text-gray-900 transition-colors">
-                  Caractéristiques du produit
-                </button>
-                <button className="pb-3 px-2 text-gray-600 hover:text-gray-900 transition-colors">
-                  Avis
-                </button>
-              </div>
-
-              <div className="text-gray-600 text-sm leading-relaxed space-y-4">
-                <p>
-                  {product.adminProduct?.description || 
-                  "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit."}
-                </p>
-                <p>
-                  Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam.
-                </p>
-              </div>
             </div>
           </div>
 
@@ -739,8 +715,33 @@ const PublicVendorProductDetailPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Tabs Description / Caractéristiques / Avis - Pleine largeur */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 mt-12">
+          <div className="flex gap-6 border-b border-gray-200 mb-6">
+            <button className="pb-3 px-2 border-b-2 border-blue-500 text-blue-600 font-semibold">
+              Description
+            </button>
+            <button className="pb-3 px-2 text-gray-600 hover:text-gray-900 transition-colors">
+              Caractéristiques du produit
+            </button>
+            <button className="pb-3 px-2 text-gray-600 hover:text-gray-900 transition-colors">
+              Avis
+            </button>
+          </div>
+
+          <div className="text-gray-600 text-sm leading-relaxed space-y-4">
+            <p>
+              {product.adminProduct?.description ||
+              "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit."}
+            </p>
+            <p>
+              Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam.
+            </p>
+          </div>
+        </div>
+
         {/* Section Trouver sur d'autres produits - Pleine largeur */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12 max-w-7xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 lg:p-8">
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-4 sm:mb-6" style={{ fontStyle: 'italic' }}>
               Trouver sur d'autres produits
@@ -844,7 +845,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
 
         {/* Section Détails du design */}
         {product.designApplication?.hasDesign && product.design && (
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12 max-w-7xl">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12">
             <h2 className="text-2xl lg:text-3xl font-bold mb-8" style={{ color: '#00A5E0', fontStyle: 'italic' }}>
               Détails du design
             </h2>
@@ -983,7 +984,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
         )}
 
         {/* Section Historique */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-12 max-w-7xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-12">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2 sm:gap-3">
               <h2 className="text-2xl lg:text-3xl font-bold text-gray-900" style={{ fontStyle: 'italic' }}>

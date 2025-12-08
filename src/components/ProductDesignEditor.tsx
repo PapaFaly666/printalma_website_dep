@@ -298,7 +298,14 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   };
 
   // Ajouter une image
-  const addImage = (imageUrl: string, naturalWidth: number, naturalHeight: number, designId?: number, designPrice?: number, designName?: string) => {
+  const addImage = (
+    imageUrl: string,
+    naturalWidth: number,
+    naturalHeight: number,
+    designId?: number,
+    designPrice?: number,
+    designName?: string
+  ) => {
     if (!canvasRef.current || !delimitation) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
@@ -1625,19 +1632,62 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(e) => {
+          onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
+            try {
+              // Afficher un toast de chargement
+              toast({
+                title: 'Ajout de l\'image...',
+                description: 'Traitement en cours',
+                duration: 1000
+              });
+
+              // Créer une URL pour l'image
+              const imageUrl = URL.createObjectURL(file);
+
+              // Charger l'image
               const img = new Image();
               img.onload = () => {
-                addImage(event.target?.result as string, img.width, img.height);
+                // Ajouter l'image sans compression
+                addImage(
+                  imageUrl,
+                  img.naturalWidth,
+                  img.naturalHeight,
+                  undefined, // Pas de designId pour les uploads
+                  undefined, // Pas de designPrice
+                  file.name  // Nom du fichier original comme designName
+                );
+
+                // Afficher un toast de succès
+                toast({
+                  title: '✅ Image ajoutée',
+                  description: `${file.name} a été ajouté avec succès`,
+                  duration: 3000
+                });
               };
-              img.src = event.target?.result as string;
-            };
-            reader.readAsDataURL(file);
+              img.onerror = () => {
+                toast({
+                  title: 'Erreur',
+                  description: 'Impossible de charger l\'image',
+                  variant: 'destructive'
+                });
+                URL.revokeObjectURL(imageUrl); // Nettoyer l'URL en cas d'erreur
+              };
+              img.src = imageUrl;
+
+            } catch (error) {
+              console.error('Erreur lors du traitement de l\'image:', error);
+              toast({
+                title: 'Erreur de traitement',
+                description: 'Impossible de traiter cette image',
+                variant: 'destructive'
+              });
+            }
+
+            // Réinitialiser l'input pour permettre de sélectionner le même fichier à nouveau
+            e.target.value = '';
           }}
         />
       </div>
