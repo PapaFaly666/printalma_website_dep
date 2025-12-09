@@ -297,12 +297,7 @@ const VendorAccountPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const updateData = {
-        userId: user.id,
-        ...updatedSocialMedias
-      };
-
-      const response = await authService.updateVendorProfile(updateData);
+      const response = await authService.updateVendorProfile(updatedSocialMedias);
       if (response.success) {
         setSocialMedias(updatedSocialMedias);
         toast.success('Réseaux sociaux mis à jour avec succès');

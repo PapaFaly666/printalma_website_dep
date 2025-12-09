@@ -5,7 +5,6 @@ import vendorProductsService, { VendorProduct, ProductGenre } from '../services/
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/priceUtils';
-import ProductBreadcrumb from '../components/ProductBreadcrumb';
 import ServiceFeatures from './ServiceFeatures ';
 import Footer from '../components/Footer';
 
