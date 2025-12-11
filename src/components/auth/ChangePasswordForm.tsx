@@ -16,7 +16,7 @@ interface ChangePasswordFormProps {
 }
 
 export const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
-  mustChangePassword = false,
+  mustChangePassword = false, 
   userId,
   onSuccess
 }) => {
