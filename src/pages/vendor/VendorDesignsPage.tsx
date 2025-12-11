@@ -139,7 +139,7 @@ interface ApiResponse<T> {
 
 // Service API mis à jour selon la documentation
 class VendorDesignService {
-  private apiUrl = 'http://localhost:3004/vendor/designs';
+  private apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/vendor/designs`;
 
   private getFetchOptions(method: string = 'GET', body?: any): RequestInit {
     const options: RequestInit = {

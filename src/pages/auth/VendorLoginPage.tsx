@@ -36,8 +36,9 @@ const VendorLoginPage = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:3004/auth/login', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

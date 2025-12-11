@@ -306,7 +306,7 @@ export default function ProfilePage() {
         setLoadingVendor(true);
 
         // Récupérer les données des vendeurs
-        const response = await fetch('http://localhost:3004/public/users/vendors', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/public/users/vendors`, {
           headers: {
             'accept': 'application/json'
           }
@@ -444,7 +444,7 @@ export default function ProfilePage() {
           return;
         }
 
-        const response = await fetch(`http://localhost:3004/auth/public/vendor/${vendorData.id}/social-media`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/auth/public/vendor/${vendorData.id}/social-media`, {
           headers: {
             'accept': 'application/json'
           }
@@ -476,7 +476,7 @@ export default function ProfilePage() {
           return;
         }
 
-        const response = await fetch(`http://localhost:3004/auth/public/vendor/${vendorData.id}/profile/bio`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/auth/public/vendor/${vendorData.id}/profile/bio`, {
           headers: {
             'accept': 'application/json'
           }

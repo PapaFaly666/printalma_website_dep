@@ -117,7 +117,7 @@ export const testPayDunyaEndpoint = async () => {
   console.log('🧪 Test: Endpoint PayDunya sans authentification');
 
   try {
-    const response = await fetch('http://localhost:3004/paydunya/test-config');
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/paydunya/test-config`);
     const data = await response.json();
 
     if (data.success) {
@@ -159,7 +159,7 @@ export const testCORS = async () => {
   console.log('🧪 Test: Configuration CORS');
 
   try {
-    const response = await fetch('http://localhost:3004/paydunya/test-config', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/paydunya/test-config`, {
       method: 'GET',
       headers: {
         'Origin': 'http://localhost:5174',

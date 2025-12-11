@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog';
 
-const api = axios.create({ baseURL: 'http://localhost:3004', withCredentials: true });
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3004', withCredentials: true });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');

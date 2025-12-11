@@ -131,7 +131,7 @@ const VendorOrderDetailPage: React.FC = () => {
         console.log('🔄 Chargement des détails de la commande:', orderId);
 
         // Appel direct à l'API pour contourner les données mock en développement
-        const response = await fetch(`http://localhost:3004/vendor/orders/${orderId}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/vendor/orders/${orderId}`, {
           method: 'GET',
           credentials: 'include',
           headers: {

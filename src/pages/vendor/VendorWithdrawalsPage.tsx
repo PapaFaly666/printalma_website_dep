@@ -99,7 +99,7 @@ const VendorWithdrawalsPage: React.FC = () => {
     try {
       // Appel API pour récupérer les demandes de retrait
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3004/vendor/withdrawals', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/vendor/withdrawals`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -268,7 +268,7 @@ const VendorWithdrawalsPage: React.FC = () => {
   const downloadStatement = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3004/vendor/withdrawals/export', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/vendor/withdrawals/export`, {
         method: 'GET',
         credentials: 'include',
         headers: {
