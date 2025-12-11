@@ -455,7 +455,7 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
             designId: designData.designId || 0,
             vendorName: editStates[productId]?.name || product.name,
             vendorDescription: editStates[productId]?.description || product.description,
-            vendorPrice: editStates[productId]?.price || product.price,
+            vendorPrice: editStates[productId]?.price ?? product.suggestedPrice ?? product.price,
             vendorStock: editStates[productId]?.stock || product.stock || 10,
             selectedColors: activeColors,
             selectedSizes: activeSizes,

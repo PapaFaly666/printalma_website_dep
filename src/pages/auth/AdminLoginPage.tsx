@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const VendorLoginPage = () => {
+const AdminLoginPage = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -50,18 +50,11 @@ const VendorLoginPage = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Vérifier le rôle de l'utilisateur
-        if (data.user.role === 'VENDEUR') {
-          if (data.user.status === false) {
-            navigate('/vendeur/pending');
-          } else {
-            navigate('/vendeur/dashboard');
-          }
-        } else if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'SUPERADMIN') {
-          // Redirection silencieuse vers admin dashboard
+        // Vérifier si l'utilisateur est bien un admin
+        if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
           navigate('/admin/dashboard');
         } else {
-          setErrors({ submit: 'Type de compte non reconnu' });
+          setErrors({ submit: 'Accès réservé aux administrateurs' });
         }
       } else {
         setErrors({ submit: data.message || 'Email ou mot de passe incorrect' });
@@ -86,16 +79,25 @@ const VendorLoginPage = () => {
 
       {/* Title */}
       <h2 className="text-lg sm:text-xl font-normal text-gray-900 mb-6 sm:mb-8 italic text-center">
-        Connexion Vendeur
+        Connexion Administrateur
       </h2>
 
+      {/* Warning Badge */}
+      <div className="w-full max-w-xs sm:max-w-sm mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded-lg text-xs sm:text-sm text-center">
+          <span className="font-bold">⚠️ Accès Sécurisé</span>
+          <br />
+          Réservé au personnel autorisé
+        </div>
+      </div>
+
       {/* Login Form Card */}
-      <div className="w-full max-w-xs sm:max-w-sm bg-yellow-400 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg mb-4 sm:mb-6">
+      <div className="w-full max-w-xs sm:max-w-sm bg-red-500 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg mb-4 sm:mb-6">
         <div className="space-y-4 sm:space-y-5">
           {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-xs font-bold text-gray-900 mb-1">
-              E-mail
+            <label htmlFor="email" className="block text-xs font-bold text-white mb-1">
+              Email Administrateur
             </label>
             <input
               type="email"
@@ -103,17 +105,17 @@ const VendorLoginPage = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm"
-              placeholder="votre@email.com"
+              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-red-600 bg-white text-xs sm:text-sm"
+              placeholder="admin@printalma.com"
             />
             {errors.email && (
-              <p className="text-red-700 text-xs mt-1">{errors.email}</p>
+              <p className="text-white text-xs mt-1">{errors.email}</p>
             )}
           </div>
 
           {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-xs font-bold text-gray-900 mb-1">
+            <label htmlFor="password" className="block text-xs font-bold text-white mb-1">
               Mot de passe
             </label>
             <div className="relative">
@@ -123,7 +125,7 @@ const VendorLoginPage = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm pr-10"
+                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-red-600 bg-white text-xs sm:text-sm pr-10"
                 placeholder="• • • • • • • •"
               />
               <button
@@ -144,7 +146,7 @@ const VendorLoginPage = () => {
               </button>
             </div>
             {errors.password && (
-              <p className="text-red-700 text-xs mt-1">{errors.password}</p>
+              <p className="text-white text-xs mt-1">{errors.password}</p>
             )}
           </div>
         </div>
@@ -154,9 +156,9 @@ const VendorLoginPage = () => {
       <button
         onClick={handleSubmit}
         disabled={isLoading}
-        className="w-full max-w-xs sm:max-w-sm bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 shadow-md mb-2 sm:mb-3 text-sm disabled:cursor-not-allowed"
+        className="w-full max-w-xs sm:max-w-sm bg-black hover:bg-gray-800 disabled:bg-gray-600 text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 shadow-md mb-2 sm:mb-3 text-sm disabled:cursor-not-allowed"
       >
-        {isLoading ? 'Connexion...' : 'Se connecter'}
+        {isLoading ? 'Connexion...' : 'Connexion Admin'}
       </button>
 
       {/* Error Message */}
@@ -166,18 +168,14 @@ const VendorLoginPage = () => {
         </div>
       )}
 
-      {/* Register Link */}
-      <p className="text-xs text-gray-600 text-center">
-        Pas encore de compte ?{' '}
-        <button
-          onClick={() => navigate('/vendeur/register')}
-          className="text-red-500 font-semibold hover:underline bg-transparent border-none cursor-pointer text-xs"
-        >
-          S'inscrire
-        </button>
-      </p>
+      {/* Security Info */}
+      <div className="w-full max-w-xs sm:max-w-sm">
+        <p className="text-xs text-gray-500 text-center">
+          <span className="font-semibold">Sécurité :</span> Toutes les connexions sont enregistrées
+        </p>
+      </div>
     </div>
   );
 };
 
-export default VendorLoginPage;
+export default AdminLoginPage;

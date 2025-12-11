@@ -1,183 +1,313 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Store, Mail, Lock } from 'lucide-react';
-import authService from '../../services/auth.service';
-import { VendeurType } from '../../types/auth.types';
+import { useNavigate } from 'react-router-dom';
 
-const VendorRegisterPage: React.FC = () => {
+const PrintalmaRegister = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
+    countryCode: '+221',
     password: '',
     confirmPassword: '',
-    vendeur_type: VendeurType.DESIGNER as VendeurType
+    vendeur_type: 'DESIGNER',
+    acceptTerms: false
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+
+  const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; email?: string; phone?: string; password?: string; confirmPassword?: string; vendeur_type?: string; acceptTerms?: string; submit?: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-
   const validate = () => {
-    const errs: Record<string, string> = {};
-    if (!formData.firstName) errs.firstName = 'Prénom requis';
-    if (!formData.lastName) errs.lastName = 'Nom requis';
-    if (!formData.email) errs.email = 'Email requis';
-    else if (!emailRegex.test(formData.email)) errs.email = 'Email invalide';
-
+    const errs: { firstName?: string; lastName?: string; email?: string; phone?: string; password?: string; confirmPassword?: string; vendeur_type?: string; acceptTerms?: string; submit?: string } = {};
+    if (!formData.firstName.trim()) errs.firstName = 'Prénom requis';
+    if (!formData.lastName.trim()) errs.lastName = 'Nom requis';
+    if (!formData.email.trim()) errs.email = 'Email requis';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errs.email = 'Email invalide';
     if (!formData.password) errs.password = 'Mot de passe requis';
-    else if (!passwordRegex.test(formData.password)) errs.password = 'Mot de passe trop faible';
-    if (formData.password !== formData.confirmPassword) errs.confirmPassword = 'Les mots de passe ne correspondent pas';
+    else if (formData.password.length < 8) errs.password = 'Minimum 8 caractères';
+    if (formData.password !== formData.confirmPassword) {
+      errs.confirmPassword = 'Les mots de passe ne correspondent pas';
+    }
+    if (!formData.vendeur_type) errs.vendeur_type = 'Type de vendeur requis';
+    if (!formData.acceptTerms) errs.acceptTerms = 'Vous devez accepter les conditions';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Trim form values
-    const cleaned = {
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
-      email: formData.email.trim(),
-      password: formData.password,
-      vendeur_type: formData.vendeur_type
-    };
-
+  const handleSubmit = async () => {
     if (!validate()) return;
-    setLoading(true);
-    setApiError(null);
+
+    setIsLoading(true);
     try {
-      console.log('📦 Payload inscription', cleaned);
-      const res = await authService.registerVendor(cleaned);
-      console.log('✅ Réponse inscription', res);
-      if (res.ok) {
-        navigate('/vendeur/pending', { state: { email: cleaned.email } });
-        return;
-      }
-    } catch (err: any) {
-      if (err?.statusCode === 422 && err?.errors) {
-        const fieldErrs: Record<string, string> = {};
-        Object.entries(err.errors).forEach(([field, msgs]: any) => {
-          fieldErrs[field] = Array.isArray(msgs) ? msgs[0] : msgs;
-        });
-        setErrors(fieldErrs);
-      } else if (err?.statusCode === 400) {
-        const msg: string = err.message || 'Erreur';
-        if (msg.toLowerCase().includes('email')) setErrors(prev => ({ ...prev, email: msg }));
-        else if (msg.toLowerCase().includes('mot de passe')) setErrors(prev => ({ ...prev, password: msg }));
-        else setApiError(msg);
+      const response = await fetch('http://localhost:3004/auth/register-vendeur', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          vendeur_type: formData.vendeur_type
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Votre compte a été créé. Il sera activé prochainement par le SuperAdmin.');
+        navigate('/vendeur/login');
       } else {
-        setApiError(err?.message || 'Erreur lors de la création du compte');
+        if (Array.isArray(data.message)) {
+          setErrors({ submit: data.message.join(', ') });
+        } else {
+          setErrors({ submit: data.message || 'Erreur lors de l\'inscription' });
+        }
       }
+    } catch (error) {
+      setErrors({ submit: 'Erreur de connexion au serveur' });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900 px-4 py-10">
-      {/* Header */}
-      <div className="text-center mb-10">
-        <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-black flex items-center justify-center shadow-lg">
-          <Store className="h-8 w-8 text-white" />
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white mb-1">
-          Inscription Vendeur
-        </h1>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Créez un compte pour commencer à vendre
-        </p>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-start px-3 sm:px-4 pt-1 sm:pt-2 pb-2 sm:pb-4 overflow-hidden">
+      {/* Logo */}
+      <div className="mb-2 sm:mb-4">
+        <img
+          alt="Logo Printalma"
+          className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-32 lg:w-32 xl:h-36 xl:w-36 2xl:h-40 2xl:w-40 object-contain transition-all duration-200"
+          src="/printalma_logo.svg"
+        />
       </div>
 
-      <Card className="w-full max-w-lg shadow-md">
-        <CardHeader>
-          <CardTitle className="text-xl text-center">Créer votre compte</CardTitle>
-          <CardDescription className="text-center text-sm">
-            C'est rapide et gratuit
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            {/* First Name */}
-            <div className="space-y-1">
-              <Label htmlFor="firstName">Prénom</Label>
-              <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="John" />
-              {errors.firstName && <p className="text-xs text-red-600">{errors.firstName}</p>}
-            </div>
+      {/* Title */}
+      <h2 className="text-lg sm:text-xl font-normal text-gray-900 mb-4 sm:mb-6 italic text-center">
+        Remplir le formulaire
+      </h2>
 
-            {/* Last Name */}
-            <div className="space-y-1">
-              <Label htmlFor="lastName">Nom</Label>
-              <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Doe" />
-              {errors.lastName && <p className="text-xs text-red-600">{errors.lastName}</p>}
-            </div>
+      {/* Form Card */}
+      <div className="w-full max-w-xs sm:max-w-sm bg-yellow-400 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg mb-4 sm:mb-6">
+        <div className="space-y-3 sm:space-y-4">
+          {/* Prénom */}
+          <div>
+            <label htmlFor="firstName" className="block text-xs font-bold text-gray-900 mb-1">
+              Prénom(s)
+            </label>
+            <input
+              type="text"
+              id="firstName"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm"
+            />
+            {errors.firstName && (
+              <p className="text-red-700 text-xs mt-1">{errors.firstName}</p>
+            )}
+          </div>
 
-            {/* Email */}
-            <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input id="email" name="email" type="email" className="pl-10" value={formData.email} onChange={handleChange} placeholder="email@example.com" />
-              </div>
-              {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
-            </div>
+          {/* Nom */}
+          <div>
+            <label htmlFor="lastName" className="block text-xs font-bold text-gray-900 mb-1">
+              Nom
+            </label>
+            <input
+              type="text"
+              id="lastName"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm"
+            />
+            {errors.lastName && (
+              <p className="text-red-700 text-xs mt-1">{errors.lastName}</p>
+            )}
+          </div>
 
-            {/* Password */}
-            <div className="space-y-1">
-              <Label htmlFor="password">Mot de passe</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input id="password" name="password" type="password" className="pl-10" value={formData.password} onChange={handleChange} placeholder="********" />
-              </div>
-              {errors.password && <p className="text-xs text-red-600">{errors.password}</p>}
-            </div>
+          {/* Email */}
+          <div>
+            <label htmlFor="email" className="block text-xs font-bold text-gray-900 mb-1">
+              E-mail
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm"
+            />
+            {errors.email && (
+              <p className="text-red-700 text-xs mt-1">{errors.email}</p>
+            )}
+          </div>
 
-            {/* Vendeur type */}
-            <div className="space-y-1">
-              <Label htmlFor="vendeur_type">Type de vendeur</Label>
-              <select id="vendeur_type" name="vendeur_type" value={formData.vendeur_type} onChange={handleChange as any} className="w-full border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-gray-400">
-                <option value={VendeurType.DESIGNER}>Designer</option>
-                <option value={VendeurType.ARTISTE}>Artiste</option>
-                <option value={VendeurType.INFLUENCEUR}>Influenceur</option>
+          {/* Numéro de téléphone */}
+          <div>
+            <label htmlFor="phone" className="block text-xs font-bold text-gray-900 mb-1">
+              Téléphone
+            </label>
+            <div className="flex gap-1 sm:gap-2">
+              <select
+                name="countryCode"
+                value={formData.countryCode}
+                onChange={handleChange}
+                className="w-16 sm:w-20 px-1 sm:px-2 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm font-medium"
+              >
+                <option value="+221">+221</option>
+                <option value="+33">+33</option>
+                <option value="+1">+1</option>
+                <option value="+44">+44</option>
               </select>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="flex-1 px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm"
+              />
             </div>
+            {errors.phone && (
+              <p className="text-red-700 text-xs mt-1">{errors.phone}</p>
+            )}
+          </div>
 
-            {/* Confirm Password */}
-            <div className="space-y-1">
-              <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-              <Input id="confirmPassword" name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleChange} placeholder="********" />
-              {errors.confirmPassword && <p className="text-xs text-red-600">{errors.confirmPassword}</p>}
-            </div>
+          {/* Créer un mot de passe */}
+          <div>
+            <label htmlFor="password" className="block text-xs font-bold text-gray-900 mb-1">
+              Mot de passe
+            </label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm"
+              placeholder="• • • • • • • •"
+            />
+            {errors.password && (
+              <p className="text-red-700 text-xs mt-1">{errors.password}</p>
+            )}
+          </div>
 
-            <Button type="submit" disabled={loading} className="w-full bg-black hover:bg-gray-800 text-white py-3 text-base font-medium">
-              {loading ? '...' : 'Créer un compte'}
-            </Button>
-            {apiError && <p className="text-center text-sm text-red-600">{apiError}</p>}
-          </form>
+          {/* Type de vendeur */}
+          <div>
+            <label htmlFor="vendeur_type" className="block text-xs font-bold text-gray-900 mb-1">
+              Type de vendeur
+            </label>
+            <select
+              id="vendeur_type"
+              name="vendeur_type"
+              value={formData.vendeur_type}
+              onChange={handleChange}
+              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm"
+            >
+              <option value="">Choisissez un type</option>
+              <option value="DESIGNER">Designer</option>
+              <option value="ARTISTE">Artiste</option>
+              <option value="INFLUENCEUR">Influenceur</option>
+            </select>
+            {errors.vendeur_type && (
+              <p className="text-red-700 text-xs mt-1">{errors.vendeur_type}</p>
+            )}
+          </div>
 
-          <p className="text-center text-xs text-gray-500 mt-4">
-            Vous avez déjà un compte ?{' '}
-            <Link to="/vendeur/login" className="underline hover:text-black dark:hover:text-white">
-              Se connecter
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+          {/* Confirmer mot de passe */}
+          <div>
+            <label htmlFor="confirmPassword" className="block text-xs font-bold text-gray-900 mb-1">
+              Confirmer mot de passe
+            </label>
+            <input
+              type="password"
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-yellow-600 bg-yellow-50 text-xs sm:text-sm"
+              placeholder="• • • • • • • •"
+            />
+            {errors.confirmPassword && (
+              <p className="text-red-700 text-xs mt-1">{errors.confirmPassword}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Checkbox Terms - Outside card */}
+      <div className="w-full max-w-xs sm:max-w-sm mb-2 sm:mb-3">
+        <div className="flex items-start gap-2">
+          <div className="flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 mt-0.5 bg-red-500 rounded flex-shrink-0">
+            <input
+              type="checkbox"
+              id="acceptTerms"
+              name="acceptTerms"
+              checked={formData.acceptTerms}
+              onChange={handleChange}
+              className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-0 rounded-sm text-white focus:ring-0 cursor-pointer"
+            />
+          </div>
+          <label htmlFor="acceptTerms" className="text-xs text-gray-700 leading-tight">
+            J'accepte les{' '}
+            <a href="#" className="text-blue-500 underline">
+              Conditions
+            </a>{' '}
+            et la{' '}
+            <a href="#" className="text-blue-500 underline">
+              Politique
+            </a>{' '}
+            de Printalma.
+          </label>
+        </div>
+        {errors.acceptTerms && (
+          <p className="text-red-700 text-xs mt-1 ml-6 sm:ml-7">{errors.acceptTerms}</p>
+        )}
+      </div>
+
+      {/* Submit Button */}
+      <button
+        onClick={handleSubmit}
+        disabled={isLoading}
+        className="w-full max-w-xs sm:max-w-sm bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 shadow-md mb-2 sm:mb-3 text-sm disabled:cursor-not-allowed"
+      >
+        {isLoading ? 'Inscription...' : 'Je m\'enregistre'}
+      </button>
+
+      {/* Error Message */}
+      {errors.submit && (
+        <div className="w-full max-w-xs sm:max-w-sm mb-3">
+          <p className="text-red-700 text-xs text-center">{errors.submit}</p>
+        </div>
+      )}
+
+      {/* Login Link */}
+      <p className="text-xs text-gray-600 text-center">
+        Vous avez déjà un compte ?{' '}
+        <button
+          onClick={() => navigate('/login')}
+          className="text-red-500 font-semibold hover:underline bg-transparent border-none cursor-pointer text-xs"
+        >
+          Connectez-vous
+        </button>
+      </p>
     </div>
   );
 };
 
-export default VendorRegisterPage; 
+export default PrintalmaRegister;

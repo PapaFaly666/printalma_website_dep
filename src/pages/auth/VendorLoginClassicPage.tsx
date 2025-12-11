@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const VendorLoginPage = () => {
+const VendorLoginClassicPage = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -50,18 +50,10 @@ const VendorLoginPage = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Vérifier le rôle de l'utilisateur
-        if (data.user.role === 'VENDEUR') {
-          if (data.user.status === false) {
-            navigate('/vendeur/pending');
-          } else {
-            navigate('/vendeur/dashboard');
-          }
-        } else if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'SUPERADMIN') {
-          // Redirection silencieuse vers admin dashboard
-          navigate('/admin/dashboard');
+        if (data.user.status === false) {
+          navigate('/vendeur/pending');
         } else {
-          setErrors({ submit: 'Type de compte non reconnu' });
+          navigate('/vendeur/dashboard');
         }
       } else {
         setErrors({ submit: data.message || 'Email ou mot de passe incorrect' });
@@ -86,7 +78,7 @@ const VendorLoginPage = () => {
 
       {/* Title */}
       <h2 className="text-lg sm:text-xl font-normal text-gray-900 mb-6 sm:mb-8 italic text-center">
-        Connexion Vendeur
+        Connecter avec Email
       </h2>
 
       {/* Login Form Card */}
@@ -150,6 +142,18 @@ const VendorLoginPage = () => {
         </div>
       </div>
 
+      {/* Forgot Password Link */}
+      <div className="w-full max-w-xs sm:max-w-sm mb-4">
+        <p className="text-center">
+          <button
+            onClick={() => navigate('/forgot-password')}
+            className="text-xs text-blue-500 hover:underline bg-transparent border-none cursor-pointer"
+          >
+            Mot de passe oublié ?
+          </button>
+        </p>
+      </div>
+
       {/* Submit Button */}
       <button
         onClick={handleSubmit}
@@ -162,12 +166,22 @@ const VendorLoginPage = () => {
       {/* Error Message */}
       {errors.submit && (
         <div className="w-full max-w-xs sm:max-w-sm mb-3">
-          <p className="text-red-700 text-xs text-center bg-red-100 p-2 rounded">{errors.submit}</p>
+          <p className="text-red-700 text-xs text-center">{errors.submit}</p>
         </div>
       )}
 
-      {/* Register Link */}
+      {/* Back to Methods */}
       <p className="text-xs text-gray-600 text-center">
+        <button
+          onClick={() => navigate('/vendeur/login')}
+          className="text-gray-500 hover:underline bg-transparent border-none cursor-pointer text-xs"
+        >
+          ← Retour aux options de connexion
+        </button>
+      </p>
+
+      {/* Register Link */}
+      <p className="text-xs text-gray-600 text-center mt-3">
         Pas encore de compte ?{' '}
         <button
           onClick={() => navigate('/vendeur/register')}
@@ -180,4 +194,4 @@ const VendorLoginPage = () => {
   );
 };
 
-export default VendorLoginPage;
+export default VendorLoginClassicPage;

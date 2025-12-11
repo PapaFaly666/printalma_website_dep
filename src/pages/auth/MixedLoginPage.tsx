@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-const VendorLoginPage = () => {
+const MixedLoginPage = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -10,6 +10,10 @@ const VendorLoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Vérifier si la route secrète admin est activée
+  const isAdminMode = location.pathname === '/secure-admin-access-2024';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,17 +55,27 @@ const VendorLoginPage = () => {
 
       if (response.ok) {
         // Vérifier le rôle de l'utilisateur
-        if (data.user.role === 'VENDEUR') {
-          if (data.user.status === false) {
-            navigate('/vendeur/pending');
+        if (isAdminMode) {
+          // Mode admin : vérifier que c'est bien un admin
+          if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
+            navigate('/admin/dashboard');
           } else {
-            navigate('/vendeur/dashboard');
+            setErrors({ submit: 'Accès administrateur requis. Cette page est réservée aux administrateurs.' });
           }
-        } else if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'SUPERADMIN') {
-          // Redirection silencieuse vers admin dashboard
-          navigate('/admin/dashboard');
         } else {
-          setErrors({ submit: 'Type de compte non reconnu' });
+          // Mode vendeur normal
+          if (data.user.role === 'VENDEUR') {
+            if (data.user.status === false) {
+              navigate('/vendeur/pending');
+            } else {
+              navigate('/vendeur/dashboard');
+            }
+          } else if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
+            // Redirection silencieuse vers admin dashboard
+            navigate('/admin/dashboard');
+          } else {
+            setErrors({ submit: 'Type de compte non reconnu' });
+          }
         }
       } else {
         setErrors({ submit: data.message || 'Email ou mot de passe incorrect' });
@@ -84,10 +98,21 @@ const VendorLoginPage = () => {
         />
       </div>
 
-      {/* Title */}
+      {/* Title - Change selon le mode */}
       <h2 className="text-lg sm:text-xl font-normal text-gray-900 mb-6 sm:mb-8 italic text-center">
-        Connexion Vendeur
+        {isAdminMode ? 'Connexion Administrateur' : 'Connecter votre compte'}
       </h2>
+
+      {/* Admin Mode Badge - Visible seulement en mode admin */}
+      {isAdminMode && (
+        <div className="w-full max-w-xs sm:max-w-sm mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded-lg text-xs sm:text-sm text-center">
+            <span className="font-bold">⚠️ Mode Administrateur</span>
+            <br />
+            Accès sécurisé activé
+          </div>
+        </div>
+      )}
 
       {/* Login Form Card */}
       <div className="w-full max-w-xs sm:max-w-sm bg-yellow-400 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg mb-4 sm:mb-6">
@@ -166,18 +191,20 @@ const VendorLoginPage = () => {
         </div>
       )}
 
-      {/* Register Link */}
-      <p className="text-xs text-gray-600 text-center">
-        Pas encore de compte ?{' '}
-        <button
-          onClick={() => navigate('/vendeur/register')}
-          className="text-red-500 font-semibold hover:underline bg-transparent border-none cursor-pointer text-xs"
-        >
-          S'inscrire
-        </button>
-      </p>
+      {/* Register Link - Masqué en mode admin */}
+      {!isAdminMode && (
+        <p className="text-xs text-gray-600 text-center">
+          Pas encore de compte ?{' '}
+          <button
+            onClick={() => navigate('/vendeur/register')}
+            className="text-red-500 font-semibold hover:underline bg-transparent border-none cursor-pointer text-xs"
+          >
+            S'inscrire
+          </button>
+        </p>
+      )}
     </div>
   );
 };
 
-export default VendorLoginPage;
+export default MixedLoginPage;

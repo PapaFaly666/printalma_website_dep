@@ -55,6 +55,18 @@ export default function ProfilePage() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState<VendorProduct[]>([]);
 
+  // État pour les réseaux sociaux du vendeur
+  const [socialMedias, setSocialMedias] = useState<Record<string, string>>({});
+
+  // État pour les informations de profil (titre et bio)
+  const [vendorBio, setVendorBio] = useState<{ professional_title: string; vendor_bio: string }>({
+    professional_title: '',
+    vendor_bio: ''
+  });
+
+  // État pour le modal de zoom d'image
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+
   // États pour les filtres
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [tempSelectedColors, setTempSelectedColors] = useState<string[]>([]);
@@ -160,6 +172,54 @@ export default function ProfilePage() {
   };
 
   const hasPriceFilter = minPrice !== '' || maxPrice !== '';
+
+  // Fonctions pour gérer le modal de zoom d'image
+  const openImageZoom = (index: number) => {
+    setSelectedImageIndex(index);
+  };
+
+  const closeImageZoom = () => {
+    setSelectedImageIndex(null);
+  };
+
+  const goToPreviousImage = () => {
+    if (selectedImageIndex !== null && gallery && gallery.images) {
+      const newIndex = selectedImageIndex === 0 ? gallery.images.length - 1 : selectedImageIndex - 1;
+      setSelectedImageIndex(newIndex);
+    }
+  };
+
+  const goToNextImage = () => {
+    if (selectedImageIndex !== null && gallery && gallery.images) {
+      const newIndex = selectedImageIndex === gallery.images.length - 1 ? 0 : selectedImageIndex + 1;
+      setSelectedImageIndex(newIndex);
+    }
+  };
+
+  // Gestion du clavier pour le modal de zoom et bloquer le scroll
+  useEffect(() => {
+    if (selectedImageIndex !== null) {
+      // Bloquer le scroll du body quand le modal est ouvert
+      document.body.style.overflow = 'hidden';
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          closeImageZoom();
+        } else if (e.key === 'ArrowLeft') {
+          goToPreviousImage();
+        } else if (e.key === 'ArrowRight') {
+          goToNextImage();
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        // Restaurer le scroll quand le modal se ferme
+        document.body.style.overflow = 'unset';
+      };
+    }
+  }, [selectedImageIndex, gallery]);
 
   // Formater le prix en FCFA
   const formatPriceInFCFA = (price: number) => {
@@ -375,6 +435,68 @@ export default function ProfilePage() {
     loadVendorGallery();
   }, [type, vendorData]);
 
+  // Effet pour charger les réseaux sociaux du vendeur
+  useEffect(() => {
+    const loadSocialMedias = async () => {
+      try {
+        // Attendre que vendorData soit chargé pour avoir l'ID
+        if (!vendorData || !vendorData.id) {
+          return;
+        }
+
+        const response = await fetch(`http://localhost:3004/auth/public/vendor/${vendorData.id}/social-media`, {
+          headers: {
+            'accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setSocialMedias({
+            facebook: data.facebook_url || '',
+            instagram: data.instagram_url || '',
+            x: data.twitter_url || '',
+            tiktok: data.tiktok_url || ''
+          });
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des réseaux sociaux:', error);
+      }
+    };
+
+    loadSocialMedias();
+  }, [vendorData]);
+
+  // Effet pour charger les informations de profil (titre et bio) du vendeur
+  useEffect(() => {
+    const loadVendorBio = async () => {
+      try {
+        // Attendre que vendorData soit chargé pour avoir l'ID
+        if (!vendorData || !vendorData.id) {
+          return;
+        }
+
+        const response = await fetch(`http://localhost:3004/auth/public/vendor/${vendorData.id}/profile/bio`, {
+          headers: {
+            'accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setVendorBio({
+            professional_title: data.professional_title || '',
+            vendor_bio: data.vendor_bio || ''
+          });
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du profil vendeur:', error);
+      }
+    };
+
+    loadVendorBio();
+  }, [vendorData]);
+
   // Effet pour charger les produits du vendeur
   useEffect(() => {
     const loadVendorProducts = async () => {
@@ -564,10 +686,10 @@ export default function ProfilePage() {
         avatarColor: colorMap[vendeurType] || '#6B7280',
         about: `Profile ${vendeurType.toLowerCase()} - ${vendorData.shop_name || `${vendorData.firstName} ${vendorData.lastName}`}`,
         socialLinks: {
-          facebook: '#',
-          instagram: '#',
-          x: '#',
-          tiktok: '#',
+          facebook: socialMedias.facebook || '#',
+          instagram: socialMedias.instagram || '#',
+          x: socialMedias.x || '#',
+          tiktok: socialMedias.tiktok || '#',
         },
       };
     } else {
@@ -648,17 +770,17 @@ export default function ProfilePage() {
         </div>
 
         {/* Section profil - Structure optimisée */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
-          {/* Hero Profile Section */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-8">
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Hero Profile Section - Structure 3 colonnes */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6 sm:p-8 mb-8">
+            <div className="flex flex-col lg:flex-row gap-3 lg:gap-6 items-start w-full">
 
-              {/* Photo de profil */}
-              <div className="flex-shrink-0">
+              {/* Colonne 1 - Zone de profil (gauche) */}
+              <div className="flex justify-start">
                 <div
-                  className="w-32 h-32 sm:w-40 sm:h-40 rounded-3xl flex items-center justify-center p-4 relative"
+                  className="w-48 h-48 rounded-xl flex items-center justify-center p-6 relative"
                   style={{
-                    backgroundColor: profile.avatarColor
+                    backgroundColor: '#F2D12E' // Jaune selon design spec
                   }}
                 >
                   {/* Avatar rond à l'intérieur */}
@@ -670,7 +792,7 @@ export default function ProfilePage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <svg className="w-16 h-16 sm:w-20 sm:h-20 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-18 h-18 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                       </svg>
                     )}
@@ -678,51 +800,39 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Informations du vendeur */}
-              <div className="flex-1 min-w-0">
-                <div className="space-y-3 sm:space-y-4">
+              {/* Colonne 2 - Informations du designer (milieu) */}
+              <div className="flex-1 text-left space-y-1">
+                {/* Nom du designer */}
+                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 leading-tight" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  {vendorData?.shop_name || `${vendorData?.firstName || 'Designer'} ${vendorData?.lastName || ''}`.trim()}
+                </h1>
 
-                  {/* Nom et rating sur la même ligne */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 leading-none" style={{ fontFamily: "'Inter', sans-serif" }}>
-                      {vendorData?.shop_name || `${vendorData?.firstName || 'Designer'} ${vendorData?.lastName || ''}`.trim()}
-                    </h1>
-                    <div className="flex items-center gap-1">
-                      <svg className="w-4 h-4 text-gray-900 fill-current" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                      <span className="text-sm font-semibold text-gray-900">4.8</span>
-                    </div>
-                  </div>
+                {/* Rating */}
+                <div className="flex items-center justify-start gap-2">
+                  <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  <span className="text-lg font-bold text-gray-900">4.8</span>
+                </div>
 
-                  {/* Titre/Fonction */}
-                  <p className="text-sm text-gray-600 italic" style={{ fontFamily: "'Inter', sans-serif" }}>
-                    {vendorData?.shop_name ? 'Créateur de designs personnalisés' : 'Graphic Designer'}
-                  </p>
+                {/* Titre/Fonction */}
+                <p className="text-base text-gray-700 font-medium" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  {vendorBio.professional_title || (vendorData?.shop_name ? 'Créateur de designs personnalisés' : 'Graphic Designer')}
+                </p>
 
-                  {/* Section À propos */}
-                  <div className="space-y-2">
-                    <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
-                      À propos
-                    </h2>
-                    <div className="space-y-2 text-gray-700 text-sm leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-                      <p>
-                        {vendorData?.about || profile.about || 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.'}
-                      </p>
-                      <p>
-                        Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Réseaux sociaux */}
-                  <div className="flex items-center gap-2">
-                    {Object.keys(profile.socialLinks).map((network) => (
+                {/* Réseaux sociaux */}
+                <div className="flex items-center justify-start gap-2">
+                  {Object.keys(profile.socialLinks)
+                    .filter(network => {
+                      const url = profile.socialLinks[network as keyof typeof profile.socialLinks];
+                      return url && url !== '#' && url.trim() !== '';
+                    })
+                    .map((network) => (
                       <a
                         key={network}
                         href={profile.socialLinks[network as keyof typeof profile.socialLinks]}
-                        className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-                        style={{ backgroundColor: profile.avatarColor }}
+                        className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+                        style={{ backgroundColor: '#F2D12E' }} // Jaune selon design spec
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -731,8 +841,29 @@ export default function ProfilePage() {
                         </div>
                       </a>
                     ))}
-                  </div>
+                </div>
+              </div>
 
+              {/* Colonne 3 - A propos (droite) */}
+              <div className="flex-1">
+                <div className="text-left space-y-1">
+                  <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    À propos
+                  </h2>
+                  <div className="space-y-2 text-gray-700 leading-relaxed text-sm" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    {vendorBio.vendor_bio ? (
+                      <p className="whitespace-pre-wrap">{vendorBio.vendor_bio}</p>
+                    ) : (
+                      <>
+                        <p>
+                          {vendorData?.about || profile.about || 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.'}
+                        </p>
+                        <p>
+                          Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis.
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -780,6 +911,7 @@ export default function ProfilePage() {
                     return (
                       <div
                         key={image.id || index}
+                        onClick={() => openImageZoom(index)}
                         className={`${
                           isMainImage
                             ? 'col-span-2 row-span-1 sm:row-span-2 aspect-[2/1] sm:aspect-auto sm:h-[400px]'
@@ -1591,6 +1723,86 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de zoom d'image */}
+      {selectedImageIndex !== null && gallery && gallery.images && gallery.images[selectedImageIndex] && (
+        <div
+          className="fixed inset-0 z-50 bg-black bg-opacity-95 flex items-center justify-center p-4"
+          onClick={closeImageZoom}
+        >
+          {/* Bouton fermer */}
+          <button
+            onClick={closeImageZoom}
+            className="absolute top-4 right-4 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 z-50"
+          >
+            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Bouton précédent */}
+          {gallery.images.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPreviousImage();
+              }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 z-50"
+            >
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Bouton suivant */}
+          {gallery.images.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToNextImage();
+              }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 z-50"
+            >
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Container de l'image */}
+          <div
+            className="relative max-w-7xl max-h-[90vh] w-full h-full flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Image zoomée */}
+            <img
+              src={gallery.images[selectedImageIndex].imageUrl || gallery.images[selectedImageIndex].url}
+              alt={gallery.images[selectedImageIndex].caption || `Image ${selectedImageIndex + 1}`}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              style={{
+                imageRendering: 'auto',
+                WebkitFontSmoothing: 'antialiased',
+                MozOsxFontSmoothing: 'grayscale'
+              }}
+            />
+
+            {/* Caption */}
+            {gallery.images[selectedImageIndex].caption && (
+              <div className="mt-4 bg-black/50 backdrop-blur-sm text-white px-6 py-3 rounded-lg max-w-2xl text-center">
+                <p className="text-sm sm:text-base font-medium">
+                  {gallery.images[selectedImageIndex].caption}
+                </p>
+              </div>
+            )}
+
+            {/* Compteur d'images */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-xs sm:text-sm font-medium">
+              {selectedImageIndex + 1} / {gallery.images.length}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </>

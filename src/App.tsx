@@ -44,6 +44,10 @@ import ProtectedRoute, { AdminRoute, VendeurRoute, PublicRoute } from './compone
 import VendorLoginPage from './pages/auth/VendorLoginPage';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage';
 import VendorPendingPage from './pages/auth/VendorPendingPage';
+import VendorLoginMethodsPage from './pages/auth/VendorLoginMethodsPage';
+import VendorLoginClassicPage from './pages/auth/VendorLoginClassicPage';
+import AdminLoginPage from './pages/auth/AdminLoginPage';
+import SecretAdminLoginPage from './pages/auth/SecretAdminLoginPage';
 
 // Nouveaux composants de réinitialisation de mot de passe
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -221,6 +225,9 @@ import DesignersPage from './pages/DesignersPage';
 // 👤 Page de profil
 import ProfilePage from './pages/ProfilePage';
 
+// 🎯 Devenir Vendeur
+import BecomeVendorPage from './pages/BecomeVendorPage';
+
 // Créer une instance globale de QueryClient
 const queryClient = new QueryClient();
 
@@ -278,6 +285,7 @@ function App() {
                 <Route path='/designers' element={<DesignersPage />} />
                 <Route path='/profile/:type/:shopName' element={<ProfilePage />} />
                 <Route path='/vendez-vos-oeuvres' element={<SellDesignPage />} />
+                <Route path='/devenir-vendeur' element={<BecomeVendorPage />} />
                 <Route path='/cart' element={<CartPage />} />
                 <Route path='/order-form' element={<ModernOrderFormPage />} />
                 <Route path='/order-confirmation' element={<OrderConfirmationPage />} />
@@ -397,6 +405,18 @@ function App() {
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 
+                {/* Connexion Admin - Route secrète */}
+                <Route path='/secure-admin-access-2024' element={
+                  <SecretAdminLoginPage />
+                } />
+
+                {/* Connexion Admin - Route publique (redirection) */}
+                <Route path='/admin/login' element={
+                  <PublicRoute>
+                    <VendorLoginMethodsPage />
+                  </PublicRoute>
+                } />
+
                 {/* Route par défaut - redirection intelligente */}
                 <Route path='/dashboard' element={
                   <ProtectedRoute>
@@ -404,8 +424,22 @@ function App() {
                   </ProtectedRoute>
                 } />
 
-                {/* Login vendeur dédié */}
+                {/* Login vendeur - Page de méthodes */}
                 <Route path='/vendeur/login' element={
+                  <PublicRoute>
+                    <VendorLoginMethodsPage />
+                  </PublicRoute>
+                } />
+
+                {/* Login vendeur - Formulaire classique */}
+                <Route path='/vendeur/login-classic' element={
+                  <PublicRoute>
+                    <VendorLoginClassicPage />
+                  </PublicRoute>
+                } />
+
+                {/* Login vendeur - Ancienne page (pour compatibilité) */}
+                <Route path='/vendeur/login-legacy' element={
                   <PublicRoute>
                     <VendorLoginPage />
                   </PublicRoute>

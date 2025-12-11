@@ -42,8 +42,25 @@ const VendorSales: React.FC = () => {
     totalPages: 0
   });
 
-  // Statistiques calculées localement
+  // Statistiques depuis l'API
+  const [apiStatistics, setApiStatistics] = useState<any>(null);
+
   const statistics = useMemo(() => {
+    // Utiliser les statistiques de l'API si disponibles, sinon calculer localement
+    if (apiStatistics) {
+      return {
+        totalOrders: apiStatistics.totalOrders || 0,
+        totalRevenue: apiStatistics.totalRevenue || 0,
+        totalVendorEarnings: apiStatistics.totalVendorAmount || 0,
+        pendingOrders: apiStatistics.pendingOrders || orders.filter(o => o.status === 'PENDING').length,
+        processingOrders: apiStatistics.processingOrders || orders.filter(o => o.status === 'PROCESSING').length,
+        shippedOrders: apiStatistics.shippedOrders || orders.filter(o => o.status === 'SHIPPED').length,
+        deliveredOrders: apiStatistics.deliveredOrders || orders.filter(o => o.status === 'DELIVERED').length,
+        cancelledOrders: apiStatistics.cancelledOrders || orders.filter(o => o.status === 'CANCELLED').length,
+      };
+    }
+
+    // Fallback: calcul local
     const paidOrders = orders.filter(order => order.paymentStatus === 'PAID');
     return {
       totalOrders: pagination?.total || 0,
@@ -55,7 +72,7 @@ const VendorSales: React.FC = () => {
       deliveredOrders: orders.filter(o => o.status === 'DELIVERED').length,
       cancelledOrders: orders.filter(o => o.status === 'CANCELLED').length,
     };
-  }, [orders, pagination]);
+  }, [orders, pagination, apiStatistics]);
 
   // Charger les données depuis le backend
   const loadOrders = async (showLoader = true) => {
@@ -92,9 +109,17 @@ const VendorSales: React.FC = () => {
       const response = await ordersService.getMyOrders(filters);
 
       console.log('✅ Commandes récupérées:', response);
+      console.log('🔍 bénéficeCommande dans la première commande:', response.orders[0]?.beneficeCommande);
+      console.log('🔍 totalAmount dans la première commande:', response.orders[0]?.totalAmount);
 
       setOrders(response.orders);
       setPagination(response.pagination);
+
+      // Récupérer les statistiques depuis l'API si disponibles
+      if (response.statistics) {
+        console.log('📊 Statistiques depuis l\'API:', response.statistics);
+        setApiStatistics(response.statistics);
+      }
     } catch (error: any) {
       console.error('Erreur lors du chargement des commandes:', error);
       toast.error(error.message || 'Erreur lors du chargement des commandes');
@@ -469,7 +494,7 @@ const VendorSales: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <p className="text-lg font-bold text-gray-900">
-                                {formatAmount(order.totalAmount)}
+                                {formatAmount(order.beneficeCommande ? order.beneficeCommande : order.totalAmount / 100)}
                               </p>
                               {order.paymentStatus === 'FAILED' ? (
                                 <p className="text-sm font-medium text-red-600">

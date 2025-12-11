@@ -20,7 +20,7 @@ import {
   DollarSign,
   CreditCard
 } from 'lucide-react';
-import { ordersService, Order, OrderStatus, OrdersResponse } from '../../services/ordersService';
+import { ordersService, Order, OrderStatus, OrdersResponse, OrderStatistics } from '../../services/ordersService';
 import { toast } from 'sonner';
 
 // ✅ Fonction de formatage de date native pour remplacer date-fns
@@ -428,8 +428,8 @@ export const VendorSalesPage: React.FC = () => {
                             )}
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold">{(order.totalAmount / 100).toLocaleString()} F</p>
-                            <p className="text-xs text-gray-500">Total commande</p>
+                            <p className="text-lg font-bold text-gray-900">{(order.beneficeCommande || order.totalAmount / 100).toLocaleString()} F</p>
+                            <p className="text-xs text-gray-500">Bénéfice commande</p>
                             {order.commission_info && order.commission_info.has_custom_rate && (
                               <Badge variant="secondary" className="mt-1">
                                 Taux personnalisé

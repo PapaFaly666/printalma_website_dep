@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13.06 14.84">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #dd2e44;
+      }
+
+      .cls-2 {
+        fill: #66757f;
+      }
+
+      .cls-3 {
+        fill: #99aab5;
+      }
+
+      .cls-4 {
+        fill: #be1931;
+      }
+
+      .cls-5 {
+        fill: #ccd6dd;
+      }
+    </style>
+  </defs>
+  <g id="Calque_1" data-name="Calque 1">
+    <g>
+      <path class="cls-4" d="M7.85,12.72c.39.71-.03,1.38-.69,1.86s-1.51.28-1.9-.43l-1.64-2.88c-.39-.71-.18-1.68.47-2.16s1.92-1.39,1.9.43,1.86,3.18,1.86,3.18"/>
+      <path class="cls-5" d="M11.2,3.04c1.49,2.05,2.24,4.04,1.67,4.45s-7.27,2.75-8.76.7C2.62,6.14,6.91.49,7.48.07s2.23.92,3.72,2.96"/>
+      <ellipse class="cls-2" cx="10.17" cy="3.78" rx="1.26" ry="4.58" transform="translate(-.28 6.7) rotate(-36.01)"/>
+      <path class="cls-1" d="M7.4,8.97l-4.37,2.72c-1.48,1.08-4.07-2.48-2.59-3.56l3.94-3.31c-.24,1.54,1.48,3.91,3.02,4.15"/>
+      <ellipse class="cls-3" cx="9.86" cy="4.01" rx=".55" ry="1.59" transform="translate(-.47 6.56) rotate(-36.01)"/>
+    </g>
+  </g>
+</svg>

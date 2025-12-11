@@ -50,6 +50,7 @@ export interface Order {
   paymentMethod: string;
   paymentStatus: string;
   notes?: string;
+  beneficeCommande?: number;
   statusHistory?: {
     status: OrderStatus;
     updatedAt: string;
@@ -79,8 +80,30 @@ export interface Order {
   updatedAt: string;
 }
 
+export interface OrderStatistics {
+  totalOrders: number;
+  totalAmount: number;
+  statusBreakdown: Record<string, number>;
+  paymentStatusBreakdown: Record<string, number>;
+  averageOrderValue: number;
+  recentOrders: number;
+  pendingOrders: number;
+  confirmedOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  paidOrders: number;
+  unpaidOrders: number;
+  totalRevenue: number;
+  totalCommission: number;
+  totalVendorAmount: number;
+  annualRevenue: number;
+  monthlyRevenue: number;
+  paymentMethods: Record<string, number>;
+}
+
 export interface OrdersResponse {
   orders: Order[];
+  statistics?: OrderStatistics;
   pagination: {
     page: number;
     limit: number;
@@ -151,6 +174,7 @@ export const ordersService = {
         paymentAttempts: order.paymentAttempts || 0,
         phoneNumber: order.phoneNumber,
         notes: order.notes,
+        beneficeCommande: order.beneficeCommande,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
         shippedAt: order.shippedAt,
@@ -219,6 +243,7 @@ export const ordersService = {
       // Pas de pagination - retourner toutes les commandes
       return {
         orders: filteredOrders,
+        statistics: result.data.statistics, // Inclure les statistiques depuis l'API
         pagination: {
           page: 1,
           limit: filteredOrders.length,

@@ -2181,28 +2181,37 @@ const SellDesignPage: React.FC = () => {
   }, [getSalePrice, getCost]);
 
   const getCommissionAmount = useCallback((p: Product): number => {
-    // ✅ CORRIGÉ: Commission = ce que l'ADMIN gagne (le reste après la part vendeur)
+    // ✅ CORRIGÉ: Commission = ce qui reste après la part vendeur
     const rawRate = (vendorCommission ?? 40);
     const clampedRate = Math.max(1, Math.round(rawRate));
-    const profit = getProfit(p); // Bénéfice total = Prix de vente - Prix de revient
-    const vendorShare = (profit * clampedRate) / 100; // Part du vendeur
-    return Math.max(0, profit - vendorShare); // Commission admin = Bénéfice - Part vendeur
-  }, [vendorCommission, getProfit]);
+    const salePrice = getSalePrice(p); // Prix de vente total
+
+    // Validation
+    if (!Number.isFinite(salePrice) || salePrice < 0 || !Number.isFinite(clampedRate)) {
+      return 0;
+    }
+
+    const vendorShare = (salePrice * clampedRate) / 100; // Part du vendeur
+    return Math.max(0, salePrice - vendorShare); // Ce qui reste pour l'admin
+  }, [vendorCommission, getSalePrice]);
 
   const getVendorRevenue = useCallback((p: Product): number => {
-    // ✅ CORRIGÉ: Revenus vendeur = sa part directe du bénéfice
-    // Si commission = 74%, vendeur prend 74% du bénéfice, admin prend 26%
+    // ✅ CORRIGÉ: Revenus vendeur = bénéfice - commission
+    // Le vendeur reçoit son bénéfice moins la commission de l'admin
     const rawRate = (vendorCommission ?? 40);
     const clampedRate = Math.max(1, Math.round(rawRate));
-    const profit = getProfit(p); // Bénéfice total
+    const profit = getProfit(p); // Bénéfice du vendeur (customProfit)
 
     // ✅ NOUVEAU: Validation - ne pas afficher si les données sont invalides
     if (!Number.isFinite(profit) || profit < 0 || !Number.isFinite(clampedRate)) {
       return 0;
     }
 
-    const vendorRevenue = (profit * clampedRate) / 100;
-    return Math.max(0, vendorRevenue); // Part directe du vendeur
+    // Commission calculée sur le bénéfice
+    const commission = (profit * clampedRate) / 100;
+    const vendorRevenue = profit - commission;
+
+    return Math.max(0, vendorRevenue); // Ce que le vendeur reçoit réellement
   }, [vendorCommission, getProfit]);
 
   // Nouvel état pour gérer le mode sélectionné
@@ -3343,9 +3352,9 @@ const SellDesignPage: React.FC = () => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    const basePrice = basePrices[productId] || product.price;
-    const customProfit = customProfits[productId] || 0;
-    const newPrice = basePrice + customProfit;
+    // ✅ CORRECTION: Utiliser getSalePrice qui gère correctement le prix suggéré
+    // au lieu de recalculer manuellement avec basePrice + customProfit
+    const newPrice = getSalePrice(product);
 
     handleFieldChange(productId, 'price', newPrice);
     handleSave(productId);
@@ -3724,11 +3733,11 @@ const SellDesignPage: React.FC = () => {
         const productId = Number(idStr);
         const product = products.find(p => p.id === productId);
         if (!product) return;
-        
-        const currentPrice = editStates[productId]?.price ?? product.price;
+
+        const currentPrice = editStates[productId]?.price ?? product.suggestedPrice ?? product.price;
         const basePrice = basePrices[productId] || product.price;
         const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
-        
+
         if (currentPrice < basePrice) {
           const priceType = hasSuggestedPrice ? "prix suggéré" : "prix minimum";
           produitsAvecPrixInferieur.push({
@@ -3740,7 +3749,7 @@ const SellDesignPage: React.FC = () => {
           });
         }
       });
-      
+
       // 🆕 AFFICHER UN AVERTISSEMENT SI PRIX INFÉRIEURS (MAIS NE PAS BLOQUER LA SAUVEGARDE)
       if (produitsAvecPrixInferieur.length > 0) {
         const details = produitsAvecPrixInferieur.map(p => 
@@ -3776,13 +3785,31 @@ const SellDesignPage: React.FC = () => {
         postValidationAction: PostValidationAction.TO_DRAFT
       });
 
+      // 🔧 CORRECTION: Transférer les prix calculés avec customProfits vers editStates avant publication
+      const updatedEditStates = { ...editStates };
+      selectedProductIds.forEach(idStr => {
+        const productId = Number(idStr);
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        // Si pas de prix déjà édité, calculer le prix final avec getSalePrice
+        if (updatedEditStates[productId]?.price === undefined) {
+          const finalPrice = getSalePrice(product);
+          updatedEditStates[productId] = {
+            ...updatedEditStates[productId],
+            price: finalPrice
+          };
+          console.log(`💰 Prix final calculé pour ${product.name}: ${finalPrice} FCFA`);
+        }
+      });
+
       // 🆕 PREMIÈRE CRÉATION DES PRODUITS (toujours forcé en DRAFT)
       const results = await publishProducts(
         selectedProductIds,
         products,
         productColors,
         productSizes,
-        editStates,
+        updatedEditStates,
         basePrices,
         {
           designUrl,
@@ -3859,6 +3886,24 @@ const SellDesignPage: React.FC = () => {
     try {
       setLoading(true);
 
+      // 🔧 CORRECTION: Transférer les prix calculés avec customProfits vers editStates avant publication
+      const updatedEditStates = { ...editStates };
+      selectedProductIds.forEach(idStr => {
+        const productId = Number(idStr);
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        // Si pas de prix déjà édité, calculer le prix final avec getSalePrice
+        if (updatedEditStates[productId]?.price === undefined) {
+          const finalPrice = getSalePrice(product);
+          updatedEditStates[productId] = {
+            ...updatedEditStates[productId],
+            price: finalPrice
+          };
+          console.log(`💰 Prix final calculé pour ${product.name}: ${finalPrice} FCFA`);
+        }
+      });
+
       // Récupérer le design sélectionné
       const selectedDesign = existingDesignsWithValidation.find(d => d.imageUrl === designUrl || d.thumbnailUrl === designUrl);
       if (!selectedDesign) {
@@ -3876,7 +3921,7 @@ const SellDesignPage: React.FC = () => {
         products,
         productColors,
         productSizes,
-        editStates,
+        updatedEditStates,
         basePrices,
         {
           designUrl,
@@ -3955,16 +4000,16 @@ const SellDesignPage: React.FC = () => {
     try {
       // 🆕 VALIDATION FINALE DES PRIX : Vérification non-bloquante avec avertissement
       const produitsAvecPrixInferieur: Array<{id: number, name: string, currentPrice: number, minimumPrice: number, type: string}> = [];
-      
+
       selectedProductIds.forEach(idStr => {
         const productId = Number(idStr);
         const product = products.find(p => p.id === productId);
         if (!product) return;
-        
-        const currentPrice = editStates[productId]?.price ?? product.price;
+
+        const currentPrice = editStates[productId]?.price ?? product.suggestedPrice ?? product.price;
         const basePrice = basePrices[productId] || product.price;
         const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
-        
+
         if (currentPrice < basePrice) {
           const priceType = hasSuggestedPrice ? "prix suggéré" : "prix minimum";
           produitsAvecPrixInferieur.push({
@@ -3976,13 +4021,13 @@ const SellDesignPage: React.FC = () => {
           });
         }
       });
-      
+
       // 🆕 AFFICHER UN AVERTISSEMENT SI PRIX INFÉRIEURS (MAIS NE PAS BLOQUER)
       if (produitsAvecPrixInferieur.length > 0) {
-        const details = produitsAvecPrixInferieur.map(p => 
+        const details = produitsAvecPrixInferieur.map(p =>
           `• ${p.name}: ${p.currentPrice.toLocaleString()} FCFA (${p.type}: ${p.minimumPrice.toLocaleString()} FCFA)`
         ).join('\n');
-        
+
         toast({
           title: `⚠️ Attention: ${produitsAvecPrixInferieur.length} produit(s) avec prix inférieur`,
           description: `Les produits suivants ont un prix inférieur au minimum recommandé mais seront tout de même publiés:\n${details}`,
@@ -3990,7 +4035,25 @@ const SellDesignPage: React.FC = () => {
           duration: 8000,
         });
       }
-      
+
+      // 🔧 CORRECTION: Transférer les prix calculés avec customProfits vers editStates avant publication
+      const updatedEditStates = { ...editStates };
+      selectedProductIds.forEach(idStr => {
+        const productId = Number(idStr);
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        // Si pas de prix déjà édité, calculer le prix final avec getSalePrice
+        if (updatedEditStates[productId]?.price === undefined) {
+          const finalPrice = getSalePrice(product);
+          updatedEditStates[productId] = {
+            ...updatedEditStates[productId],
+            price: finalPrice
+          };
+          console.log(`💰 Prix final calculé pour ${product.name}: ${finalPrice} FCFA`);
+        }
+      });
+
       // 🆕 NOUVEAU WORKFLOW : Pas de blocage, création directe avec statut approprié
       const selectedDesign = existingDesignsWithValidation.find(d => d.imageUrl === designUrl || d.thumbnailUrl === designUrl);
       const validationStatus = await checkDesignValidationStatus(selectedDesign?.id as number);
@@ -4007,7 +4070,7 @@ const SellDesignPage: React.FC = () => {
           products,
           productColors,
           productSizes,
-          editStates,
+          updatedEditStates,
           basePrices,
           {
             designUrl,
@@ -4043,7 +4106,7 @@ const SellDesignPage: React.FC = () => {
           products,
           productColors,
           productSizes,
-          editStates,
+          updatedEditStates,
           basePrices,
           {
             designUrl,
@@ -4116,7 +4179,7 @@ const SellDesignPage: React.FC = () => {
           products,
           productColors,
           productSizes,
-          editStates,
+          updatedEditStates,
           basePrices,
           {
             designUrl,
@@ -5514,7 +5577,7 @@ const SellDesignPage: React.FC = () => {
                                 {editStates[product.id]?.name || product.name}
                               </h4>
                               <p className="text-sm sm:text-base font-bold text-gray-700 dark:text-gray-300 mt-1">
-                                {editStates[product.id]?.price || product.price} FCFA
+                                {getSalePrice(product).toLocaleString()} FCFA
                               </p>
                             </div>
                             {/* Bouton aperçu détaillé */}

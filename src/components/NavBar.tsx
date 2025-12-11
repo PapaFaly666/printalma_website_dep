@@ -142,6 +142,7 @@ const NavBar = () => {
           <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
             {/* Bouton Devenir Vendeur */}
             <button
+              onClick={() => navigate('/devenir-vendeur')}
               style={{ backgroundColor: "#F2D12E", color: "black" }}
               className="hidden sm:flex text-black font-semibold px-3 py-1.5 sm:px-4 sm:py-2 lg:px-5 lg:py-2.5 xl:px-6 xl:py-3 rounded-full text-xs sm:text-sm lg:text-base xl:text-lg items-center space-x-1 lg:space-x-2 hover:bg-yellow-400 transition-all duration-200"
             >
@@ -483,7 +484,13 @@ const NavBar = () => {
               )}
 
               {/* Devenir Vendeur button mobile */}
-              <button className="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-4 py-2 text-sm rounded-md flex items-center justify-center space-x-1">
+              <button
+                onClick={() => {
+                  navigate('/devenir-vendeur');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-4 py-2 text-sm rounded-md flex items-center justify-center space-x-1"
+              >
                 <img
                   src="/marketplace.svg"
                   alt="marketplace"

@@ -63,6 +63,67 @@ const VendorAccountPage: React.FC = () => {
     fetchAccountStatus();
   }, []);
 
+  // ✅ Récupération des réseaux sociaux au chargement
+  useEffect(() => {
+    const fetchSocialMedias = async () => {
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/auth/vendor/social-media`, {
+          credentials: 'include',
+          headers: {
+            'accept': 'application/json'
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSocialMedias({
+            facebook_url: data.facebook_url || '',
+            instagram_url: data.instagram_url || '',
+            twitter_url: data.twitter_url || '',
+            tiktok_url: data.tiktok_url || '',
+            youtube_url: data.youtube_url || '',
+            linkedin_url: data.linkedin_url || ''
+          });
+        }
+      } catch (error) {
+        console.error('Erreur récupération réseaux sociaux:', error);
+      }
+    };
+
+    fetchSocialMedias();
+  }, []);
+
+  // ✅ Récupération du profil (fonction et bio) au chargement
+  useEffect(() => {
+    const fetchProfileBio = async () => {
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/auth/vendor/profile/bio`, {
+          credentials: 'include',
+          headers: {
+            'accept': 'application/json'
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setEditableFields(prev => ({
+            ...prev,
+            function: {
+              ...prev.function,
+              value: data.professional_title || 'Créateur de designs personnalisés'
+            },
+            about: {
+              ...prev.about,
+              value: data.vendor_bio || ''
+            }
+          }));
+        }
+      } catch (error) {
+        console.error('Erreur récupération profil vendeur:', error);
+      }
+    };
+
+    fetchProfileBio();
+  }, []);
+
   // ✅ États pour les champs éditables individuels
   const [editableFields, setEditableFields] = useState<Record<string, EditableField>>({
     firstName: { value: user?.firstName || '', isEditing: false, error: '', isChecking: false },
@@ -71,7 +132,9 @@ const VendorAccountPage: React.FC = () => {
     phone: { value: (user as any)?.phone || '', isEditing: false, error: '', isChecking: false },
     country: { value: (user as any)?.country || '', isEditing: false, error: '', isChecking: false },
     address: { value: (user as any)?.address || '', isEditing: false, error: '', isChecking: false },
-    shop_name: { value: (user as any)?.shop_name || '', isEditing: false, error: '', isChecking: false }
+    shop_name: { value: (user as any)?.shop_name || '', isEditing: false, error: '', isChecking: false },
+    about: { value: '', isEditing: false, error: '', isChecking: false }, // Sera mis à jour par l'API
+    function: { value: '', isEditing: false, error: '', isChecking: false } // Sera mis à jour par l'API
   });
 
   // États pour les réseaux sociaux
@@ -216,23 +279,42 @@ const VendorAccountPage: React.FC = () => {
   };
 
   const cancelEditing = (fieldName: string) => {
-    setEditableFields(prev => ({
-      ...prev,
-      [fieldName]: { 
-        ...prev[fieldName], 
-        isEditing: false,
-        value: String((user as any)?.[fieldName] || ''),
-        error: ''
-      }
-    }));
+    // Pour function et about, conserver la valeur actuelle au lieu de restaurer depuis user
+    if (fieldName === 'function' || fieldName === 'about') {
+      setEditableFields(prev => ({
+        ...prev,
+        [fieldName]: {
+          ...prev[fieldName],
+          isEditing: false,
+          error: ''
+        }
+      }));
+    } else {
+      setEditableFields(prev => ({
+        ...prev,
+        [fieldName]: {
+          ...prev[fieldName],
+          isEditing: false,
+          value: String((user as any)?.[fieldName] || ''),
+          error: ''
+        }
+      }));
+    }
   };
 
-  const updateField = (fieldName: string, value: string) => {
-    setEditableFields(prev => ({
-      ...prev,
-      [fieldName]: { ...prev[fieldName], value }
-    }));
-  };
+  const updateField = useCallback((fieldName: string, value: string) => {
+    // Éviter le re-rendu si la valeur est identique (évite la perte de focus)
+    setEditableFields(prev => {
+      const currentValue = prev[fieldName]?.value;
+      if (currentValue === value) {
+        return prev; // Pas de changement, pas de re-rendu
+      }
+      return {
+        ...prev,
+        [fieldName]: { ...prev[fieldName], value }
+      };
+    });
+  }, []);
 
   const saveField = async (fieldName: string) => {
     const field = editableFields[fieldName];
@@ -243,43 +325,78 @@ const VendorAccountPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const formData = new FormData();
-      formData.append(fieldName, field.value);
+      // Utiliser l'API spécifique pour la fonction et la bio
+      if (fieldName === 'function' || fieldName === 'about') {
+        const profileData = {
+          professional_title: fieldName === 'function' ? field.value : editableFields.function.value,
+          vendor_bio: fieldName === 'about' ? field.value : editableFields.about.value
+        };
 
-      const response = await fetch(
-        API_CONFIG.BASE_URL + API_ENDPOINTS.AUTH.UPDATE_VENDOR_PROFILE,
-        {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/auth/vendor/profile/bio`, {
           method: 'PUT',
           credentials: 'include',
-          body: formData
-        }
-      );
+          headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json'
+          },
+          body: JSON.stringify(profileData)
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (errorText.includes('nom de boutique') || errorText.includes('shop_name')) {
+        if (!response.ok) {
+          const errorText = await response.text();
+          toast.error(errorText || 'Erreur lors de la mise à jour du profil');
+        } else {
+          const data = await response.json();
+          console.log('Profil mis à jour:', data);
+
           setEditableFields(prev => ({
             ...prev,
-            shop_name: { 
-              ...prev.shop_name, 
-              error: 'Ce nom de boutique est déjà utilisé par un autre vendeur'
-            }
+            [fieldName]: { ...prev[fieldName], isEditing: false }
           }));
+
+          toast.success(`${fieldName === 'function' ? 'Fonction' : 'À propos'} mis à jour avec succès`);
+          if (refreshUser) await refreshUser();
         }
-        toast.error(errorText || 'Erreur lors de la mise à jour');
       } else {
-        setEditableFields(prev => ({
-          ...prev,
-          [fieldName]: { ...prev[fieldName], isEditing: false }
-        }));
-        toast.success(`${fieldName === 'firstName' ? 'Prénom' : 
-                      fieldName === 'lastName' ? 'Nom' :
-                      fieldName === 'email' ? 'Email' :
-                      fieldName === 'phone' ? 'Téléphone' :
-                      fieldName === 'country' ? 'Pays' :
-                      fieldName === 'address' ? 'Adresse' :
-                      'Nom de boutique'} mis à jour avec succès`);
-        if (refreshUser) await refreshUser();
+        // Pour les autres champs, utiliser l'API standard
+        const formData = new FormData();
+        formData.append(fieldName, field.value);
+
+        const response = await fetch(
+          API_CONFIG.BASE_URL + API_ENDPOINTS.AUTH.UPDATE_VENDOR_PROFILE,
+          {
+            method: 'PUT',
+            credentials: 'include',
+            body: formData
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          if (errorText.includes('nom de boutique') || errorText.includes('shop_name')) {
+            setEditableFields(prev => ({
+              ...prev,
+              shop_name: {
+                ...prev.shop_name,
+                error: 'Ce nom de boutique est déjà utilisé par un autre vendeur'
+              }
+            }));
+          }
+          toast.error(errorText || 'Erreur lors de la mise à jour');
+        } else {
+          setEditableFields(prev => ({
+            ...prev,
+            [fieldName]: { ...prev[fieldName], isEditing: false }
+          }));
+          toast.success(`${fieldName === 'firstName' ? 'Prénom' :
+                        fieldName === 'lastName' ? 'Nom' :
+                        fieldName === 'email' ? 'Email' :
+                        fieldName === 'phone' ? 'Téléphone' :
+                        fieldName === 'country' ? 'Pays' :
+                        fieldName === 'address' ? 'Adresse' :
+                        'Nom de boutique'} mis à jour avec succès`);
+          if (refreshUser) await refreshUser();
+        }
       }
     } catch (error: any) {
       toast.error(error.message || 'Erreur lors de la mise à jour');
@@ -297,14 +414,33 @@ const VendorAccountPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await authService.updateVendorProfile(updatedSocialMedias);
-      if (response.success) {
-        setSocialMedias(updatedSocialMedias);
-        toast.success('Réseaux sociaux mis à jour avec succès');
-        if (refreshUser) await refreshUser();
-      } else {
-        toast.error(response.message || 'Erreur lors de la mise à jour des réseaux sociaux');
+      // Utiliser l'API PUT /auth/vendor/social-media
+      const response = await fetch(`${API_CONFIG.BASE_URL}/auth/vendor/social-media`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json'
+        },
+        body: JSON.stringify({
+          facebook_url: updatedSocialMedias.facebook_url || '',
+          instagram_url: updatedSocialMedias.instagram_url || '',
+          twitter_url: updatedSocialMedias.twitter_url || '',
+          tiktok_url: updatedSocialMedias.tiktok_url || '',
+          youtube_url: updatedSocialMedias.youtube_url || '',
+          linkedin_url: updatedSocialMedias.linkedin_url || ''
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Erreur lors de la mise à jour des réseaux sociaux');
       }
+
+      const data = await response.json();
+      setSocialMedias(updatedSocialMedias);
+      toast.success('Réseaux sociaux mis à jour avec succès');
+      if (refreshUser) await refreshUser();
     } catch (error: any) {
       console.error('Erreur mise à jour réseaux sociaux:', error);
       toast.error(error.message || 'Erreur lors de la mise à jour des réseaux sociaux');
@@ -613,10 +749,10 @@ const VendorAccountPage: React.FC = () => {
   };
 
   // ✅ Composant pour un champ éditable avec design moderne
-  const EditableField = ({ 
-    fieldName, 
-    label, 
-    placeholder, 
+  const EditableField = React.memo(({
+    fieldName,
+    label,
+    placeholder,
     type = 'text',
     icon: Icon,
     description
@@ -640,15 +776,27 @@ const VendorAccountPage: React.FC = () => {
         {field.isEditing ? (
           <div className="space-y-3">
             <div className="relative">
-              {Icon && <Icon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />}
-              <Input
-                id={fieldName}
-                type={type}
-                value={field.value}
-                onChange={(e) => updateField(fieldName, e.target.value)}
-                className={`text-base leading-relaxed ${Icon ? 'pl-12' : ''} ${field.error ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200`}
-                placeholder={placeholder}
-              />
+              {Icon && <Icon className="absolute left-3 top-3 h-5 w-5 text-gray-400 z-10" />}
+              {fieldName === 'about' ? (
+                <textarea
+                  id={fieldName}
+                  defaultValue={field.value}
+                  onBlur={(e) => updateField(fieldName, e.target.value)}
+                  className={`w-full min-h-[120px] text-base leading-relaxed ${Icon ? 'pl-12 pt-3 pb-3' : 'pt-3 pb-3'} ${field.error ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none outline-none`}
+                  placeholder={placeholder}
+                  rows={4}
+                  style={{ resize: 'none' }}
+                />
+              ) : (
+                <Input
+                  id={fieldName}
+                  type={type}
+                  defaultValue={field.value}
+                  onBlur={(e) => updateField(fieldName, e.target.value)}
+                  className={`text-base leading-relaxed ${Icon ? 'pl-12' : ''} ${field.error ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  placeholder={placeholder}
+                />
+              )}
             </div>
             
             {field.error && (
@@ -721,7 +869,9 @@ const VendorAccountPage: React.FC = () => {
         )}
       </div>
     );
-  };
+  });
+
+  EditableField.displayName = 'EditableField';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-8 font-sans">
@@ -963,6 +1113,22 @@ const VendorAccountPage: React.FC = () => {
                   icon={Store}
                   description="Le nom unique de votre boutique en ligne"
                 />
+
+                <EditableField
+                  fieldName="function"
+                  label="Votre fonction"
+                  placeholder="ex: Graphiste designer, Créateur de contenu..."
+                  icon={User}
+                  description="Votre titre professionnel qui sera affiché sur votre profil"
+                />
+
+                <EditableField
+                  fieldName="about"
+                  label="À propos de vous"
+                  placeholder="Décrivez votre parcours, votre style, votre inspiration..."
+                  icon={User}
+                  description="Présentez-vous aux clients pour créer un lien de confiance"
+                />
               </CardContent>
             </Card>
 
@@ -972,6 +1138,129 @@ const VendorAccountPage: React.FC = () => {
               onUpdate={handleUpdateSocialMedias}
               isLoading={isLoading}
             />
+
+            {/* Section Profil Public */}
+            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Profil Public
+                </CardTitle>
+                <CardDescription className="text-sm text-gray-500 leading-relaxed">
+                  Prévisualisez et gérez les informations visibles par les clients sur votre page profil
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-base font-semibold text-gray-900">URL de votre profil</h4>
+                      <p className="text-sm text-gray-500">Partagez ce lien pour que les clients découvrent votre boutique</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-gray-300">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700 font-mono">
+                        printalma.com/{user?.vendeur_type?.toLowerCase() || 'designer'}/{editableFields.shop_name.value.toLowerCase().replace(/\s+/g, '-')}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-sm font-semibold border-blue-300 hover:bg-blue-50"
+                        onClick={() => {
+                          const url = `http://localhost:5174/${user?.vendeur_type?.toLowerCase() || 'designer'}/${editableFields.shop_name.value.toLowerCase().replace(/\s+/g, '-')}`;
+                          navigator.clipboard.writeText(url);
+                          toast.success('URL copiée dans le presse-papiers');
+                        }}
+                      >
+                        Copier
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Aperçu de votre profil</h4>
+                  <div className="space-y-4">
+                    {/* Nom et fonction */}
+                    <div>
+                      <h5 className="text-xl font-bold text-gray-900">
+                        {editableFields.shop_name.value || `${editableFields.firstName.value} ${editableFields.lastName.value}`.trim()}
+                      </h5>
+                      <p className="text-gray-600 mt-1">
+                        {editableFields.function.value || 'Créateur de designs personnalisés'}
+                      </p>
+                    </div>
+
+                    {/* À propos */}
+                    {editableFields.about.value && (
+                      <div>
+                        <h6 className="text-sm font-semibold text-gray-900 mb-2">À propos</h6>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {editableFields.about.value}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Réseaux sociaux */}
+                    {Object.keys(socialMedias).some(key => socialMedias[key]) && (
+                      <div>
+                        <h6 className="text-sm font-semibold text-gray-900 mb-2">Réseaux sociaux</h6>
+                        <div className="flex gap-2">
+                          {Object.entries(socialMedias).map(([key, value]) =>
+                            value && value !== '#' ? (
+                              <a
+                                key={key}
+                                href={value}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-white hover:scale-110 transition-transform"
+                              >
+                                {key === 'facebook_url' && (
+                                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                    <path d="M18.77 7.46H14.5v-1.9c0-.9.6-1.1 1-1.1h3V.5h-4.33C10.24.5 9.5 3.44 9.5 5.32v2.15h-3v4h3v12h5v-12h3.85l.42-4z"/>
+                                  </svg>
+                                )}
+                                {key === 'instagram_url' && (
+                                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069z"/>
+                                  </svg>
+                                )}
+                                {key === 'twitter_url' && (
+                                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z"/>
+                                  </svg>
+                                )}
+                                {key === 'tiktok_url' && (
+                                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
+                                  </svg>
+                                )}
+                              </a>
+                            ) : null
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-gray-200">
+                      <p className="text-xs text-gray-500 text-center">
+                        Les informations ci-dessus sont celles que les clients verront sur votre page profil publique.
+                        Les modifications sont sauvegardées automatiquement.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Section Sécurité */}
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
