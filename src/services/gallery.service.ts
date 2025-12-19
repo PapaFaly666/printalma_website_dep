@@ -67,6 +67,10 @@ class GalleryService {
       const response = await axios.get(`${PUBLIC_GALLERY_API_URL}/vendor/${vendorId}`);
 
       if (!response.data.success) {
+        // Si le message indique qu'il n'y a pas de galerie, on retourne null au lieu de lancer une erreur
+        if (response.data.message && response.data.message.includes('Aucune galerie publiée')) {
+          return null;
+        }
         throw new Error(response.data.message || 'Erreur lors de la récupération de la galerie publique');
       }
 
@@ -75,19 +79,34 @@ class GalleryService {
         return null;
       }
 
+      console.log('Données brutes de la galerie:', response.data.data.gallery);
+      console.log('Images brutes:', response.data.data.gallery.images);
+
       // Transformer les données pour normaliser imageUrl en url
       const gallery = {
         ...response.data.data.gallery,
-        images: response.data.data.gallery.images.map((img: any) => ({
-          ...img,
-          url: img.imageUrl || img.url, // Normaliser imageUrl en url
-          order: img.orderPosition || img.order // Normaliser orderPosition en order
-        }))
+        images: response.data.data.gallery.images.map((img: any) => {
+          const transformedImage = {
+            ...img,
+            url: img.imageUrl || img.url, // Normaliser imageUrl en url
+            order: img.orderPosition || img.order // Normaliser orderPosition en order
+          };
+          console.log('Image transformée:', transformedImage);
+          return transformedImage;
+        })
       };
 
+      console.log('Galerie finale après transformation:', gallery);
       return gallery;
     } catch (error: any) {
       console.error('Erreur getPublicVendorGallery:', error);
+
+      // Si c'est une erreur 404 ou si le message indique l'absence de galerie, on retourne null
+      if (error.response?.status === 404 ||
+          (error.response?.data?.message && error.response.data.message.includes('Aucune galerie publiée'))) {
+        return null;
+      }
+
       throw new Error(
         error.response?.data?.message || 'Erreur lors de la récupération de la galerie publique'
       );
@@ -134,7 +153,7 @@ class GalleryService {
 
       // Afficher le contenu FormData pour vérification
       console.log('FormData contents:');
-      for (let pair of formData.entries()) {
+      for (const pair of formData.entries()) {
         console.log(`${pair[0]}:`, typeof pair[1], pair[1]);
       }
 

@@ -30,7 +30,8 @@ import {
     Image,
     User,
     Banknote,
-    Layers
+    Layers,
+    Sparkles
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -170,6 +171,8 @@ export default function VendorSidebar() {
             setActiveItem('account');
         } else if (location.pathname.includes('/vendeur/appel-de-fonds')) {
             setActiveItem('appel-de-fonds');
+        } else if (location.pathname.includes('/vendeur/design-revenues')) {
+            setActiveItem('design-revenues');
         } else if (location.pathname.includes('/vendeur/dashboard') || location.pathname === '/vendeur') {
             setActiveItem('dashboard');
         }
@@ -435,6 +438,16 @@ export default function VendorSidebar() {
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'appel-de-fonds'}
                             onClick={() => handleNavigation('appel-de-fonds')}
+                            badge=""
+                            textColor=""
+                        />
+
+                        <NavItem
+                            icon={<Sparkles size={20} />}
+                            label="Revenus des Designs"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'design-revenues'}
+                            onClick={() => handleNavigation('design-revenues')}
                             badge=""
                             textColor=""
                         />

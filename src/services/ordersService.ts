@@ -101,9 +101,27 @@ export interface OrderStatistics {
   paymentMethods: Record<string, number>;
 }
 
+export interface VendorFinances {
+  totalVendorAmount: number;
+  withdrawnAmount: number;
+  pendingWithdrawalAmount: number;
+  availableForWithdrawal: number;
+  deliveredOrdersCount: number;
+  totalCommissionDeducted: number;
+  fundsRequestsSummary: {
+    total: number;
+    paid: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
+  message: string;
+}
+
 export interface OrdersResponse {
   orders: Order[];
   statistics?: OrderStatistics;
+  vendorFinances?: VendorFinances;
   pagination: {
     page: number;
     limit: number;
@@ -244,6 +262,7 @@ export const ordersService = {
       return {
         orders: filteredOrders,
         statistics: result.data.statistics, // Inclure les statistiques depuis l'API
+        vendorFinances: result.data.vendorFinances, // Inclure les finances du vendeur
         pagination: {
           page: 1,
           limit: filteredOrders.length,

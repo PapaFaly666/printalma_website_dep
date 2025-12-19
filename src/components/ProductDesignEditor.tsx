@@ -55,6 +55,11 @@ interface ImageElement extends BaseElement {
   designId?: number;
   designPrice?: number;
   designName?: string;
+  // 👤 Informations du vendeur du design pour les commissions
+  vendorId?: number;
+  vendorName?: string;
+  vendorShopName?: string;
+  vendorCommissionRate?: number; // Taux de commission du vendeur
 }
 
 type DesignElement = TextElement | ImageElement;
@@ -1110,9 +1115,119 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   // Mettre à jour le texte
   const updateText = (text: string) => {
     if (!selectedElement || selectedElement.type !== 'text') return;
-    setElements(elements.map(el =>
-      el.id === selectedElementId ? { ...el, text } : el
-    ));
+
+    // Calculer le nombre de lignes et la ligne la plus longue
+    const lines = text.split('\n');
+    const numberOfLines = lines.length;
+    const longestLine = Math.max(...lines.map(line => line.length));
+
+    // Commencer avec la taille de police actuelle
+    let fontSize = selectedElement.fontSize;
+    let width = selectedElement.width;
+    let height;
+    let fontSizeReduced = false;
+
+    // Calculer les dimensions maximales disponibles dans la délimitation
+    const maxDimensions = getMaxAvailableDimensions(selectedElement);
+
+    // Si la ligne la plus longue est trop large, réduire la taille de police
+    // Estimation: 1 caractère ≈ 0.6 * fontSize pour une police moyenne
+    const estimatedWidthNeeded = longestLine * fontSize * 0.6;
+    if (estimatedWidthNeeded > maxDimensions.width) {
+      fontSize = (maxDimensions.width * 0.8) / (longestLine * 0.6);
+      fontSize = Math.max(fontSize, 10); // Minimum 10px pour la lisibilité
+      fontSizeReduced = true;
+
+      // Ajuster la largeur en fonction de la nouvelle taille
+      width = Math.min(estimatedWidthNeeded, maxDimensions.width * 0.9);
+    }
+
+    // Calculer la hauteur nécessaire en fonction du nombre de lignes et de la nouvelle taille
+    const lineHeight = fontSize * 1.2;
+    let proposedHeight = Math.max(lineHeight * numberOfLines, fontSize * 1.5);
+
+    // Si la hauteur est trop grande, réduire encore la taille de police
+    if (proposedHeight > maxDimensions.height) {
+      fontSize = (maxDimensions.height * 0.8) / numberOfLines / 1.2;
+      fontSize = Math.max(fontSize, 10); // Minimum 10px
+      fontSizeReduced = true;
+
+      // Recalculer la hauteur et la largeur avec la nouvelle taille
+      const newLineHeight = fontSize * 1.2;
+      proposedHeight = Math.max(newLineHeight * numberOfLines, fontSize * 1.5);
+
+      // Recalculer la largeur si nécessaire
+      const newEstimatedWidth = longestLine * fontSize * 0.6;
+      width = Math.min(newEstimatedWidth, maxDimensions.width * 0.9);
+    }
+
+    // Contraindre les dimensions finales
+    const constrainedSize = constrainResizeToBounds(selectedElement, width, proposedHeight);
+
+    // Mettre à jour le texte, la taille de police et les dimensions
+    setElements(elements.map(el => {
+      if (el.id === selectedElementId && el.type === 'text') {
+        return {
+          ...el,
+          text,
+          fontSize: fontSize,
+          baseFontSize: fontSize, // Mettre à jour la base aussi
+          width: constrainedSize.width,
+          height: constrainedSize.height
+        };
+      }
+      return el;
+    }));
+
+    // Afficher un message si la taille a été réduite
+    if (fontSizeReduced) {
+      toast({
+        title: "📝 Texte redimensionné",
+        description: `La taille du texte a été automatiquement ajustée à ${Math.round(fontSize)}px pour s'adapter à la zone`,
+        duration: 3000
+      });
+    } else if (constrainedSize.isAtBoundary) {
+      setIsAtBoundary(true);
+      toast({
+        title: "⚠️ Limite atteinte",
+        description: "Le texte a été automatiquement redimensionné pour rester dans la zone de personnalisation",
+        duration: 2000
+      });
+    }
+  };
+
+  // Obtenir les dimensions maximales disponibles dans la délimitation
+  const getMaxAvailableDimensions = (element: DesignElement) => {
+    if (!canvasRef.current || !delimitation) return { width: 300, height: 200 };
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = rect.width / delimitation.referenceWidth;
+    const scaleY = rect.height / delimitation.referenceHeight;
+
+    // Position du centre de l'élément
+    const elementCenterPixelX = element.x * rect.width;
+    const elementCenterPixelY = element.y * rect.height;
+
+    // Limites de la délimitation en pixels
+    const boundsX = delimitation.x * scaleX;
+    const boundsY = delimitation.y * scaleY;
+    const boundsWidth = delimitation.width * scaleX;
+    const boundsHeight = delimitation.height * scaleY;
+
+    // Calculer l'espace disponible depuis le centre
+    const spaceLeft = elementCenterPixelX - boundsX;
+    const spaceRight = (boundsX + boundsWidth) - elementCenterPixelX;
+    const spaceTop = elementCenterPixelY - boundsY;
+    const spaceBottom = (boundsY + boundsHeight) - elementCenterPixelY;
+
+    // Espace maximum disponible (le plus petit côté)
+    const maxAvailableWidth = Math.min(spaceLeft, spaceRight) * 2 * 0.9; // 90% pour garder une marge
+    const maxAvailableHeight = Math.min(spaceTop, spaceBottom) * 2 * 0.9;
+
+    return {
+      width: maxAvailableWidth / scaleX, // Convertir en pixels de référence
+      height: maxAvailableHeight / scaleY
+    };
   };
 
   // Mettre à jour les propriétés de texte
@@ -1476,13 +1591,19 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                           textDecoration: element.textDecoration,
                           textAlign: element.textAlign,
                           lineHeight: '1.2',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
+                          whiteSpace: 'normal',
+                          overflow: 'visible',
+                          wordWrap: 'break-word',
                           userSelect: 'none',
                           pointerEvents: 'none' // Laisser le parent gérer les clics
                         }}
                       >
-                        {element.text}
+                        {element.text.split('\n').map((line, index) => (
+                          <React.Fragment key={index}>
+                            {line}
+                            {index < element.text.split('\n').length - 1 && <br />}
+                          </React.Fragment>
+                        ))}
                       </div>
                     )
                   ) : (

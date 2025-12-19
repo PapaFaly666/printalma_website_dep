@@ -90,7 +90,7 @@ export const useProductForm = () => {
       colorCode: '#ffffff',
       images: []
     };
-    updateFormData('colorVariations', [...formData.colorVariations, newColor]);
+    updateFormData('colorVariations', [newColor, ...formData.colorVariations]);
     return newColor.id;
   }, [formData.colorVariations, updateFormData]);
 

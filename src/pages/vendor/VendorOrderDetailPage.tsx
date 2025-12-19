@@ -4,8 +4,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Package,
   User,
-  Phone,
-  MapPin,
   Calendar,
   Clock,
   DollarSign,
@@ -638,40 +636,12 @@ const VendorOrderDetailPage: React.FC = () => {
                     <p className="font-medium text-gray-900">
                       {order.user.firstName} {order.user.lastName}
                     </p>
-                    <p className="text-sm text-gray-600">{order.user.email}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span>{order.phoneNumber}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Adresse de livraison */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-2" />
-                  Adresse de livraison
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm">
-                  <p className="font-medium">{order.shippingAddress?.name}</p>
-                  <p className="text-gray-600 mt-1">{order.shippingAddress?.street}</p>
-                  <p className="text-gray-600">{order.shippingAddress?.city}, {order.shippingAddress?.region}</p>
-                  <p className="text-gray-600">{order.shippingAddress?.country}</p>
-                  {order.phoneNumber && (
-                    <p className="text-gray-600 mt-2">📞 {order.phoneNumber}</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
+            
             {/* Gain du vendeur - Résumé financier */}
             {(order as any).beneficeCommande && (
               <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">

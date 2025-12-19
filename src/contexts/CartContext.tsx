@@ -21,6 +21,7 @@ interface CartContextType {
     suggestedPrice?: number;
     color: string;
     colorCode: string;
+    colorVariationId?: number; // 🆕 ID de la variation de couleur
     size: string;
     imageUrl: string;
     quantity?: number;
@@ -132,6 +133,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     suggestedPrice?: number;
     color: string;
     colorCode: string;
+    colorVariationId?: number; // 🆕 ID de la variation de couleur
     size: string;
     imageUrl: string;
     quantity?: number;
@@ -233,6 +235,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           suggestedPrice: product.suggestedPrice,
           color: product.color,
           colorCode: product.colorCode,
+          colorVariationId: product.colorVariationId, // 🆕 ID de la variation de couleur
           size: product.size,
           imageUrl: product.imageUrl,
           designUrl: product.designUrl,
@@ -264,10 +267,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         console.log('🎨 [CartContext] Personnalisation incluse:', {
           customizationId: newItem.customizationId,
           customizationIds: newItem.customizationIds,
+          customizationIdsKeys: Object.keys(newItem.customizationIds || {}),
           hasDesignElements: !!newItem.designElements,
           designElementsLength: newItem.designElements?.length,
           hasDesignElementsByView: !!newItem.designElementsByView,
-          viewsCount: Object.keys(newItem.designElementsByView || {}).length
+          viewsCount: Object.keys(newItem.designElementsByView || {}).length,
+          designElementsByViewKeys: Object.keys(newItem.designElementsByView || {}),
+          colorVariationId: newItem.colorVariationId,
+          vendorProductId: newItem.vendorProductId,
+          designUrl: newItem.designUrl,
+          delimitationsCount: newItem.delimitations?.length || 0
         });
 
         console.log('🛒 [CartContext] Nouvel article créé:', {

@@ -382,24 +382,75 @@ const PublicVendorProductDetailPage: React.FC = () => {
       // Simuler un petit délai pour l'effet visuel
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // Obtenir les délimitations de la couleur sélectionnée (pour produits traditionnels)
-      let delimitations: any[] = [];
+      // 🆕 Collecter TOUTES les délimitations de TOUTES les vues de la couleur sélectionnée
+      const allDelimitations: any[] = [];
+      const customizationIds: Record<string, number> = {};
+      const designElementsByView: Record<string, any[]> = {};
+
       if (product.adminProduct && product.adminProduct.colorVariations) {
         const colorVariation = product.adminProduct.colorVariations.find(cv => cv.id === selectedColorId);
         if (colorVariation && colorVariation.images && colorVariation.images.length > 0) {
-          const mockupImage = colorVariation.images.find(img => img.viewType === 'Front') || colorVariation.images[0];
-          if (mockupImage && mockupImage.delimitations) {
-            delimitations = mockupImage.delimitations;
-          }
+          // 🔄 Parcourir TOUTES les images/vues de cette couleur
+          colorVariation.images.forEach((img, viewIndex) => {
+            if (img.delimitations && img.delimitations.length > 0) {
+              img.delimitations.forEach(delim => {
+                // Ajouter les informations de vue à chaque délimitation
+                allDelimitations.push({
+                  ...delim,
+                  viewId: img.id,
+                  viewType: img.viewType,
+                  imageUrl: img.url,
+                  referenceWidth: delim.referenceWidth || img.naturalWidth || 1200,
+                  referenceHeight: delim.referenceHeight || img.naturalHeight || 1200
+                });
+              });
+
+              // 🆕 Créer la clé vue (colorId-viewId)
+              const viewKey = `${selectedColorId}-${img.id}`;
+
+              // 🆕 Pour les produits vendeurs, on n'a pas de vrais customizationIds du backend
+              // On utilise une valeur factice ou on génère un ID basé sur le produit
+              customizationIds[viewKey] = product.id * 1000 + viewIndex;
+
+              // 🆕 Extraire les éléments de design depuis designTransforms ou créer un élément image du design
+              if (product.designApplication?.hasDesign && product.designApplication.designUrl) {
+                // Calculer la position du design pour cette vue
+                const designPosition = product.designPositions && product.designPositions.length > 0
+                  ? product.designPositions[0].position
+                  : { x: 0.5, y: 0.5, scale: 0.8, rotation: 0 };
+
+                // Créer un élément image pour le design
+                designElementsByView[viewKey] = [{
+                  id: `design-${product.id}-view-${viewIndex}`,
+                  type: 'image',
+                  imageUrl: product.designApplication.designUrl,
+                  x: designPosition.x || 0.5,
+                  y: designPosition.y || 0.5,
+                  width: (designPosition.designWidth || 200) * (designPosition.scale || 0.8),
+                  height: (designPosition.designHeight || 200) * (designPosition.scale || 0.8),
+                  rotation: designPosition.rotation || 0,
+                  zIndex: 1
+                }];
+              }
+            }
+          });
         }
       }
+
+      console.log('🎨 [PublicVendorProduct] Données panier préparées:', {
+        allDelimitationsCount: allDelimitations.length,
+        customizationIdsKeys: Object.keys(customizationIds),
+        designElementsByViewKeys: Object.keys(designElementsByView),
+        selectedColorId,
+        colorVariationImagesCount: product.adminProduct?.colorVariations?.find(cv => cv.id === selectedColorId)?.images.length
+      });
 
       // Obtenir l'image mockup de la couleur sélectionnée
       let mockupUrl = product.images.primaryImageUrl;
       if (product.adminProduct && product.adminProduct.colorVariations) {
         const colorVariation = product.adminProduct.colorVariations.find(cv => cv.id === selectedColorId);
         if (colorVariation && colorVariation.images && colorVariation.images.length > 0) {
-          const mockupImage = colorVariation.images.find(img => img.viewType === 'Front') || colorVariation.images[0];
+          const mockupImage = colorVariation.images.find(img => img.viewType === 'FRONT') || colorVariation.images[0];
           if (mockupImage) {
             mockupUrl = mockupImage.url;
           }
@@ -421,8 +472,8 @@ const PublicVendorProductDetailPage: React.FC = () => {
           }
         : undefined;
 
-      // Extraire la première délimitation pour la sauvegarde
-      const delimitation = delimitations.length > 0 ? delimitations[0] : undefined;
+      // Extraire la première délimitation pour la sauvegarde (compatibilité)
+      const delimitation = allDelimitations.length > 0 ? allDelimitations[0] : undefined;
 
       // Préparer les données du produit pour le formulaire de commande
       const productData = {
@@ -431,15 +482,17 @@ const PublicVendorProductDetailPage: React.FC = () => {
         price: product.price,
         color: selectedColor.name,
         colorCode: selectedColor.colorCode,
+        colorVariationId: selectedColorId, // 🆕 ID de la variation de couleur sélectionnée
         size: selectedSize.sizeName, // Pour compatibilité
-        imageUrl: product.images.adminReferences[0]?.adminImageUrl || product.images.primaryImageUrl,
+        imageUrl: mockupUrl,
         designUrl: product.designApplication?.designUrl,
         vendorName: product.vendor?.shop_name || product.vendor?.fullName,
         // Nouvelles propriétés pour afficher le design dans le panier
         designId: product.designId || undefined,
         adminProductId: product.adminProduct?.id,
         designScale: product.designApplication?.scale,
-        delimitations: delimitations.length > 0 ? delimitations : undefined,
+        // 🆕 TOUTES les délimitations de TOUTES les vues
+        delimitations: allDelimitations,
         // Propriétés pour les vraies tailles de la base de données
         selectedSize: selectedSize,
         sizeId: selectedSize.id,
@@ -450,8 +503,14 @@ const PublicVendorProductDetailPage: React.FC = () => {
         mockupUrl: mockupUrl,
         designPositions: designPositions,
         designMetadata: designMetadata,
-        delimitation: delimitation
+        delimitation: delimitation,
+
+        // 🆕 CHAMPS POUR L'AFFICHAGE MULTI-VUES DANS LE PANIER
+        customizationIds: Object.keys(customizationIds).length > 0 ? customizationIds : undefined,
+        designElementsByView: Object.keys(designElementsByView).length > 0 ? designElementsByView : undefined
       };
+
+      console.log('✅ [PublicVendorProduct] Produit ajouté au panier:', productData);
 
       // Ajouter au panier et ouvrir le panier latéral
       addToCart(productData);

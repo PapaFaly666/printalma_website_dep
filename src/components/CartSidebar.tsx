@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
 import { CartItem } from '../types/cart';
-import DesignPositionService from '../services/DesignPositionService';
 import { useAuth } from '../contexts/AuthContext';
-import { vendorProductService } from '../services/vendorProductService';
 import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
+import { CustomizationPreview } from './order/CustomizationPreview';
+import { SimpleProductPreview } from './vendor/SimpleProductPreview';
+import vendorProductsService from '../services/vendorProductsService';
 
 interface CartSidebarProps {
   isOpen: boolean;
@@ -15,43 +16,111 @@ interface CartSidebarProps {
   onCheckout: () => void;
 }
 
-// Interface pour les délimitations (similaire à SimpleProductPreview)
-interface DelimitationData {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  coordinateType: 'PERCENTAGE' | 'PIXEL';
-}
+// 🏪 Composant pour afficher un produit vendeur avec son design
+const VendorProductPreview: React.FC<{
+  item: CartItem;
+}> = ({ item }) => {
+  const [vendorProduct, setVendorProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-// Interface pour les métriques d'image
-interface ImageMetrics {
-  originalWidth: number;
-  originalHeight: number;
-  displayWidth: number;
-  displayHeight: number;
-  canvasScale: number;
-  canvasOffsetX: number;
-  canvasOffsetY: number;
-}
+  useEffect(() => {
+    const loadVendorProduct = async () => {
+      if (!item.vendorProductId) {
+        setLoading(false);
+        return;
+      }
 
-// Composant pour afficher un produit avec design (similaire à SimpleProductPreview)
+      try {
+        console.log('🏪 [CartSidebar] Chargement produit vendeur:', item.vendorProductId);
+        const response = await vendorProductsService.getProductById(item.vendorProductId);
+
+        if (response.success && response.data) {
+          console.log('✅ [CartSidebar] Produit vendeur chargé:', {
+            id: response.data.id,
+            name: response.data.vendorName,
+            hasDesign: response.data.designApplication?.hasDesign,
+            designUrl: response.data.designApplication?.designUrl
+          });
+          setVendorProduct(response.data);
+        } else {
+          console.error('❌ [CartSidebar] Erreur chargement produit vendeur');
+        }
+      } catch (error) {
+        console.error('❌ [CartSidebar] Erreur:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVendorProduct();
+  }, [item.vendorProductId]);
+
+  if (loading) {
+    return (
+      <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+        <div className="animate-spin w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (!vendorProduct) {
+    // Fallback sur l'image simple si le chargement échoue
+    return (
+      <div className="w-32 h-32 bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <img
+          src={item.imageUrl}
+          alt={item.name}
+          className="w-full h-full object-contain"
+        />
+      </div>
+    );
+  }
+
+  // Utiliser SimpleProductPreview comme sur la page de détail
+  return (
+    <div className="relative flex flex-col gap-1">
+      <div className="w-32 h-32 bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <SimpleProductPreview
+          product={vendorProduct}
+          showColorSlider={false}
+          showDelimitations={false}
+          onProductClick={() => {}}
+          hideValidationBadges={true}
+          initialColorId={item.colorVariationId}
+          imageObjectFit="contain"
+        />
+      </div>
+      <div className="text-center text-[10px] font-semibold text-purple-600">
+        🏪 Design vendeur
+      </div>
+    </div>
+  );
+};
+
+// 🎨 Composant pour afficher un produit avec personnalisations multi-vues
 const ProductWithDesign: React.FC<{
   item: CartItem;
   user: any;
 }> = ({ item, user }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageMetrics, setImageMetrics] = useState<ImageMetrics | null>(null);
-
   // 🆕 État pour gérer la vue sélectionnée
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
 
   // 🆕 Récupérer toutes les vues disponibles depuis les customizationIds
   // 🔧 Filtrer par couleur sélectionnée et dédupliquer par viewId
   const availableViews = React.useMemo(() => {
-    if (!item.customizationIds) return [];
+    console.log('🔍 [CartSidebar] availableViews - Données entrée:', {
+      hasCustomizationIds: !!item.customizationIds,
+      customizationIdsKeys: item.customizationIds ? Object.keys(item.customizationIds) : [],
+      colorVariationId: item.colorVariationId,
+      hasDelimitations: !!item.delimitations,
+      delimitationsCount: item.delimitations?.length || 0,
+      vendorProductId: item.vendorProductId
+    });
+
+    if (!item.customizationIds) {
+      console.log('⚠️ [CartSidebar] Pas de customizationIds, retour vide');
+      return [];
+    }
 
     // Map pour dédupliquer par viewId
     const uniqueViewsMap = new Map<number, {
@@ -64,6 +133,7 @@ const ProductWithDesign: React.FC<{
 
     Object.keys(item.customizationIds).forEach(viewKey => {
       const [colorId, viewId] = viewKey.split('-').map(Number);
+      console.log(`🔍 [CartSidebar] Traitement vue ${viewKey} - colorId: ${colorId}, viewId: ${viewId}`);
 
       // 🔧 Si colorVariationId est défini, filtrer pour ne garder que cette couleur
       if (item.colorVariationId && colorId !== item.colorVariationId) {
@@ -75,6 +145,11 @@ const ProductWithDesign: React.FC<{
       if (!uniqueViewsMap.has(viewId)) {
         // Trouver la délimitation correspondante
         const delimitation = item.delimitations?.find((d: any) => d.viewId === viewId);
+        console.log(`🔍 [CartSidebar] Recherche délimitation pour viewId ${viewId}:`, {
+          found: !!delimitation,
+          viewType: delimitation?.viewType,
+          imageUrl: delimitation?.imageUrl?.substring(0, 50)
+        });
 
         uniqueViewsMap.set(viewId, {
           viewKey,
@@ -102,8 +177,7 @@ const ProductWithDesign: React.FC<{
 
     // Utiliser le nouveau système organisé par vue
     if (item.designElementsByView) {
-      // 🔧 Chercher les éléments pour cette vue, peu importe la couleur
-      // Essayer d'abord avec le viewKey exact
+      // 🔧 Chercher les éléments pour cette vue
       let elements = item.designElementsByView[currentView.viewKey];
 
       // Si pas trouvé, chercher par viewId dans tous les viewKey disponibles
@@ -118,6 +192,22 @@ const ProductWithDesign: React.FC<{
       }
 
       return elements || [];
+    }
+
+    // 🆕 Fallback pour les produits vendeur avec design legacy (sans designElementsByView)
+    if (item.vendorProductId && item.designUrl && item.designPositions) {
+      console.log('🔧 [CartSidebar] Création d\'élément de design legacy pour produit vendeur');
+      return [{
+        id: `design-${item.vendorProductId}-legacy`,
+        type: 'image',
+        imageUrl: item.designUrl,
+        x: item.designPositions.x || 0.5,
+        y: item.designPositions.y || 0.5,
+        width: (item.designPositions.designWidth || 200) * (item.designPositions.scale || 0.8),
+        height: (item.designPositions.designHeight || 200) * (item.designPositions.scale || 0.8),
+        rotation: item.designPositions.rotation || 0,
+        zIndex: 1
+      }];
     }
 
     // Fallback sur l'ancien système (pour compatibilité)
@@ -152,206 +242,23 @@ const ProductWithDesign: React.FC<{
     return viewType || 'Vue';
   };
 
-  // Calculer les métriques d'image
-  const calculateImageMetrics = () => {
-    if (!imgRef.current || !containerRef.current) return null;
-
-    const img = imgRef.current;
-    const container = containerRef.current;
-
-    const originalWidth = img.naturalWidth;
-    const originalHeight = img.naturalHeight;
-    const containerRect = container.getBoundingClientRect();
-
-    // Calculer les dimensions d'affichage (object-fit: contain)
-    const containerRatio = containerRect.width / containerRect.height;
-    const imageRatio = originalWidth / originalHeight;
-
-    let displayWidth, displayHeight, offsetX, offsetY;
-
-    if (imageRatio > containerRatio) {
-      // Image plus large que le container
-      displayWidth = containerRect.width;
-      displayHeight = containerRect.width / imageRatio;
-      offsetX = 0;
-      offsetY = (containerRect.height - displayHeight) / 2;
-    } else {
-      // Image plus haute que le container
-      displayHeight = containerRect.height;
-      displayWidth = containerRect.height * imageRatio;
-      offsetX = (containerRect.width - displayWidth) / 2;
-      offsetY = 0;
-    }
-
-    const scale = displayWidth / originalWidth;
-
-    return {
-      originalWidth,
-      originalHeight,
-      displayWidth,
-      displayHeight,
-      canvasScale: scale,
-      canvasOffsetX: offsetX,
-      canvasOffsetY: offsetY
-    };
-  };
-
-  
-  // Obtenir la position du design depuis localStorage (EXACTEMENT comme SimpleProductPreview)
-  const getDesignPosition = () => {
-    console.log('🎨 [CartSidebar] getDesignPosition - Début de la fonction', {
-      designId: item.designId,
-      adminProductId: item.adminProductId,
-      userId: user?.id
-    });
-
-    if (!item.designId || !user?.id || !item.adminProductId) {
-      console.log('📍 [CartSidebar] Informations manquantes, position par défaut');
-      return {
-        x: 0,
-        y: 0,
-        scale: item.designScale || 0.8,
-        rotation: 0,
-        designWidth: undefined,
-        designHeight: undefined,
-        designScale: item.designScale || 0.8,
-        constraints: {},
-        source: 'default',
-        sizeId: item.selectedSize?.id || item.sizeId,
-        sizeName: item.selectedSize?.sizeName || item.sizeName || item.size
-      };
-    }
-
-    // Utiliser la taille pour récupérer la position spécifique à cette taille
-    const sizeId = item.selectedSize?.id || item.sizeId;
-    const sizeName = item.selectedSize?.sizeName || item.sizeName || item.size;
-
-    // Essayer localStorage directement (dans le panier, on n'a pas accès aux données API directement)
-    const localStorageData = DesignPositionService.getPosition(item.designId, item.adminProductId, user.id);
-    if (localStorageData && localStorageData.position) {
-      const localPosition = localStorageData.position as any;
-      console.log('📍 [CartSidebar] Position depuis localStorage:', localPosition);
-
-      const result = {
-        x: localPosition.x || 0,
-        y: localPosition.y || 0,
-        scale: localPosition.scale || item.designScale || 0.8,
-        rotation: localPosition.rotation || 0,
-        designWidth: localPosition.designWidth,
-        designHeight: localPosition.designHeight,
-        designScale: localPosition.designScale || item.designScale || 0.8,
-        constraints: localPosition.constraints || {},
-        source: 'localStorage',
-        sizeId,
-        sizeName
-      };
-
-      // Synchroniser vers la base de données si on a un ID de produit vendeur
-      if (item.id && typeof item.id === 'number') {
-        console.log('🔄 [CartSidebar] DÉCLENCHEMENT de la synchronisation automatique...');
-        // syncLocalStorageToDatabase(item.id, item.designId, result); // TODO: Implementer si nécessaire
-      }
-
-      return result;
-    }
-
-    console.log('📍 [CartSidebar] Position par défaut (pas de données localStorage)');
-    return {
-      x: 0,
-      y: 0,
-      scale: item.designScale || 0.8,
-      rotation: 0,
-      designWidth: undefined,
-      designHeight: undefined,
-      designScale: item.designScale || 0.8,
-      constraints: {},
-      source: 'default',
-      sizeId,
-      sizeName
-    };
-  };
-
-  // Convertir les coordonnées de délimitation vers les coordonnées d'affichage
-  const computePxPosition = (delim: DelimitationData) => {
-    if (!imageMetrics || !containerRef.current) return { left: 0, top: 0, width: 0, height: 0 };
-
-    // Détection automatique du type de coordonnées
-    const isPixel = delim.coordinateType === 'PIXEL' || delim.x > 100 || delim.y > 100;
-
-    const imgW = imageMetrics.originalWidth || 1200;
-    const imgH = imageMetrics.originalHeight || 1200;
-
-    // Conversion en pourcentage si nécessaire
-    const pct = {
-      x: isPixel ? (delim.x / imgW) * 100 : delim.x,
-      y: isPixel ? (delim.y / imgH) * 100 : delim.y,
-      w: isPixel ? (delim.width / imgW) * 100 : delim.width,
-      h: isPixel ? (delim.height / imgH) * 100 : delim.height,
-    };
-
-    // Utiliser les dimensions du conteneur
-    const { width: contW, height: contH } = containerRef.current.getBoundingClientRect();
-    if (contW === 0 || contH === 0) return { left: 0, top: 0, width: 0, height: 0 };
-
-    // Calcul responsive
-    const imgRatio = imgW / imgH;
-    const contRatio = contW / contH;
-
-    let dispW: number, dispH: number, offsetX: number, offsetY: number;
-    if (imgRatio > contRatio) {
-      dispW = contW;
-      dispH = contW / imgRatio;
-      offsetX = 0;
-      offsetY = (contH - dispH) / 2;
-    } else {
-      dispH = contH;
-      dispW = contH * imgRatio;
-      offsetX = (contW - dispW) / 2;
-      offsetY = 0;
-    }
-
-    return {
-      left: offsetX + (pct.x / 100) * dispW,
-      top: offsetY + (pct.y / 100) * dispH,
-      width: (pct.w / 100) * dispW,
-      height: (pct.h / 100) * dispH,
-    };
-  };
-
-  // Observer les changements
-  useEffect(() => {
-    if (imgRef.current && imageLoaded && containerRef.current) {
-      const metrics = calculateImageMetrics();
-      setImageMetrics(metrics);
-    }
-  }, [imageLoaded]);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (imageLoaded) {
-        const metrics = calculateImageMetrics();
-        setImageMetrics(metrics);
-      }
-    });
-
-    resizeObserver.observe(containerRef.current);
-
-    return () => resizeObserver.disconnect();
-  }, [imageLoaded]);
-
-  const designPosition = getDesignPosition();
   const currentViewElements = getCurrentViewElements();
   const currentDelimitation = currentView?.delimitation;
 
   // 🆕 Obtenir l'URL de l'image pour la vue actuelle
   const currentImageUrl = currentDelimitation?.imageUrl || item.imageUrl;
 
+  // Déterminer le type de produit
+  const isVendorProduct = !!item.vendorProductId;
+  const isCustomProduct = !isVendorProduct && item.customizationIds && Object.keys(item.customizationIds).length > 0;
+
   // Log de débogage pour le design
   useEffect(() => {
     console.log('🔍 [CartSidebar] ProductWithDesign - Item:', {
       id: item.id,
+      type: isVendorProduct ? '🏪 VENDOR PRODUCT' : isCustomProduct ? '🎨 CUSTOM PRODUCT' : '📦 STANDARD PRODUCT',
+      vendorProductId: item.vendorProductId,
+      vendorName: item.vendorName,
       availableViewsCount: availableViews.length,
       selectedViewIndex,
       currentView: currentView ? {
@@ -361,154 +268,44 @@ const ProductWithDesign: React.FC<{
       } : null,
       hasDesignElementsByView: !!item.designElementsByView,
       currentViewElementsCount: currentViewElements.length,
-      customizationIds: item.customizationIds
+      customizationIds: item.customizationIds,
+      designUrl: item.designUrl,
+      designId: item.designId
     });
 
     if (currentViewElements.length > 0) {
       console.log('🎨 [CartSidebar] Current View Elements:', {
+        productType: isVendorProduct ? 'VENDOR' : 'CUSTOM',
         viewKey: currentView?.viewKey,
         count: currentViewElements.length,
         elements: currentViewElements.map((el, idx) => ({
           index: idx,
           type: el.type,
           text: el.text?.substring(0, 20),
+          imageUrl: el.imageUrl?.substring(0, 50),
           x: el.x,
-          y: el.y
+          y: el.y,
+          width: el.width,
+          height: el.height
         }))
       });
+    } else {
+      console.log('⚠️ [CartSidebar] Aucun élément de design pour cette vue');
     }
-  }, [item, currentView, currentViewElements, selectedViewIndex]);
+  }, [item, currentView, currentViewElements, selectedViewIndex, isVendorProduct, isCustomProduct]);
 
   return (
     <div className="relative flex flex-col gap-1">
-      {/* Conteneur principal de l'image */}
-      <div className="relative w-32 h-32 bg-white rounded-lg border border-gray-200 flex items-center justify-center p-2">
-        <div
-          ref={containerRef}
-          className="relative w-full h-full"
-        >
-          {/* Image du produit - Vue actuelle */}
-          <img
-            key={currentImageUrl} // 🆕 Force reload quand on change de vue
-            ref={imgRef}
-            src={currentImageUrl}
-            alt={item.name}
-            className="w-full h-full object-contain rounded"
-            onLoad={() => setImageLoaded(true)}
-          />
-
-        {/* 🆕 Personnalisations superposées - Par vue */}
-        {currentViewElements.length > 0 && currentDelimitation && (() => {
-          if (!containerRef.current) return null;
-
-          const rect = containerRef.current.getBoundingClientRect();
-          console.log('🎨 [CartSidebar] Affichage personnalisations vue actuelle');
-          console.log('📐 [CartSidebar] Canvas rect:', { width: rect.width, height: rect.height });
-
-          // Dimensions de référence de l'image produit
-          const refWidth = currentDelimitation.referenceWidth || 800;
-          const refHeight = currentDelimitation.referenceHeight || 800;
-
-          // Calculer le ratio de scale
-          const scaleX = rect.width / refWidth;
-          const scaleY = rect.height / refHeight;
-          const scale = Math.min(scaleX, scaleY);
-
-          console.log('🔲 [CartSidebar] Scale calculation:', {
-            viewKey: currentView?.viewKey,
-            containerSize: { width: rect.width, height: rect.height },
-            referenceSize: { width: refWidth, height: refHeight },
-            scale: scale.toFixed(3)
-          });
-
-          return (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                zIndex: 2,
-              }}
-            >
-              {currentViewElements.map((element: any, idx: number) => {
-                // Position absolue en pixels dans le conteneur
-                const left = element.x * rect.width;
-                const top = element.y * rect.height;
-
-                // Appliquer le scale aux dimensions de l'élément
-                const scaledWidth = element.width * scale;
-                const scaledHeight = element.height * scale;
-
-                // Calculer la taille de police scalée
-                const scaledFontSize = element.type === 'text'
-                  ? (element.fontSize || 24) * scale
-                  : 0;
-
-                const rotation = element.rotation || 0;
-
-                console.log(`🎨 [CartSidebar] Élément ${idx} (responsive):`, {
-                  type: element.type,
-                  position: { x: element.x.toFixed(3), y: element.y.toFixed(3) },
-                  pixelPosition: { left: left.toFixed(1), top: top.toFixed(1) },
-                  originalSize: { w: element.width, h: element.height },
-                  scaledSize: { w: scaledWidth.toFixed(1), h: scaledHeight.toFixed(1) },
-                  fontSize: element.type === 'text' ? scaledFontSize.toFixed(1) : 'N/A',
-                  rotation
-                });
-
-                return (
-                  <div
-                    key={`element-${idx}`}
-                    style={{
-                      position: 'absolute',
-                      left: `${left}px`,
-                      top: `${top}px`,
-                      width: `${scaledWidth}px`,
-                      height: `${scaledHeight}px`,
-                      transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-                      transformOrigin: 'center center',
-                      zIndex: element.zIndex || 0,
-                    }}
-                  >
-                    {element.type === 'text' ? (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: element.textAlign || 'center',
-                          fontSize: `${scaledFontSize}px`,
-                          fontFamily: element.fontFamily || 'Arial',
-                          color: element.color || '#000000',
-                          fontWeight: element.fontWeight || 'normal',
-                          fontStyle: element.fontStyle || 'normal',
-                          textDecoration: element.textDecoration || 'none',
-                          textAlign: element.textAlign || 'center',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          lineHeight: 1,
-                        }}
-                      >
-                        {element.text}
-                      </div>
-                    ) : element.type === 'image' ? (
-                      <img
-                        src={element.imageUrl}
-                        alt="Design"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain',
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
-
-        </div>
+      {/* 🆕 Utilisation de CustomizationPreview pour un rendu cohérent */}
+      <div className="relative w-32 h-32 bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <CustomizationPreview
+          productImageUrl={currentImageUrl}
+          designElements={currentViewElements}
+          delimitation={currentDelimitation}
+          productName={item.name}
+          showInfo={false}
+          className="w-full h-full"
+        />
       </div>
 
       {/* 🆕 Navigation entre les vues (si plusieurs vues disponibles) */}
@@ -531,10 +328,26 @@ const ProductWithDesign: React.FC<{
         </div>
       )}
 
-      {/* Badge pour indiquer les personnalisations */}
+      {/* Badge pour indiquer les personnalisations ou produit vendeur */}
       {availableViews.length > 0 && (
         <div className="text-center text-[10px] text-gray-500">
-          {availableViews.length} vue{availableViews.length > 1 ? 's' : ''} personnalisée{availableViews.length > 1 ? 's' : ''}
+          {isVendorProduct ? (
+            <>
+              <span className="font-semibold">🏪 Design vendeur</span>
+              {availableViews.length > 1 && ` • ${availableViews.length} vue${availableViews.length > 1 ? 's' : ''}`}
+            </>
+          ) : (
+            <>
+              {availableViews.length} vue{availableViews.length > 1 ? 's' : ''} personnalisée{availableViews.length > 1 ? 's' : ''}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Badge pour produits vendeur sans vues multiples mais avec design */}
+      {isVendorProduct && availableViews.length === 0 && item.designUrl && (
+        <div className="text-center text-[10px] font-semibold text-purple-600">
+          🏪 Design vendeur
         </div>
       )}
     </div>
@@ -615,7 +428,11 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                   <div key={item.id} className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
                     <div className="flex gap-4">
                       {/* Image du produit avec design intégré */}
-                      <ProductWithDesign item={item} user={user} />
+                      {item.vendorProductId ? (
+                        <VendorProductPreview item={item} />
+                      ) : (
+                        <ProductWithDesign item={item} user={user} />
+                      )}
 
                       {/* Détails du produit */}
                       <div className="flex-1 min-w-0">
@@ -677,8 +494,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                         </div>
                       </div>
                     </div>
-
-                    </div>
+                  </div>
                 ))}
               </div>
             )}

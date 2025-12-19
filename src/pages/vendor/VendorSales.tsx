@@ -111,6 +111,7 @@ const VendorSales: React.FC = () => {
       console.log('✅ Commandes récupérées:', response);
       console.log('🔍 bénéficeCommande dans la première commande:', response.orders[0]?.beneficeCommande);
       console.log('🔍 totalAmount dans la première commande:', response.orders[0]?.totalAmount);
+      console.log('🔍 Premier item de la première commande:', response.orders[0]?.items?.[0]);
 
       setOrders(response.orders);
       setPagination(response.pagination);
@@ -494,7 +495,7 @@ const VendorSales: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <p className="text-lg font-bold text-gray-900">
-                                {formatAmount(order.beneficeCommande ? order.beneficeCommande : order.totalAmount / 100)}
+                                {formatAmount(order.items?.[0]?.unitPrice || order.beneficeCommande || order.totalAmount / 100)}
                               </p>
                               {order.paymentStatus === 'FAILED' ? (
                                 <p className="text-sm font-medium text-red-600">
@@ -540,7 +541,7 @@ const VendorSales: React.FC = () => {
                                       {item.quantity}x {item.productName}
                                     </span>
                                     <span className="text-gray-600">
-                                      {formatAmount(item.totalPrice)}
+                                      {formatAmount(item.unitPrice || item.totalPrice)}
                                     </span>
                                   </div>
                                 ))}

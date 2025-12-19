@@ -35,14 +35,18 @@ export interface VendorStatsResponse {
 export const vendorStatsService = {
   getVendorStats: async (): Promise<VendorStatsData> => {
     try {
+      console.log('🔄 [vendorStatsService] Récupération des statistiques depuis:', `${API_CONFIG.BASE_URL}/vendor/stats`);
+
       const response = await fetch(`${API_CONFIG.BASE_URL}/vendor/stats`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
+        credentials: 'include', // Utiliser les cookies pour l'authentification
       });
+
+      console.log('📡 [vendorStatsService] Response status:', response.status);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -50,13 +54,22 @@ export const vendorStatsService = {
 
       const result: VendorStatsResponse = await response.json();
 
+      console.log('📊 [vendorStatsService] Données reçues:', result);
+
       if (!result.success) {
         throw new Error('API returned success: false');
       }
 
+      console.log('✅ [vendorStatsService] Statistiques récupérées avec succès:', {
+        totalProducts: result.data.totalProducts,
+        publishedProducts: result.data.publishedProducts,
+        totalDesigns: result.data.totalDesigns,
+        validatedDesigns: result.data.validatedDesigns
+      });
+
       return result.data;
     } catch (error) {
-      console.error('Error fetching vendor stats:', error);
+      console.error('❌ [vendorStatsService] Erreur lors de la récupération des statistiques:', error);
       throw error;
     }
   }

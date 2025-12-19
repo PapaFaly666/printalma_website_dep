@@ -1173,12 +1173,17 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                                       fontStyle: element.fontStyle || 'normal',
                                       textDecoration: element.textDecoration || 'none',
                                       textAlign: element.textAlign || 'center',
-                                      whiteSpace: 'nowrap',
+                                      whiteSpace: 'normal',
                                       overflow: 'hidden',
-                                      lineHeight: 1,
+                                      lineHeight: 1.2,
                                     }}
                                   >
-                                    {element.text}
+                                    {element.text.split('\n').map((line, index) => (
+                                      <React.Fragment key={index}>
+                                        {line}
+                                        {index < element.text.split('\n').length - 1 && <br />}
+                                      </React.Fragment>
+                                    ))}
                                   </div>
                                 ) : element.type === 'image' ? (
                                   <img

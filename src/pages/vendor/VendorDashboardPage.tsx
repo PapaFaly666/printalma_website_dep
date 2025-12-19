@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Package, 
-  Image as ImageIcon, 
-  Eye, 
+import { useNavigate } from 'react-router-dom';
+import { VendorDashboardGuard } from '../../components/vendor/VendorDashboardGuard';
+import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
+import {
+  Package,
+  Image as ImageIcon,
+  Eye,
   DollarSign,
   TrendingUp,
   ShoppingCart,
@@ -12,7 +15,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CalendarIcon,
-  BarChart3
+  BarChart3,
+  Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -24,13 +28,14 @@ import { authService } from '../../services/auth.service';
 import { vendorProductService } from '../../services/vendorProductService';
 import { vendorFundsService, VendorEarnings } from '../../services/vendorFundsService';
 import { vendorStatsService, VendorStatsData } from '../../services/vendorStatsService';
+import { ordersService, OrdersResponse } from '../../services/ordersService';
 
-// Types pour les données financières depuis /vendor/earnings
+// Types pour les données financières depuis /orders/my-orders
 interface DashboardFinances {
   // 💰 DONNÉES FINANCIÈRES PRINCIPALES (seulement les 3 métriques demandées)
-  yearlyRevenue: number;      // CA annuel en FCFA (calculé depuis thisMonthEarnings * 12)
-  monthlyRevenue: number;     // CA mensuel en FCFA (thisMonthEarnings)
-  availableAmount: number;    // Solde disponible pour retrait (cohérent avec /appel-de-fonds)
+  yearlyRevenue: number;      // CA annuel en FCFA (depuis statistics.annualRevenue)
+  monthlyRevenue: number;     // CA mensuel en FCFA (depuis statistics.monthlyRevenue)
+  availableAmount: number;    // Solde = total gains vendeur (depuis statistics.totalVendorAmount)
 }
 
 // Types pour les statistiques du dashboard - maintenant basées sur l'API /vendor/stats
@@ -138,6 +143,7 @@ const CircularProgress = ({ value, max, color, size = 60 }: { value: number; max
 
 export const VendorDashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [finances, setFinances] = useState<DashboardFinances>({
     yearlyRevenue: 0,
     monthlyRevenue: 0,
@@ -182,7 +188,7 @@ export const VendorDashboardPage: React.FC = () => {
   const viewsData = [1200, 1350, 1100, 1450, 1600, 1800, 2100];
   const ordersData = [15, 18, 12, 22, 25, 28, 32];
 
-  // Chargement des données financières via /vendor/earnings (endpoint qui fonctionne)
+  // Chargement des données financières via /orders/my-orders (endpoint qui retourne les statistiques)
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -192,91 +198,109 @@ export const VendorDashboardPage: React.FC = () => {
         setExtendedProfile(profileData.vendor);
       }
 
-      // 🎯 Utiliser /vendor/earnings qui fonctionne avec des données réelles
-      console.log('🔄 Chargement des données financières depuis /vendor/earnings...');
-      const earningsData = await vendorFundsService.getVendorEarnings();
+      // 🎯 Utiliser /orders/my-orders qui retourne les statistiques financières
+      console.log('🔄 Chargement des données financières depuis /orders/my-orders...');
+      const ordersResponse: OrdersResponse = await ordersService.getMyOrders();
 
-      console.log('💰 Données financières reçues depuis /vendor/earnings:', earningsData);
-      console.log('💰 Montants cohérents:', {
-        availableAmount: earningsData.availableAmount,
-        thisMonthEarnings: earningsData.thisMonthEarnings,
-        totalEarnings: earningsData.totalEarnings
-      });
+      console.log('💰 Données reçues depuis /orders/my-orders:', ordersResponse);
+      console.log('📊 Statistiques:', ordersResponse.statistics);
 
-      // ✅ Utiliser les données réelles de /vendor/earnings
+      // ✅ Utiliser les statistiques de l'API /orders/my-orders
+      const statistics = ordersResponse.statistics;
+      const vendorFinances = ordersResponse.vendorFinances;
       const dashboardFinances: DashboardFinances = {
-        yearlyRevenue: earningsData.thisMonthEarnings * 12, // Estimation annuelle
-        monthlyRevenue: earningsData.thisMonthEarnings,
-        availableAmount: earningsData.availableAmount // 🎯 Cohérent avec /appel-de-fonds
+        yearlyRevenue: statistics?.annualRevenue || 0, // CA annuel depuis l'API
+        monthlyRevenue: statistics?.monthlyRevenue || 0, // CA mensuel depuis l'API
+        availableAmount: statistics?.totalVendorAmount || 0 // Solde = total gains vendeur (pas le disponible pour retrait)
       };
 
       setFinances(dashboardFinances);
 
-      // 🎯 Charger les vraies statistiques depuis /vendor/stats
+      console.log('💰 Montants financiers:', {
+        yearlyRevenue: dashboardFinances.yearlyRevenue,
+        monthlyRevenue: dashboardFinances.monthlyRevenue,
+        availableAmount: dashboardFinances.availableAmount,
+        ordersCount: ordersResponse.orders.length
+      });
+
+      // 🎯 Utiliser les statistiques de /orders/my-orders pour les données de commandes
+      const orderStats = statistics || {};
+
+      // 🎯 Charger les statistiques de produits/designs depuis /vendor/stats
       try {
-        console.log('📊 Chargement des statistiques depuis /vendor/stats...');
+        console.log('📊 Chargement des statistiques produits/designs depuis /vendor/stats...');
         const statsData = await vendorStatsService.getVendorStats();
 
         console.log('📊 Données statistiques reçues depuis /vendor/stats:', statsData);
 
-        // ✅ Utiliser les vraies données de l'API /vendor/stats qui contient déjà le bon nombre de produits
+        // ✅ Combiner les données de /orders/my-orders (commandes) et /vendor/stats (produits/designs)
         setStats({
-          totalProducts: statsData.totalProducts, // 2 produits (selon l'API)
-          publishedProducts: statsData.publishedProducts, // 1 publié
-          draftProducts: statsData.draftProducts, // 1 brouillon
-          pendingProducts: statsData.pendingProducts, // 0 en attente
-          totalValue: statsData.totalValue, // 25 000 F
-          averagePrice: statsData.averagePrice, // 12 500 F
-          totalDesigns: statsData.totalDesigns, // 5 designs
-          publishedDesigns: statsData.publishedDesigns, // 3 publiés
-          draftDesigns: statsData.draftDesigns, // 1 brouillon
-          pendingDesigns: statsData.pendingDesigns, // 1 en attente
-          validatedDesigns: statsData.validatedDesigns, // 3 validés
-          shopViews: statsData.shopViews, // 2 157 vues
-          totalOrders: statsData.totalOrders, // 2 commandes
-          averageCommissionRate: statsData.averageCommissionRate, // 59%
-          totalEarnings: statsData.totalEarnings, // 3 280 F
-          pendingAmount: statsData.pendingAmount, // 0 F
+          // Données produits depuis /vendor/stats
+          totalProducts: statsData.totalProducts,
+          publishedProducts: statsData.publishedProducts,
+          draftProducts: statsData.draftProducts,
+          pendingProducts: statsData.pendingProducts,
+          totalValue: statsData.totalValue,
+          averagePrice: statsData.averagePrice,
+          totalDesigns: statsData.totalDesigns,
+          publishedDesigns: statsData.publishedDesigns,
+          draftDesigns: statsData.draftDesigns,
+          pendingDesigns: statsData.pendingDesigns,
+          validatedDesigns: statsData.validatedDesigns,
+          shopViews: statsData.shopViews,
+
+          // Données de commandes depuis /orders/my-orders
+          totalOrders: orderStats.totalOrders || 0,
+          averageCommissionRate: (orderStats.totalCommission && orderStats.totalRevenue)
+            ? Math.round((orderStats.totalCommission / orderStats.totalRevenue) * 100)
+            : 0,
+          totalEarnings: orderStats.totalVendorAmount || 0,
+          pendingAmount: vendorFinances?.pendingWithdrawalAmount || 0,
+
           memberSince: statsData.memberSince,
           lastLoginAt: statsData.lastLoginAt
         });
 
-        console.log('✅ Statistiques chargées avec succès depuis /vendor/stats');
+        console.log('✅ Statistiques combinées chargées avec succès');
         console.log('📈 Nombre de produits:', statsData.totalProducts);
-        console.log('💰 Total earnings:', statsData.totalEarnings);
-        console.log('🛒 Commandes totales:', statsData.totalOrders);
+        console.log('💰 Total earnings:', orderStats.totalVendorAmount);
+        console.log('🛒 Commandes totales:', orderStats.totalOrders);
 
       } catch (error) {
         console.warn('⚠️ Erreur lors du chargement des statistiques depuis /vendor/stats:', error);
-        // Utiliser des données par défaut basées sur l'API /vendor/stats
+        // Utiliser les données de /orders/my-orders comme fallback
         setStats({
-          totalProducts: 2, // Valeur réelle de l'API
-          publishedProducts: 1,
-          draftProducts: 1,
+          totalProducts: 0,
+          publishedProducts: 0,
+          draftProducts: 0,
           pendingProducts: 0,
-          totalValue: 25000,
-          averagePrice: 12500,
-          totalDesigns: 5,
-          publishedDesigns: 3,
-          draftDesigns: 1,
-          pendingDesigns: 1,
-          validatedDesigns: 3,
-          shopViews: 2157,
-          totalOrders: 2,
-          averageCommissionRate: 59,
-          totalEarnings: 3280,
-          pendingAmount: 0,
-          memberSince: '2025-12-01T16:14:06.827Z',
-          lastLoginAt: '2025-12-10T10:23:59.620Z'
+          totalValue: 0,
+          averagePrice: 0,
+          totalDesigns: 0,
+          publishedDesigns: 0,
+          draftDesigns: 0,
+          pendingDesigns: 0,
+          validatedDesigns: 0,
+          shopViews: 0,
+          totalOrders: orderStats.totalOrders || 0,
+          averageCommissionRate: (orderStats.totalCommission && orderStats.totalRevenue)
+            ? Math.round((orderStats.totalCommission / orderStats.totalRevenue) * 100)
+            : 0,
+          totalEarnings: orderStats.totalVendorAmount || 0,
+          pendingAmount: vendorFinances?.pendingWithdrawalAmount || 0,
+          memberSince: '',
+          lastLoginAt: ''
         });
       }
 
       setApiStatus('connected');
-      console.log('✅ Dashboard alimenté par /vendor/earnings avec cohérence /appel-de-fonds');
-      console.log('🔗 Solde cohérent:', dashboardFinances.availableAmount);
+      console.log('✅ Dashboard alimenté par /orders/my-orders pour les données financières');
+      console.log('🔗 CA Annuel:', dashboardFinances.yearlyRevenue);
+      console.log('🔗 CA Mensuel:', dashboardFinances.monthlyRevenue);
+      console.log('🔗 Solde disponible:', dashboardFinances.availableAmount);
 
     } catch (error) {
-      console.error('❌ Erreur chargement données financières depuis /vendor/earnings:', error);
+      console.error('❌ Erreur chargement données financières depuis /orders/my-orders:', error);
       setApiStatus('offline');
       // Données par défaut en cas d'erreur (basées sur les données de pub.md)
       setStats({
@@ -314,6 +338,11 @@ export const VendorDashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50/30">
       <div className="max-w-7xl mx-auto p-6 space-y-8">
+        {/* 🔔 Bannière de profil incomplet - S'affiche à chaque connexion tant que non complet */}
+        <ProfileCompletionBanner
+          onComplete={() => navigate('/vendeur/profile-setup')}
+        />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -429,12 +458,12 @@ export const VendorDashboardPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">
-                  {/* 🎯 Cohérent avec le montant "Disponible" dans /vendeur/appel-de-fonds */}
+                  {/* 🎯 Solde = total des gains vendeur depuis statistics.totalVendorAmount */}
                   {loading ? '...' : `${finances.availableAmount.toLocaleString()} F`}
                 </div>
                 <div className="flex items-center text-xs text-emerald-600">
                   <ArrowUpRight className="h-3 w-3 mr-1" />
-                  <span>Disponible pour retrait</span>
+                  <span>Gains totaux</span>
                 </div>
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-xs">
@@ -499,11 +528,44 @@ export const VendorDashboardPage: React.FC = () => {
             </Card>
           </motion.div>
 
-          {/* 6. Nombre de vues de la boutique */}
+          {/* 6. Revenus des Designs - NOUVELLE CARTE CLIQUABLE */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
+          >
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate('/vendeur/design-revenues')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Revenus des Designs</CardTitle>
+                <Sparkles className="h-4 w-4 text-pink-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">
+                  {loading ? '...' : '125 000 F'}
+                </div>
+                <div className="flex items-center text-xs text-pink-600">
+                  <ArrowUpRight className="h-3 w-3 mr-1" />
+                  <span>Voir les détails →</span>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Utilisations</span>
+                    <span className="text-gray-700 font-medium">45</span>
+                  </div>
+                  <Progress value={65} className="h-2" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* 7. Nombre de vues de la boutique */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
           >
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -623,7 +685,7 @@ export const VendorDashboardPage: React.FC = () => {
                       <span>Jul</span>
                     </div>
                     <div className="mt-4 text-sm text-gray-600">
-                      💰 Données financières cohérentes avec l'espace d'appel de fonds
+                      💰 Données financières depuis /orders/my-orders
                     </div>
                   </CardContent>
                 </Card>

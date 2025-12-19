@@ -298,7 +298,7 @@ const PrintalmaRegister = () => {
       )}
 
       {/* Login Link */}
-      <p className="text-xs text-gray-600 text-center">
+      <p className="text-xs text-gray-600 text-center mb-3 sm:mb-4">
         Vous avez déjà un compte ?{' '}
         <button
           onClick={() => navigate('/login')}
@@ -307,6 +307,16 @@ const PrintalmaRegister = () => {
           Connectez-vous
         </button>
       </p>
+
+      {/* Back to Home Link */}
+      <div className="w-full max-w-xs sm:max-w-sm">
+        <button
+          onClick={() => navigate('/')}
+          className="text-gray-500 text-sm hover:text-gray-700 bg-transparent border-none cursor-pointer w-full transition-colors"
+        >
+          ← Retour à l'accueil
+        </button>
+      </div>
     </div>
   );
 };

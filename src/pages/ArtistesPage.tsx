@@ -187,13 +187,13 @@ export default function ArtistesPage() {
         {/* Header de la page */}
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           <div className="flex items-center gap-3 mb-12">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
               Artistes
             </h1>
             <img
               src="/x_artiste.svg"
               alt="Artistes"
-              className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12"
+              className="w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9"
             />
           </div>
 

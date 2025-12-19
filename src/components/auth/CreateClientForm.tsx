@@ -37,7 +37,7 @@ const CreateClientForm: React.FC<CreateClientFormProps> = ({ onSuccess, onCancel
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   
   // ✅ Nouveaux états pour la validation du nom de boutique
-  const [isCheckingShopName, setIsCheckingShopName] = useState(false);
+  const [isCheckingShopName, setIsCheckingShopName] = useState(false);    
   const [shopNameError, setShopNameError] = useState<string>('');
   
   const { createClient, loading, error, clearError } = useAuth();

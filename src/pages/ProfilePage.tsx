@@ -329,7 +329,7 @@ export default function ProfilePage() {
           };
 
           // Chercher le vendeur par nom de boutique d'abord, puis par firstName
-          let vendor = vendors.find((v: any) => {
+          const vendor = vendors.find((v: any) => {
             if (v.shop_name && nameToUrlFriendly(v.shop_name) === shopName) {
               return true;
             }
@@ -409,11 +409,15 @@ export default function ProfilePage() {
   // Effet pour charger la galerie du vendeur
   useEffect(() => {
     const loadVendorGallery = async () => {
+      console.log('Effect loadVendorGallery déclenché:', { type, vendorData });
+
       try {
         setLoadingGallery(true);
 
         // Pour les profils vendeur, on récupère la galerie du vendeur
         if (type === 'artiste' || type === 'influenceur' || type === 'designer') {
+          console.log('Type de profil détecté comme vendeur:', type);
+
           // Attendre que vendorData soit chargé pour avoir l'ID
           if (vendorData && vendorData.id) {
             console.log(`Récupération de la galerie pour vendeur ID ${vendorData.id}`);
@@ -421,7 +425,26 @@ export default function ProfilePage() {
 
             setGallery(vendorGallery);
             console.log('Galerie récupérée:', vendorGallery);
+            console.log('Images dans la galerie:', vendorGallery?.images);
+            console.log('Nombre d images:', vendorGallery?.images?.length);
+
+            // Debug détaillé pour chaque image
+            if (vendorGallery && vendorGallery.images) {
+              vendorGallery.images.forEach((img, idx) => {
+                console.log(`Image ${idx}:`, {
+                  id: img.id,
+                  url: img.url,
+                  imageUrl: (img as any).imageUrl,
+                  caption: img.caption,
+                  order: img.order
+                });
+              });
+            }
+          } else {
+            console.log('vendorData pas encore chargé ou pas d\'ID:', vendorData);
           }
+        } else {
+          console.log('Type de profil non vendeur:', type);
         }
       } catch (error) {
         console.error('Erreur lors du chargement de la galerie:', error);

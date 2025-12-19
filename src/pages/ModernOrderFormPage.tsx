@@ -98,8 +98,78 @@ const ProductPreviewWithViews: React.FC<{
   productData: any;
 }> = ({ productData }) => {
   const [selectedViewIndex, setSelectedViewIndex] = useState(0);
+  const [vendorProduct, setVendorProduct] = useState<any>(null);
+  const [loadingVendorProduct, setLoadingVendorProduct] = useState(false);
 
-  // Traduire le viewType en français
+  // 🏪 Charger le produit vendeur si nécessaire
+  useEffect(() => {
+    const loadVendorProduct = async () => {
+      if (!productData?.vendorProductId) return;
+
+      setLoadingVendorProduct(true);
+      try {
+        console.log('🏪 [ModernOrderFormPage] Chargement produit vendeur:', productData.vendorProductId);
+        const vendorProductsService = (await import('../services/vendorProductsService')).default;
+        const response = await vendorProductsService.getProductById(productData.vendorProductId);
+
+        if (response.success && response.data) {
+          console.log('✅ [ModernOrderFormPage] Produit vendeur chargé');
+          setVendorProduct(response.data);
+        }
+      } catch (error) {
+        console.error('❌ [ModernOrderFormPage] Erreur chargement produit vendeur:', error);
+      } finally {
+        setLoadingVendorProduct(false);
+      }
+    };
+
+    loadVendorProduct();
+  }, [productData?.vendorProductId]);
+
+  // 🏪 Si c'est un produit vendeur, utiliser SimpleProductPreview
+  if (productData?.vendorProductId) {
+    if (loadingVendorProduct) {
+      return (
+        <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+          <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+        </div>
+      );
+    }
+
+    if (vendorProduct) {
+      return (
+        <div className="flex flex-col gap-2 sm:gap-3">
+          <SimpleProductPreview
+            product={vendorProduct}
+            showColorSlider={false}
+            showDelimitations={false}
+            onProductClick={() => {}}
+            hideValidationBadges={true}
+            initialColorId={productData.colorVariationId}
+            imageObjectFit="contain"
+          />
+          <div className="text-center">
+            <span className="inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-800">
+              🏪 Design vendeur
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback si le chargement échoue
+    return (
+      <div className="w-full aspect-square bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <img
+          src={productData.imageUrl}
+          alt={productData.name}
+          className="w-full h-full object-contain"
+        />
+      </div>
+    );
+  }
+
+  // 🎨 Pour les produits customisés, utiliser la logique existante
   const getViewName = (viewType: string): string => {
     const viewNames: Record<string, string> = {
       'FRONT': 'Devant',
@@ -568,7 +638,7 @@ const ModernOrderFormPage: React.FC = () => {
     tarif: ZoneTarif;
   }>>([]);
   const [selectedCarrier, setSelectedCarrier] = useState<string>('');
-  const [cityInputTouched, setCityInputTouched] = useState<boolean>(false); // Pour savoir si le champ a été touché
+  const [addressInputTouched, setAddressInputTouched] = useState<boolean>(false); // Pour savoir si le champ adresse a été touché
   const [showDeliveryInfo, setShowDeliveryInfo] = useState<boolean>(false); // Pour contrôler l'affichage
 
   // 🆕 États pour la localisation sélectionnée
@@ -598,7 +668,7 @@ const ModernOrderFormPage: React.FC = () => {
     setShowDeliveryInfo(false); // Cacher les infos de livraison
     setAvailableCarriers([]); // Réinitialiser les transporteurs
     setSelectedCarrier(''); // Réinitialiser le transporteur sélectionné
-    setCityInputTouched(false); // Réinitialiser l'état de saisie
+    setAddressInputTouched(false); // Réinitialiser l'état de saisie
 
     // 🆕 Réinitialiser les états de localisation
     setSelectedCity(null);
@@ -1067,27 +1137,40 @@ const ModernOrderFormPage: React.FC = () => {
     loadDeliveryData();
   }, []);
 
-  // 🆕 Vérifier la disponibilité de la livraison uniquement quand une ville est complètement saisie
+  // 🆕 Vérifier la disponibilité de la livraison uniquement quand l'adresse complète est saisie
   useEffect(() => {
-    // Cacher les infos si la ville est effacée
-    if (!formData.city || formData.city.length < 3) {
+    // Cacher les infos si l'adresse est effacée ET réinitialiser complètement les états de livraison
+    if (!formData.address || formData.address.length < 3) {
       setShowDeliveryInfo(false);
+      // 🐛 Réinitialiser complètement tous les états de livraison pour éviter le bug de conservation
       setDeliveryMessage('');
+      setDeliveryAvailable(false);
+      setDeliveryFee(0);
+      setDeliveryTime('');
+      setSelectedDelivery('');
+      setAvailableCarriers([]);
+      setSelectedCarrier('');
+      // Réinitialiser aussi les états de localisation
+      setSelectedCity(null);
+      setSelectedRegion(null);
+      setSelectedZone(null);
       return;
     }
 
-    // Ne vérifier que si ville a au moins 3 caractères, pays défini, et données de livraison chargées
-    if (formData.city && formData.city.length >= 3 && formData.countryCode &&
-        ((cities.length > 0 || regions.length > 0) || formData.countryCode !== 'SN') && cityInputTouched) {
+    // Ne vérifier que si adresse a au moins 3 caractères, pays défini, et données de livraison chargées
+    if (formData.address && formData.address.length >= 3 && formData.countryCode &&
+        ((cities.length > 0 || regions.length > 0) || formData.countryCode !== 'SN') && addressInputTouched) {
       // Attendre un peu que l'utilisateur finisse de taper
       const timer = setTimeout(() => {
-        checkDeliveryAvailability(formData.city, formData.countryCode);
+        // Utiliser l'adresse complète (quartier/zone) pour vérifier la disponibilité
+        // L'admin définit les quartiers/zones comme "Point E", "Médina", etc.
+        checkDeliveryAvailability(formData.address, formData.countryCode);
         setShowDeliveryInfo(true); // Afficher les infos après la vérification
       }, 800);
 
       return () => clearTimeout(timer);
     }
-  }, [formData.city, formData.countryCode, cities, internationalZones, cityInputTouched]);
+  }, [formData.address, formData.countryCode, cities, regions, internationalZones, addressInputTouched]);
 
   // Rediriger si panier vide
   useEffect(() => {
@@ -1341,6 +1424,75 @@ const ModernOrderFormPage: React.FC = () => {
         deliveryInfo: orderRequest.deliveryInfo // Log complet de deliveryInfo
       });
 
+      // 🔍 DEBUG COMPLET: Vérifier les données de customisation envoyées
+      console.log('🔍 [DEBUG] Données de customisation envoyées au backend:', {
+        orderItems: orderRequest.orderItems.map(item => ({
+          productId: item.productId,
+          customizationId: item.customizationId,
+          customizationIds: item.customizationIds,
+          hasDesignElements: !!(item.designElements && item.designElements.length > 0),
+          designElementsByViewKeys: Object.keys(item.designElementsByView || {}),
+          viewsMetadataCount: item.viewsMetadata?.length || 0
+        }))
+      });
+
+      // 🔧 FIX: Nettoyer les données de customisation invalides avant envoi
+      const cleanedOrderItems = orderRequest.orderItems.map(item => {
+        const cleaned = { ...item };
+
+        // 🎯 Cas des produits vendor avec design prédéfini : ne PAS envoyer de données de customisation
+        if (cleaned.vendorProductId && cleaned.designId) {
+          console.log(`🎯 [DEBUG] Produit vendor avec design prédéfini détecté (productId: ${cleaned.productId}) - Suppression des champs de customisation`);
+
+          // Supprimer tous les champs de customisation pour les produits vendor avec design défini
+          delete cleaned.customizationId;
+          delete cleaned.customizationIds;
+          delete cleaned.designElements;
+          delete cleaned.designElementsByView;
+          delete cleaned.viewsMetadata;
+        } else {
+          // Pour les autres produits, nettoyer uniquement les données vides
+
+          // Si customizationIds est un objet vide, le supprimer pour éviter validation errors
+          if (cleaned.customizationIds && Object.keys(cleaned.customizationIds).length === 0) {
+            delete cleaned.customizationIds;
+          }
+
+          // Si designElementsByView est un objet vide, le supprimer
+          if (cleaned.designElementsByView && Object.keys(cleaned.designElementsByView).length === 0) {
+            delete cleaned.designElementsByView;
+          }
+
+          // Si designElements est un tableau vide, le supprimer
+          if (cleaned.designElements && Array.isArray(cleaned.designElements) && cleaned.designElements.length === 0) {
+            delete cleaned.designElements;
+          }
+
+          // Si viewsMetadata est un tableau vide, le supprimer
+          if (cleaned.viewsMetadata && Array.isArray(cleaned.viewsMetadata) && cleaned.viewsMetadata.length === 0) {
+            delete cleaned.viewsMetadata;
+          }
+        }
+
+        return cleaned;
+      });
+
+      // Mettre à jour la requête avec les données nettoyées
+      orderRequest.orderItems = cleanedOrderItems;
+
+      console.log('🧹 [DEBUG] Données de customisation nettoyées:', {
+        orderItems: orderRequest.orderItems.map(item => ({
+          productId: item.productId,
+          isVendorProduct: !!item.vendorProductId,
+          hasDesignId: !!item.designId,
+          hasCustomizationId: !!item.customizationId,
+          hasCustomizationIds: !!item.customizationIds,
+          hasDesignElements: !!item.designElements,
+          hasDesignElementsByView: !!item.designElementsByView,
+          hasViewsMetadata: !!item.viewsMetadata
+        }))
+      });
+
       // Log détaillé des champs clés pour validation
       console.log('🔍 Validation deliveryInfo:', {
         transporteurId: orderRequest.deliveryInfo?.transporteurId,
@@ -1393,12 +1545,35 @@ const ModernOrderFormPage: React.FC = () => {
 
     } catch (error: any) {
       console.error('=== ERREUR PAIEMENT PAYDUNYA ===');
-      console.error('❌ Erreur:', error);
-      console.error('❌ Message:', error.message);
-      console.error('❌ Response:', error.response?.data);
+
+      // Gestion sécurisée de l'erreur pour éviter les propriétés undefined
+      // Vérifier si error n'est pas null ou undefined
+      if (!error) {
+        console.error('❌ Erreur inattendue: error est null ou undefined');
+        toast({
+          title: "Erreur de paiement",
+          description: "Une erreur inattendue est survenue. Veuillez réessayer.",
+          variant: "destructive",
+        });
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      const errorMessage = error.message || 'Erreur inconnue';
+      const errorResponse = error.response || null;
+      const errorData = errorResponse?.data || null;
+      const errorStack = error.stack || 'No stack available';
+
+      // Logger de manière sécurisée pour éviter les problèmes avec les extensions
+      console.error('❌ Erreur détectée');
+      console.error('❌ Message:', errorMessage);
+      if (errorData) {
+        console.error('❌ Response:', JSON.stringify(errorData, null, 2));
+      }
+      console.error('❌ Stack:', errorStack);
 
       // 🚨 GESTION SPÉCIFIQUE DES ERREURS DE LIVRAISON
-      if (error.response?.status === 400) {
+      if (error.response && error.response.status === 400) {
         const errorData = error.response.data;
 
         if (errorData.errors && Array.isArray(errorData.errors)) {
@@ -1438,7 +1613,7 @@ const ModernOrderFormPage: React.FC = () => {
             payment: 'Veuillez vérifier vos informations'
           });
         }
-      } else if (error.response?.status === 500) {
+      } else if (error.response && error.response.status === 500) {
         setErrors({
           payment: 'Erreur serveur. Veuillez réessayer plus tard.'
         });
@@ -1547,6 +1722,75 @@ const ModernOrderFormPage: React.FC = () => {
           deliveryFee: orderRequest.deliveryInfo?.deliveryFee
         });
 
+        // 🔍 DEBUG COMPLET: Vérifier les données de customisation envoyées
+        console.log('🔍 [DEBUG] Données de customisation envoyées au backend:', {
+          orderItems: orderRequest.orderItems.map(item => ({
+            productId: item.productId,
+            customizationId: item.customizationId,
+            customizationIds: item.customizationIds,
+            hasDesignElements: !!(item.designElements && item.designElements.length > 0),
+            designElementsByViewKeys: Object.keys(item.designElementsByView || {}),
+            viewsMetadataCount: item.viewsMetadata?.length || 0
+          }))
+        });
+
+        // 🔧 FIX: Nettoyer les données de customisation invalides avant envoi
+        const cleanedOrderItems = orderRequest.orderItems.map(item => {
+          const cleaned = { ...item };
+
+          // 🎯 Cas des produits vendor avec design prédéfini : ne PAS envoyer de données de customisation
+          if (cleaned.vendorProductId && cleaned.designId) {
+            console.log(`🎯 [DEBUG] Produit vendor avec design prédéfini détecté (productId: ${cleaned.productId}) - Suppression des champs de customisation`);
+
+            // Supprimer tous les champs de customisation pour les produits vendor avec design défini
+            delete cleaned.customizationId;
+            delete cleaned.customizationIds;
+            delete cleaned.designElements;
+            delete cleaned.designElementsByView;
+            delete cleaned.viewsMetadata;
+          } else {
+            // Pour les autres produits, nettoyer uniquement les données vides
+
+            // Si customizationIds est un objet vide, le supprimer pour éviter validation errors
+            if (cleaned.customizationIds && Object.keys(cleaned.customizationIds).length === 0) {
+              delete cleaned.customizationIds;
+            }
+
+            // Si designElementsByView est un objet vide, le supprimer
+            if (cleaned.designElementsByView && Object.keys(cleaned.designElementsByView).length === 0) {
+              delete cleaned.designElementsByView;
+            }
+
+            // Si designElements est un tableau vide, le supprimer
+            if (cleaned.designElements && Array.isArray(cleaned.designElements) && cleaned.designElements.length === 0) {
+              delete cleaned.designElements;
+            }
+
+            // Si viewsMetadata est un tableau vide, le supprimer
+            if (cleaned.viewsMetadata && Array.isArray(cleaned.viewsMetadata) && cleaned.viewsMetadata.length === 0) {
+              delete cleaned.viewsMetadata;
+            }
+          }
+
+          return cleaned;
+        });
+
+        // Mettre à jour la requête avec les données nettoyées
+        orderRequest.orderItems = cleanedOrderItems;
+
+        console.log('🧹 [DEBUG] Données de customisation nettoyées:', {
+          orderItems: orderRequest.orderItems.map(item => ({
+            productId: item.productId,
+            isVendorProduct: !!item.vendorProductId,
+            hasDesignId: !!item.designId,
+            hasCustomizationId: !!item.customizationId,
+            hasCustomizationIds: !!item.customizationIds,
+            hasDesignElements: !!item.designElements,
+            hasDesignElementsByView: !!item.designElementsByView,
+            hasViewsMetadata: !!item.viewsMetadata
+          }))
+        });
+
         // Créer la commande
         const orderResponse = orderService.isUserAuthenticated()
           ? await orderService.createOrderWithPayment(orderRequest)
@@ -1563,12 +1807,25 @@ const ModernOrderFormPage: React.FC = () => {
 
       } catch (error: any) {
         console.error('=== ERREUR PAIEMENT À LA LIVRAISON ===');
+
+        // Vérifier si error n'est pas null ou undefined
+        if (!error) {
+          console.error('❌ Erreur inattendue: error est null ou undefined');
+          toast({
+            title: "Erreur de paiement",
+            description: "Une erreur inattendue est survenue lors du paiement à la livraison. Veuillez réessayer.",
+            variant: "destructive",
+          });
+          setIsProcessingPayment(false);
+          return;
+        }
+
         console.error('❌ Erreur:', error);
-        console.error('❌ Message:', error.message);
-        console.error('❌ Response:', error.response?.data);
+        console.error('❌ Message:', error.message || 'Pas de message');
+        console.error('❌ Response:', error.response?.data || 'Pas de response');
 
         // 🚨 GESTION SPÉCIFIQUE DES ERREURS DE LIVRAISON
-        if (error.response?.status === 400) {
+        if (error.response && error.response.status === 400) {
           const errorData = error.response.data;
 
           if (errorData.errors && Array.isArray(errorData.errors)) {
@@ -1608,7 +1865,7 @@ const ModernOrderFormPage: React.FC = () => {
               payment: 'Veuillez vérifier vos informations'
             });
           }
-        } else if (error.response?.status === 500) {
+        } else if (error.response && error.response.status === 500) {
           setErrors({
             payment: 'Erreur serveur. Veuillez réessayer plus tard.'
           });
@@ -1633,6 +1890,24 @@ const ModernOrderFormPage: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name as keyof OrderFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+
+    // 🔄 Si l'adresse change, marquer le champ comme touché pour déclencher la vérification
+    if (name === 'address') {
+      setAddressInputTouched(true); // Marquer que le champ adresse a été modifié
+      // Réinitialiser les infos de livraison pour forcer une nouvelle vérification
+      setShowDeliveryInfo(false);
+      setDeliveryMessage('');
+      setDeliveryAvailable(false);
+      setDeliveryFee(0);
+      setDeliveryTime('');
+      setSelectedDelivery('');
+      setAvailableCarriers([]);
+      setSelectedCarrier('');
+      setSelectedCity(null);
+      setSelectedRegion(null);
+      setSelectedZone(null);
+      setErrors(prev => ({ ...prev, delivery: undefined }));
     }
   };
 
@@ -1872,13 +2147,11 @@ const ModernOrderFormPage: React.FC = () => {
                                 value={formData.city}
                                 onChange={(cityName) => {
                                   setFormData(prev => ({ ...prev, city: cityName }));
-                                  setCityInputTouched(true); // Marquer que le champ a été modifié
                                   // Effacer l'erreur si présente
                                   if (errors.city) {
                                     setErrors(prev => ({ ...prev, city: undefined }));
                                   }
                                 }}
-                                onBlur={() => setCityInputTouched(true)} // Marquer quand le champ perd le focus
                                 placeholder="Rechercher une ville..."
                                 error={!!errors.city}
                               />

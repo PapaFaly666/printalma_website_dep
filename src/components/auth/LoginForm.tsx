@@ -256,7 +256,7 @@ const LoginForm = () => {
             <p className="text-sm text-gray-600 text-center mt-6">
               Vous n'avez pas encore de compte ?{' '}
               <button
-                onClick={() => navigate('/vendeur/login')}
+                onClick={() => navigate('/vendeur/register')}
                 className="text-blue-500 font-semibold hover:underline bg-transparent border-none cursor-pointer"
               >
                 S'inscrire

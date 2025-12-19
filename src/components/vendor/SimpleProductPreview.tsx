@@ -5,6 +5,11 @@ import DesignPositionService from '../../services/DesignPositionService';
 import { useAuth } from '../../contexts/AuthContext';
 // 🆕 Import du service API pour synchroniser vers la base de données
 import { vendorProductService } from '../../services/vendorProductService';
+import {
+  computeResponsivePosition,
+  computeDesignTransform,
+  createDesignElementStyles
+} from '../../utils/responsiveDesignPositioning';
 
 // Interface basée sur l'API /vendor/products et la documentation
 interface DelimitationData {
@@ -563,48 +568,20 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
 
   // 🆕 Fonction pour calculer la position en pixels - IDENTIQUE à ProductViewWithDesign (admin/add-product)
   const computePxPosition = (delim: DelimitationData) => {
-    // Détection automatique du type de coordonnées comme dans ProductViewWithDesign
-    const isPixel = delim.coordinateType === 'PIXEL' || delim.x > 100 || delim.y > 100;
+    // 🆕 UTILISER LA FONCTION PARTAGÉE POUR UN POSITIONNEMENT COHÉRENT
+    const { width: contW, height: contH } = containerRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
+    if (contW === 0 || contH === 0) return { left: 0, top: 0, width: 0, height: 0 };
 
     const imgW = imageMetrics?.originalWidth || 1200;
     const imgH = imageMetrics?.originalHeight || 1200;
 
-    // Conversion en pourcentage si nécessaire (logique identique à ProductViewWithDesign)
-    const pct = {
-      x: isPixel ? (delim.x / imgW) * 100 : delim.x,
-      y: isPixel ? (delim.y / imgH) * 100 : delim.y,
-      w: isPixel ? (delim.width / imgW) * 100 : delim.width,
-      h: isPixel ? (delim.height / imgH) * 100 : delim.height,
-    };
-
-    // Utiliser les dimensions du conteneur (logique identique à ProductViewWithDesign)
-    const { width: contW, height: contH } = containerRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
-    if (contW === 0 || contH === 0) return { left: 0, top: 0, width: 0, height: 0 };
-
-    // Calcul responsive identique à ProductViewWithDesign
-    const imgRatio = imgW / imgH;
-    const contRatio = contW / contH;
-
-    let dispW: number, dispH: number, offsetX: number, offsetY: number;
-    if (imgRatio > contRatio) {
-      dispW = contW;
-      dispH = contW / imgRatio;
-      offsetX = 0;
-      offsetY = (contH - dispH) / 2;
-    } else {
-      dispH = contH;
-      dispW = contH * imgRatio;
-      offsetX = (contW - dispW) / 2;
-      offsetY = 0;
-    }
-
-    // Retour de position exactement comme ProductViewWithDesign
-    return {
-      left: offsetX + (pct.x / 100) * dispW,
-      top: offsetY + (pct.y / 100) * dispH,
-      width: (pct.w / 100) * dispW,
-      height: (pct.h / 100) * dispH,
-    };
+    // Utiliser la fonction partagée pour un calcul responsif cohérent
+    return computeResponsivePosition(
+      delim,
+      { width: contW, height: contH },
+      { originalWidth: imgW, originalHeight: imgH },
+      'contain'
+    );
   };
 
   // Gestionnaire de changement de couleur

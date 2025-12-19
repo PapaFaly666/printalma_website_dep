@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Base URL configurable via variable d'environnement VITE_API_BASE_URL
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://printalma-back-dep.onrender.com';
+// Base URL configurable via variable d'environnement VITE_API_URL
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3004';
 
 export const apiClient = axios.create({
   baseURL,
