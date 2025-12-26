@@ -185,29 +185,29 @@ export default function ArtistesPage() {
         <ArtisteSectionWithoutButton />
 
         {/* Header de la page */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          <div className="flex items-center gap-3 mb-12">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">
               Artistes
             </h1>
             <img
               src="/x_artiste.svg"
               alt="Artistes"
-              className="w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9"
+              className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12"
             />
           </div>
 
           {/* Grille des artistes (données API) */}
           {artists.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
               {artists.map((artist) => (
                 <div
                   key={artist.id}
-                  className="rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-lg hover:shadow-xl transition-all duration-300"
-                  style={{ backgroundColor: '#1A7CB8' }}
+                  className="rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300"
+                  style={{ backgroundColor: '#049BE5' }}
                 >
                   {/* Avatar */}
-                  <div className="w-32 h-32 rounded-full bg-white p-2 mb-6">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white p-2 mb-4">
                     <img
                       src={artist.imageUrl}
                       alt={artist.name}
@@ -216,17 +216,17 @@ export default function ArtistesPage() {
                   </div>
 
                   {/* Nom de l'artiste (firstName) */}
-                  <h2 className="text-2xl font-bold text-white mb-2 italic">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">
                     {artist.firstName}
                   </h2>
 
                   {/* Nom de la boutique (shopName) */}
-                  <p className="text-sm text-white/90 mb-3">
+                  <p className="text-sm text-white/90 mb-3 font-medium">
                     {artist.shopName}
                   </p>
 
                   {/* Note avec étoile */}
-                  <div className="flex items-center gap-1 mb-6">
+                  <div className="flex items-center gap-1 mb-4">
                     <svg
                       className="w-5 h-5 text-yellow-300 fill-current"
                       xmlns="http://www.w3.org/2000/svg"
@@ -234,7 +234,7 @@ export default function ArtistesPage() {
                     >
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
-                    <span className="text-sm text-white">
+                    <span className="text-sm font-semibold text-white">
                       {artist.rating.toFixed(1)}
                     </span>
                   </div>
@@ -242,16 +242,16 @@ export default function ArtistesPage() {
                   {/* Bouton CTA */}
                   <button
                     onClick={() => handleViewShop(artist)}
-                    className="bg-white text-black font-bold text-xs px-5 py-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 uppercase tracking-wide"
+                    className="w-full bg-white text-[#049BE5] font-bold text-xs py-2.5 rounded-lg hover:bg-gray-100 transition-colors duration-200 uppercase tracking-wider"
                   >
-                    VOIR MA BOUTIQUE
+                    VOIR LA BOUTIQUE
                   </button>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">Aucun artiste disponible pour le moment.</p>
+            <div className="text-center py-16">
+              <p className="text-gray-500 text-lg font-medium">Aucun artiste disponible pour le moment.</p>
             </div>
           )}
         </div>

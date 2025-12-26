@@ -613,9 +613,16 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
           <h3 className="font-bold italic text-base mb-0.5 truncate">
             {product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
           </h3>
-          <p className="text-sm font-bold">
+          <p className="text-sm font-bold mb-1">
             {formatPrice(product.price)}
           </p>
+
+          {/* Description du produit */}
+          {product.adminProduct?.description && (
+            <p className="text-xs text-gray-600 line-clamp-2">
+              {product.adminProduct.description}
+            </p>
+          )}
 
           {/* Couleurs disponibles - MASQUÉES */}
           {false && product.selectedColors && product.selectedColors.length > 0 && (

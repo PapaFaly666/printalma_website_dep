@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Eye, EyeOff, User, AlertCircle, Camera, X, Upload, Edit3, Save, Trash2, Shield, Settings, Mail, Phone, MapPin, Store, Key, AlertTriangle, Info, Move, RotateCw, ZoomIn, ZoomOut, Crop } from 'lucide-react';
+import { Eye, EyeOff, User, AlertCircle, Camera, X, Upload, Edit3, Save, Trash2, Shield, Settings, Mail, Phone, MapPin, Store, Key, AlertTriangle, Info, Move, RotateCw, ZoomIn, ZoomOut, Crop, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Badge } from '../../components/ui/badge';
 import { Slider } from '../../components/ui/slider';
 import SocialMediaManager from '../../components/vendor/SocialMediaManager';
+import vendorOnboardingService, { PhoneNumber as OnboardingPhone } from '../../services/vendorOnboardingService';
 
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -124,6 +125,95 @@ const VendorAccountPage: React.FC = () => {
     fetchProfileBio();
   }, []);
 
+  // ✅ Récupération des numéros de téléphone au chargement
+  useEffect(() => {
+    loadPhoneNumbers();
+  }, []);
+
+  const loadPhoneNumbers = async () => {
+    setLoadingPhones(true);
+    try {
+      const info = await vendorOnboardingService.getOnboardingInfo();
+      setPhoneNumbers(info.phones);
+    } catch (error) {
+      console.error('Erreur chargement numéros:', error);
+    } finally {
+      setLoadingPhones(false);
+    }
+  };
+
+  const openPhoneDialog = () => {
+    setEditingPhones(phoneNumbers.map(p => ({ number: p.number, isPrimary: p.isPrimary })));
+    setShowPhoneDialog(true);
+  };
+
+  const validateSenegalPhone = (phone: string): boolean => {
+    const phoneRegex = /^(\+?221|221)?[73][0-9]{8}$/;
+    const cleanedPhone = phone.replace(/[\s-]/g, '');
+    return phoneRegex.test(cleanedPhone);
+  };
+
+  const handleSavePhones = async () => {
+    // Validation
+    const validPhones = editingPhones.filter(p => p.number.trim() !== '');
+
+    if (validPhones.length < 2 || validPhones.length > 3) {
+      toast.error('Vous devez avoir entre 2 et 3 numéros de téléphone');
+      return;
+    }
+
+    for (const phone of validPhones) {
+      if (!validateSenegalPhone(phone.number)) {
+        toast.error(`Le numéro ${phone.number} est invalide`);
+        return;
+      }
+    }
+
+    const primaryCount = validPhones.filter(p => p.isPrimary).length;
+    if (primaryCount !== 1) {
+      toast.error('Vous devez désigner exactement un numéro comme principal');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await vendorOnboardingService.updatePhones(validPhones);
+      toast.success('Numéros mis à jour avec succès');
+      setShowPhoneDialog(false);
+      await loadPhoneNumbers();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addPhone = () => {
+    if (editingPhones.length >= 3) {
+      toast.error('Maximum 3 numéros');
+      return;
+    }
+    setEditingPhones([...editingPhones, { number: '', isPrimary: false }]);
+  };
+
+  const removePhone = (index: number) => {
+    if (editingPhones.length <= 2) {
+      toast.error('Minimum 2 numéros requis');
+      return;
+    }
+    setEditingPhones(editingPhones.filter((_, i) => i !== index));
+  };
+
+  const updatePhone = (index: number, number: string) => {
+    const updated = [...editingPhones];
+    updated[index].number = number;
+    setEditingPhones(updated);
+  };
+
+  const setPrimary = (index: number) => {
+    setEditingPhones(editingPhones.map((p, i) => ({ ...p, isPrimary: i === index })));
+  };
+
   // ✅ États pour les champs éditables individuels
   const [editableFields, setEditableFields] = useState<Record<string, EditableField>>({
     firstName: { value: user?.firstName || '', isEditing: false, error: '', isChecking: false },
@@ -195,6 +285,12 @@ const VendorAccountPage: React.FC = () => {
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [deactivateConfirmation, setDeactivateConfirmation] = useState('');
   const [accountStatus, setAccountStatus] = useState<boolean>(true); // true = actif, false = désactivé
+
+  // États pour la gestion des numéros de téléphone
+  const [phoneNumbers, setPhoneNumbers] = useState<OnboardingPhone[]>([]);
+  const [loadingPhones, setLoadingPhones] = useState(false);
+  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
+  const [editingPhones, setEditingPhones] = useState<Array<{ number: string; isPrimary: boolean }>>([]);
 
   // ✅ Validation en temps réel du nom de boutique
   useEffect(() => {
@@ -877,13 +973,20 @@ const VendorAccountPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-8 font-sans">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         {/* Header moderne avec typographie améliorée */}
-        <div className="mb-8 text-center sm:text-left">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
-            Mon Profil
-          </h1>
-          <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl">
-            Gérez vos informations personnelles et vos paramètres de sécurité avec une interface moderne et intuitive
-          </p>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+                Mon Profil Vendeur
+              </h1>
+              <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed mt-2">
+                Gérez vos informations professionnelles et vos paramètres
+              </p>
+            </div>
+            <Badge className={accountStatus ? "bg-green-100 text-green-800 font-semibold text-sm px-4 py-2" : "bg-orange-100 text-orange-800 font-semibold text-sm px-4 py-2"}>
+              {accountStatus ? '✓ Compte Actif' : '⚠ Compte Désactivé'}
+            </Badge>
+          </div>
         </div>
 
         {/* Bandeau d'avertissement si compte désactivé */}
@@ -915,19 +1018,26 @@ const VendorAccountPage: React.FC = () => {
           </Alert>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-4">
-          {/* Colonne principale */}
-          <div className="lg:col-span-3 space-y-8">
-            
-            {/* Section Photo de profil */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <div className="max-w-5xl mx-auto">
+          <div className="space-y-8">
+
+            {/* Groupe: Identité visuelle */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Identité Visuelle</h2>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+              </div>
+
+              {/* Section Photo de profil */}
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
                   <Camera className="h-6 w-6 text-blue-600" />
                   Photo de profil
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 leading-relaxed">
-                  Personnalisez votre photo de profil pour une identité professionnelle
+                  Votre image professionnelle visible par les clients
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1042,16 +1152,25 @@ const VendorAccountPage: React.FC = () => {
                 />
               </CardContent>
             </Card>
+            </div>
 
-            {/* Section Informations personnelles */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            {/* Groupe: Informations professionnelles */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Informations Professionnelles</h2>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+              </div>
+
+              {/* Section Informations personnelles */}
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
                   <User className="h-6 w-6 text-blue-600" />
                   Informations personnelles
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 leading-relaxed">
-                  Gérez vos informations de base pour maintenir votre profil à jour
+                  Vos coordonnées et informations de contact
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1129,6 +1248,68 @@ const VendorAccountPage: React.FC = () => {
                   icon={User}
                   description="Présentez-vous aux clients pour créer un lien de confiance"
                 />
+              </CardContent>
+            </Card>
+
+            {/* Section Numéros de téléphone */}
+            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
+                  <Phone className="h-6 w-6 text-blue-600" />
+                  Numéros de téléphone
+                </CardTitle>
+                <CardDescription className="text-sm text-gray-500 leading-relaxed">
+                  Vos numéros pour les paiements et communications
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {loadingPhones ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : phoneNumbers.length > 0 ? (
+                  <>
+                    <div className="space-y-3">
+                      {phoneNumbers.map((phone, index) => (
+                        <div
+                          key={phone.number || index}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Phone className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-base font-medium text-gray-900">{phone.number}</p>
+                              {phone.isPrimary && (
+                                <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-300">
+                                  Principal
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={openPhoneDialog}
+                      className="w-full text-sm font-semibold text-blue-600 border-blue-300 hover:bg-blue-50 px-4 py-3 rounded-lg transition-all duration-200"
+                    >
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      Modifier les numéros
+                    </Button>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <Phone className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600 mb-4">Aucun numéro enregistré</p>
+                    <Button
+                      onClick={openPhoneDialog}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Ajouter des numéros
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -1261,9 +1442,18 @@ const VendorAccountPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+            </div>
 
-            {/* Section Sécurité */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            {/* Groupe: Sécurité et Paramètres */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Sécurité et Paramètres</h2>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+              </div>
+
+              {/* Section Sécurité */}
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
                   <Shield className="h-6 w-6 text-green-600" />
@@ -1273,7 +1463,7 @@ const VendorAccountPage: React.FC = () => {
                   Gérez votre mot de passe et vos paramètres de sécurité
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent>
                 <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-blue-100 rounded-lg">
@@ -1281,7 +1471,7 @@ const VendorAccountPage: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="text-base font-semibold text-gray-900">Mot de passe</h4>
-                      <p className="text-sm text-gray-500 leading-relaxed">Dernière modification il y a 30 jours</p>
+                      <p className="text-sm text-gray-500 leading-relaxed">Modifiez votre mot de passe pour sécuriser votre compte</p>
                     </div>
                   </div>
                   <Button
@@ -1292,21 +1482,6 @@ const VendorAccountPage: React.FC = () => {
                     <Edit3 className="h-4 w-4 mr-2" />
                     Modifier
                   </Button>
-                </div>
-                
-                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border border-gray-200">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-orange-100 rounded-lg">
-                      <Shield className="h-6 w-6 text-orange-600" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-semibold text-gray-900">Authentification à deux facteurs</h4>
-                      <p className="text-sm text-gray-500 leading-relaxed">Ajoutez une couche de sécurité supplémentaire</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-orange-600 border-orange-300 font-semibold">
-                    Non activé
-                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -1378,55 +1553,8 @@ const VendorAccountPage: React.FC = () => {
                 )}
               </CardContent>
             </Card>
-          </div>
+            </div>
 
-          {/* Sidebar avec statistiques */}
-          <div className="space-y-6">
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold text-gray-900">Statistiques du compte</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600 leading-relaxed">Membre depuis</span>
-                  <span className="text-sm font-semibold text-gray-900">
-                    {user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600 leading-relaxed">Dernière connexion</span>
-                  <span className="text-sm font-semibold text-gray-900">
-                    {user?.last_login_at ? new Date(user.last_login_at).toLocaleDateString('fr-FR') : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600 leading-relaxed">Statut</span>
-                  <Badge className={accountStatus ? "bg-green-100 text-green-800 font-semibold" : "bg-orange-100 text-orange-800 font-semibold"}>
-                    {accountStatus ? 'Actif' : 'Désactivé'}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold text-gray-900">Actions rapides</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-4 py-3 rounded-lg transition-all duration-200">
-                  <Mail className="h-4 w-4 mr-3" />
-                  Changer l'email
-                </Button>
-                <Button variant="outline" className="w-full justify-start text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-4 py-3 rounded-lg transition-all duration-200">
-                  <Shield className="h-4 w-4 mr-3" />
-                  Paramètres de sécurité
-                </Button>
-                <Button variant="outline" className="w-full justify-start text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-4 py-3 rounded-lg transition-all duration-200">
-                  <Settings className="h-4 w-4 mr-3" />
-                  Préférences
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
@@ -1726,6 +1854,120 @@ const VendorAccountPage: React.FC = () => {
               </Button>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de gestion des numéros de téléphone */}
+      <Dialog open={showPhoneDialog} onOpenChange={setShowPhoneDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <Phone className="h-5 w-5 text-blue-600" />
+              Gérer les numéros de téléphone
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 leading-relaxed">
+              Vous devez avoir entre 2 et 3 numéros avec un numéro principal
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-sm text-blue-800 leading-relaxed">
+                Format accepté : +221XXXXXXXXX ou 7XXXXXXXX/3XXXXXXXX
+              </AlertDescription>
+            </Alert>
+
+            {editingPhones.map((phone, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-900">
+                    Numéro {index + 1}
+                    {index < 2 && <span className="text-red-600 ml-1">*</span>}
+                  </Label>
+                  {index >= 2 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removePhone(index)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="tel"
+                      placeholder="+221 7XX XXX XXX"
+                      value={phone.number}
+                      onChange={(e) => updatePhone(index, e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  {!phone.isPrimary && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPrimary(index)}
+                      className="whitespace-nowrap border-blue-300 text-blue-600 hover:bg-blue-50"
+                    >
+                      Définir principal
+                    </Button>
+                  )}
+                  {phone.isPrimary && (
+                    <Badge className="flex items-center gap-1 bg-blue-100 text-blue-700 border-blue-300 px-3">
+                      <CheckCircle className="h-3 w-3" />
+                      Principal
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {editingPhones.length < 3 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addPhone}
+                className="w-full border-dashed border-2 border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                Ajouter un numéro
+              </Button>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPhoneDialog(false)}
+              className="text-sm font-semibold"
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSavePhones}
+              disabled={isLoading}
+              className="text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Enregistrement...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Enregistrer
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

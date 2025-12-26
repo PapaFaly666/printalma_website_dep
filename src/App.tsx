@@ -37,6 +37,7 @@ import { VendorDesignsPage } from './pages/vendor/VendorDesignsPage';
 import VendorDashboardPage from './pages/vendor/VendorDashboardPage';
 import VendorDesignRevenuesPage from './pages/vendor/VendorDesignRevenuesPage';
 import { VendorProfileSetupPage } from './pages/vendor/VendorProfileSetupPage';
+import VendorOnboardingPage from './pages/vendor/VendorOnboardingPage';
 
 // Nouveaux composants d'authentification
 import { AuthProvider } from './contexts/AuthContext';
@@ -106,6 +107,7 @@ import { DelimitationExample } from './components/examples/DelimitationExample';
 
 // Page d'upload de design pour les vendeurs
 import SellDesignPage from './pages/SellDesignPage';
+import VendorStickerPage from './pages/vendor/VendorStickerPage';
 
 // 🚀 Interface moderne des produits
 import { ProductListModernPage } from './pages/admin/ProductListModernPage';
@@ -381,6 +383,13 @@ function App() {
                   <Route index element={<Navigate to="/test-auth" replace />} />
                 </Route>
                 
+                {/* Route d'onboarding vendeur - hors du layout */}
+                <Route path='/vendeur/onboarding' element={
+                  <VendeurRoute skipOnboardingCheck={true}>
+                    <VendorOnboardingPage />
+                  </VendeurRoute>
+                } />
+
                 {/* Routes vendeur protégées */}
                 <Route path='/vendeur' element={
                   <VendeurRoute>
@@ -403,6 +412,7 @@ function App() {
                   <Route path="sales/:orderId" element={<VendorOrderDetailPage />} />
                   <Route path="sell-design" element={<SellDesignPage />} />
                   <Route path="create-product" element={<CreateProductWizardPage /                                                                                                                      >} />
+                  <Route path="stickers" element={<VendorStickerPage />} />
                   <Route path="account" element={<VendorAccountPage />} />
                   <Route path="appel-de-fonds" element={<VendorFundsRequestPage />} />
                   <Route path="retraits" element={<VendorWithdrawalsPage />} />

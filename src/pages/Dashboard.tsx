@@ -1,78 +1,67 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Avatar } from '../components/ui/avatar';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Loader2 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
+import { dashboardService } from '../services/dashboardService';
+import { DashboardData } from '../types/dashboard';
 
 const Dashboard = () => {
   // Get isDarkMode from context, defaulting to false if not provided
   const { isDarkMode = false } = useOutletContext<{ isDarkMode?: boolean }>() || {};
 
-  // Data for monthly sales chart
-  const chartData = [
-    { name: 'Jan', value: 900000 },
-    { name: 'Fév', value: 2000000 },
-    { name: 'Mar', value: 3500000 },
-    { name: 'Avr', value: 1600000 },
-    { name: 'Mai', value: 2400000 },
-    { name: 'Juin', value: 5000000 },
-    { name: 'Juil', value: 4500000 },
-    { name: 'Août', value: 2000000 },
-    { name: 'Sep', value: 4000000 },
-    { name: 'Oct', value: 4200000 },
-    { name: 'Nov', value: 2000000 },
-    { name: 'Déc', value: 2000000 },
-  ];
-
-  // Top vendors data (Meilleurs vendeurs)
-  const topVendors = [
-    {
-      id: 'KD',
-      name: 'Konan Diomandé',
-      totalSales: 35000,
-      productCount: 42
-    },
-    {
-      id: 'AT',
-      name: 'Aminata Touré',
-      totalSales: 15000,
-      productCount: 27
-    },
-    {
-      id: 'MK',
-      name: 'Mohamed Konaté',
-      totalSales: 25000,
-      productCount: 31
-    },
-    {
-      id: 'FL',
-      name: 'Fatoumata Lô',
-      totalSales: 45000,
-      productCount: 53
-    },
-    {
-      id: 'OT',
-      name: 'Ousmane Traoré',
-      totalSales: 12000,
-      productCount: 18
-    }
-  ];
+  // Fetch dashboard data using React Query
+  const { data: dashboardData, isLoading, error } = useQuery<DashboardData>({
+    queryKey: ['adminDashboard'],
+    queryFn: () => dashboardService.getDashboardData(),
+    refetchInterval: 60000, // Rafraîchir toutes les 60 secondes
+  });
 
   // Définir les couleurs en fonction du mode sombre
   const barColor = isDarkMode ? "#ffffff" : "#000000";
   const positiveTextColor = isDarkMode ? "text-gray-300" : "text-gray-700";
 
   // Formatter pour les valeurs en FCFA
-  const formatCurrency = (value) => {
+  const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-FR').format(value) + ' FCFA';
   };
+
+  // Affichage de l'état de chargement
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <p className="mt-4 text-gray-500">Chargement du tableau de bord...</p>
+      </div>
+    );
+  }
+
+  // Affichage de l'erreur
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center">
+        <p className="text-red-500">Erreur lors du chargement des données du tableau de bord.</p>
+        <p className="text-gray-500 mt-2">Veuillez réessayer plus tard.</p>
+      </div>
+    );
+  }
+
+  // Si pas de données, afficher un message
+  if (!dashboardData) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center">
+        <p className="text-gray-500">Aucune donnée disponible.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
       <div className="flex flex-col gap-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight dark:text-white">Tableau de Bord</h1>
+        <h1 className="text-3xl font-bold tracking-tight dark:text-white">Tableau de Bord - {dashboardData.currentMonth} {dashboardData.currentYear}</h1>
       </div>
 
         {/* Onglets supprimés selon la demande */}
@@ -83,7 +72,7 @@ const Dashboard = () => {
               <CardTitle className="text-sm font-medium">Chiffre d'affaires annuel</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0 FCFA</div>
+              <div className="text-2xl font-bold">{formatCurrency(dashboardData.financialStats.thisYearRevenue)}</div>
               <p className={`text-xs ${positiveTextColor}`}>Gain annuel</p>
             </CardContent>
           </Card>
@@ -93,7 +82,7 @@ const Dashboard = () => {
               <CardTitle className="text-sm font-medium">Chiffre d'affaires mensuel</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0 FCFA</div>
+              <div className="text-2xl font-bold">{formatCurrency(dashboardData.financialStats.thisMonthRevenue)}</div>
               <p className={`text-xs ${positiveTextColor}`}>Gain mensuel</p>
             </CardContent>
           </Card>
@@ -103,8 +92,8 @@ const Dashboard = () => {
               <CardTitle className="text-sm font-medium">Vendeurs</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className={`text-xs ${positiveTextColor}`}>0 vendeur ce mois</p>
+              <div className="text-2xl font-bold">{dashboardData.vendorStats.totalVendors}</div>
+              <p className={`text-xs ${positiveTextColor}`}>{dashboardData.vendorStats.newVendorsThisMonth} vendeur(s) ce mois</p>
             </CardContent>
           </Card>
 
@@ -113,8 +102,8 @@ const Dashboard = () => {
               <CardTitle className="text-sm font-medium">Produits</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className={`text-xs ${positiveTextColor}`}>produit en attente</p>
+              <div className="text-2xl font-bold">{dashboardData.productStats.totalProducts}</div>
+              <p className={`text-xs ${positiveTextColor}`}>{dashboardData.productStats.productsAwaitingValidation.length} produit(s) en attente</p>
             </CardContent>
           </Card>
 
@@ -123,8 +112,8 @@ const Dashboard = () => {
               <CardTitle className="text-sm font-medium">Designs</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className={`text-xs ${positiveTextColor}`}>10 en attente</p>
+              <div className="text-2xl font-bold">{dashboardData.designStats.totalDesigns}</div>
+              <p className={`text-xs ${positiveTextColor}`}>{dashboardData.designStats.designsAwaitingValidation.length} en attente</p>
             </CardContent>
           </Card>
         </div>
@@ -132,60 +121,67 @@ const Dashboard = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <Card className="col-span-4">
             <CardHeader>
-              <CardTitle>Ventes Mensuelles</CardTitle>
+              <CardTitle>Statistiques Commandes</CardTitle>
             </CardHeader>
-            <CardContent className="pl-2">
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={chartData}>
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    vertical={false} 
-                    stroke={isDarkMode ? "#333333" : "#dddddd"}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    stroke={isDarkMode ? "#aaaaaa" : "#333333"}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `${value/1000}k`}
-                    stroke={isDarkMode ? "#aaaaaa" : "#333333"}
-                  />
-                  <Bar
-                    dataKey="value"
-                    fill={barColor}
-                    radius={[4, 4, 0, 0]}
-                    fillOpacity={0.8}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Commandes</p>
+                  <p className="text-2xl font-bold">{dashboardData.orderStats.totalOrders}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ce mois</p>
+                  <p className="text-2xl font-bold">{dashboardData.orderStats.thisMonthOrders}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">En attente</p>
+                  <p className="text-2xl font-bold">{dashboardData.orderStats.pendingOrders}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Confirmées</p>
+                  <p className="text-2xl font-bold">{dashboardData.orderStats.confirmedOrders}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">En traitement</p>
+                  <p className="text-2xl font-bold">{dashboardData.orderStats.processingOrders}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Expédiées</p>
+                  <p className="text-2xl font-bold">{dashboardData.orderStats.shippedOrders}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Livrées</p>
+                  <p className="text-2xl font-bold">{dashboardData.orderStats.deliveredOrders}</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="col-span-3">
             <CardHeader>
-              <CardTitle>Meilleur Vendeur</CardTitle>
+              <CardTitle>Meilleurs Vendeurs</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Classement des meilleurs vendeurs du mois.
+                Top vendeurs par produits.
               </p>
             </CardHeader>
             <CardContent>
-              <div className="space-y-8">
-                {topVendors.map((vendor) => (
-                  <div className="flex items-center" key={vendor.id}>
+              <div className="space-y-4">
+                {dashboardData.topVendors.byProducts.slice(0, 5).map((vendor) => (
+                  <div className="flex items-center" key={vendor.vendorId}>
                     <Avatar className="h-9 w-9 mr-3">
-                      <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                        {vendor.id}
-                      </div>
+                      {vendor.profileImage ? (
+                        <img src={vendor.profileImage} alt={vendor.vendorName} className="h-full w-full rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-xs">
+                          {vendor.vendorName.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
                     </Avatar>
                     <div className="space-y-1 flex-1">
-                      <p className="text-sm font-medium leading-none">{vendor.name}</p>
-                      <p className="text-xs text-muted-foreground">Produits vendus: {vendor.productCount}</p>
+                      <p className="text-sm font-medium leading-none">{vendor.vendorName}</p>
+                      <p className="text-xs text-muted-foreground">{vendor.shopName} - {vendor.totalProducts} produit(s)</p>
                     </div>
-                    <div className="font-medium">{formatCurrency(vendor.totalSales)}</div>
+                    <div className="text-xs font-medium">{vendor.commissionRate}%</div>
                   </div>
                 ))}
               </div>
@@ -202,37 +198,63 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span>Total designs</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{dashboardData.designStats.totalDesigns}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span>Designs en attente</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{dashboardData.designStats.pendingDesigns}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span>Designs publiés</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{dashboardData.designStats.publishedDesigns}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Designs validés</span>
+                  <span className="font-medium">{dashboardData.designStats.validatedDesigns}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="col-span-2">
+          <Card>
             <CardHeader>
-              <CardTitle>Nombre de visites</CardTitle>
+              <CardTitle>Statistiques Vendeurs</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-2">
-                  <span className="font-medium">Aujourd'hui</span>
-                  <span className="text-sm">0</span>
+                  <span className="font-medium">Vendeurs actifs</span>
+                  <span className="text-sm">{dashboardData.vendorStats.activeVendors}</span>
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <span className="font-medium">Cette semaine</span>
-                  <span className="text-sm">0</span>
+                  <span className="font-medium">Vendeurs inactifs</span>
+                  <span className="text-sm">{dashboardData.vendorStats.inactiveVendors}</span>
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <span className="font-medium">Ce mois</span>
-                  <span className="text-sm">0</span>
+                  <span className="font-medium">Vendeurs suspendus</span>
+                  <span className="text-sm">{dashboardData.vendorStats.suspendedVendors}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Statistiques Financières</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-2">
+                  <span className="font-medium">Gains Admin</span>
+                  <span className="text-sm font-bold">{formatCurrency(dashboardData.financialStats.totalAdminGains)}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="font-medium">Revenus vendeurs</span>
+                  <span className="text-sm">{formatCurrency(dashboardData.financialStats.thisMonthVendorEarnings)}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="font-medium">Commission moyenne</span>
+                  <span className="text-sm">{(dashboardData.financialStats.averageCommissionRate * 100).toFixed(0)}%</span>
                 </div>
               </div>
             </CardContent>

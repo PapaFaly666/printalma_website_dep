@@ -449,12 +449,17 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
           // 🆕 RÉCUPÉRER LES POSITIONS DU DESIGN depuis les délimitations
           const previewView = getPreviewView(product);
 
+          // 🆕 Générer une description personnalisée si nécessaire
+          const customDescription = editStates[productId]?.description
+            || `${editStates[productId]?.name || product.name} avec design personnalisé "${designData.designName || 'Design unique'}". ${product.description || 'Produit de qualité avec impression personnalisée.'}`
+            || product.description;
+
           // Préparer les données du produit
           const productData: VendorPublishData = {
             baseProductId: product.id,
             designId: designData.designId || 0,
             vendorName: editStates[productId]?.name || product.name,
-            vendorDescription: editStates[productId]?.description || product.description,
+            vendorDescription: customDescription,
             vendorPrice: editStates[productId]?.price ?? product.suggestedPrice ?? product.price,
             vendorStock: editStates[productId]?.stock || product.stock || 10,
             selectedColors: activeColors,

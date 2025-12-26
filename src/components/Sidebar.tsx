@@ -43,7 +43,8 @@ import {
     Banknote,
     PackageSearch,
     Star,
-    Truck
+    Truck,
+    Sticker
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -215,6 +216,8 @@ export default function Sidebar() {
             setActiveItem('vendor-analytics');
         } else if (location.pathname.includes('/vendeur/appel-de-fonds')) {
             setActiveItem('vendor-appel-de-fonds');
+        } else if (location.pathname.includes('/vendeur/stickers')) {
+            setActiveItem('vendor-stickers');
         }
     }, [location.pathname]);
 
@@ -664,6 +667,17 @@ export default function Sidebar() {
                                     active={activeItem === 'vendor-sell-design'}
                                     onClick={() => handleNavigation('vendor-sell-design')}
                                     badge=""
+                                    textColor=""
+                                />
+
+                                <NavItem
+                                    icon={<Sticker size={18} />}
+                                    label="Vendre Stickers"
+                                    collapsed={collapsed && !isMobile}
+                                    active={activeItem === 'vendor-stickers'}
+                                    onClick={() => handleNavigation('vendor-stickers')}
+                                    badge="NOUVEAU"
+                                    badgeColor="blue"
                                     textColor=""
                                 />
                             </NavGroup>

@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import PageLoading from '../ui/loading';
 import { UserRole } from '../../types/auth.types';
+import vendorOnboardingService from '../../services/vendorOnboardingService';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -66,7 +67,49 @@ export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }
 /**
  * Composant spécialisé pour les routes vendeur
  */
-export const VendeurRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const VendeurRoute: React.FC<{
+  children: React.ReactNode;
+  skipOnboardingCheck?: boolean;
+}> = ({ children, skipOnboardingCheck = false }) => {
+  const { user, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileCompleted, setProfileCompleted] = useState(false);
+
+  useEffect(() => {
+    const checkProfile = async () => {
+      // Ne vérifier que si c'est un vendeur et qu'on ne skip pas la vérification
+      if (!skipOnboardingCheck && user?.role === 'VENDEUR' && location.pathname !== '/vendeur/onboarding') {
+        try {
+          const status = await vendorOnboardingService.getProfileStatus();
+          setProfileCompleted(status.profileCompleted);
+        } catch (error) {
+          console.error('Erreur vérification profil vendeur:', error);
+          // En cas d'erreur, on suppose que le profil n'est pas complété
+          setProfileCompleted(false);
+        }
+      } else {
+        // Si on skip la vérification ou si ce n'est pas un vendeur
+        setProfileCompleted(true);
+      }
+      setProfileLoading(false);
+    };
+
+    if (!authLoading) {
+      checkProfile();
+    }
+  }, [user, authLoading, skipOnboardingCheck, location.pathname]);
+
+  // Affichage du chargement
+  if (authLoading || profileLoading) {
+    return <PageLoading message="Vérification du profil..." />;
+  }
+
+  // Rediriger vers onboarding si profil incomplet
+  if (!skipOnboardingCheck && user?.role === 'VENDEUR' && !profileCompleted && location.pathname !== '/vendeur/onboarding') {
+    return <Navigate to="/vendeur/onboarding" replace state={{ from: location }} />;
+  }
+
   return (
     <ProtectedRoute allowedRoles={['VENDEUR']}>
       {children}

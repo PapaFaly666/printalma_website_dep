@@ -273,80 +273,89 @@ export default function ModernTShirtEcommerce() {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-            {/* Container principal avec fond uniforme et animations */}
-            <div className="w-full bg-gray-50">
-                <CarousselContainer />
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
+            {/* Container principal avec fond moderne et animations */}
+            <div className="w-full relative">
+                {/* Carousel Hero Section avec overlay moderne */}
+                <div className="relative">
+                    <CarousselContainer />
+                    <div className="absolute inset-0 bg-gradient-to-t from-gray-50/80 via-transparent to-transparent pointer-events-none" />
+                </div>
 
-                {/* CategoryTabs sticky qui suit le scroll */}
-                <div className="sticky top-0 z-40">
+                {/* CategoryTabs sticky moderne avec backdrop blur */}
+                <div className="sticky top-0 z-40 backdrop-blur-md bg-white/80 shadow-sm transition-all duration-300">
                     <CategoryTabs />
                 </div>
 
-                {/* Section de personnalisation avec animation fadeUp fluide */}
+                {/* Section de personnalisation modernisée */}
                 <ScrollAnimation animation="fadeUp" delay={100}>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5">
                         <PersonalizationSection />
-                    </div>
+                    </section>
                 </ScrollAnimation>
 
-                {/* Nouveaux produits avec animation slideLeft fluide */}
+                {/* Nouveaux produits avec design moderne */}
                 <ScrollAnimation animation="slideLeft" delay={150}>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 via-transparent to-purple-50/30 rounded-3xl -z-10" />
                         {isLoading ? (
                             <LoadingSlider />
                         ) : (
                             <FeaturedSlider />
                         )}
-                    </div>
+                    </section>
                 </ScrollAnimation>
 
-                {/* Grille des nouveautés avec animation slideRight fluide */}
+                {/* Grille des nouveautés avec espacement moderne */}
                 <ScrollAnimation animation="slideRight" delay={200}>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5">
                         <NouveautesGrid />
-                    </div>
+                    </section>
                 </ScrollAnimation>
 
-                {/* Thèmes tendances avec animation scaleUp fluide */}
+                {/* Thèmes tendances avec card moderne */}
                 <ScrollAnimation animation="scaleUp" delay={250}>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 relative">
+                        <div className="absolute inset-0 bg-gradient-to-l from-amber-50/30 via-transparent to-pink-50/30 rounded-3xl -z-10" />
                         <ThemesTendances />
-                    </div>
+                    </section>
                 </ScrollAnimation>
 
-                {/* DesignersSection avec animation fadeIn fluide */}
+                {/* DesignersSection avec effet moderne */}
                 <ScrollAnimation animation="fadeIn" delay={300}>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 transition-all duration-500 hover:scale-[1.01]">
                         <DesignersSection />
-                    </div>
+                    </section>
                 </ScrollAnimation>
 
-                {/* ArtistesSection avec animation fadeUp fluide */}
+                {/* ArtistesSection avec design épuré */}
                 <ScrollAnimation animation="fadeUp" delay={350}>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 transition-all duration-500 hover:scale-[1.01]">
                         <ArtistesSection />
-                    </div>
+                    </section>
                 </ScrollAnimation>
 
-                {/* InfluenceursSection avec animation slideLeft fluide */}
+                {/* InfluenceursSection moderne */}
                 <ScrollAnimation animation="slideLeft" delay={400}>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 transition-all duration-500 hover:scale-[1.01]">
                         <InfluenceursSection />
-                    </div>
+                    </section>
                 </ScrollAnimation>
 
-                {/* ServiceFeatures avec animation fadeIn fluide */}
+                {/* ServiceFeatures avec fond subtil */}
                 <ScrollAnimation animation="fadeIn" delay={450}>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                    <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-5 relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 via-transparent to-cyan-50/20 rounded-3xl -z-10" />
                         <ServiceFeatures />
-                    </div>
+                    </section>
                 </ScrollAnimation>
             </div>
 
-            {/* Footer en pleine largeur avec animation fluide */}
+            {/* Footer moderne avec transition */}
             <ScrollAnimation animation="fadeUp" delay={500}>
-                <Footer />
+                <footer className="mt-16 border-t border-gray-200 bg-gradient-to-b from-white to-gray-50">
+                    <Footer />
+                </footer>
             </ScrollAnimation>
         </div>
     );

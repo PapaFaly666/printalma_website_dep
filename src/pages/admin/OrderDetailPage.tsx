@@ -9,6 +9,57 @@ import { formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';
 import { EnrichedOrderProductPreview } from '../../components/order/EnrichedOrderProductPreview';
 import { CustomizationPreview } from '../../components/order/CustomizationPreview';
 import { downloadDesignElementsAsPNG, exportAllViewsDesignElements } from '../../utils/printExport';
+import { SimpleProductPreview } from '../../components/vendor/SimpleProductPreview';
+
+// Fonction pour convertir un item de commande au format VendorProduct pour SimpleProductPreview
+const convertOrderItemToVendorProduct = (item: any, enriched: any): any => {
+  console.log('🔄 Conversion item → VendorProduct:', { item, enriched });
+
+  // Construire la structure adminProduct avec les variations de couleur
+  const adminProduct = enriched?.adminProduct ? {
+    id: enriched.adminProduct.id,
+    name: enriched.adminProduct.name || item.product?.name || 'Produit',
+    description: enriched.adminProduct.description,
+    colorVariations: enriched.adminProduct.colorVariations || []
+  } : null;
+
+  // Extraire les couleurs sélectionnées
+  const selectedColors = item.colorVariation ? [{
+    id: item.colorVariation.id || item.colorVariation.colorId || 0,
+    name: item.colorVariation.name || item.color || 'Couleur',
+    colorCode: item.colorVariation.colorCode || '#000000'
+  }] : [];
+
+  // Extraire les positions du design
+  const designPositions = item.savedDesignPosition || enriched?.designPositions?.[0]?.position ? [{
+    designId: item.designId || 0,
+    position: item.savedDesignPosition || enriched.designPositions[0].position
+  }] : [];
+
+  // Structure pour SimpleProductPreview
+  return {
+    id: item.vendorProductId || item.id,
+    vendorName: item.product?.name || enriched?.vendorName || 'Produit',
+    price: item.unitPrice || 0,
+    status: 'published',
+    designId: item.designId,
+    adminProduct: adminProduct,
+    images: {
+      adminReferences: [],
+      total: 1,
+      primaryImageUrl: item.mockupUrl || item.imageUrl || ''
+    },
+    designApplication: {
+      hasDesign: !!item.designId || !!(enriched?.designApplication?.hasDesign),
+      designUrl: item.designMetadata?.designImageUrl || enriched?.designApplication?.designUrl || '',
+      positioning: 'custom',
+      scale: enriched?.designApplication?.scale || item.savedDesignPosition?.scale || 0.8
+    },
+    designPositions: designPositions,
+    designTransforms: enriched?.designTransforms || [],
+    selectedColors: selectedColors
+  };
+};
 
 // Fonction utilitaire pour normaliser les délimitations en pixels
 const convertDelimitationToPixels = (delim: any, fallbackDelimitations?: any[]) => {
@@ -823,21 +874,15 @@ if (loading) {
                             ) : mockupUrl || designUrl ? (
                               <div className="space-y-3">
                                 <div className="w-full aspect-square">
-                                  <EnrichedOrderProductPreview
-                                    product={{
-                                      id: item.productId || item.id,
-                                      name: item.product?.name || enriched?.vendorName || 'Produit',
-                                      quantity: item.quantity,
-                                      unitPrice: item.unitPrice || 0,
-                                      colorName: item.colorVariation?.name || item.color,
-                                      colorCode: item.colorVariation?.colorCode,
-                                      size: item.size,
-                                      mockupImageUrl: mockupUrl,
-                                      designImageUrl: hasDesign ? designUrl : null,
-                                      designPosition: designPosition,
-                                      delimitation: delimitation || undefined,
-                                      vendorProductId: item.vendorProductId || enriched?.id
-                                    }}
+                                  {/* Utiliser SimpleProductPreview pour afficher le design incorporé avec rotation */}
+                                  <SimpleProductPreview
+                                    product={convertOrderItemToVendorProduct(item, enriched)}
+                                    showColorSlider={false}
+                                    showDelimitations={false}
+                                    onProductClick={() => {}}
+                                    hideValidationBadges={true}
+                                    imageObjectFit="contain"
+                                    initialColorId={item.colorVariation?.id}
                                     className="w-full h-full border border-gray-200 rounded-lg"
                                   />
                                 </div>

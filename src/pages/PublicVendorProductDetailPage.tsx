@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, Loader2, Check } from 'lucide-react';
 import vendorProductsService, { VendorProduct, ProductGenre } from '../services/vendorProductsService';
+import designService from '../services/designService';
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/priceUtils';
@@ -55,8 +56,8 @@ const PublicVendorProductDetailPage: React.FC = () => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
 
-  // États pour les produits similaires
-  const [similarProducts, setSimilarProducts] = useState<VendorProduct[]>([]);
+  // États pour les produits avec le même design
+  const [sameDesignProducts, setSameDesignProducts] = useState<VendorProduct[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<ProductGenre>('HOMME');
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [errorSimilar, setErrorSimilar] = useState<string | null>(null);
@@ -265,45 +266,214 @@ const PublicVendorProductDetailPage: React.FC = () => {
     }
   }, [product]);
 
-  // Charger les produits similaires par genre
+  // Charger les produits avec le même design via l'API /public/designs, filtrés par genre
   useEffect(() => {
-    const loadSimilarProducts = async () => {
-      if (!selectedGenre) return;
+    const loadSameDesignProducts = async () => {
+      if (!product?.designId || !selectedGenre) {
+        console.log('⏭️ [PublicVendorProductDetailPage] Pas de designId ou genre, skip chargement');
+        setSameDesignProducts([]);
+        return;
+      }
 
       setLoadingSimilar(true);
       setErrorSimilar(null);
 
       try {
-        console.log('🔍 [PublicVendorProductDetailPage] Chargement produits similaires:', {
-          genre: selectedGenre,
-          limit: 4
+        console.log('🔍 [PublicVendorProductDetailPage] Chargement produits via /public/designs:', {
+          designId: product.designId,
+          genre: selectedGenre
         });
 
-        const response = await vendorProductsService.getProductsByGenre(selectedGenre, 4, 0);
-
-        console.log('📡 [PublicVendorProductDetailPage] Réponse produits similaires:', {
-          success: response.success,
-          count: response.data?.length || 0
+        // Récupérer tous les designs publics (ils incluent vendorProducts)
+        const response = await designService.getPublicDesigns({
+          limit: 100 // Récupérer beaucoup de designs pour trouver celui qui nous intéresse
         });
 
-        if (response.success && response.data) {
-          // Filtrer le produit actuel des résultats
-          const filtered = response.data.filter(p => p.id !== product?.id);
-          setSimilarProducts(filtered.slice(0, 4));
-          console.log('✅ [PublicVendorProductDetailPage] Produits similaires chargés:', filtered.length);
-        } else {
-          setErrorSimilar(response.message || 'Erreur lors du chargement');
+        console.log('📡 [PublicVendorProductDetailPage] Réponse /public/designs:', {
+          totalDesigns: response.designs?.length || 0
+        });
+
+        // Trouver le design correspondant au produit actuel
+        const currentDesign = response.designs.find((d: any) => d.id === product.designId);
+
+        if (!currentDesign) {
+          console.warn('⚠️ [PublicVendorProductDetailPage] Design non trouvé dans les designs publics');
+          setSameDesignProducts([]);
+          setLoadingSimilar(false);
+          return;
         }
+
+        console.log('🎨 [PublicVendorProductDetailPage] Design trouvé:', {
+          designId: currentDesign.id,
+          name: currentDesign.name,
+          vendorProductsCount: currentDesign.vendorProducts?.length || 0
+        });
+
+        // Extraire les vendorProducts de ce design
+        const allVendorProducts: any[] = currentDesign.vendorProducts || [];
+
+        // Filtrer par genre et exclure le produit actuel
+        const filtered = allVendorProducts.filter((vp: any) =>
+          vp.id !== product.id &&
+          vp.baseProduct?.genre === selectedGenre
+        );
+
+        // Mapper vers le format VendorProduct attendu par le composant
+        const mappedProducts: VendorProduct[] = filtered.map((vp: any) => {
+          console.log('🔍 Mapping vendorProduct:', {
+            id: vp.id,
+            name: vp.name,
+            imagesCount: vp.images?.length,
+            baseProductId: vp.baseProduct?.id
+          });
+
+          // Reconstruire les colorVariations à partir des images disponibles
+          const colorVariationsMap = new Map<string, any>();
+
+          vp.images?.forEach((img: any) => {
+            const colorKey = img.colorCode || '#000000';
+            if (!colorVariationsMap.has(colorKey)) {
+              colorVariationsMap.set(colorKey, {
+                id: colorVariationsMap.size + 1,
+                name: img.colorName || 'Couleur',
+                colorCode: img.colorCode || '#000000',
+                images: []
+              });
+            }
+
+            // 🎨 IMPORTANT: Utiliser les MÊMES délimitations que le produit principal
+            // Puisque tous les produits utilisent le même baseProduct (Tshirt ID=1),
+            // ils partagent les mêmes délimitations
+
+            // Chercher la variation de couleur correspondante dans le produit principal
+            let delimitations: any[] = [];
+
+            if (product?.adminProduct?.colorVariations) {
+              // Essayer de trouver par colorCode
+              let colorVariationFromMainProduct = product.adminProduct.colorVariations.find(
+                cv => cv.colorCode?.toLowerCase() === img.colorCode?.toLowerCase()
+              );
+
+              // Si pas trouvé par colorCode, essayer par nom de couleur
+              if (!colorVariationFromMainProduct) {
+                colorVariationFromMainProduct = product.adminProduct.colorVariations.find(
+                  cv => cv.name?.toLowerCase() === img.colorName?.toLowerCase()
+                );
+              }
+
+              // Si toujours pas trouvé, utiliser la première variation disponible
+              if (!colorVariationFromMainProduct && product.adminProduct.colorVariations.length > 0) {
+                colorVariationFromMainProduct = product.adminProduct.colorVariations[0];
+              }
+
+              if (colorVariationFromMainProduct?.images) {
+                const mainProductImage = colorVariationFromMainProduct.images.find(
+                  mainImg => mainImg.viewType === 'Front'
+                ) || colorVariationFromMainProduct.images[0];
+
+                delimitations = mainProductImage?.delimitations || [];
+
+                console.log(`🎨 Délimitations pour couleur ${img.colorName}:`, {
+                  found: delimitations.length > 0,
+                  count: delimitations.length,
+                  delimitations
+                });
+              }
+            }
+
+            colorVariationsMap.get(colorKey).images.push({
+              id: img.id || Date.now(),
+              url: img.url,
+              viewType: img.imageType === 'admin_reference' ? 'Front' : 'Front',
+              // ✅ Copier les délimitations trouvées
+              delimitations: delimitations
+            });
+          });
+
+          const colorVariations = Array.from(colorVariationsMap.values());
+
+          console.log('✅ ColorVariations créées:', {
+            count: colorVariations.length,
+            hasDelimitations: colorVariations.some(cv =>
+              cv.images.some((img: any) => img.delimitations?.length > 0)
+            )
+          });
+
+          return {
+            id: vp.id,
+            vendorName: vp.name,
+            price: vp.price,
+            status: vp.status || 'PUBLISHED',
+            bestSeller: vp.isBestSeller || false,
+            adminProduct: {
+              id: vp.baseProduct?.id || vp.id,
+              name: vp.baseProduct?.name || vp.name,
+              description: vp.description || '',
+              price: vp.price || 0,
+              genre: vp.baseProduct?.genre || 'HOMME',
+              colorVariations: colorVariations,
+              sizes: vp.baseProduct?.sizes || []
+            },
+            selectedColors: colorVariations.map(cv => ({
+              id: cv.id,
+              name: cv.name,
+              colorCode: cv.colorCode
+            })),
+            selectedSizes: [],
+            images: {
+              primaryImageUrl: vp.images?.[0]?.url || '',
+              additionalImages: vp.images?.map((img: any) => img.url) || [],
+              adminReferences: vp.images?.map((img: any) => ({
+                colorName: img.colorName || '',
+                colorCode: img.colorCode || '#000000',
+                adminImageUrl: img.url || '',
+                imageType: img.imageType || 'base' as const
+              })) || [],
+              total: vp.images?.length || 0
+            },
+            designApplication: {
+              hasDesign: true,
+              designUrl: currentDesign.imageUrl,
+              positioning: product.designApplication?.positioning || 'CENTERED',
+              // ✅ Copier l'échelle du produit principal
+              scale: product.designApplication?.scale || 1.0,
+              mode: product.designApplication?.mode || 'SINGLE'
+            },
+            vendor: currentDesign.creator,
+            design: {
+              id: currentDesign.id,
+              name: currentDesign.name,
+              description: currentDesign.description || '',
+              imageUrl: currentDesign.imageUrl || '',
+              tags: currentDesign.tags || [],
+              isValidated: currentDesign.isValidated || false
+            },
+            designId: currentDesign.id,
+            // ✅ Copier les positions du design du produit principal
+            designPositions: product.designPositions || [],
+            // ✅ Copier les transformations du design du produit principal
+            designTransforms: product.designTransforms || null,
+            designDelimitations: product.designDelimitations || []
+          };
+        });
+
+        setSameDesignProducts(mappedProducts.slice(0, 4));
+
+        console.log('✅ [PublicVendorProductDetailPage] Produits même design chargés:', {
+          total: mappedProducts.length,
+          displayed: Math.min(mappedProducts.length, 4),
+          genre: selectedGenre
+        });
       } catch (err) {
-        console.error('❌ [PublicVendorProductDetailPage] Erreur chargement produits similaires:', err);
-        setErrorSimilar('Erreur lors du chargement des produits similaires');
+        console.error('❌ [PublicVendorProductDetailPage] Erreur chargement produits même design:', err);
+        setErrorSimilar('Erreur lors du chargement des produits');
       } finally {
         setLoadingSimilar(false);
       }
     };
 
-    loadSimilarProducts();
-  }, [selectedGenre, product?.id]);
+    loadSameDesignProducts();
+  }, [selectedGenre, product?.id, product?.designId]);
 
   // Charger les designs du vendeur
   useEffect(() => {
@@ -419,6 +589,10 @@ const PublicVendorProductDetailPage: React.FC = () => {
                   ? product.designPositions[0].position
                   : { x: 0.5, y: 0.5, scale: 0.8, rotation: 0 };
 
+                // Vérifier si designPosition a les propriétés designWidth et designHeight
+                const designWidth = 'designWidth' in designPosition ? (designPosition as any).designWidth : 200;
+                const designHeight = 'designHeight' in designPosition ? (designPosition as any).designHeight : 200;
+
                 // Créer un élément image pour le design
                 designElementsByView[viewKey] = [{
                   id: `design-${product.id}-view-${viewIndex}`,
@@ -426,8 +600,8 @@ const PublicVendorProductDetailPage: React.FC = () => {
                   imageUrl: product.designApplication.designUrl,
                   x: designPosition.x || 0.5,
                   y: designPosition.y || 0.5,
-                  width: (designPosition.designWidth || 200) * (designPosition.scale || 0.8),
-                  height: (designPosition.designHeight || 200) * (designPosition.scale || 0.8),
+                  width: (designWidth || 200) * (designPosition.scale || 0.8),
+                  height: (designHeight || 200) * (designPosition.scale || 0.8),
                   rotation: designPosition.rotation || 0,
                   zIndex: 1
                 }];
@@ -864,36 +1038,42 @@ const PublicVendorProductDetailPage: React.FC = () => {
               <div className="text-center py-12">
                 <p className="text-gray-600">{errorSimilar}</p>
               </div>
-            ) : similarProducts.length === 0 ? (
+            ) : sameDesignProducts.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-600">Aucun produit trouvé pour ce genre</p>
+                <p className="text-gray-600">Aucun autre produit avec ce design pour le genre {selectedGenre}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                {similarProducts.map((similarProduct) => (
+                {sameDesignProducts.map((sameDesignProduct) => (
                   <div
-                    key={similarProduct.id}
+                    key={sameDesignProduct.id}
                     className="group cursor-pointer"
-                    onClick={() => navigate(`/vendor-product-detail/${similarProduct.id}`)}
+                    onClick={() => navigate(`/vendor-product-detail/${sameDesignProduct.id}`)}
                   >
                     {/* Utiliser SimpleProductPreview pour un positionnement correct du design */}
                     <div className="aspect-square bg-white rounded-xl sm:rounded-2xl mb-2 sm:mb-3 overflow-hidden relative border border-gray-200 hover:shadow-lg transition-shadow">
                       <SimpleProductPreview
-                        product={similarProduct}
+                        product={sameDesignProduct}
                         showColorSlider={false}
                         showDelimitations={false}
                         onProductClick={() => {}}
                         hideValidationBadges={false}
                         imageObjectFit="contain"
-                        initialColorId={similarProduct.selectedColors[0]?.id}
+                        initialColorId={sameDesignProduct.selectedColors[0]?.id}
                       />
                     </div>
                     <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
-                      {similarProduct.vendorName || similarProduct.adminProduct?.name}
+                      {sameDesignProduct.vendorName || sameDesignProduct.adminProduct?.name}
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600">
-                      <span className="font-bold">{formatPrice(similarProduct.price)}</span>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">
+                      <span className="font-bold">{formatPrice(sameDesignProduct.price)}</span>
                     </p>
+                    {/* Description du produit */}
+                    {sameDesignProduct.adminProduct?.description && (
+                      <p className="text-xs text-gray-600 line-clamp-2">
+                        {sameDesignProduct.adminProduct.description}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

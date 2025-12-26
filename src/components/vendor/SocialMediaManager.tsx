@@ -174,6 +174,15 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({
         linkedin: 'LinkedIn'
       };
 
+      const platformExamples = {
+        facebook: 'https://facebook.com/username',
+        instagram: 'https://instagram.com/username',
+        twitter: 'https://twitter.com/username',
+        tiktok: 'https://tiktok.com/@username',
+        youtube: 'https://youtube.com/@username',
+        linkedin: 'https://linkedin.com/in/username'
+      };
+
       const platformName = platformNames[platform as keyof typeof platformNames] || platform;
 
       // Si l'URL est invalide, on retourne une erreur plus informative

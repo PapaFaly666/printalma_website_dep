@@ -939,13 +939,13 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       )}
 
       {/* ✅ Indicateurs de statut pour produits traditionnels */}
-      {isTraditionalProduct && !product.designApplication.hasDesign && (
+      {!hideValidationBadges && isTraditionalProduct && !product.designApplication.hasDesign && (
         <div className="absolute top-10 left-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs">
           Pas de design
         </div>
       )}
 
-      {isTraditionalProduct && product.designApplication.hasDesign && delimitations.length === 0 && (
+      {!hideValidationBadges && isTraditionalProduct && product.designApplication.hasDesign && delimitations.length === 0 && (
         <div className="absolute top-10 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs">
           Pas de délimitations
         </div>

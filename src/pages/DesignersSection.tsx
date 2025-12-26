@@ -139,26 +139,19 @@ export default function DesignersSection() {
 
   return (
     <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
-      {/* Titre principal et bouton sur la même ligne */}
+      {/* Titre principal */}
       <div className="flex items-center justify-between mb-1 px-4 sm:px-8">
         <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-black flex items-center gap-3">
           <span className="font-bold">Designers</span>
           <img src="/x_designer.svg" alt="Designer" className="w-6 h-6 md:w-8 md:h-8" />
         </h2>
-        
-        <button
-          onClick={() => navigate('/designers')}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-        >
-          Voir Tous les designers
-        </button>
       </div>
 
       {/* Container principal */}
       <div className="w-full px-4 sm:px-8">
         <div className="rounded overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 h-80 lg:h-96">
-            
+
             {/* Colonne gauche */}
             <div className="text-black flex flex-col justify-center items-center px-6 py-8 bg-yellow-400 text-center">
               <h3 className="text-2xl md:text-3xl font-bold mb-4 uppercase tracking-wide">
@@ -169,8 +162,11 @@ export default function DesignersSection() {
                 Des motifs tendance aux illustrations artistiques, pour vos produits
                 personnalisés.
               </p>
-              <button className="bg-white text-black px-6 py-2 rounded-md font-semibold text-sm hover:bg-gray-100 transition-colors duration-200">
-                Découvrir
+              <button
+                onClick={() => navigate('/designers')}
+                className="bg-white text-black px-6 py-2 rounded-md font-semibold text-sm hover:bg-gray-100 transition-colors duration-200"
+              >
+                Voir Tous les designers
               </button>
             </div>
 

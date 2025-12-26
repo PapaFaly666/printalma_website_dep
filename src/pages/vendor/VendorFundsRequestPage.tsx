@@ -40,6 +40,7 @@ import {
 import { vendorProductService } from '../../services/vendorProductService';
 import { vendorStatsService } from '../../services/vendorStatsService';
 import { formatDateShort } from '../../utils/dateUtils';
+import vendorOnboardingService, { PhoneNumber } from '../../services/vendorOnboardingService';
 
 // Interface pour les statistiques du backend
 interface OrderStatistics {
@@ -66,6 +67,10 @@ const VendorFundsRequestPage: React.FC = () => {
   const [fundsRequests, setFundsRequests] = useState<FundsRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // États pour les numéros de téléphone enregistrés
+  const [savedPhones, setSavedPhones] = useState<PhoneNumber[]>([]);
+  const [phonesLoading, setPhonesLoading] = useState(false);
 
   // États pour les filtres et pagination
   const [filters, setFilters] = useState<FundsRequestFilters>({
@@ -98,6 +103,38 @@ const VendorFundsRequestPage: React.FC = () => {
     loadData();
   }, [filters]);
 
+  // Charger les numéros de téléphone enregistrés
+  useEffect(() => {
+    loadSavedPhones();
+  }, []);
+
+
+  // Charger les numéros de téléphone enregistrés
+  const loadSavedPhones = async () => {
+    setPhonesLoading(true);
+    try {
+      console.log('📞 Chargement des numéros de téléphone enregistrés...');
+      const info = await vendorOnboardingService.getOnboardingInfo();
+
+      setSavedPhones(info.phones);
+      console.log('✅ Numéros chargés:', info.phones);
+
+      // Pré-sélectionner le numéro principal
+      const primaryPhone = info.phones.find(p => p.isPrimary);
+      if (primaryPhone) {
+        setNewRequest(prev => ({
+          ...prev,
+          phoneNumber: primaryPhone.number
+        }));
+        console.log('📌 Numéro principal pré-sélectionné:', primaryPhone.number);
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement des numéros:', error);
+      // Ne pas bloquer l'interface si les numéros ne peuvent pas être chargés
+    } finally {
+      setPhonesLoading(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -354,24 +391,62 @@ const VendorFundsRequestPage: React.FC = () => {
 
                   {!isBank && (
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Numéro de Téléphone</Label>
-                      <div className="flex">
-                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-500 text-sm">
-                          +221
-                        </span>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          className="rounded-l-none"
-                          placeholder="77 123 45 67"
-                          value={(newRequest.phoneNumber || '').replace('+221', '')}
-                          onChange={(e) => setNewRequest(prev => ({
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="phone">Numéro de Téléphone</Label>
+                        <a
+                          href="/vendeur/account"
+                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                          title="Gérer vos numéros de téléphone"
+                        >
+                          Gérer mes numéros
+                        </a>
+                      </div>
+                      {phonesLoading ? (
+                        <div className="flex items-center justify-center py-2 text-sm text-gray-500">
+                          <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                          Chargement des numéros...
+                        </div>
+                      ) : savedPhones.length > 0 ? (
+                        <Select
+                          value={newRequest.phoneNumber}
+                          onValueChange={(value) => setNewRequest(prev => ({
                             ...prev,
-                            phoneNumber: '+221' + e.target.value.replace(/\D/g, '')
+                            phoneNumber: value
                           }))}
                           required
-                        />
-                      </div>
+                        >
+                          <SelectTrigger id="phone">
+                            <SelectValue placeholder="Sélectionner un numéro" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {savedPhones.map((phone, index) => (
+                              <SelectItem key={phone.number || index} value={phone.number}>
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-3 w-3 text-gray-500" />
+                                  <span>{phone.number}</span>
+                                  {phone.isPrimary && (
+                                    <Badge variant="outline" className="ml-1 text-xs">
+                                      Principal
+                                    </Badge>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                          <p className="text-sm text-yellow-800">
+                            Aucun numéro enregistré.{' '}
+                            <a
+                              href="/vendeur/account"
+                              className="text-blue-600 hover:underline font-medium"
+                            >
+                              Ajouter des numéros
+                            </a>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                   {isBank && (

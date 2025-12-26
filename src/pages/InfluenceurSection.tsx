@@ -4,25 +4,18 @@ export default function InfluenceursSection() {
   const navigate = useNavigate();
   return (
     <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
-      {/* Titre principal et bouton sur la même ligne */}
+      {/* Titre principal */}
       <div className="flex items-center justify-between mb-1 px-4 sm:px-8">
         <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-black flex items-center gap-3">
           <span className="font-bold">Influenceurs</span>
           <img src="/x_inlfuancer.svg" alt="Influencer" className="w-6 h-6 md:w-8 md:h-8" />
         </h2>
-        
-        <button
-          onClick={() => navigate('/influenceurs')}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-        >
-          Voir Tous les influenceurs
-        </button>
       </div>
 
       {/* Container principal */}
       <div className="w-full px-4 sm:px-8">
         <div className="rounded p-4 md:p-6 flex flex-col md:flex-row items-center justify-between text-white shadow-lg h-80 lg:h-96" style={{backgroundColor: '#E5042B'}}>
-          
+
           {/* Texte à gauche */}
           <div className="md:w-1/2 space-y-3 text-center md:text-left">
             <h2 className="text-xl md:text-2xl font-bold uppercase tracking-wide">
@@ -32,8 +25,12 @@ export default function InfluenceursSection() {
               Explorez les univers créatifs de vos influenceurs préférés
               et adoptez leurs designs signature.
             </p>
-            <button className="bg-white px-4 py-2 rounded-lg font-semibold shadow hover:scale-105 transition-transform duration-200 text-sm" style={{color: '#E5042B'}}>
-              Découvrir
+            <button
+              onClick={() => navigate('/influenceurs')}
+              className="bg-white px-4 py-2 rounded-lg font-semibold shadow hover:scale-105 transition-transform duration-200 text-sm"
+              style={{color: '#E5042B'}}
+            >
+              Voir Tous les influenceurs
             </button>
           </div>
 

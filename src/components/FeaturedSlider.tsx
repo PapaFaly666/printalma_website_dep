@@ -1,16 +1,38 @@
 import React, { useState, useEffect } from "react";
 import SimpleProductPreview from './vendor/SimpleProductPreview';
 
-// Interface EXACTE selon la réponse API best-sellers (même format que new-arrivals)
+// Interface EXACTE selon la réponse API best-sellers-v2
 interface BestSellerProduct {
   id: number;
   name: string;
   price: number;
   description?: string;
+  salesCount?: number;
+  totalRevenue?: number;
+  viewsCount?: number;
   designCloudinaryUrl?: string;
   designWidth?: number;
   designHeight?: number;
   designScale?: number;
+  designFormat?: string;
+  designPositioning?: string;
+  designPositions?: Array<{
+    designId: number;
+    position: {
+      x: number;
+      y: number;
+      scale: number;
+      rotation: number;
+      designWidth: number;
+      designHeight: number;
+      constraints?: {
+        minScale: number;
+        maxScale: number;
+      };
+    };
+    createdAt?: string;
+    updatedAt?: string;
+  }>;
   designPosition?: {
     x: number;
     y: number;
@@ -22,6 +44,8 @@ interface BestSellerProduct {
   baseProduct?: {
     id: number;
     name: string;
+    genre?: string;
+    categories?: any[];
     colorVariations?: Array<{
       id: number;
       name: string;
@@ -39,20 +63,30 @@ interface BestSellerProduct {
           y: number;
           width: number;
           height: number;
-          // Pas de coordinateType dans l'API - ce sont des pixels absolus
+          coordinateType?: string;
         }>;
       }>;
     }>;
   };
+  vendor?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    profilePhotoUrl?: string;
+    businessName?: string;
+  };
+  createdAt?: string;
+  lastSaleDate?: string | null;
 }
 
-// Fonction pour adapter les données EXACTEMENT selon l'API best-sellers
+// Fonction pour adapter les données EXACTEMENT selon l'API best-sellers-v2
 const adaptBestSellerToVendorProduct = (item: BestSellerProduct) => {
   console.log('🔄 Adaptation best-seller pour produit:', item.id, item);
-  
-  // ✅ ANALYSE : /vendeur/products utilise des coordonnées POURCENTAGE (x: 0.5, y: 0.5)
-  // tandis que notre API donne des coordonnées PIXELS relatives au centre (x: 2, y: -44.8)
-  const designPositioning = item.designPosition || {
+
+  // ✅ NOUVELLE API : best-sellers-v2 retourne directement designPositions array
+  // Les coordonnées sont déjà en pixels absolus depuis le centre de la délimitation
+  const firstDesignPosition = item.designPositions?.[0]?.position || item.designPosition || {
     x: 0,
     y: 0,
     scale: 0.6,
@@ -60,31 +94,21 @@ const adaptBestSellerToVendorProduct = (item: BestSellerProduct) => {
     designWidth: 200,
     designHeight: 200
   };
-  
-  // Convertir les coordonnées pixels en pourcentage si on a des délimitations
-  let positionX = 0.5; // Centre par défaut comme dans /vendor/products
-  let positionY = 0.5; // Centre par défaut comme dans /vendor/products
-  
-  if (designPositioning.x !== undefined && designPositioning.y !== undefined && item.baseProduct?.colorVariations?.[0]?.images?.[0]?.delimitations?.[0]) {
-    const delimitation = item.baseProduct.colorVariations[0].images[0].delimitations[0];
-    
-    // Convertir les pixels relatifs au centre en pourcentage de délimitation
-    const centerX = 0.5; // Centre de la délimitation
-    const centerY = 0.5;
-    
-    // Convertir les pixels en pourcentage de la délimitation
-    const pixelToPercentX = designPositioning.x / delimitation.width;
-    const pixelToPercentY = designPositioning.y / delimitation.height;
-    
-    positionX = centerX + pixelToPercentX;
-    positionY = centerY + pixelToPercentY;
-    
-    console.log(`📏 Conversion coordonnées pour produit ${item.id}:`, {
-      originalPixels: { x: designPositioning.x, y: designPositioning.y },
-      delimitation: { width: delimitation.width, height: delimitation.height },
-      convertedPercent: { x: positionX, y: positionY }
-    });
-  }
+
+  // Utiliser directement les coordonnées de l'API (déjà en pixels depuis le centre)
+  const positionX = firstDesignPosition.x || 0;
+  const positionY = firstDesignPosition.y || 0;
+  const scale = firstDesignPosition.scale || item.designScale || 0.6;
+  const rotation = firstDesignPosition.rotation || 0;
+  const designWidth = firstDesignPosition.designWidth || item.designWidth || 200;
+  const designHeight = firstDesignPosition.designHeight || item.designHeight || 200;
+
+  console.log(`📏 Utilisation coordonnées API pour produit ${item.id}:`, {
+    position: { x: positionX, y: positionY },
+    scale,
+    rotation,
+    dimensions: { width: designWidth, height: designHeight }
+  });
   
   return {
     id: item.id,
@@ -124,59 +148,59 @@ const adaptBestSellerToVendorProduct = (item: BestSellerProduct) => {
     designApplication: {
       hasDesign: !!item.designCloudinaryUrl,
       designUrl: item.designCloudinaryUrl || '',
-      positioning: 'CENTER',
-      scale: designPositioning.scale || item.designScale || 0.8
+      positioning: item.designPositioning || 'CENTER',
+      scale: scale
     },
-    // ✅ CORRECTION MAJEURE : Utiliser des coordonnées POURCENTAGE comme /vendor/products
-    designPositions: item.designPosition ? [{
-      designId: item.id,
+    // ✅ Utiliser directement designPositions de l'API best-sellers-v2
+    designPositions: item.designPositions?.map(dp => ({
+      designId: dp.designId,
       position: {
-        x: positionX,  // Convertie en pourcentage
-        y: positionY,  // Convertie en pourcentage
-        scale: designPositioning.scale || item.designScale || 0.6, // Scale par défaut comme /vendor/products
-        rotation: designPositioning.rotation || 0,
-        designWidth: designPositioning.designWidth || item.designWidth || 200,
-        designHeight: designPositioning.designHeight || item.designHeight || 200,
-        constraints: { minScale: 0.1, maxScale: 2.0 }
+        x: dp.position.x,
+        y: dp.position.y,
+        scale: dp.position.scale,
+        rotation: dp.position.rotation || 0,
+        designWidth: dp.position.designWidth,
+        designHeight: dp.position.designHeight,
+        constraints: dp.position.constraints || { minScale: 0.1, maxScale: 2.0 }
       }
-    }] : [{
-      // Position par défaut exactement comme /vendor/products
+    })) || [{
+      // Position par défaut si pas de designPositions
       designId: item.id,
       position: {
-        x: 0.5,
-        y: 0.5,
-        scale: 0.6,
-        rotation: 0,
-        designWidth: 200,
-        designHeight: 200,
+        x: positionX,
+        y: positionY,
+        scale: scale,
+        rotation: rotation,
+        designWidth: designWidth,
+        designHeight: designHeight,
         constraints: { minScale: 0.1, maxScale: 2.0 }
       }
     }],
-    designTransforms: item.designPosition ? [{
+    designTransforms: item.designPositions ? [{
       id: item.id,
       designUrl: item.designCloudinaryUrl || '',
       transforms: {
         '0': {
-          x: positionX,  // Convertie en pourcentage
-          y: positionY,  // Convertie en pourcentage
-          scale: designPositioning.scale || item.designScale || 0.6,
-          rotation: designPositioning.rotation || 0,
-          designWidth: designPositioning.designWidth || item.designWidth || 200,
-          designHeight: designPositioning.designHeight || item.designHeight || 200
+          x: positionX,
+          y: positionY,
+          scale: scale,
+          rotation: rotation,
+          designWidth: designWidth,
+          designHeight: designHeight
         }
       }
     }] : [{
-      // Default transform comme /vendor/products
+      // Default transform
       id: item.id,
       designUrl: item.designCloudinaryUrl || '',
       transforms: {
         '0': {
-          x: 0.5,
-          y: 0.5,
-          scale: 0.6,
-          rotation: 0,
-          designWidth: 200,
-          designHeight: 200
+          x: positionX,
+          y: positionY,
+          scale: scale,
+          rotation: rotation,
+          designWidth: designWidth,
+          designHeight: designHeight
         }
       }
     }],
@@ -189,9 +213,46 @@ const adaptBestSellerToVendorProduct = (item: BestSellerProduct) => {
   };
 };
 
-// Composant ProductCard utilisant SimpleProductPreview
+// Composant ProductCard - Structure exacte comme demandé
 const ProductCard = ({ item, formatPrice }) => {
-  const adaptedProduct = adaptBestSellerToVendorProduct(item);
+  // Récupérer la première variation de couleur et sa première image
+  const firstColorVariation = item.baseProduct?.colorVariations?.[0];
+  const firstImage = firstColorVariation?.images?.[0];
+  const firstDelimitation = firstImage?.delimitations?.[0];
+
+  // Récupérer la position du design
+  const designPosition = item.designPositions?.[0]?.position;
+
+  // Calculer les positions du design sur l'image
+  const calculateDesignPosition = () => {
+    if (!designPosition || !firstDelimitation || !firstImage) {
+      return null;
+    }
+
+    const { x, y, scale, rotation, designWidth, designHeight } = designPosition;
+    const { x: delimX, y: delimY, width: delimWidth, height: delimHeight } = firstDelimitation;
+    const { naturalWidth, naturalHeight } = firstImage;
+
+    // Calculer les dimensions et positions
+    const scaledDesignWidth = designWidth * scale;
+    const scaledDesignHeight = designHeight * scale;
+
+    return {
+      container: {
+        left: `${delimX}px`,
+        top: `${delimY}px`,
+        width: `${delimWidth}px`,
+        height: `${delimHeight}px`
+      },
+      design: {
+        width: `${scaledDesignWidth}px`,
+        height: `${scaledDesignHeight}px`,
+        transform: `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${rotation}deg)`
+      }
+    };
+  };
+
+  const positions = calculateDesignPosition();
 
   return (
     <div
@@ -202,19 +263,52 @@ const ProductCard = ({ item, formatPrice }) => {
         height: "auto"
       }}
     >
-      {/* Conteneur avec overflow hidden pour empêcher le débordement du design */}
       <div className="absolute inset-0 w-full h-full overflow-hidden">
-        <SimpleProductPreview
-          product={adaptedProduct}
-          showColorSlider={true}
-          className="w-full h-full"
-          onColorChange={(colorId) => {
-            console.log(`🎨 Couleur changée pour produit ${item.id}: ${colorId}`);
-          }}
-        />
+        <div className="aspect-square relative bg-white rounded-lg overflow-hidden w-full h-full">
+          {/* Image du produit */}
+          <img
+            alt={item.name}
+            className="w-full h-full object-cover"
+            src={firstImage?.url || ''}
+          />
+
+          {/* Overlay du design */}
+          {item.designCloudinaryUrl && positions && (
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2, overflow: 'visible' }}>
+              <div
+                className="absolute overflow-hidden"
+                style={{
+                  ...positions.container,
+                  pointerEvents: 'none',
+                  border: 'none'
+                }}
+              >
+                <div
+                  className="absolute pointer-events-none select-none"
+                  style={{
+                    left: '50%',
+                    top: '50%',
+                    ...positions.design,
+                    transformOrigin: 'center center',
+                    transition: 'transform 0.1s ease-out',
+                    border: 'none'
+                  }}
+                >
+                  <img
+                    alt="Design"
+                    className="object-contain pointer-events-none select-none"
+                    draggable="false"
+                    src={item.designCloudinaryUrl}
+                    style={{ width: '100%', height: '100%', transform: 'scale(1)' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Overlay texte avec z-index plus élevé mais ne couvrant que le bas */}
+      {/* Overlay texte */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-4 pointer-events-none" style={{ zIndex: 50 }}>
         {item.price && (
           <div className="mb-2">
@@ -246,10 +340,12 @@ const BestSellersGrid = () => {
   useEffect(() => {
     const fetchBestSellers = async () => {
       try {
-        const response = await fetch('https://printalma-back-dep.onrender.com/public/best-sellers-v2');
+        const response = await fetch('http://localhost:3004/public/best-sellers-v2');
         const result = await response.json();
-        
-        if (result.success) {
+
+        console.log('📊 Données best-sellers-v2 reçues:', result);
+
+        if (result.success && result.data) {
           setBestSellersData(result.data);
         }
       } catch (error) {

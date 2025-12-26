@@ -29,6 +29,7 @@ import { vendorProductService } from '../../services/vendorProductService';
 import { vendorFundsService, VendorEarnings } from '../../services/vendorFundsService';
 import { vendorStatsService, VendorStatsData } from '../../services/vendorStatsService';
 import { ordersService, OrdersResponse } from '../../services/ordersService';
+import vendorDesignRevenueService, { RevenueStats } from '../../services/vendorDesignRevenueService';
 
 // Types pour les données financières depuis /orders/my-orders
 interface DashboardFinances {
@@ -176,6 +177,10 @@ export const VendorDashboardPage: React.FC = () => {
   const [extendedProfile, setExtendedProfile] = useState<any>(null);
   const [apiStatus, setApiStatus] = useState<'connected' | 'partial' | 'offline'>('offline');
 
+  // État pour les revenus des designs
+  const [designRevenueStats, setDesignRevenueStats] = useState<RevenueStats | null>(null);
+  const [designRevenueLoading, setDesignRevenueLoading] = useState(false);
+
   // Données de graphiques basées sur les vraies statistiques financières
   const generateRevenueData = (monthlyRevenue: number) => {
     const base = monthlyRevenue / 7;
@@ -188,6 +193,22 @@ export const VendorDashboardPage: React.FC = () => {
   const viewsData = [1200, 1350, 1100, 1450, 1600, 1800, 2100];
   const ordersData = [15, 18, 12, 22, 25, 28, 32];
 
+  // Chargement des données des revenus des designs
+  const loadDesignRevenueData = async () => {
+    try {
+      setDesignRevenueLoading(true);
+      const revenueStats = await vendorDesignRevenueService.getRevenueStats('all');
+      setDesignRevenueStats(revenueStats);
+      console.log('✅ Statistiques de revenus des designs chargées:', revenueStats);
+    } catch (error) {
+      console.error('❌ Erreur chargement revenus des designs:', error);
+      // Garder null en cas d'erreur
+      setDesignRevenueStats(null);
+    } finally {
+      setDesignRevenueLoading(false);
+    }
+  };
+
   // Chargement des données financières via /orders/my-orders (endpoint qui retourne les statistiques)
   const loadDashboardData = async () => {
     setLoading(true);
@@ -197,6 +218,9 @@ export const VendorDashboardPage: React.FC = () => {
       if (profileData.success) {
         setExtendedProfile(profileData.vendor);
       }
+
+      // Charger les revenus des designs en parallèle
+      loadDesignRevenueData();
 
       // 🎯 Utiliser /orders/my-orders qui retourne les statistiques financières
       console.log('🔄 Chargement des données financières depuis /orders/my-orders...');
@@ -224,7 +248,12 @@ export const VendorDashboardPage: React.FC = () => {
       });
 
       // 🎯 Utiliser les statistiques de /orders/my-orders pour les données de commandes
-      const orderStats = statistics || {};
+      const orderStats = statistics || {
+        totalOrders: 0,
+        totalCommission: 0,
+        totalRevenue: 0,
+        totalVendorAmount: 0
+      };
 
       // 🎯 Charger les statistiques de produits/designs depuis /vendor/stats
       try {
@@ -544,7 +573,7 @@ export const VendorDashboardPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">
-                  {loading ? '...' : '125 000 F'}
+                  {designRevenueLoading || loading ? '...' : (designRevenueStats?.totalRevenue.toLocaleString() || '0') + ' F'}
                 </div>
                 <div className="flex items-center text-xs text-pink-600">
                   <ArrowUpRight className="h-3 w-3 mr-1" />
@@ -553,9 +582,12 @@ export const VendorDashboardPage: React.FC = () => {
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">Utilisations</span>
-                    <span className="text-gray-700 font-medium">45</span>
+                    <span className="text-gray-700 font-medium">{designRevenueStats?.totalUsages || 0}</span>
                   </div>
-                  <Progress value={65} className="h-2" />
+                  <Progress
+                    value={designRevenueStats ? Math.min((designRevenueStats.totalUsages / 100) * 100, 100) : 0}
+                    className="h-2"
+                  />
                 </div>
               </CardContent>
             </Card>

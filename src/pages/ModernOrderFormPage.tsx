@@ -38,6 +38,7 @@ import CountrySelector from '../components/ui/CountrySelector';
 import CityAutocomplete from '../components/ui/CityAutocomplete';
 import { COUNTRIES, getCountryByCode } from '../data/countries';
 import { CustomizationPreview } from '../components/order/CustomizationPreview';
+import { useToast } from '../components/ui/use-toast';
 
 interface OrderFormData {
   firstName: string;
@@ -267,6 +268,7 @@ const ModernOrderFormPage: React.FC = () => {
   const navigate = useNavigate();
   const { items: cartItems, clearCart } = useCart();
   const { loading: orderLoading, error: orderError } = useOrder();
+  const { toast } = useToast();
 
   // Récupérer les données du produit depuis le panier (premier article)
   const cartItem = cartItems[0];
@@ -1555,7 +1557,7 @@ const ModernOrderFormPage: React.FC = () => {
           description: "Une erreur inattendue est survenue. Veuillez réessayer.",
           variant: "destructive",
         });
-        setIsProcessingPayment(false);
+        setIsSubmitting(false);
         return;
       }
 
@@ -1816,7 +1818,7 @@ const ModernOrderFormPage: React.FC = () => {
             description: "Une erreur inattendue est survenue lors du paiement à la livraison. Veuillez réessayer.",
             variant: "destructive",
           });
-          setIsProcessingPayment(false);
+          setIsSubmitting(false);
           return;
         }
 

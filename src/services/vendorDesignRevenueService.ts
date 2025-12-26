@@ -14,7 +14,7 @@ export interface DesignUsage {
   status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
   commissionRate: number; // Pourcentage de commission (ex: 70)
   paymentStatus: string;
-  orderPaymentStatus: 'PAID' | 'PENDING' | 'CANCELLED' | 'REFUNDED';
+  orderPaymentStatus: 'PAID' | 'PENDING' | 'CONFIRMED' | 'READY_FOR_PAYOUT' | 'CANCELLED' | 'REFUNDED';
 }
 
 export interface DesignRevenue {

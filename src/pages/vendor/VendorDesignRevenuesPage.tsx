@@ -165,6 +165,20 @@ const VendorDesignRevenuesPage: React.FC = () => {
             Payé
           </span>
         );
+      case 'CONFIRMED':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <CheckCircle className="w-3 h-3" />
+            Confirmé
+          </span>
+        );
+      case 'READY_FOR_PAYOUT':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+            <DollarSign className="w-3 h-3" />
+            Prêt pour retrait
+          </span>
+        );
       case 'PENDING':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -254,13 +268,16 @@ const VendorDesignRevenuesPage: React.FC = () => {
           </div>
 
           {/* Revenus en attente */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-amber-50 rounded-lg shadow-sm border border-amber-200 p-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">En attente</span>
-              <Clock className="w-5 h-5 text-yellow-600" />
+              <span className="text-sm font-medium text-amber-900">En attente</span>
+              <Clock className="w-5 h-5 text-amber-600" />
             </div>
-            <p className="text-2xl font-bold text-yellow-600">{formatPrice(stats?.pendingRevenue || 0)}</p>
-            <p className="text-xs text-gray-500 mt-1">À recevoir</p>
+            <p className="text-2xl font-bold text-amber-600">{formatPrice(stats?.pendingRevenue || 0)}</p>
+            <p className="text-xs text-amber-700 mt-1 flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              Disponible après livraison
+            </p>
           </div>
 
           {/* Total utilisations */}
@@ -291,12 +308,13 @@ const VendorDesignRevenuesPage: React.FC = () => {
             <h3 className="text-sm font-semibold text-blue-900 mb-1">Comment fonctionne le paiement ?</h3>
             <p className="text-sm text-blue-800 mb-2">
               Vous recevez un pourcentage du prix de chaque design utilisé dans les commandes clients.
-              Les paiements sont effectués automatiquement une fois la commande confirmée et livrée.
+              Les revenus deviennent disponibles pour retrait une fois la commande livrée par l'administrateur.
             </p>
             <ul className="text-sm text-blue-800 space-y-1 ml-4 list-disc">
-              <li>Commission vendeur : <strong>70%</strong> du prix du design</li>
-              <li>Paiement sous <strong>7 jours</strong> après livraison</li>
-              <li>Virement automatique sur votre compte bancaire enregistré</li>
+              <li>Commission vendeur : <strong>90%</strong> du prix du design (10% de commission plateforme)</li>
+              <li><strong>Montant disponible</strong> dès que l'admin livre la commande</li>
+              <li>Les revenus en <span className="text-amber-600 font-semibold">attente</span> correspondent aux commandes non encore livrées</li>
+              <li>Retirez vos gains via <strong>Appel de Fonds</strong> dans votre dashboard</li>
             </ul>
           </div>
         </div>
@@ -437,6 +455,13 @@ const VendorDesignRevenuesPage: React.FC = () => {
                               </div>
                               <div className="text-right flex-shrink-0 ml-4">
                                 <p className="text-lg font-bold text-green-600">{formatPrice(usage.revenue)}</p>
+                                {/* Message informatif pour les commandes non livrées */}
+                                {(usage.orderPaymentStatus === 'PENDING' || usage.orderPaymentStatus === 'CONFIRMED') && (
+                                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    Disponible après livraison
+                                  </p>
+                                )}
                               </div>
                             </div>
                           ))}
