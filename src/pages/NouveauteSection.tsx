@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 
 // Interface EXACTE selon l'API new-arrivals réelle (swagger.md)
@@ -83,6 +84,7 @@ interface ProductCardProps {
   item: NewArrivalProduct;
   formatPrice: (price: number) => string;
   showDelimitations?: boolean; // ✅ Option pour afficher les délimitations
+  onProductClick?: (productId: number) => void; // ✅ Callback pour la navigation
 }
 
 // Utilitaire pour normaliser les délimitations
@@ -279,7 +281,7 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
 };
 
 // Composant ProductCard utilisant SimpleProductPreview
-const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimitations = false }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimitations = false, onProductClick }) => {
   const adaptedProduct = adaptNewArrivalToVendorProduct(item);
 
   // Si l'adaptation échoue, ne pas afficher le produit
@@ -315,8 +317,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
     currentColorId: adaptedProduct.selectedColors?.[0]?.id
   });
 
+  // Gestionnaire de clic pour la navigation
+  const handleClick = () => {
+    if (onProductClick) {
+      onProductClick(item.id);
+    }
+  };
+
   return (
     <div
+      onClick={handleClick}
       className="relative rounded-2xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 w-full"
       style={{
         aspectRatio: "4 / 5",
@@ -360,6 +370,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
 };
 
 const NouveautesGrid: React.FC = () => {
+  const navigate = useNavigate();
   const [nouveautesData, setNouveautesData] = useState<NewArrivalProduct[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -427,6 +438,12 @@ const NouveautesGrid: React.FC = () => {
   const canGoLeft = currentIndex > 0;
   const canGoRight = currentIndex < nouveautesData.length - 4;
 
+  // Gestionnaire de clic pour naviguer vers la page de détail du produit
+  const handleProductClick = (productId: number) => {
+    console.log('🔗 [NouveautesGrid] Navigation vers le produit:', productId);
+    navigate(`/vendor-product-detail/${productId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="w-full bg-gray-50 py-1 md:py-2">
@@ -493,7 +510,10 @@ const NouveautesGrid: React.FC = () => {
           </h2>
           
           <div className="flex items-center gap-3">
-            <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+            <button
+              onClick={() => navigate('/nouveautes')}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+            >
               Voir toutes les nouveautés
             </button>
           </div>
@@ -522,11 +542,12 @@ const NouveautesGrid: React.FC = () => {
           {/* Grille de 4 produits */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8 transition-all duration-300">
             {currentProducts.map((item) => (
-              <ProductCard 
-                key={item.id} 
-                item={item} 
+              <ProductCard
+                key={item.id}
+                item={item}
                 formatPrice={formatPrice}
                 showDelimitations={false}
+                onProductClick={handleProductClick}
               />
             )).filter(Boolean)}
           </div>

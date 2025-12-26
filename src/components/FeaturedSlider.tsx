@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import SimpleProductPreview from './vendor/SimpleProductPreview';
 
 // Interface EXACTE selon la réponse API best-sellers-v2
@@ -213,49 +214,14 @@ const adaptBestSellerToVendorProduct = (item: BestSellerProduct) => {
   };
 };
 
-// Composant ProductCard - Structure exacte comme demandé
-const ProductCard = ({ item, formatPrice }) => {
-  // Récupérer la première variation de couleur et sa première image
-  const firstColorVariation = item.baseProduct?.colorVariations?.[0];
-  const firstImage = firstColorVariation?.images?.[0];
-  const firstDelimitation = firstImage?.delimitations?.[0];
-
-  // Récupérer la position du design
-  const designPosition = item.designPositions?.[0]?.position;
-
-  // Calculer les positions du design sur l'image
-  const calculateDesignPosition = () => {
-    if (!designPosition || !firstDelimitation || !firstImage) {
-      return null;
-    }
-
-    const { x, y, scale, rotation, designWidth, designHeight } = designPosition;
-    const { x: delimX, y: delimY, width: delimWidth, height: delimHeight } = firstDelimitation;
-    const { naturalWidth, naturalHeight } = firstImage;
-
-    // Calculer les dimensions et positions
-    const scaledDesignWidth = designWidth * scale;
-    const scaledDesignHeight = designHeight * scale;
-
-    return {
-      container: {
-        left: `${delimX}px`,
-        top: `${delimY}px`,
-        width: `${delimWidth}px`,
-        height: `${delimHeight}px`
-      },
-      design: {
-        width: `${scaledDesignWidth}px`,
-        height: `${scaledDesignHeight}px`,
-        transform: `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${rotation}deg)`
-      }
-    };
-  };
-
-  const positions = calculateDesignPosition();
+// Composant ProductCard utilisant SimpleProductPreview comme NouveauteSection
+const ProductCard = ({ item, formatPrice, onProductClick }) => {
+  // Adapter le produit pour SimpleProductPreview
+  const adaptedProduct = adaptBestSellerToVendorProduct(item);
 
   return (
     <div
+      onClick={() => onProductClick(item.id)}
       className="relative rounded-2xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 w-full"
       style={{
         aspectRatio: "4 / 5",
@@ -264,48 +230,15 @@ const ProductCard = ({ item, formatPrice }) => {
       }}
     >
       <div className="absolute inset-0 w-full h-full overflow-hidden">
-        <div className="aspect-square relative bg-white rounded-lg overflow-hidden w-full h-full">
-          {/* Image du produit */}
-          <img
-            alt={item.name}
-            className="w-full h-full object-cover"
-            src={firstImage?.url || ''}
-          />
-
-          {/* Overlay du design */}
-          {item.designCloudinaryUrl && positions && (
-            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2, overflow: 'visible' }}>
-              <div
-                className="absolute overflow-hidden"
-                style={{
-                  ...positions.container,
-                  pointerEvents: 'none',
-                  border: 'none'
-                }}
-              >
-                <div
-                  className="absolute pointer-events-none select-none"
-                  style={{
-                    left: '50%',
-                    top: '50%',
-                    ...positions.design,
-                    transformOrigin: 'center center',
-                    transition: 'transform 0.1s ease-out',
-                    border: 'none'
-                  }}
-                >
-                  <img
-                    alt="Design"
-                    className="object-contain pointer-events-none select-none"
-                    draggable="false"
-                    src={item.designCloudinaryUrl}
-                    style={{ width: '100%', height: '100%', transform: 'scale(1)' }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <SimpleProductPreview
+          product={adaptedProduct}
+          showColorSlider={false}
+          showDelimitations={false}
+          className="w-full h-full"
+          onColorChange={() => {}}
+          hideValidationBadges={true}
+          imageObjectFit="cover"
+        />
       </div>
 
       {/* Overlay texte */}
@@ -332,9 +265,16 @@ const ProductCard = ({ item, formatPrice }) => {
 };
 
 const BestSellersGrid = () => {
+  const navigate = useNavigate();
   const [bestSellersData, setBestSellersData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Fonction de navigation vers la page de détail du produit
+  const handleProductClick = (productId: number) => {
+    console.log('🔗 [BestSellersGrid] Navigation vers le produit:', productId);
+    navigate(`/vendor-product-detail/${productId}`);
+  };
 
   // Fonction pour récupérer les meilleures ventes depuis l'API
   useEffect(() => {
@@ -419,7 +359,10 @@ const BestSellersGrid = () => {
             <img src="/fire.svg" alt="Fire" className="w-6 h-6 md:w-8 md:h-8" />
           </h2>
           
-          <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+          <button
+            onClick={() => navigate('/best-sellers')}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+          >
             Voir toutes les meilleures ventes
           </button>
         </div>
@@ -447,10 +390,11 @@ const BestSellersGrid = () => {
           {/* Grille de 4 produits avec SimpleProductPreview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8 transition-all duration-300">
             {currentProducts.map((item) => (
-              <ProductCard 
-                key={item.id} 
-                item={item} 
+              <ProductCard
+                key={item.id}
+                item={item}
                 formatPrice={formatPrice}
+                onProductClick={handleProductClick}
               />
             ))}
           </div>
