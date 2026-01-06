@@ -41,6 +41,8 @@ import VendorOnboardingPage from './pages/vendor/VendorOnboardingPage';
 
 // Nouveaux composants d'authentification
 import { AuthProvider } from './contexts/AuthContext';
+import { FavoritesProvider } from './contexts/FavoritesContext';
+import FavoritesDrawer from './components/FavoritesDrawer';
 import LoginForm from './components/auth/LoginForm';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import ProtectedRoute, { AdminRoute, VendeurRoute, PublicRoute } from './components/auth/ProtectedRoute';
@@ -247,7 +249,9 @@ function App() {
           <AuthPersistenceWrapper>
             <CategoryProvider>
               <CartProvider>
-                <Wrapper>
+                <FavoritesProvider>
+                  <Wrapper>
+                    <FavoritesDrawer />
               <Routes>
                 {/* Routes publiques */}
                 <Route path='/login' element={
@@ -517,6 +521,7 @@ function App() {
                 <Route path='/confirm-email-change' element={<ConfirmEmailChange />} />
               </Routes>
                 </Wrapper>
+                </FavoritesProvider>
               </CartProvider>
             </CategoryProvider>
           </AuthPersistenceWrapper>

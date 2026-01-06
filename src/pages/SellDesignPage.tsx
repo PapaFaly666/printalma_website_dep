@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../services/productService';
-import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle, Star } from 'lucide-react';
 import designService, { Design } from '../services/designService';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorPublish } from '../hooks/useVendorPublish';
@@ -2123,6 +2123,7 @@ const SellDesignPage: React.FC = () => {
   const [productSizes, setProductSizes] = useState<Record<number, Size[]>>({});
   const [productColors, setProductColors] = useState<Record<number, Color[]>>({});
   const [selectedColorIds, setSelectedColorIds] = useState<Record<number, number>>({});
+  const [defaultColorIds, setDefaultColorIds] = useState<Record<number, number>>({});
   const [priceErrors, setPriceErrors] = useState<Record<number, string>>({});
   const [expandedPricingIds, setExpandedPricingIds] = useState<Record<number, boolean>>({});
   const [customProfits, setCustomProfits] = useState<Record<number, number>>({});
@@ -3437,15 +3438,27 @@ const SellDesignPage: React.FC = () => {
     }
   }, [products, prixDeRevientOriginaux, editStates]);
 
-  // Initialiser la couleur sélectionnée (première couleur active ou première variation)
+  // Initialiser la couleur sélectionnée (couleur par défaut > première couleur active > première variation)
   useEffect(() => {
     const initialSel: Record<number, number> = {};
     products.forEach((product) => {
       if (!selectedColorIds[product.id]) {
         const activeColors = (productColors[product.id] || []).filter(c => c.isActive);
+
+        // Priorité 1: Couleur par défaut si définie et active
+        if (defaultColorIds[product.id]) {
+          const defaultColor = activeColors.find(c => c.id === defaultColorIds[product.id]);
+          if (defaultColor) {
+            initialSel[product.id] = defaultColor.id;
+            return;
+          }
+        }
+
+        // Priorité 2: Première couleur active
         if (activeColors.length > 0) {
           initialSel[product.id] = activeColors[0].id;
         } else if (product.colorVariations && product.colorVariations.length > 0) {
+          // Priorité 3: Première variation de couleur
           initialSel[product.id] = product.colorVariations[0].id;
         }
       }
@@ -3453,7 +3466,7 @@ const SellDesignPage: React.FC = () => {
     if (Object.keys(initialSel).length > 0) {
       setSelectedColorIds(prev => ({ ...prev, ...initialSel }));
     }
-  }, [products, productColors]);
+  }, [products, productColors, defaultColorIds]);
 
   const handleSelectColor = (productId: number, colorId: number) => {
     setSelectedColorIds(prev => ({ ...prev, [productId]: colorId }));
@@ -3820,7 +3833,8 @@ const SellDesignPage: React.FC = () => {
           postValidationAction: PostValidationAction.TO_DRAFT
         },
         getPreviewView,
-        'DRAFT' // Force DRAFT
+        'DRAFT',
+        defaultColorIds
       );
 
       const successful = (results || []).filter(r => r.success);
@@ -3932,7 +3946,8 @@ const SellDesignPage: React.FC = () => {
           postValidationAction: PostValidationAction.AUTO_PUBLISH
         },
         getPreviewView,
-        'DRAFT' // Créé en draft puis publié via service
+        'DRAFT',
+        defaultColorIds
       );
 
       const successful = (results || []).filter(r => r.success);
@@ -4081,7 +4096,8 @@ const SellDesignPage: React.FC = () => {
             postValidationAction
           },
           getPreviewView,
-          'PENDING'
+          'PENDING',
+          defaultColorIds
         );
 
         const successful = (results || []).filter(r => r.success);
@@ -4117,7 +4133,8 @@ const SellDesignPage: React.FC = () => {
             postValidationAction
           },
           getPreviewView,
-          'DRAFT' // Créer en DRAFT puis publier via service externe
+          'DRAFT',
+          defaultColorIds
         );
 
         // 🚀 PUBLICATION IMMÉDIATE des produits créés (design validé)
@@ -4190,7 +4207,8 @@ const SellDesignPage: React.FC = () => {
             postValidationAction
           },
           getPreviewView,
-          'DRAFT'
+          'DRAFT',
+          defaultColorIds
         );
 
         const successful = (results || []).filter(r => r.success);
@@ -4989,11 +5007,12 @@ const SellDesignPage: React.FC = () => {
                                 <div className="grid grid-cols-3 gap-2">
                                   {(productColors[product.id] || []).slice(0, 6).map((color) => {
                                   const isSelected = selectedColorIds[product.id] === color.id;
+                                  const isDefault = defaultColorIds[product.id] === color.id;
                                     const activeColorsCount = (productColors[product.id] || []).filter(c => c.isActive).length;
                                     const canDeactivate = !(activeColorsCount === 1 && color.isActive);
-                                  
+
                                   return (
-                                      <div key={color.id} className="text-center">
+                                      <div key={color.id} className="text-center relative">
                                         <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -5008,9 +5027,9 @@ const SellDesignPage: React.FC = () => {
                                       }}
                                           className={`relative w-10 h-10 rounded-full border-2 mx-auto mb-1 transition-all ${
                                             isSelected && color.isActive
-                                              ? 'border-black dark:border-white scale-110' 
-                                              : color.isActive 
-                                                ? 'border-gray-300 dark:border-gray-600 hover:scale-105' 
+                                              ? 'border-black dark:border-white scale-110'
+                                              : color.isActive
+                                                ? 'border-gray-300 dark:border-gray-600 hover:scale-105'
                                                 : 'border-gray-300 dark:border-gray-600 opacity-50'
                                           }`}
                                           style={{ backgroundColor: color.colorCode }}
@@ -5023,10 +5042,35 @@ const SellDesignPage: React.FC = () => {
                                             <X className="absolute inset-0 m-auto w-4 h-4 text-red-500 bg-white rounded-full" />
                                           )}
                                         </button>
-                                        
-                                        <span className="text-xs text-gray-600 dark:text-gray-400 block mb-1">
-                                          {color.name}
-                                        </span>
+
+                                        <div className="flex items-center justify-center gap-1 mb-1">
+                                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                                            {color.name}
+                                          </span>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (color.isActive) {
+                                                setDefaultColorIds(prev => ({ ...prev, [product.id]: color.id }));
+                                                toast({
+                                                  title: "Couleur par défaut définie",
+                                                  description: `${color.name} sera affichée en premier aux clients`,
+                                                  duration: 2000,
+                                                });
+                                              }
+                                            }}
+                                            className={`p-0.5 rounded transition-colors ${
+                                              isDefault && color.isActive
+                                                ? 'text-yellow-500'
+                                                : color.isActive
+                                                  ? 'text-gray-400 hover:text-yellow-500'
+                                                  : 'text-gray-300 opacity-50 cursor-not-allowed'
+                                            }`}
+                                            title={isDefault ? "Couleur par défaut" : "Définir comme couleur par défaut"}
+                                          >
+                                            <Star className={`w-3 h-3 ${isDefault ? 'fill-yellow-500' : ''}`} />
+                                          </button>
+                                        </div>
                                         
                                         <button
                                           onClick={(e) => {

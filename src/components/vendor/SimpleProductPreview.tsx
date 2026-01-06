@@ -142,10 +142,41 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
   const { user } = useAuth();
 
   // État pour la couleur sélectionnée - déclaré en premier
-  // ✅ Utiliser initialColorId si fourni, sinon la première couleur disponible
-  const [currentColorId, setCurrentColorId] = useState<number>(
-    initialColorId || product.selectedColors[0]?.id || 0
-  );
+  // ✅ Priorité: initialColorId > defaultColorId > première couleur disponible
+  const [currentColorId, setCurrentColorId] = useState<number>(() => {
+    console.log('🎨 [SimpleProductPreview] Initialisation couleur pour produit:', {
+      productId: product.id,
+      defaultColorId: (product as any).defaultColorId,
+      selectedColors: product.selectedColors,
+      initialColorId
+    });
+
+    // 1. Si initialColorId est fourni (parent contrôle)
+    if (initialColorId) {
+      console.log(`🎨 [SimpleProductPreview] ✅ Utilisation de initialColorId: ${initialColorId}`);
+      return initialColorId;
+    }
+
+    // 2. Si le produit a un defaultColorId et c'est une couleur valide
+    const defaultColorId = (product as any).defaultColorId;
+    if (defaultColorId) {
+      console.log(`🎨 [SimpleProductPreview] Recherche de la couleur par défaut ID: ${defaultColorId} dans:`, product.selectedColors);
+      const defaultColor = product.selectedColors.find(c => c.id === defaultColorId);
+      if (defaultColor) {
+        console.log(`🎨 [SimpleProductPreview] ✅ Couleur par défaut trouvée: ${defaultColor.name} (ID: ${defaultColor.id})`);
+        return defaultColor.id;
+      } else {
+        console.warn(`⚠️ [SimpleProductPreview] Couleur par défaut ID ${defaultColorId} non trouvée dans selectedColors`);
+      }
+    } else {
+      console.log(`🎨 [SimpleProductPreview] Pas de defaultColorId défini`);
+    }
+
+    // 3. Sinon, première couleur disponible
+    const firstColorId = product.selectedColors[0]?.id || 0;
+    console.log(`🎨 [SimpleProductPreview] ⚪ Utilisation de la première couleur: ${product.selectedColors[0]?.name} (ID: ${firstColorId})`);
+    return firstColorId;
+  });
 
   // ✅ Synchroniser la couleur lorsque initialColorId change (parent)
   useEffect(() => {
@@ -168,12 +199,22 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       return baseImage?.adminImageUrl || product.images.primaryImageUrl;
     } else if (isTraditionalProduct && product.adminProduct) {
       // Pour traditionnel: utiliser l'image du mockup de la couleur sélectionnée
+      console.log('🖼️ [getCardImage] Recherche de l\'image pour currentColorId:', currentColorId);
+      console.log('🖼️ [getCardImage] selectedColors disponibles:', product.selectedColors);
+      console.log('🖼️ [getCardImage] colorVariations disponibles:', product.adminProduct.colorVariations.map(cv => ({ id: cv.id, name: cv.name })));
+
       const currentColor = product.selectedColors.find(c => c.id === currentColorId) || product.selectedColors[0];
+      console.log('🖼️ [getCardImage] currentColor trouvée:', currentColor);
+
       const colorVariation = product.adminProduct.colorVariations.find(
         cv => cv.id === currentColor?.id
       );
+      console.log('🖼️ [getCardImage] colorVariation trouvée:', colorVariation ? { id: colorVariation.id, name: colorVariation.name, imagesCount: colorVariation.images.length } : 'NON TROUVÉE');
+
       const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front')
         || colorVariation?.images[0];
+      console.log('🖼️ [getCardImage] mockupImage sélectionnée:', mockupImage ? { url: mockupImage.url.substring(0, 50) + '...', viewType: mockupImage.viewType } : 'AUCUNE IMAGE');
+
       return mockupImage?.url;
     } else if (product.images) {
       // Fallback sur primaryImageUrl si disponible
@@ -246,35 +287,45 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
   console.log('🎨 SimpleProductPreview - AdminProduct:', product.adminProduct);
   console.log('🎨 SimpleProductPreview - Image sélectionnée pour card:', getCardImage());
 
-  // Couleur actuelle
+  // ✅ Couleur actuelle - doit changer quand currentColorId change
   const currentColor = product.selectedColors.find(c => c.id === currentColorId) || product.selectedColors[0];
 
-  // Variables d'image selon le type de produit
+  console.log('🎨 [RENDER] Couleur actuelle pour currentColorId:', currentColorId, '-> Couleur:', currentColor);
+
+  // ✅ Variables d'image selon le type de produit - RECALCULÉES À CHAQUE RENDER
   let currentImageUrl: string | null = null;
   let delimitations: DelimitationData[] = [];
 
   if (isWizardProduct) {
     // ✅ Produit wizard : TOUJOURS afficher l'image de base dans la card
-    // Les détails seront sur une page séparée
     currentImageUrl = getCardImage();
-    // Les produits wizard n'ont pas de délimitations
     delimitations = [];
+    console.log('🖼️ [RENDER] Image wizard:', currentImageUrl);
   } else if (isTraditionalProduct && product.adminProduct) {
     // ✅ Produit traditionnel : utiliser le mockup de la couleur sélectionnée
+    console.log('🖼️ [RENDER] Recherche colorVariation pour currentColorId:', currentColorId);
+    console.log('🖼️ [RENDER] Couleur actuelle:', currentColor);
+    console.log('🖼️ [RENDER] ColorVariations disponibles:', product.adminProduct.colorVariations.map(cv => ({ id: cv.id, name: cv.name })));
+
     const colorVariation = product.adminProduct.colorVariations.find(
       cv => cv.id === currentColor?.id
     );
+
+    console.log('🖼️ [RENDER] ColorVariation trouvée:', colorVariation ? { id: colorVariation.id, name: colorVariation.name, imagesCount: colorVariation.images.length } : 'NON TROUVÉE');
+
     const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front')
       || colorVariation?.images[0];
 
-    console.log('🖼️ SimpleProductPreview - Image mockup sélectionnée:', {
+    console.log('🖼️ [RENDER] Image mockup sélectionnée:', {
       productId: product.id,
+      currentColorId: currentColorId,
+      currentColorName: currentColor?.name,
       colorVariationId: colorVariation?.id,
-      mockupImageUrl: mockupImage?.url,
+      colorVariationName: colorVariation?.name,
+      mockupImageUrl: mockupImage?.url?.substring(0, 80) + '...',
       viewType: mockupImage?.viewType,
       hasDelimitations: !!mockupImage?.delimitations && mockupImage.delimitations.length > 0,
-      delimitationsCount: mockupImage?.delimitations?.length || 0,
-      delimitations: mockupImage?.delimitations
+      delimitationsCount: mockupImage?.delimitations?.length || 0
     });
 
     currentImageUrl = mockupImage?.url || null;

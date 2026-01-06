@@ -26,6 +26,7 @@ interface VendorPublishData {
   vendorStock?: number;
   selectedColors: Array<{ id: number; name: string; colorCode: string }>;
   selectedSizes: Array<{ id: number; sizeName: string }>;
+  defaultColorId?: number;
   productStructure?: {
     adminProduct: {
       id: number;
@@ -184,7 +185,8 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
         // 🎨 SÉLECTIONS VENDEUR
         selectedColors: productData.selectedColors || [],
         selectedSizes: productData.selectedSizes || [],
-        
+        defaultColorId: productData.defaultColorId,
+
         // 🔧 OPTIONS
         forcedStatus: productData.forcedStatus || 'DRAFT',
         postValidationAction: productData.postValidationAction || 'AUTO_PUBLISH',
@@ -272,7 +274,8 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
       postValidationAction?: string;
     },
     getPreviewView: (product: any) => any,
-    forcedStatus?: 'DRAFT' | 'PENDING'
+    forcedStatus?: 'DRAFT' | 'PENDING',
+    defaultColorIds?: Record<number, number>
   ): Promise<PublishResult[]> => {
     try {
       setIsPublishing(true);
@@ -464,6 +467,7 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
             vendorStock: editStates[productId]?.stock || product.stock || 10,
             selectedColors: activeColors,
             selectedSizes: activeSizes,
+            defaultColorId: defaultColorIds?.[productId],
             productStructure: {
               adminProduct: {
                 id: product.id,

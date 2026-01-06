@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import SimpleProductPreview from './vendor/SimpleProductPreview';
 
@@ -77,6 +77,7 @@ interface BestSellerProduct {
     profilePhotoUrl?: string;
     businessName?: string;
   };
+  defaultColorId?: number | null; // 🆕 Couleur par défaut à afficher
   createdAt?: string;
   lastSaleDate?: string | null;
 }
@@ -116,6 +117,7 @@ const adaptBestSellerToVendorProduct = (item: BestSellerProduct) => {
     vendorName: item.name,
     price: item.price,
     status: 'PUBLISHED',
+    defaultColorId: item.defaultColorId, // 🆕 Couleur par défaut à afficher
     adminProduct: {
       id: item.baseProduct?.id || item.id,
       name: item.baseProduct?.name || item.name,
@@ -214,7 +216,7 @@ const adaptBestSellerToVendorProduct = (item: BestSellerProduct) => {
   };
 };
 
-// Composant ProductCard utilisant SimpleProductPreview comme NouveauteSection
+// Composant ProductCard utilisant SimpleProductPreview comme NouveautesSection
 const ProductCard = ({ item, formatPrice, onProductClick }) => {
   // Adapter le produit pour SimpleProductPreview
   const adaptedProduct = adaptBestSellerToVendorProduct(item);
@@ -222,10 +224,10 @@ const ProductCard = ({ item, formatPrice, onProductClick }) => {
   return (
     <div
       onClick={() => onProductClick(item.id)}
-      className="relative rounded-2xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 w-full"
+      className="relative rounded-xl xs:rounded-2xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-2xl transform hover:-translate-y-1 sm:hover:-translate-y-2 transition-all duration-300 w-full"
       style={{
         aspectRatio: "4 / 5",
-        minHeight: "280px",
+        minHeight: "200px",
         height: "auto"
       }}
     >
@@ -238,26 +240,29 @@ const ProductCard = ({ item, formatPrice, onProductClick }) => {
           onColorChange={() => {}}
           hideValidationBadges={true}
           imageObjectFit="cover"
+          initialColorId={adaptedProduct.defaultColorId || undefined}
         />
       </div>
 
       {/* Overlay texte */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-4 pointer-events-none" style={{ zIndex: 50 }}>
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-2 xs:p-3 sm:p-4 pointer-events-none" style={{ zIndex: 50 }}>
         {item.price && (
-          <div className="mb-2">
-            <span className="bg-white text-black px-2 py-1 rounded text-sm font-bold shadow-lg">
+          <div className="mb-1 xs:mb-1.5 sm:mb-2">
+            <span className="bg-white text-black px-1.5 xs:px-2 py-0.5 xs:py-1 rounded text-[10px] xs:text-xs sm:text-sm font-bold shadow-lg">
               {formatPrice(item.price)}{" "}
-              <span className="text-xs font-medium text-gray-600">FCFA</span>
+              <span className="text-[9px] xs:text-[10px] sm:text-xs font-medium text-gray-600">FCFA</span>
             </span>
           </div>
         )}
         <div className="text-white">
-          <h3 className="font-bold text-lg leading-tight mb-1 drop-shadow-lg">
+          <h3 className="font-bold text-xs xs:text-sm sm:text-base md:text-lg leading-tight mb-0.5 xs:mb-1 drop-shadow-lg">
             {item.name}
           </h3>
-          <p className="text-sm text-gray-200 font-medium mb-1 line-clamp-2 drop-shadow-lg">
-            {item.description}
-          </p>
+          {item.description && (
+            <p className="text-[10px] xs:text-xs sm:text-sm text-gray-200 font-medium mb-0.5 xs:mb-1 line-clamp-2 drop-shadow-lg">
+              {item.description}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -269,11 +274,35 @@ const BestSellersGrid = () => {
   const [bestSellersData, setBestSellersData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Fonction de navigation vers la page de détail du produit
   const handleProductClick = (productId: number) => {
     console.log('🔗 [BestSellersGrid] Navigation vers le produit:', productId);
     navigate(`/vendor-product-detail/${productId}`);
+  };
+
+  // Fonction pour le scroll horizontal sur mobile
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = window.innerWidth < 640
+        ? window.innerWidth * 0.75  // 75vw on mobile
+        : window.innerWidth < 1024
+          ? window.innerWidth * 0.50  // 50vw on tablet
+          : window.innerWidth * 0.25;  // 25vw on desktop
+      scrollContainerRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = window.innerWidth < 640
+        ? window.innerWidth * 0.75  // 75vw on mobile
+        : window.innerWidth < 1024
+          ? window.innerWidth * 0.50  // 50vw on tablet
+          : window.innerWidth * 0.25;  // 25vw on desktop
+      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
   };
 
   // Fonction pour récupérer les meilleures ventes depuis l'API
@@ -332,7 +361,7 @@ const BestSellersGrid = () => {
   if (isLoading) {
     return (
       <div className="w-full bg-white py-1 md:py-2">
-        <div className="w-full px-4 sm:px-8">
+        <div className="w-full px-4 sm:px-6">
           <div className="flex justify-between items-center mb-1">
             <div className="h-8 bg-gray-200 rounded w-60 animate-pulse"></div>
             <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
@@ -350,77 +379,103 @@ const BestSellersGrid = () => {
   const currentProducts = getCurrentProducts();
 
   return (
-    <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
-      <div className="w-full px-4 sm:px-8">
+    <div className="w-full py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+      <div className="w-full px-3 xs:px-4 sm:px-6 md:px-8">
         {/* En-tête avec titre uniforme - identique à NouveautesGrid */}
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
+        <div className="flex flex-col xs:flex-row sm:flex-row items-start xs:items-center gap-2 xs:gap-3 sm:gap-4 mb-1">
+          <h2 className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-1.5 xs:gap-2">
             <span className="font-bold">Les meilleures ventes</span>
-            <img src="/fire.svg" alt="Fire" className="w-6 h-6 md:w-8 md:h-8" />
+            <img src="/fire.svg" alt="Fire" className="w-4 h-4 xs:w-5 xs:h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
           </h2>
-          
+
           <button
             onClick={() => navigate('/best-sellers')}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+            className="bg-red-500 hover:bg-red-600 text-white px-2 xs:px-2.5 py-1 xs:py-1.5 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-lg text-[10px] xs:text-xs sm:text-sm md:text-base font-medium transition-colors duration-200"
           >
-            Voir toutes les meilleures ventes
+            Voir toutes
           </button>
         </div>
 
         {/* Container avec navigation latérale - identique à NouveautesGrid */}
         <div className="relative">
           {/* Bouton navigation gauche */}
-          {bestSellersData.length > 4 && (
-            <button
-              onClick={goToPrevious}
-              disabled={!canGoLeft}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
-                canGoLeft 
-                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white' 
+          <button
+            onClick={() => {
+              if (window.innerWidth < 1024) {
+                scrollLeft();
+              } else {
+                goToPrevious();
+              }
+            }}
+            disabled={!canGoLeft && window.innerWidth >= 1024}
+            className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 xs:w-8 xs:h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
+              window.innerWidth < 1024
+                ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
+                : canGoLeft
+                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
                   : 'border-gray-300 text-gray-300 cursor-not-allowed'
-              } -translate-x-6`}
-              aria-label="Produits précédents"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          )}
+            } -translate-x-3 xs:-translate-x-4 sm:-translate-x-5 md:-translate-x-6`}
+            aria-label="Produits précédents"
+          >
+            <svg className="w-3 h-3 xs:w-4 xs:h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-          {/* Grille de 4 produits avec SimpleProductPreview */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8 transition-all duration-300">
-            {currentProducts.map((item) => (
-              <ProductCard
-                key={item.id}
-                item={item}
-                formatPrice={formatPrice}
-                onProductClick={handleProductClick}
-              />
+          {/* Grille de 4 produits avec SimpleProductPreview - Scroll horizontal sur mobile */}
+          <div
+            ref={scrollContainerRef}
+            className="flex lg:grid lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 md:gap-6 lg:gap-8 transition-all duration-300 overflow-x-auto lg:overflow-visible snap-x snap-mandatory scrollbar-hide"
+          >
+            {currentProducts.map((item, index) => (
+              <div key={item.id} className="flex-shrink-0 w-[70vw] xs:w-[60vw] sm:w-[45vw] md:w-[48vw] lg:w-auto snap-start">
+                <ProductCard
+                  item={item}
+                  formatPrice={formatPrice}
+                  onProductClick={handleProductClick}
+                />
+              </div>
             ))}
           </div>
 
+          <style>{`
+            .scrollbar-hide {
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+
           {/* Bouton navigation droite */}
-          {bestSellersData.length > 4 && (
-            <button
-              onClick={goToNext}
-              disabled={!canGoRight}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
-                canGoRight 
-                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white' 
+          <button
+            onClick={() => {
+              if (window.innerWidth < 1024) {
+                scrollRight();
+              } else {
+                goToNext();
+              }
+            }}
+            disabled={!canGoRight && window.innerWidth >= 1024}
+            className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 xs:w-8 xs:h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
+              window.innerWidth < 1024
+                ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
+                : canGoRight
+                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
                   : 'border-gray-300 text-gray-300 cursor-not-allowed'
-              } translate-x-6`}
-              aria-label="Produits suivants"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
+            } translate-x-3 xs:translate-x-4 sm:translate-x-5 md:translate-x-6`}
+            aria-label="Produits suivants"
+          >
+            <svg className="w-3 h-3 xs:w-4 xs:h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
 
         {/* Message informatif - identique à NouveautesGrid */}
         {bestSellersData.length <= 4 && (
-          <div className="text-center text-gray-500 text-sm mt-4">
+          <div className="text-center text-gray-500 text-[10px] xs:text-xs sm:text-sm mt-2 xs:mt-3 sm:mt-4">
             {bestSellersData.length} produit{bestSellersData.length > 1 ? 's' : ''} disponible{bestSellersData.length > 1 ? 's' : ''}
           </div>
         )}

@@ -55,13 +55,13 @@ const CategoryTabs = () => {
     // Affichage du chargement
     if (loading) {
         return (
-            <div className="w-full bg-gray-50 border-b border-gray-200">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                        <h2 className="text-lg sm:text-xl font-medium text-gray-800">Je personnalise</h2>
-                        <div className="flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                            <span className="text-sm text-gray-600">Chargement...</span>
+            <div className="w-full bg-gray-50 border-b border-gray-200 overflow-x-hidden">
+                <div className="w-full px-3 xs:px-4 sm:px-6 py-2 xs:py-3 sm:py-4 md:py-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 xs:gap-3 sm:gap-4">
+                        <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold text-gray-800">Je personnalise</h2>
+                        <div className="flex items-center gap-1.5 xs:gap-2">
+                            <Loader2 className="w-4 h-4 xs:w-5 xs:h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 animate-spin text-blue-500" />
+                            <span className="text-xs xs:text-sm sm:text-base md:text-lg text-gray-600">Chargement...</span>
                         </div>
                     </div>
                 </div>
@@ -72,11 +72,11 @@ const CategoryTabs = () => {
     // Affichage d'erreur
     if (error) {
         return (
-            <div className="w-full bg-gray-50 border-b border-gray-200">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                        <h2 className="text-lg sm:text-xl font-medium text-gray-800">Je personnalise</h2>
-                        <span className="text-sm text-red-600">{error}</span>
+            <div className="w-full bg-gray-50 border-b border-gray-200 overflow-x-hidden">
+                <div className="w-full px-3 xs:px-4 sm:px-6 py-2 xs:py-3 sm:py-4 md:py-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 xs:gap-3 sm:gap-4">
+                        <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold text-gray-800">Je personnalise</h2>
+                        <span className="text-xs xs:text-sm sm:text-base md:text-lg text-red-600">{error}</span>
                     </div>
                 </div>
             </div>
@@ -85,21 +85,21 @@ const CategoryTabs = () => {
 
     return (
         <>
-            <div className="w-full bg-gray-50 border-b border-gray-200">
+            <div className="w-full bg-gray-50 border-b border-gray-200 overflow-x-hidden">
                 {/* Container principal qui suit le pattern établi avec fond uniforme */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                        <h2 className="text-lg sm:text-xl font-medium text-gray-800">Je personnalise</h2>
+                <div className="w-full px-3 xs:px-4 sm:px-6 py-2 xs:py-3 sm:py-4 md:py-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 xs:gap-3 sm:gap-4">
+                        <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold text-gray-800">Je personnalise</h2>
 
-                        <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
+                        <div className="flex flex-wrap gap-1.5 xs:gap-2 sm:gap-3 items-center overflow-x-auto">
                             {visibleSubCategories.map((subCategory) => (
                                 <button
                                     key={subCategory.id}
                                     onClick={() => handleCategoryClick(undefined, subCategory)}
-                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${
+                                    className={`px-2.5 xs:px-3 sm:px-4 md:px-5 lg:px-6 py-1.5 xs:py-2 sm:py-2 md:py-2.5 lg:py-3 rounded-lg text-xs xs:text-sm sm:text-base md:text-lg font-semibold transition-colors ${
                                         activeCategory === subCategory.id
                                             ? "bg-blue-600 text-white shadow-md"
-                                            : "bg-white text-gray-700 hover:bg-gray-100 hover:text-gray-900 border border-gray-300"
+                                            : "bg-white text-gray-700 hover:bg-gray-100 hover:text-gray-900 border-2 border-gray-300"
                                     }`}
                                     title={subCategory._count.products > 0
                                         ? `${subCategory.name} (${subCategory._count.products} produit${subCategory._count.products > 1 ? 's' : ''})`
@@ -113,17 +113,17 @@ const CategoryTabs = () => {
                             {hiddenSubCategories.length > 0 && (
                                 <button
                                     onClick={() => setShowAllModal(true)}
-                                    className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 flex items-center gap-1"
+                                    className="px-2.5 xs:px-3 sm:px-4 md:px-5 lg:px-6 py-1.5 xs:py-2 sm:py-2 md:py-2.5 lg:py-3 rounded-lg text-xs xs:text-sm sm:text-base md:text-lg font-semibold transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200 flex items-center gap-0.5 xs:gap-1"
                                     title={`Voir ${hiddenSubCategories.length} autres sous-catégories`}
                                 >
                                     +{hiddenSubCategories.length}
-                                    <ChevronRight className="w-3 h-3" />
+                                    <ChevronRight className="w-3 h-3 xs:w-4 xs:h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                                 </button>
                             )}
                         </div>
 
                         {subCategories.length === 0 && (
-                            <span className="text-sm text-gray-500">Aucune sous-catégorie disponible</span>
+                            <span className="text-xs xs:text-sm text-gray-500">Aucune sous-catégorie disponible</span>
                         )}
                     </div>
                 </div>
@@ -139,40 +139,40 @@ const CategoryTabs = () => {
                     />
 
                     {/* Modal */}
-                    <div className="relative mx-auto w-full max-w-4xl bg-white shadow-2xl rounded-lg m-4 max-h-[80vh] flex flex-col">
+                    <div className="relative mx-auto w-full max-w-4xl bg-white shadow-2xl rounded-lg m-2 xs:m-3 sm:m-4 max-h-[85vh] sm:max-h-[80vh] flex flex-col">
                         {/* Header */}
-                        <div className="px-6 py-4 border-b flex items-center justify-between">
-                            <h3 className="text-xl font-bold text-gray-900">
+                        <div className="px-3 xs:px-4 sm:px-5 md:px-6 py-2 xs:py-3 sm:py-4 border-b flex items-center justify-between">
+                            <h3 className="text-sm xs:text-base sm:text-lg md:text-xl font-bold text-gray-900">
                                 Autres sous-catégories ({hiddenSubCategories.length})
                             </h3>
                             <button
                                 onClick={() => setShowAllModal(false)}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                className="p-1.5 xs:p-2 hover:bg-gray-100 rounded-full transition-colors"
                             >
-                                <X className="w-5 h-5 text-gray-500" />
+                                <X className="w-4 h-4 xs:w-5 xs:h-5 text-gray-500" />
                             </button>
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <div className="flex-1 overflow-y-auto p-3 xs:p-4 sm:p-5 md:p-6">
+                            <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-3">
                                 {hiddenSubCategories.map((subCategory) => (
                                     <button
                                         key={subCategory.id}
                                         onClick={() => handleCategoryClick(undefined, subCategory)}
-                                        className={`p-3 rounded-lg text-sm font-medium transition-all ${
+                                        className={`p-2.5 xs:p-3 sm:p-4 rounded-lg text-xs xs:text-sm sm:text-base font-semibold transition-all ${
                                             activeCategory === subCategory.id
                                                 ? "bg-blue-600 text-white shadow-md"
-                                                : "bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900 border border-gray-200"
+                                                : "bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900 border-2 border-gray-200"
                                         }`}
                                         title={subCategory._count.products > 0
                                         ? `${subCategory.name} (${subCategory._count.products} produit${subCategory._count.products > 1 ? 's' : ''})`
                                         : subCategory.name}
                                     >
                                         <div className="text-center">
-                                            <div className="font-medium">{subCategory.name}</div>
+                                            <div className="font-medium text-xs xs:text-sm sm:text-base">{subCategory.name}</div>
                                             {subCategory._count.products > 0 && (
-                                                <div className="text-xs opacity-75 mt-1">
+                                                <div className="text-[10px] xs:text-xs opacity-75 mt-0.5 xs:mt-1">
                                                     {subCategory._count.products} produit{subCategory._count.products > 1 ? 's' : ''}
                                                 </div>
                                             )}

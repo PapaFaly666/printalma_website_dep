@@ -199,10 +199,29 @@ const PublicVendorProductDetailPage: React.FC = () => {
 
           setProduct(foundProduct);
 
-          // Sélectionner la première couleur par défaut
+          // 🎨 Sélectionner la couleur par défaut (defaultColorId) ou la première couleur
           if (foundProduct.selectedColors && foundProduct.selectedColors.length > 0) {
-            setSelectedColorId(foundProduct.selectedColors[0].id);
-            console.log('🎨 [PublicVendorProductDetailPage] Couleur par défaut sélectionnée:', foundProduct.selectedColors[0].id);
+            // Priorité 1: defaultColorId si défini
+            const defaultColorId = (foundProduct as any).defaultColorId;
+            if (defaultColorId) {
+              const defaultColor = foundProduct.selectedColors.find(c => c.id === defaultColorId);
+              if (defaultColor) {
+                setSelectedColorId(defaultColor.id);
+                console.log('🎨 [PublicVendorProductDetailPage] ✅ Couleur par défaut (defaultColorId) sélectionnée:', {
+                  colorId: defaultColor.id,
+                  colorName: defaultColor.name,
+                  colorCode: defaultColor.colorCode
+                });
+              } else {
+                // Fallback si defaultColorId n'existe pas dans selectedColors
+                setSelectedColorId(foundProduct.selectedColors[0].id);
+                console.warn('⚠️ [PublicVendorProductDetailPage] defaultColorId introuvable, utilisation de la première couleur');
+              }
+            } else {
+              // Priorité 2: Première couleur si pas de defaultColorId
+              setSelectedColorId(foundProduct.selectedColors[0].id);
+              console.log('🎨 [PublicVendorProductDetailPage] ⚪ Pas de defaultColorId, première couleur sélectionnée:', foundProduct.selectedColors[0].id);
+            }
           }
 
           // Sélectionner la première taille par défaut
@@ -1059,7 +1078,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
                         onProductClick={() => {}}
                         hideValidationBadges={false}
                         imageObjectFit="contain"
-                        initialColorId={sameDesignProduct.selectedColors[0]?.id}
+                        initialColorId={(sameDesignProduct as any).defaultColorId ?? sameDesignProduct.selectedColors[0]?.id}
                       />
                     </div>
                     <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
@@ -1274,7 +1293,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
                       onProductClick={() => {}}
                       hideValidationBadges={false}
                       imageObjectFit="contain"
-                      initialColorId={historyProduct.selectedColors[0]?.id}
+                      initialColorId={(historyProduct as any).defaultColorId ?? historyProduct.selectedColors[0]?.id}
                     />
 
                     {/* Bouton supprimer en haut à droite */}

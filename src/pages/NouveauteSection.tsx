@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 
@@ -75,6 +75,7 @@ interface NewArrivalProduct {
     profilePhotoUrl: string;
     businessName: string;
   };
+  defaultColorId?: number | null; // 🆕 Couleur par défaut à afficher
   createdAt: string;
   lastSaleDate: string | null;
 }
@@ -170,6 +171,10 @@ const normalizeDesignPosition = (position: any) => {
 
 // Fonction pour adapter les données de l'API new-arrivals vers le format vendor/products
 const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
+  // 🔍 LOG COMPLET de l'item brut pour debug
+  console.log('🔍 [adaptNewArrival] Item brut complet:', JSON.stringify(item, null, 2));
+  console.log('🔍 [adaptNewArrival] defaultColorId BRUT:', item.defaultColorId);
+
   const designPositions = item.designPositions;
 
   // Vérifier si designPositions existe et a les propriétés nécessaires
@@ -205,7 +210,14 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
   const normalizedPosition = normalizeDesignPosition(firstDesignPos.position);
 
   console.log('📍 [adaptNewArrival] Position normalisée:', normalizedPosition);
-  
+
+  console.log('🎨 [adaptNewArrival] defaultColorId du produit:', {
+    productId: item.id,
+    productName: item.name,
+    defaultColorId: item.defaultColorId,
+    availableColors: item.baseProduct.colorVariations.map(cv => ({ id: cv.id, name: cv.name }))
+  });
+
   const adaptedProduct = {
     id: item.id,
     vendorName: item.name,
@@ -214,6 +226,7 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
     status: 'PUBLISHED',
     adminValidated: true, // Pour ne pas afficher "Validation en cours"
     hideValidationBadges: true, // Pour cacher les badges de validation
+    defaultColorId: item.defaultColorId, // 🆕 Couleur par défaut à afficher
     adminProduct: {
       id: item.baseProduct.id,
       name: item.baseProduct.name,
@@ -327,10 +340,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
   return (
     <div
       onClick={handleClick}
-      className="relative rounded-2xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 w-full"
+      className="relative rounded-xl xs:rounded-2xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-2xl transform hover:-translate-y-1 sm:hover:-translate-y-2 transition-all duration-300 w-full"
       style={{
         aspectRatio: "4 / 5",
-        minHeight: "280px",
+        minHeight: "200px",
         height: "auto"
       }}
     >
@@ -343,26 +356,29 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
           onColorChange={() => {}}
           hideValidationBadges={true}
           imageObjectFit="cover"
+          initialColorId={adaptedProduct.defaultColorId ?? undefined}
         />
       </div>
 
       {/* Overlay texte avec z-index plus élevé mais ne couvrant que le bas */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-4 pointer-events-none" style={{ zIndex: 50 }}>
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-2 xs:p-3 sm:p-4 pointer-events-none" style={{ zIndex: 50 }}>
         {item.price && (
-          <div className="mb-2">
-            <span className="bg-white text-black px-2 py-1 rounded text-sm font-bold shadow-lg">
+          <div className="mb-1 xs:mb-1.5 sm:mb-2">
+            <span className="bg-white text-black px-1.5 xs:px-2 py-0.5 xs:py-1 rounded text-[10px] xs:text-xs sm:text-sm font-bold shadow-lg">
               {formatPrice(item.price)}{" "}
-              <span className="text-xs font-medium text-gray-600">FCFA</span>
+              <span className="text-[9px] xs:text-[10px] sm:text-xs font-medium text-gray-600">FCFA</span>
             </span>
           </div>
         )}
         <div className="text-white">
-          <h3 className="font-bold text-lg leading-tight mb-1 drop-shadow-lg">
+          <h3 className="font-bold text-xs xs:text-sm sm:text-base md:text-lg leading-tight mb-0.5 xs:mb-1 drop-shadow-lg">
             {item.name}
           </h3>
-          <p className="text-sm text-gray-200 font-medium mb-1 line-clamp-2 drop-shadow-lg">
-            {item.description}
-          </p>
+          {item.description && (
+            <p className="text-[10px] xs:text-xs sm:text-sm text-gray-200 font-medium mb-0.5 xs:mb-1 line-clamp-2 drop-shadow-lg">
+              {item.description}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -375,19 +391,49 @@ const NouveautesGrid: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [showDelimitations, setShowDelimitations] = useState<boolean>(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fonction pour le scroll horizontal sur mobile
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = window.innerWidth < 640
+        ? window.innerWidth * 0.75  // 75vw on mobile
+        : window.innerWidth < 1024
+          ? window.innerWidth * 0.50  // 50vw on tablet
+          : window.innerWidth * 0.25;  // 25vw on desktop
+      scrollContainerRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = window.innerWidth < 640
+        ? window.innerWidth * 0.75  // 75vw on mobile
+        : window.innerWidth < 1024
+          ? window.innerWidth * 0.50  // 50vw on tablet
+          : window.innerWidth * 0.25;  // 25vw on desktop
+      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // Fonction pour récupérer les nouveautés depuis l'API
   useEffect(() => {
     const fetchNewArrivals = async () => {
       try {
-        const response = await fetch('https://printalma-back-dep.onrender.com/public/new-arrivals');
+        // 🔧 Utiliser le serveur local pour avoir defaultColorId
+        const response = await fetch('http://localhost:3004/public/new-arrivals');
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();
-        
+
+        // 🔍 LOG pour vérifier les données reçues de l'API
+        console.log('🔍 [fetchNewArrivals] Réponse API complète:', result);
+        console.log('🔍 [fetchNewArrivals] Premier produit:', result.data?.[0]);
+        console.log('🔍 [fetchNewArrivals] defaultColorId du premier produit:', result.data?.[0]?.defaultColorId);
+
         if (result.success && result.data) {
           setNouveautesData(result.data);
         } else {
@@ -446,15 +492,15 @@ const NouveautesGrid: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="w-full bg-gray-50 py-1 md:py-2">
-        <div className="w-full px-4 sm:px-8">
-          <div className="flex justify-between items-center mb-1">
-            <div className="h-8 bg-gray-200 rounded w-60 animate-pulse"></div>
-            <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+      <div className="w-full bg-gray-50 py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10">
+        <div className="w-full px-3 xs:px-4 sm:px-6">
+          <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2 mb-1">
+            <div className="h-6 xs:h-7 sm:h-8 bg-gray-200 rounded w-40 xs:w-52 sm:w-60 animate-pulse"></div>
+            <div className="h-6 xs:h-7 sm:h-8 w-16 xs:w-20 bg-gray-200 rounded animate-pulse"></div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 md:gap-6">
             {[...Array(4)].map((_, index) => (
-              <div key={index} className="w-full h-64 sm:h-72 lg:h-80 bg-gray-200 rounded-2xl animate-pulse"></div>
+              <div key={index} className="w-full h-48 xs:h-56 sm:h-64 lg:h-72 bg-gray-200 rounded-xl xs:rounded-2xl animate-pulse"></div>
             ))}
           </div>
         </div>
@@ -467,29 +513,29 @@ const NouveautesGrid: React.FC = () => {
   // Affichage quand il n'y a pas de données
   if (!isLoading && nouveautesData.length === 0) {
     return (
-      <div className="w-full py-1 md:py-2">
-        <div className="w-full px-4 sm:px-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
+      <div className="w-full py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10">
+        <div className="w-full px-3 xs:px-4 sm:px-6">
+          <div className="flex items-center justify-between mb-3 xs:mb-4">
+            <h2 className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-1.5 xs:gap-2">
               <span className="font-bold">Nouveautés</span>
-              <img src="/fire.svg" alt="Fire" className="w-6 h-6 md:w-8 md:h-8" />
+              <img src="/fire.svg" alt="Fire" className="w-4 h-4 xs:w-5 xs:h-5 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </h2>
           </div>
-          
-          <div className="text-center py-12">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md mx-auto">
+
+          <div className="text-center py-8 xs:py-10 sm:py-12">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 xs:p-5 sm:p-6 max-w-md mx-auto">
               <div className="text-yellow-600 mb-2">
-                <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 mx-auto mb-3 xs:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900 mb-2">
                 Aucune nouveauté disponible
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-xs xs:text-sm text-gray-600 mb-3 xs:mb-4">
                 L'API n'a retourné aucune donnée. Vérifiez que le backend est démarré sur le port 3004.
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-[10px] xs:text-xs text-gray-500">
                 Ouvrez la console pour plus de détails sur l'erreur.
               </p>
             </div>
@@ -500,80 +546,105 @@ const NouveautesGrid: React.FC = () => {
   }
 
   return (
-    <div className="w-full bg-gray-50 py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
-      <div className="w-full px-4 sm:px-8">
+    <div className="w-full bg-gray-50 py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+      <div className="w-full px-3 xs:px-4 sm:px-6 md:px-8">
         {/* En-tête avec titre uniforme */}
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
+        <div className="flex flex-col xs:flex-row sm:flex-row items-start xs:items-center gap-2 xs:gap-3 sm:gap-4 mb-1">
+          <h2 className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-1.5 xs:gap-2">
             <span className="font-bold">Nouveautés</span>
-            <img src="/fire.svg" alt="Fire" className="w-6 h-6 md:w-8 md:h-8" />
+            <img src="/fire.svg" alt="Fire" className="w-4 h-4 xs:w-5 xs:h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
           </h2>
-          
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/nouveautes')}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-            >
-              Voir toutes les nouveautés
-            </button>
-          </div>
+
+          <button
+            onClick={() => navigate('/nouveautes')}
+            className="bg-red-500 hover:bg-red-600 text-white px-2 xs:px-2.5 py-1 xs:py-1.5 sm:px-3 sm:py-1.5 md:px-4 md:py-2 lg:px-5 lg:py-2.5 rounded-lg text-[10px] xs:text-xs sm:text-sm md:text-base font-semibold transition-colors duration-200"
+          >
+            Voir toutes
+          </button>
         </div>
 
         {/* Container avec navigation latérale */}
         <div className="relative">
           {/* Bouton navigation gauche */}
-          {nouveautesData.length > 4 && (
-            <button
-              onClick={goToPrevious}
-              disabled={!canGoLeft}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
-                canGoLeft 
-                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white' 
+          <button
+            onClick={() => {
+              if (window.innerWidth < 1024) {
+                scrollLeft();
+              } else {
+                goToPrevious();
+              }
+            }}
+            disabled={!canGoLeft && window.innerWidth >= 1024}
+            className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 xs:w-8 xs:h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
+              window.innerWidth < 1024
+                ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
+                : canGoLeft
+                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
                   : 'border-gray-300 text-gray-300 cursor-not-allowed'
-              } -translate-x-6`}
-              aria-label="Produits précédents"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          )}
+            } -translate-x-3 xs:-translate-x-4 sm:-translate-x-5 md:-translate-x-6`}
+            aria-label="Produits précédents"
+          >
+            <svg className="w-3 h-3 xs:w-4 xs:h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-          {/* Grille de 4 produits */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8 transition-all duration-300">
-            {currentProducts.map((item) => (
-              <ProductCard
-                key={item.id}
-                item={item}
-                formatPrice={formatPrice}
-                showDelimitations={false}
-                onProductClick={handleProductClick}
-              />
+          {/* Grille de 4 produits - Scroll horizontal sur mobile */}
+          <div
+            ref={scrollContainerRef}
+            className="flex lg:grid lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 md:gap-6 lg:gap-8 transition-all duration-300 overflow-x-auto lg:overflow-visible snap-x snap-mandatory scrollbar-hide"
+          >
+            {currentProducts.map((item, index) => (
+              <div key={item.id} className="flex-shrink-0 w-[70vw] xs:w-[60vw] sm:w-[45vw] md:w-[48vw] lg:w-auto snap-start">
+                <ProductCard
+                  key={item.id}
+                  item={item}
+                  formatPrice={formatPrice}
+                  showDelimitations={false}
+                  onProductClick={handleProductClick}
+                />
+              </div>
             )).filter(Boolean)}
           </div>
 
+          <style>{`
+            .scrollbar-hide {
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+
           {/* Bouton navigation droite */}
-          {nouveautesData.length > 4 && (
-            <button
-              onClick={goToNext}
-              disabled={!canGoRight}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
-                canGoRight 
-                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white' 
+          <button
+            onClick={() => {
+              if (window.innerWidth < 1024) {
+                scrollRight();
+              } else {
+                goToNext();
+              }
+            }}
+            disabled={!canGoRight && window.innerWidth >= 1024}
+            className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 xs:w-8 xs:h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
+              window.innerWidth < 1024
+                ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
+                : canGoRight
+                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
                   : 'border-gray-300 text-gray-300 cursor-not-allowed'
-              } translate-x-6`}
-              aria-label="Produits suivants"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
+            } translate-x-3 xs:translate-x-4 sm:translate-x-5 md:translate-x-6`}
+            aria-label="Produits suivants"
+          >
+            <svg className="w-3 h-3 xs:w-4 xs:h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
 
         {/* Message informatif */}
         {nouveautesData.length <= 4 && (
-          <div className="text-center text-gray-500 text-sm mt-4">
+          <div className="text-center text-gray-500 text-[10px] xs:text-xs sm:text-sm mt-2 xs:mt-3 sm:mt-4">
             {nouveautesData.length} produit{nouveautesData.length > 1 ? 's' : ''} disponible{nouveautesData.length > 1 ? 's' : ''}
           </div>
         )}

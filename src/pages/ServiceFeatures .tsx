@@ -2,11 +2,11 @@ import React from "react";
 
 const ServiceFeatures = () => {
   return (
-    <div className="w-full py-8 sm:py-10 md:py-12 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+      <div className="w-full px-3 xs:px-4 sm:px-6">
         <div
           className="relative w-full flex flex-col sm:flex-row md:flex-row justify-between items-center
-                     rounded-xl md:rounded-2xl shadow px-4 sm:px-6 md:px-8 py-6 sm:py-8 space-y-6 sm:space-y-0 sm:space-x-4 md:space-x-12 overflow-hidden"
+                     rounded-xl md:rounded-2xl shadow px-2 xs:px-3 sm:px-4 md:px-6 lg:px-8 py-3 xs:py-4 sm:py-5 md:py-6 lg:py-8 space-y-2 xs:space-y-3 sm:space-y-0 sm:space-x-3 xs:sm:space-x-4 md:space-x-8 lg:space-x-12 overflow-hidden"
           style={{
             backgroundColor: "#ffffff",
           }}
@@ -24,41 +24,41 @@ const ServiceFeatures = () => {
           ></div>
 
           {/* Contenu */}
-          <div className="relative z-10 flex flex-col sm:flex-row md:flex-row justify-between items-center w-full space-y-4 sm:space-y-0 sm:space-x-4 md:space-x-12">
+          <div className="relative z-10 flex flex-col sm:flex-row md:flex-row justify-between items-center w-full space-y-2 xs:space-y-3 sm:space-y-0 sm:space-x-3 xs:sm:space-x-4 md:space-x-8 lg:space-x-12">
             {/* Disponibilité */}
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <img src="/24.svg" alt="24h/24" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14" />
+            <div className="flex items-center space-x-2 xs:space-x-3 sm:space-x-4">
+              <img src="/24.svg" alt="24h/24" className="w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 md:w-12 lg:w-14 lg:h-14" />
               <div>
-                <h3 className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: "#049BE5" }}>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-semibold" style={{ color: "#049BE5" }}>
                   Disponibilité
                 </h3>
-                <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: "#049BE5" }}>
+                <p className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm lg:text-base font-medium" style={{ color: "#049BE5" }}>
                   24h/24
                 </p>
               </div>
             </div>
 
             {/* Livraison */}
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <img src="/delivery.svg" alt="Livraison" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14" />
+            <div className="flex items-center space-x-2 xs:space-x-3 sm:space-x-4">
+              <img src="/delivery.svg" alt="Livraison" className="w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 md:w-12 lg:w-14 lg:h-14" />
               <div>
-                <h3 className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: "#049BE5" }}>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-semibold" style={{ color: "#049BE5" }}>
                   Livraison
                 </h3>
-                <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: "#049BE5" }}>
+                <p className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm lg:text-base font-medium" style={{ color: "#049BE5" }}>
                   Moins de 72h
                 </p>
               </div>
             </div>
 
             {/* Paiement sécurisé */}
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <img src="/payement.svg" alt="Paiement" className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14" />
+            <div className="flex items-center space-x-2 xs:space-x-3 sm:space-x-4">
+              <img src="/payement.svg" alt="Paiement" className="w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 md:w-12 lg:w-14 lg:h-14" />
               <div>
-                <h3 className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: "#049BE5" }}>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-semibold" style={{ color: "#049BE5" }}>
                   Paiement sécurisé
                 </h3>
-                <p className="text-xs sm:text-sm md:text-base font-medium" style={{ color: "#049BE5" }}>
+                <p className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm lg:text-base font-medium" style={{ color: "#049BE5" }}>
                   Carte / Mobile money
                 </p>
               </div>

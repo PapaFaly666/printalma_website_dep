@@ -24,13 +24,18 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  Sparkles
+  Sparkles,
+  Sticker,
+  Truck,
+  ChevronRight,
+  Check
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useToast } from '../components/ui/use-toast';
 import adminProductsService, { AdminProduct } from '../services/adminProductsService';
 import designService from '../services/designService';
 import customizationService from '../services/customizationService';
+import categoryService from '../services/categoryService';
 import { normalizeProductFromApi } from '../utils/productNormalization';
 import { formatPrice } from '../utils/priceUtils';
 import ProductDesignEditor, { ProductDesignEditorRef, FONTS, COLORS } from '../components/ProductDesignEditor';
@@ -66,13 +71,28 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // États de l'interface
-  const [activeTab, setActiveTab] = useState<'designs' | 'text' | 'upload' | 'ai'>('designs');
+  const [activeTab, setActiveTab] = useState<'designs' | 'text' | 'upload' | 'ai' | 'stickers'>('designs');
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
   const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [showProductLibrary, setShowProductLibrary] = useState(false);
+  const [showStickerSelection, setShowStickerSelection] = useState(false); // 🆕 Afficher le choix de stickers dans la grille
+  const [stickerType, setStickerType] = useState<'autocollant' | 'pare-chocs' | null>(null);
+  const [stickerBorderColor, setStickerBorderColor] = useState<string>('transparent'); // 🆕 Couleur contour autocollant
+  const [stickerSurface, setStickerSurface] = useState<'blanc-mat' | 'transparent'>('blanc-mat'); // 🆕 Surface autocollant
+  const [stickerSize, setStickerSize] = useState<string>('10 mm x 12 mm'); // 🆕 Taille autocollant (minimum)
+  const [showSizeSelector, setShowSizeSelector] = useState(false); // 🆕 Afficher le sélecteur de taille
+  const [selectedStickerDesign, setSelectedStickerDesign] = useState<any>(null); // 🆕 Design sélectionné pour le sticker
   const [vendorDesigns, setVendorDesigns] = useState<any[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<AdminProduct[]>([]);
+  const [apiCategories, setApiCategories] = useState<any[]>([]); // 🆕 Catégories depuis l'API
   const [loadingDesigns, setLoadingDesigns] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false); // 🆕
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedProductCategory, setSelectedProductCategory] = useState<string | null>(null);
+  const [selectedProductSubCategory, setSelectedProductSubCategory] = useState<string | null>(null); // 🆕 Sous-catégorie
   const [designSearch, setDesignSearch] = useState('');
+  const [productSearch, setProductSearch] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // 📝 État pour l'élément sélectionné (pour l'édition de texte)
@@ -119,6 +139,95 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const currentCustomizationIdRef = useRef<number | null>(null);
+
+  // Catégories et sous-catégories depuis l'API (priorité) ou extraites des produits (fallback)
+  const productCategoriesWithSub = useMemo(() => {
+    // 🆕 Si on a des catégories depuis l'API, les utiliser
+    if (apiCategories.length > 0) {
+      return apiCategories
+        .filter((cat: any) => cat.isActive !== false) // Filtrer les catégories actives
+        .map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          slug: cat.slug,
+          subCategories: (cat.subCategories || [])
+            .filter((sub: any) => sub.isActive !== false)
+            .map((sub: any) => ({
+              id: sub.id,
+              name: sub.name,
+              slug: sub.slug
+            }))
+            .sort((a: any, b: any) => a.name.localeCompare(b.name))
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // Fallback : Extraire depuis les produits (ancien comportement)
+    const categoriesMap = new Map<string, Set<string>>();
+
+    availableProducts.forEach(product => {
+      const categoryName = product.category?.name;
+      if (categoryName) {
+        if (!categoriesMap.has(categoryName)) {
+          categoriesMap.set(categoryName, new Set<string>());
+        }
+
+        // Ajouter la sous-catégorie si elle existe
+        const subCategoryName = product.subCategory?.name;
+        if (subCategoryName) {
+          categoriesMap.get(categoryName)!.add(subCategoryName);
+        }
+      }
+    });
+
+    // Convertir en structure utilisable avec tri
+    return Array.from(categoriesMap.entries())
+      .map(([category, subCategories]) => ({
+        name: category,
+        subCategories: Array.from(subCategories).map(name => ({ name })).sort((a, b) => a.name.localeCompare(b.name))
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [apiCategories, availableProducts]);
+
+  // Liste simple des catégories (pour compatibilité)
+  const productCategories = useMemo(() => {
+    return productCategoriesWithSub.map(cat => cat.name);
+  }, [productCategoriesWithSub]);
+
+  // Sous-catégories de la catégorie sélectionnée
+  const currentSubCategories = useMemo(() => {
+    if (!selectedProductCategory) return [];
+    const category = productCategoriesWithSub.find(cat => cat.name === selectedProductCategory);
+    return category?.subCategories || [];
+  }, [productCategoriesWithSub, selectedProductCategory]);
+
+  // Produits filtrés par catégorie, sous-catégorie et recherche
+  const filteredProducts = useMemo(() => {
+    const filtered = availableProducts.filter(product => {
+      const matchSearch = product.name.toLowerCase().includes(productSearch.toLowerCase());
+      const matchCategory = !selectedProductCategory ||
+        (product.category?.name === selectedProductCategory);
+      const matchSubCategory = !selectedProductSubCategory ||
+        (product.subCategory?.name === selectedProductSubCategory);
+
+      return matchSearch && matchCategory && matchSubCategory;
+    });
+
+    // Log de résumé uniquement
+    console.log(`✅ [Filter] Filtrage:`, {
+      total: availableProducts.length,
+      filtered: filtered.length,
+      selectedCategory: selectedProductCategory,
+      selectedSubCategory: selectedProductSubCategory,
+      products: filtered.map(p => ({
+        name: p.name,
+        category: p.category?.name,
+        subCategory: p.subCategory?.name
+      }))
+    });
+
+    return filtered;
+  }, [availableProducts, productSearch, selectedProductCategory, selectedProductSubCategory]);
 
   // Fonction helper pour obtenir la clé de la vue actuelle
   const getCurrentViewKey = () => {
@@ -227,6 +336,16 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     const designsPrice = getTotalDesignsPrice();
     return basePrice + designsPrice;
   };
+
+  // Réinitialiser les flags de restauration quand l'ID du produit change
+  useEffect(() => {
+    console.log('🔄 [Customization] Changement de produit détecté, ID:', id);
+    // Réinitialiser les flags pour permettre la restauration du nouveau produit
+    hasRestoredRef.current = false;
+    isRestoringRef.current = false;
+    // Réinitialiser les éléments de design pour éviter de voir les anciens éléments
+    setDesignElementsByView({});
+  }, [id]);
 
   // Charger le produit
   useEffect(() => {
@@ -708,6 +827,107 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     }
   };
 
+  // Charger les catégories depuis l'API
+  const loadCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const categories = await categoryService.getAllCategories();
+      setApiCategories(categories);
+
+      console.log('📂 [Categories] Catégories chargées:', {
+        total: categories.length,
+        categories: categories.map((c: any) => ({ id: c.id, name: c.name, subCategoriesCount: c.subCategories?.length || 0 }))
+      });
+    } catch (err) {
+      console.error('Erreur chargement catégories:', err);
+      // Ne pas afficher d'erreur à l'utilisateur, continuer avec les catégories extraites des produits
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  // Charger les produits disponibles
+  const loadAvailableProducts = async () => {
+    try {
+      setLoadingProducts(true);
+
+      // 🔧 IMPORTANT: Charger les catégories AVANT les produits pour pouvoir enrichir
+      let categories = apiCategories;
+      if (categories.length === 0) {
+        console.log('📂 [ProductLibrary] Chargement des catégories...');
+        try {
+          categories = await categoryService.getAllCategories();
+          setApiCategories(categories);
+          console.log('📂 [ProductLibrary] Catégories chargées:', categories.length);
+        } catch (err) {
+          console.error('❌ Erreur chargement catégories:', err);
+        }
+      }
+
+      const result = await adminProductsService.getAllProducts();
+
+      // Filtrer les produits avec au moins une variation de couleur et une image
+      let validProducts = result.data.filter((p: AdminProduct) =>
+        p.colorVariations &&
+        p.colorVariations.length > 0 &&
+        p.colorVariations[0].images &&
+        p.colorVariations[0].images.length > 0
+      );
+
+      // 🆕 Enrichir les produits avec les infos de catégories
+      if (categories.length > 0) {
+        validProducts = validProducts.map((product: any) => {
+          // Trouver la catégorie correspondante
+          const category = categories.find((cat: any) => cat.id === product.categoryId);
+
+          const enrichedProduct = {
+            ...product,
+            category: category ? {
+              id: category.id,
+              name: category.name,
+              slug: category.slug
+            } : product.category
+          };
+
+          console.log(`📦 [Enrich] ${product.name}:`, {
+            categoryId: product.categoryId,
+            foundCategory: category?.name,
+            subCategory: product.subCategory?.name
+          });
+
+          return enrichedProduct;
+        });
+
+        console.log('✅ [ProductLibrary] Produits enrichis:', {
+          productsWithCategory: validProducts.filter(p => p.category).length,
+          total: validProducts.length
+        });
+      }
+
+      setAvailableProducts(validProducts);
+      setShowProductLibrary(true);
+
+      console.log('🛍️ [ProductLibrary] Produits chargés:', {
+        total: result.data.length,
+        valid: validProducts.length,
+        sample: validProducts.slice(0, 2).map(p => ({
+          name: p.name,
+          category: p.category?.name,
+          subCategory: p.subCategory?.name
+        }))
+      });
+    } catch (err) {
+      console.error('Erreur chargement produits:', err);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de charger les produits',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
   // Gérer l'image générée par l'IA
   const handleAIImageGenerated = (imageUrl: string, description: string) => {
     console.log('🤖 [Customization] Image IA générée:', description);
@@ -733,6 +953,208 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
         duration: 3000
       });
     }
+  };
+
+  // Gérer le changement de produit avec conservation et adaptation des personnalisations
+  const handleProductChange = (newProduct: AdminProduct) => {
+    console.log('🔄 [ProductChange] Changement de produit:', {
+      from: product?.id,
+      to: newProduct.id,
+      currentCustomizations: Object.keys(designElementsByViewRef.current).length
+    });
+
+    // 1️⃣ Récupérer les personnalisations actuelles
+    const currentElements = designElementsByViewRef.current;
+    const currentViewKey = getCurrentViewKey();
+
+    if (!currentViewKey || !currentElements[currentViewKey] || currentElements[currentViewKey].length === 0) {
+      console.log('⚠️ [ProductChange] Aucune personnalisation à transférer');
+      // Naviguer vers le nouveau produit sans transfert
+      navigate(`/product/${newProduct.id}/customize`);
+      setShowProductLibrary(false);
+      toast({
+        title: '✅ Produit changé',
+        description: `Vous personnalisez maintenant: ${newProduct.name}`,
+        duration: 3000
+      });
+      return;
+    }
+
+    const elementsToTransfer = currentElements[currentViewKey];
+    console.log('📦 [ProductChange] Éléments à transférer:', {
+      count: elementsToTransfer.length,
+      elements: elementsToTransfer.map(e => ({ type: e.type, id: e.id }))
+    });
+
+    // 2️⃣ Préparer les délimitations source et cible
+    const sourceDelimitation = (selectedView as any)?.delimitations?.[0];
+    const targetFirstColor = newProduct.colorVariations?.[0];
+    const targetFirstView = targetFirstColor?.images?.[0];
+    const targetDelimitation = (targetFirstView as any)?.delimitations?.[0];
+
+    if (!sourceDelimitation || !targetDelimitation) {
+      console.warn('⚠️ [ProductChange] Délimitations manquantes');
+      navigate(`/product/${newProduct.id}/customize`);
+      setShowProductLibrary(false);
+      return;
+    }
+
+    // Obtenir les dimensions de référence (taille du canvas)
+    const sourceReferenceWidth = sourceDelimitation.referenceWidth || 800;
+    const sourceReferenceHeight = sourceDelimitation.referenceHeight || 800;
+    const targetReferenceWidth = targetDelimitation.referenceWidth || 800;
+    const targetReferenceHeight = targetDelimitation.referenceHeight || 800;
+
+    console.log('📐 [ProductChange] Délimitations et canvas:', {
+      source: {
+        canvas: { width: sourceReferenceWidth, height: sourceReferenceHeight },
+        delim: {
+          x: sourceDelimitation.x,
+          y: sourceDelimitation.y,
+          width: sourceDelimitation.width,
+          height: sourceDelimitation.height
+        }
+      },
+      target: {
+        canvas: { width: targetReferenceWidth, height: targetReferenceHeight },
+        delim: {
+          x: targetDelimitation.x,
+          y: targetDelimitation.y,
+          width: targetDelimitation.width,
+          height: targetDelimitation.height
+        }
+      }
+    });
+
+    // 3️⃣ Adapter intelligemment les éléments aux nouvelles délimitations
+    // Calculer le ratio de taille entre les délimitations
+    const widthRatio = targetDelimitation.width / sourceDelimitation.width;
+    const heightRatio = targetDelimitation.height / sourceDelimitation.height;
+
+    // Utiliser le plus petit ratio pour que tout rentre dans la nouvelle délimitation
+    const scaleRatio = Math.min(widthRatio, heightRatio);
+
+    console.log('📊 [ProductChange] Ratios de délimitation:', {
+      source: { width: sourceDelimitation.width, height: sourceDelimitation.height },
+      target: { width: targetDelimitation.width, height: targetDelimitation.height },
+      widthRatio: widthRatio.toFixed(2),
+      heightRatio: heightRatio.toFixed(2),
+      scaleRatio: scaleRatio.toFixed(2),
+      adaptation: scaleRatio < 1 ? 'Réduction' : scaleRatio > 1 ? 'Agrandissement' : 'Aucune'
+    });
+
+    const adaptedElements = elementsToTransfer.map(element => {
+      let adaptedElement = { ...element };
+
+      // 🎯 ÉTAPE 1: Convertir les positions de "pourcentage du canvas" vers "position relative dans la délimitation"
+      // Les positions x, y sont stockées comme: (delimX + posRelative * delimWidth) / canvasWidth
+      // On doit retrouver posRelative
+
+      // Position absolue en pixels dans le canvas source
+      const absXInSourceCanvas = element.x * sourceReferenceWidth;
+      const absYInSourceCanvas = element.y * sourceReferenceHeight;
+
+      // Position relative dans la délimitation source (0-1)
+      const relXInSourceDelim = (absXInSourceCanvas - sourceDelimitation.x) / sourceDelimitation.width;
+      const relYInSourceDelim = (absYInSourceCanvas - sourceDelimitation.y) / sourceDelimitation.height;
+
+      console.log(`🔄 Élément ${element.id}:`, {
+        sourceCanvas: { x: element.x, y: element.y },
+        sourceAbsolute: { x: absXInSourceCanvas, y: absYInSourceCanvas },
+        sourceRelative: { x: relXInSourceDelim.toFixed(3), y: relYInSourceDelim.toFixed(3) }
+      });
+
+      // 🎯 ÉTAPE 2: Adapter les dimensions avec le scaleRatio
+      if (element.width !== undefined) {
+        adaptedElement.width = element.width * scaleRatio;
+      }
+      if (element.height !== undefined) {
+        adaptedElement.height = element.height * scaleRatio;
+      }
+      if (element.scale !== undefined) {
+        adaptedElement.scale = element.scale * scaleRatio;
+      }
+      if (element.type === 'text' && element.fontSize) {
+        adaptedElement.fontSize = Math.round(element.fontSize * scaleRatio);
+        adaptedElement.fontSize = Math.max(adaptedElement.fontSize, 10);
+      }
+
+      // 🎯 ÉTAPE 3: Reconvertir vers "pourcentage du canvas cible"
+      // Position absolue dans le canvas cible
+      const absXInTargetCanvas = targetDelimitation.x + (relXInSourceDelim * targetDelimitation.width);
+      const absYInTargetCanvas = targetDelimitation.y + (relYInSourceDelim * targetDelimitation.height);
+
+      // Position en pourcentage du canvas cible
+      adaptedElement.x = absXInTargetCanvas / targetReferenceWidth;
+      adaptedElement.y = absYInTargetCanvas / targetReferenceHeight;
+
+      console.log(`✨ Adaptation complète:`, {
+        targetAbsolute: { x: absXInTargetCanvas, y: absYInTargetCanvas },
+        targetCanvas: { x: adaptedElement.x.toFixed(3), y: adaptedElement.y.toFixed(3) }
+      });
+
+      // La rotation reste inchangée
+
+      return adaptedElement;
+    });
+
+    console.log('✨ [ProductChange] Éléments adaptés intelligemment:', {
+      count: adaptedElements.length,
+      scaleRatio: scaleRatio.toFixed(2),
+      elements: adaptedElements.map(e => ({
+        type: e.type,
+        id: e.id,
+        x: e.x,
+        y: e.y,
+        originalWidth: elementsToTransfer.find(el => el.id === e.id)?.width,
+        adaptedWidth: e.width,
+        originalScale: elementsToTransfer.find(el => el.id === e.id)?.scale,
+        adaptedScale: e.scale
+      }))
+    });
+
+    // 4️⃣ Créer la nouvelle structure de données pour le nouveau produit
+    const newViewKey = `${targetFirstColor.id}-${targetFirstView.id}`;
+    const newElementsByView = {
+      [newViewKey]: adaptedElements
+    };
+
+    // 5️⃣ Sauvegarder dans localStorage pour le NOUVEAU produit
+    const storageKey = `design-data-product-${newProduct.id}`;
+    const dataToSave = {
+      elementsByView: newElementsByView,
+      colorVariationId: targetFirstColor.id,
+      viewId: targetFirstView.id,
+      timestamp: Date.now(),
+      transferredFrom: product?.id // Pour traçabilité
+    };
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+
+    console.log('💾 [ProductChange] Personnalisations transférées et sauvegardées:', {
+      newProductId: newProduct.id,
+      viewKey: newViewKey,
+      elementsCount: adaptedElements.length,
+      storageKey
+    });
+
+    // 6️⃣ Naviguer vers le nouveau produit
+    navigate(`/product/${newProduct.id}/customize`);
+
+    // 7️⃣ Afficher un message de succès avec info sur l'adaptation
+    const adaptationMessage = scaleRatio < 1
+      ? `Éléments réduits de ${Math.round((1 - scaleRatio) * 100)}% pour s'adapter`
+      : scaleRatio > 1
+      ? `Éléments agrandis de ${Math.round((scaleRatio - 1) * 100)}% pour s'adapter`
+      : 'Éléments transférés sans modification';
+
+    toast({
+      title: '✅ Personnalisation transférée',
+      description: `${adaptedElements.length} élément(s) - ${adaptationMessage}`,
+      duration: 4000
+    });
+
+    // 8️⃣ Fermer le modal
+    setShowProductLibrary(false);
   };
 
   // Ouvrir le modal de sélection
@@ -929,6 +1351,95 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     }
   };
 
+  // Fonction pour gérer la sélection d'un design pour sticker
+  const handleStickerDesignSelected = (design: any) => {
+    console.log('🎨 [Sticker] Design sélectionné:', { design: design.name, type: stickerType });
+
+    // Stocker le design sélectionné
+    setSelectedStickerDesign(design);
+
+    // Fermer le modal de sélection de design
+    setShowStickerSelection(false);
+
+    toast({
+      title: '✅ Design sélectionné',
+      description: `${design.name} a été ajouté à votre sticker`,
+      duration: 2000
+    });
+  };
+
+  // Fonction pour ajouter le sticker au panier
+  const handleAddStickerToCart = () => {
+    try {
+      if (!stickerType || !selectedStickerDesign) {
+        toast({
+          title: 'Erreur',
+          description: 'Veuillez sélectionner un design pour votre sticker',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Créer un produit sticker pour le panier
+      const stickerPrice = stickerType === 'autocollant' ? 2.99 : 6.99;
+      const designPrice = selectedStickerDesign.price || 0;
+      const totalPrice = (stickerPrice + designPrice) * 655.96; // Convertir en FCFA
+
+      const stickerProduct = {
+        id: `sticker-${stickerType}-${selectedStickerDesign.id}-${Date.now()}`,
+        productId: `sticker-${stickerType}`,
+        name: `Sticker ${stickerType === 'autocollant' ? 'Autocollant' : 'Pare-chocs'} - ${selectedStickerDesign.name}`,
+        price: Math.round(totalPrice),
+        suggestedPrice: Math.round(totalPrice),
+        color: 'Standard',
+        colorCode: '#FFFFFF',
+        size: stickerSize,
+        quantity: 1,
+        imageUrl: selectedStickerDesign.imageUrl || selectedStickerDesign.thumbnailUrl,
+        // Métadonnées du sticker
+        isSticker: true,
+        stickerType: stickerType,
+        stickerSurface: stickerSurface,
+        stickerBorderColor: stickerBorderColor,
+        stickerSize: stickerSize,
+        designId: selectedStickerDesign.id,
+        designName: selectedStickerDesign.name,
+        designPrice: designPrice,
+      };
+
+      console.log('🛒 [Sticker] Ajout sticker au panier:', stickerProduct);
+
+      // Ajouter au panier
+      addToCart(stickerProduct);
+
+      toast({
+        title: '✅ Sticker ajouté au panier',
+        description: `${stickerProduct.name} a été ajouté à votre panier`,
+        duration: 3000
+      });
+
+      // Réinitialiser l'état du sticker
+      setStickerType(null);
+      setSelectedStickerDesign(null);
+      setStickerBorderColor('transparent');
+      setStickerSurface('blanc-mat');
+      setStickerSize('83 mm x 100 mm');
+
+      // Ouvrir le panier après un court délai
+      setTimeout(() => {
+        openCart();
+      }, 300);
+    } catch (error) {
+      console.error('❌ [Sticker] Erreur ajout au panier:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible d\'ajouter le sticker au panier',
+        variant: 'destructive'
+      });
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -955,7 +1466,6 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     new Set(vendorDesigns.map(d => d.category?.name).filter(Boolean))
   ).sort();
 
-
   const filteredDesigns = vendorDesigns.filter(design => {
     const matchSearch = design.name.toLowerCase().includes(designSearch.toLowerCase()) ||
                        design.creator?.shopName?.toLowerCase().includes(designSearch.toLowerCase());
@@ -976,16 +1486,26 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
             {/* LEFT SIDEBAR - Toolbar */}
             <div className="order-3 lg:order-1 fixed bottom-0 left-0 right-0 lg:static lg:w-16 xl:w-20 lg:h-full bg-white border-t lg:border-t-0 lg:border-r flex flex-row lg:flex-col items-center justify-around lg:justify-start py-2 lg:py-6 gap-1 sm:gap-2 lg:gap-4 z-30 shadow-lg lg:shadow-none">
             <button
-              onClick={() => setActiveTab('designs')}
+              onClick={() => {
+                setActiveTab('designs');
+                loadAvailableProducts();
+              }}
+              disabled={loadingProducts}
               className={`flex flex-col items-center gap-0.5 px-2 sm:px-3 py-2 lg:py-2.5 rounded-lg transition-all ${
-                activeTab === 'designs'
+                activeTab === 'designs' && showProductLibrary
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-              }`}
+              } ${loadingProducts ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Produits"
             >
-              <Shirt className="w-5 h-5 lg:w-5 lg:h-5" />
-              <span className="text-[9px] sm:text-[10px] font-medium hidden xl:block">Produits</span>
+              {loadingProducts ? (
+                <Loader2 className="w-5 h-5 lg:w-5 lg:h-5 animate-spin" />
+              ) : (
+                <Shirt className="w-5 h-5 lg:w-5 lg:h-5" />
+              )}
+              <span className="text-[9px] sm:text-[10px] font-medium hidden xl:block">
+                {loadingProducts ? 'Chargement...' : 'Produits'}
+              </span>
             </button>
 
             <button
@@ -993,15 +1513,22 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                 setActiveTab('designs');
                 loadVendorDesigns();
               }}
+              disabled={loadingDesigns}
               className={`flex flex-col items-center gap-0.5 px-2 sm:px-3 py-2 lg:py-2.5 rounded-lg transition-all ${
                 activeTab === 'designs' && showDesignLibrary
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-              }`}
+              } ${loadingDesigns ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Designs"
             >
-              <ImageIcon className="w-5 h-5 lg:w-5 lg:h-5" />
-              <span className="text-[9px] sm:text-[10px] font-medium hidden xl:block">Designs</span>
+              {loadingDesigns ? (
+                <Loader2 className="w-5 h-5 lg:w-5 lg:h-5 animate-spin" />
+              ) : (
+                <ImageIcon className="w-5 h-5 lg:w-5 lg:h-5" />
+              )}
+              <span className="text-[9px] sm:text-[10px] font-medium hidden xl:block">
+                {loadingDesigns ? 'Chargement...' : 'Designs'}
+              </span>
             </button>
 
             <button
@@ -1057,7 +1584,193 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
             <div className="order-1 lg:order-2 flex-1 lg:h-full flex flex-col pb-20 lg:pb-0 bg-gray-50">
               {/* Mockup Container */}
               <div className="flex-1 flex items-center justify-center p-4 lg:p-6 overflow-hidden">
-              {selectedView && delimitation ? (
+              {stickerType && selectedStickerDesign ? (
+                /* Aperçu du sticker */
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="relative max-w-lg w-full">
+                    {/* Titre */}
+                    <div className="text-center mb-6">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                        Aperçu de votre sticker
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {stickerType === 'autocollant' ? 'Autocollant avec contours découpés' : 'Sticker pare-chocs rectangulaire'}
+                      </p>
+                    </div>
+
+                    {/* Zone d'aperçu - Fond gris pour mieux voir les bordures */}
+                    <div className="bg-gray-200 rounded-xl p-8 lg:p-12">
+                      <div className="flex items-center justify-center">
+                        {stickerType === 'autocollant' ? (
+                          /* Aperçu autocollant style CARTOON STICKER avec contour dynamique + grille dimensionnelle */
+                          <div className="relative inline-block">
+                            {/* Image du sticker avec effets */}
+                            <img
+                              src={selectedStickerDesign.imageUrl || selectedStickerDesign.thumbnailUrl}
+                              alt={selectedStickerDesign.name}
+                              className="max-w-xs max-h-xs object-contain"
+                              style={{
+                                display: 'block',
+                                /* Contour dynamique selon le choix utilisateur */
+                                filter: (() => {
+                                  const filters = [];
+
+                                  // Contour externe selon le choix
+                                  if (stickerBorderColor !== 'transparent') {
+                                    const borderColor = stickerBorderColor === 'glossy-white' ? 'white' : 'white';
+                                    filters.push(
+                                      `drop-shadow(1px 0 0 ${borderColor})`,
+                                      `drop-shadow(-1px 0 0 ${borderColor})`,
+                                      `drop-shadow(0 1px 0 ${borderColor})`,
+                                      `drop-shadow(0 -1px 0 ${borderColor})`,
+                                      `drop-shadow(2px 0 0 ${borderColor})`,
+                                      `drop-shadow(-2px 0 0 ${borderColor})`,
+                                      `drop-shadow(0 2px 0 ${borderColor})`,
+                                      `drop-shadow(0 -2px 0 ${borderColor})`,
+                                      `drop-shadow(3px 0 0 ${borderColor})`,
+                                      `drop-shadow(-3px 0 0 ${borderColor})`,
+                                      `drop-shadow(0 3px 0 ${borderColor})`,
+                                      `drop-shadow(0 -3px 0 ${borderColor})`,
+                                      `drop-shadow(2px 2px 0 ${borderColor})`,
+                                      `drop-shadow(-2px -2px 0 ${borderColor})`,
+                                      `drop-shadow(2px -2px 0 ${borderColor})`,
+                                      `drop-shadow(-2px 2px 0 ${borderColor})`
+                                    );
+
+                                    // Contour gris foncé interne TRÈS FIN
+                                    filters.push(
+                                      'drop-shadow(0.3px 0 0 rgba(50, 50, 50, 0.7))',
+                                      'drop-shadow(-0.3px 0 0 rgba(50, 50, 50, 0.7))',
+                                      'drop-shadow(0 0.3px 0 rgba(50, 50, 50, 0.7))',
+                                      'drop-shadow(0 -0.3px 0 rgba(50, 50, 50, 0.7))'
+                                    );
+                                  }
+
+                                  // Ombre visible pour effet autocollant
+                                  filters.push(
+                                    'drop-shadow(2px 3px 5px rgba(0, 0, 0, 0.3))',
+                                    'drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.25))',
+                                    'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.2))'
+                                  );
+
+                                  // Effet brillant MARQUÉ pour glossy-white
+                                  if (stickerBorderColor === 'glossy-white') {
+                                    // Surbrillance blanche intense pour effet brillant
+                                    filters.push(
+                                      'drop-shadow(0 0 3px rgba(255, 255, 255, 0.8))',
+                                      'drop-shadow(0 0 6px rgba(255, 255, 255, 0.6))',
+                                      'drop-shadow(0 0 10px rgba(255, 255, 255, 0.4))',
+                                      'brightness(1.15)',
+                                      'contrast(1.1)'
+                                    );
+                                  } else {
+                                    filters.push('brightness(1.02)', 'contrast(1.05)');
+                                  }
+
+                                  // Amélioration des couleurs pour effet cartoon/sticker
+                                  filters.push('saturate(1.1)');
+
+                                  return filters.join(' ');
+                                })()
+                              }}
+                            />
+
+                            {/* Grille dimensionnelle en overlay */}
+                            {(() => {
+                              // Parser la taille sélectionnée (ex: "83 mm x 100 mm")
+                              const [widthStr, heightStr] = stickerSize.split(' x ').map(s => parseInt(s));
+                              const gridSize = 10; // Taille de chaque cellule de grille en mm
+                              const cellsX = Math.ceil(widthStr / gridSize);
+                              const cellsY = Math.ceil(heightStr / gridSize);
+
+                              return (
+                                <svg
+                                  className="absolute inset-0 w-full h-full pointer-events-none"
+                                  style={{ opacity: 0.2 }}
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <defs>
+                                    <pattern
+                                      id="grid"
+                                      width={`${100 / cellsX}%`}
+                                      height={`${100 / cellsY}%`}
+                                      patternUnits="userSpaceOnUse"
+                                    >
+                                      <path
+                                        d={`M ${100 / cellsX} 0 L 0 0 0 ${100 / cellsY}`}
+                                        fill="none"
+                                        stroke="rgba(0, 0, 0, 0.3)"
+                                        strokeWidth="0.5"
+                                      />
+                                    </pattern>
+                                  </defs>
+                                  <rect width="100%" height="100%" fill="url(#grid)" />
+                                </svg>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          /* Aperçu pare-chocs avec bordure blanche TRÈS LARGE et INTENSE */
+                          <div className="bg-white p-10 shadow-2xl inline-block border-8 border-white" style={{
+                            boxShadow: '0 0 0 4px #ffffff, 0 0 0 8px #f0f0f0, 0 8px 16px -2px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)'
+                          }}>
+                            <img
+                              src={selectedStickerDesign.imageUrl || selectedStickerDesign.thumbnailUrl}
+                              alt={selectedStickerDesign.name}
+                              className="max-w-xs max-h-xs object-contain"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info du design */}
+                      <div className="mt-6 pt-6 border-t text-center">
+                        <p className="text-sm font-medium text-gray-900 mb-1">
+                          {selectedStickerDesign.name}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Taille : {stickerSize}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Badge informatif */}
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-900 text-center">
+                        💡 Personnalisez les options dans la barre latérale et ajoutez au panier quand vous êtes prêt
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : stickerType ? (
+                /* Message d'attente pour choisir un design */
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center max-w-md">
+                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                      {stickerType === 'autocollant' ? (
+                        <Sticker className="w-12 h-12 text-gray-400" />
+                      ) : (
+                        <Flag className="w-12 h-12 text-gray-400" />
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">
+                      Choisissez un design
+                    </h3>
+                    <p className="text-gray-600 mb-6">
+                      Configurez les options de votre {stickerType === 'autocollant' ? 'autocollant' : 'sticker pare-chocs'} dans la barre latérale, puis sélectionnez un design
+                    </p>
+                    <Button
+                      onClick={() => {
+                        loadVendorDesigns();
+                      }}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      Parcourir les designs
+                    </Button>
+                  </div>
+                </div>
+              ) : selectedView && delimitation ? (
                 <div className="w-full h-full flex items-center justify-center">
                   <ProductDesignEditor
                     key={`editor-${selectedColorVariation?.id}-${selectedView?.id}`}
@@ -1082,8 +1795,8 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
               )}
             </div>
 
-              {/* View Selector - Fixed at bottom */}
-              {selectedColorVariation && selectedColorVariation.images && selectedColorVariation.images.length > 1 && (
+              {/* View Selector - Fixed at bottom - Masqué en mode sticker */}
+              {!stickerType && selectedColorVariation && selectedColorVariation.images && selectedColorVariation.images.length > 1 && (
                 <div className="flex gap-2 sm:gap-3 bg-white px-4 py-4 justify-center items-center overflow-x-auto flex-shrink-0 border-t">
               {selectedColorVariation.images.map((img: any, idx: number) => {
                 const viewElements = getElementsForView(selectedColorVariation.id, img.id);
@@ -1431,6 +2144,266 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                       </button>
                     </div>
                   </>
+                ) : stickerType ? (
+                  <>
+                    {/* Bouton retour */}
+                    <button
+                      onClick={() => {
+                        setStickerType(null);
+                        setSelectedStickerDesign(null);
+                      }}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="text-sm font-medium">Retour aux produits</span>
+                    </button>
+
+                    {/* Interface de configuration Sticker */}
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-4">
+                      {stickerType === 'autocollant' ? 'Autocollant' : 'Sticker pare-chocs'}
+                    </h2>
+
+                    {/* Livraison */}
+                    <div className="flex items-center gap-2 mb-4 text-sm text-gray-700">
+                      <Truck className="w-4 h-4" />
+                      <span>Livraison : 15 - 29 janv.</span>
+                    </div>
+
+                    {/* Options de produit */}
+                    <div className="space-y-6 mb-6">
+                      {/* Procédé d'impression */}
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Procédé d'impression</h3>
+                        <div className="inline-flex px-3 py-1.5 bg-gray-100 rounded-full">
+                          <span className="text-sm text-gray-900">Sticker</span>
+                        </div>
+                      </div>
+
+                      {/* Couleur du contour - Uniquement pour autocollant */}
+                      {stickerType === 'autocollant' && (
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-700 mb-3">Couleur du contour</h3>
+                          <div className="flex gap-3">
+                            {/* Transparent */}
+                            <button
+                              onClick={() => setStickerBorderColor('transparent')}
+                              className={`w-16 h-16 rounded-lg border-2 transition-all relative ${
+                                stickerBorderColor === 'transparent'
+                                  ? 'border-gray-900 ring-2 ring-gray-300'
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              style={{
+                                backgroundColor: 'white',
+                                backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
+                                backgroundSize: '10px 10px',
+                                backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px'
+                              }}
+                              title="Transparent"
+                            >
+                              {stickerBorderColor === 'transparent' && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg">
+                                  <Check className="w-5 h-5 text-gray-900" />
+                                </div>
+                              )}
+                            </button>
+
+                            {/* Blanc mat */}
+                            <button
+                              onClick={() => setStickerBorderColor('#FFFFFF')}
+                              className={`w-16 h-16 rounded-lg border-2 transition-all relative ${
+                                stickerBorderColor === '#FFFFFF'
+                                  ? 'border-gray-900 ring-2 ring-gray-300'
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              style={{ backgroundColor: '#FFFFFF' }}
+                              title="Blanc mat"
+                            >
+                              {stickerBorderColor === '#FFFFFF' && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Check className="w-5 h-5 text-gray-900" />
+                                </div>
+                              )}
+                            </button>
+
+                            {/* Blanc brillant */}
+                            <button
+                              onClick={() => setStickerBorderColor('glossy-white')}
+                              className={`w-16 h-16 rounded-lg border-2 transition-all relative ${
+                                stickerBorderColor === 'glossy-white'
+                                  ? 'border-gray-900 ring-2 ring-gray-300'
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              style={{
+                                background: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 50%, #ffffff 100%)',
+                                boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.8), inset 0 -1px 2px rgba(0,0,0,0.1)'
+                              }}
+                              title="Blanc brillant"
+                            >
+                              {stickerBorderColor === 'glossy-white' && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Check className="w-5 h-5 text-gray-900" />
+                                </div>
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-2">
+                            {stickerBorderColor === 'transparent' ? 'Transparent' :
+                             stickerBorderColor === '#FFFFFF' ? 'Blanc mat' :
+                             'Blanc brillant'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Taille du sticker */}
+                      {stickerType && (
+                        <div>
+                          <button
+                            onClick={() => setShowSizeSelector(!showSizeSelector)}
+                            className="w-full flex items-center justify-between py-3 border-t border-b hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-700">Modifier la taille</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-900">{stickerSize}</span>
+                              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${showSizeSelector ? 'rotate-90' : ''}`} />
+                            </div>
+                          </button>
+
+                          {/* Sélecteur de taille */}
+                          {showSizeSelector && (
+                            <div className="py-3 px-2 bg-gray-50 border-b space-y-2">
+                              {[
+                                '10 mm x 12 mm',
+                                '20 mm x 20 mm',
+                                '30 mm x 30 mm',
+                                '50 mm x 50 mm',
+                                '75 mm x 75 mm',
+                                '83 mm x 100 mm',
+                                '100 mm x 100 mm',
+                                '120 mm x 120 mm',
+                                '150 mm x 150 mm',
+                                '200 mm x 200 mm'
+                              ].map((size) => (
+                                <button
+                                  key={size}
+                                  onClick={() => {
+                                    setStickerSize(size);
+                                    setShowSizeSelector(false);
+                                    toast({
+                                      title: 'Taille modifiée',
+                                      description: `Nouvelle taille: ${size}`,
+                                      duration: 2000
+                                    });
+                                  }}
+                                  className={`w-full text-left px-4 py-2.5 rounded-lg transition-all ${
+                                    stickerSize === size
+                                      ? 'bg-primary text-white font-medium'
+                                      : 'bg-white hover:bg-gray-100 text-gray-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm">{size}</span>
+                                    {stickerSize === size && (
+                                      <Check className="w-4 h-4" />
+                                    )}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Bouton Choisir un design */}
+                      <div>
+                        <button
+                          onClick={() => {
+                            // Ouvrir la bibliothèque de designs
+                            loadVendorDesigns();
+                          }}
+                          className={`w-full py-4 px-4 rounded-lg font-medium transition-all ${
+                            selectedStickerDesign
+                              ? 'bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100'
+                              : 'bg-primary text-white hover:bg-primary/90'
+                          }`}
+                        >
+                          {selectedStickerDesign ? (
+                            <div className="flex items-center justify-between">
+                              <span>✓ Design sélectionné</span>
+                              <span className="text-xs">Changer</span>
+                            </div>
+                          ) : (
+                            <span>Choisir un design</span>
+                          )}
+                        </button>
+
+                        {/* Aperçu du design sélectionné */}
+                        {selectedStickerDesign && (
+                          <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={selectedStickerDesign.imageUrl || selectedStickerDesign.thumbnailUrl}
+                                alt={selectedStickerDesign.name}
+                                className="w-12 h-12 object-contain bg-white rounded border"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {selectedStickerDesign.name}
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  {selectedStickerDesign.price > 0 ? formatPrice(selectedStickerDesign.price) : 'Gratuit'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Prix */}
+                    {selectedStickerDesign && (
+                      <div className="border-t pt-4 mb-6">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Sticker {stickerType === 'autocollant' ? 'autocollant' : 'pare-chocs'}</span>
+                            <span className="text-base font-medium text-gray-900">
+                              {formatPrice((stickerType === 'autocollant' ? 2.99 : 6.99) * 655.96)}
+                            </span>
+                          </div>
+                          {selectedStickerDesign.price > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Design</span>
+                              <span className="text-base font-medium text-blue-600">
+                                +{formatPrice(selectedStickerDesign.price)}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <span className="text-base font-semibold text-gray-900">Total</span>
+                            <span className="text-xl font-bold text-gray-900">
+                              {formatPrice(((stickerType === 'autocollant' ? 2.99 : 6.99) * 655.96) + (selectedStickerDesign.price || 0))}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Spacer */}
+                    <div className="flex-1"></div>
+
+                    {/* CTA */}
+                    <div className="mt-auto pt-4 border-t">
+                      <Button
+                        onClick={handleAddStickerToCart}
+                        disabled={!selectedStickerDesign}
+                        className="w-full py-6 text-base font-semibold bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ShoppingCart className="w-5 h-5 mr-2" />
+                        Ajouter au panier
+                      </Button>
+                    </div>
+                  </>
                 ) : (
                   <>
                     {/* Affichage normal des informations du produit */}
@@ -1735,12 +2708,20 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                           key={design.id}
                           className="group relative bg-white rounded-lg border-2 border-gray-200 hover:border-primary hover:shadow-lg transition-all cursor-pointer overflow-hidden"
                           onClick={() => {
-                            editorRef.current?.addVendorDesign(design);
-                            toast({
-                              title: 'Design ajouté',
-                              description: `${design.name} a été ajouté`
-                            });
+                            // Fermer le modal immédiatement
                             setShowDesignLibrary(false);
+
+                            // Si on est en mode sticker, sélectionner pour le sticker
+                            if (stickerType) {
+                              handleStickerDesignSelected(design);
+                            } else {
+                              // Sinon, ajouter au produit normal
+                              editorRef.current?.addVendorDesign(design);
+                              toast({
+                                title: 'Design ajouté',
+                                description: `${design.name} a été ajouté`
+                              });
+                            }
                           }}
                         >
                           {/* Actions en haut - Hidden on mobile */}
@@ -1839,6 +2820,334 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Panneau latéral Bibliothèque de produits */}
+        {showProductLibrary && (
+          <div className="fixed inset-0 z-50 flex">
+            {/* Overlay */}
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setShowProductLibrary(false)}
+            />
+
+            {/* Panneau - Full screen on mobile, large sidebar on desktop */}
+            <div className="relative ml-auto w-full lg:max-w-6xl xl:max-w-7xl bg-white shadow-2xl flex flex-col">
+              {/* Header */}
+              <div className="px-3 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-6 border-b">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base sm:text-xl lg:text-2xl font-bold text-gray-900">
+                    Choisissez un produit à personnaliser
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowProductLibrary(false)}
+                  >
+                    <X className="w-5 h-5 lg:w-6 lg:h-6" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Contenu avec sidebar filtres */}
+              <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* Sidebar gauche - Filtres - Hidden on mobile, visible on desktop */}
+                <div className="hidden lg:block lg:w-80 xl:w-96 border-r bg-white p-4 lg:p-6 overflow-y-auto">
+                  {/* Recherche */}
+                  <div className="mb-6">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Rechercher un produit..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Titre de section avec compteur */}
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b">
+                    <h3 className="text-base font-bold text-gray-900">Produits</h3>
+                    <span className="text-sm text-gray-500">{filteredProducts.length}</span>
+                  </div>
+
+                  {/* Liste de catégories verticale */}
+                  <nav className="space-y-1">
+                    {/* Catégorie "Tous les produits" */}
+                    <button
+                      onClick={() => {
+                        setSelectedProductCategory(null);
+                        setSelectedProductSubCategory(null);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                        selectedProductCategory === null
+                          ? 'bg-gray-100 text-gray-900'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>Tous les produits</span>
+                    </button>
+
+                    {/* Catégories dynamiques avec sous-catégories repliables */}
+                    {productCategoriesWithSub.map((category) => (
+                      <div key={category.id || category.name}>
+                        {/* Bouton de catégorie principale */}
+                        <button
+                          onClick={() => {
+                            if (selectedProductCategory === category.name) {
+                              // Si déjà sélectionné, déplier/replier
+                              setSelectedProductCategory(null);
+                              setSelectedProductSubCategory(null);
+                            } else {
+                              setSelectedProductCategory(category.name);
+                              setSelectedProductSubCategory(null);
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                            selectedProductCategory === category.name
+                              ? 'bg-gray-100 text-gray-900'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span>{category.name}</span>
+                          {category.subCategories && category.subCategories.length > 0 && (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className={`transition-transform ${
+                                selectedProductCategory === category.name ? 'rotate-180' : ''
+                              }`}
+                            >
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                          )}
+                        </button>
+
+                        {/* Sous-catégories (affichées seulement si la catégorie est sélectionnée) */}
+                        {selectedProductCategory === category.name && category.subCategories && category.subCategories.length > 0 && (
+                          <div className="ml-4 mt-1 space-y-1">
+                            {category.subCategories.map((subCategory: any) => (
+                              <button
+                                key={subCategory.id || subCategory.name}
+                                onClick={() => setSelectedProductSubCategory(subCategory.name)}
+                                className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                                  selectedProductSubCategory === subCategory.name
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                {subCategory.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Catégorie Stickers (sans sous-catégories, lien simple) */}
+                    <button
+                      onClick={() => {
+                        setShowProductLibrary(false);
+                        setShowStickerSelection(true);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-colors text-gray-700 hover:bg-gray-50"
+                    >
+                      <span>Stickers</span>
+                    </button>
+                  </nav>
+                </div>
+
+                {/* Contenu principal - Grille de produits */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  {/* Mobile: Barre de recherche */}
+                  <div className="lg:hidden px-3 py-2 border-b bg-white">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Rechercher un produit..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Résultats et info */}
+                  <div className="px-3 sm:px-6 py-2 sm:py-3 border-b bg-white">
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      {filteredProducts.length + 1} produit{(filteredProducts.length + 1) > 1 ? 's' : ''} disponible{(filteredProducts.length + 1) > 1 ? 's' : ''} (dont stickers)
+                    </p>
+                  </div>
+
+                  {/* Grille scrollable */}
+                  <div className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
+                    {loadingProducts ? (
+                      <div className="flex items-center justify-center py-20">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
+                        {/* 🛍️ PRODUITS */}
+                        {filteredProducts.map((productItem) => {
+                          const firstColor = productItem.colorVariations?.[0];
+                          const firstImage = firstColor?.images?.[0];
+
+                          return (
+                            <div
+                              key={productItem.id}
+                              className="group relative bg-white rounded-lg border-2 border-gray-200 hover:border-primary hover:shadow-lg transition-all cursor-pointer overflow-hidden"
+                              onClick={() => handleProductChange(productItem)}
+                            >
+                              {/* Badge produit actuel */}
+                              {product?.id === productItem.id && (
+                                <div className="absolute top-1 sm:top-2 left-1 sm:left-2 bg-primary text-white text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded z-10">
+                                  Actuel
+                                </div>
+                              )}
+
+                              {/* Image */}
+                              <div className="aspect-square bg-gray-50 p-2 sm:p-4 lg:p-6">
+                                {firstImage ? (
+                                  <img
+                                    src={firstImage.url}
+                                    alt={productItem.name}
+                                    className="w-full h-full object-contain group-hover:scale-110 transition-transform"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                    <Shirt className="w-12 h-12 sm:w-16 sm:h-16" />
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Info */}
+                              <div className="p-2 sm:p-3 lg:p-4 border-t">
+                                <p className="text-xs sm:text-sm lg:text-base font-medium text-gray-900 mb-1 line-clamp-2">
+                                  {productItem.name}
+                                </p>
+                                <div className="flex items-center justify-between text-[10px] sm:text-xs lg:text-sm">
+                                  <span className="text-gray-600">
+                                    {productItem.colorVariations?.length || 0} couleur{(productItem.colorVariations?.length || 0) > 1 ? 's' : ''}
+                                  </span>
+                                  <span className="font-bold text-primary whitespace-nowrap ml-auto">
+                                    {formatPrice(productItem.suggestedPrice || productItem.price)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                          })}
+                      </div>
+                    )}
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        )}
+
+        {/* Panneau de sélection de stickers */}
+        {showStickerSelection && (
+          <div className="fixed inset-0 z-50 flex">
+            {/* Overlay */}
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setShowStickerSelection(false)}
+            />
+
+            {/* Panneau - Full screen on mobile, large sidebar on desktop */}
+            <div className="relative ml-auto w-full lg:max-w-2xl bg-white shadow-2xl flex flex-col">
+              {/* Header */}
+              <div className="px-3 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-6 border-b">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base sm:text-xl lg:text-2xl font-bold text-gray-900">
+                    Choisissez votre type de sticker
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowStickerSelection(false)}
+                  >
+                    <X className="w-5 h-5 lg:w-6 lg:h-6" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Contenu - Choix des stickers */}
+              <div className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                  {/* Autocollant */}
+                  <button
+                    onClick={() => {
+                      setStickerType('autocollant');
+                      setShowStickerSelection(false);
+                    }}
+                    className="group bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg"
+                  >
+                    {/* Zone image preview */}
+                    <div className="aspect-[4/3] bg-gray-100 flex items-center justify-center">
+                      <div className="text-gray-300">
+                        {/* Placeholder vide ou icône minimaliste */}
+                        <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                          <Sticker className="w-12 h-12 text-gray-400" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Info produit */}
+                    <div className="p-4 text-left">
+                      <h3 className="text-base font-medium text-gray-900 mb-1">
+                        Autocollant
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        À partir de 2,99 € pour un produit acheté
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Pare-chocs */}
+                  <button
+                    onClick={() => {
+                      setStickerType('pare-chocs');
+                      setShowStickerSelection(false);
+                    }}
+                    className="group bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg"
+                  >
+                    {/* Zone image preview */}
+                    <div className="aspect-[4/3] bg-gray-100 flex items-center justify-center">
+                      <div className="text-gray-300">
+                        {/* Placeholder vide ou icône minimaliste */}
+                        <div className="w-32 h-20 border-2 border-dashed border-gray-300 rounded flex items-center justify-center">
+                          <Flag className="w-10 h-10 text-gray-400" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Info produit */}
+                    <div className="p-4 text-left">
+                      <h3 className="text-base font-medium text-gray-900 mb-1">
+                        Sticker pare-chocs
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        À partir de 6,99 € pour un produit acheté
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         </div>
       </div>
 

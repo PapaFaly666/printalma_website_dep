@@ -16,6 +16,7 @@ export interface SocialMedia {
 export interface OnboardingData {
   phones: PhoneNumber[];
   socialMedia?: SocialMedia[];
+  keepExistingImage?: boolean;
 }
 
 export interface ProfileStatus {
@@ -76,6 +77,12 @@ class VendorOnboardingService {
       if (profileImage) {
         formData.append('profileImage', profileImage);
         console.log('📸 Photo de profil:', profileImage.name, profileImage.size, 'bytes');
+      }
+
+      // Indiquer si on garde l'image existante
+      if (data.keepExistingImage) {
+        formData.append('keepExistingImage', 'true');
+        console.log('🖼️ Garder l\'image existante');
       }
 
       // Utiliser hybridAuthService pour l'authentification

@@ -59,8 +59,7 @@ const VendorOnboardingPage: React.FC = () => {
 
   const [data, setData] = useState<OnboardingData>({
     phones: [
-      { id: '1', number: '', isPrimary: true },
-      { id: '2', number: '', isPrimary: false }
+      { id: '1', number: '', isPrimary: true }
     ],
     socialMedia: [],
     profileImage: null,
@@ -90,8 +89,8 @@ const VendorOnboardingPage: React.FC = () => {
             isPrimary: phone.isPrimary
           }));
 
-          // S'assurer d'avoir au moins 2 emplacements
-          while (existingPhones.length < 2) {
+          // S'assurer d'avoir au moins 1 emplacement
+          while (existingPhones.length < 1) {
             existingPhones.push({
               id: Date.now().toString() + Math.random(),
               number: '',
@@ -189,10 +188,10 @@ const VendorOnboardingPage: React.FC = () => {
 
   // Supprimer un numéro de téléphone
   const removePhoneNumber = (id: string) => {
-    if (data.phones.length <= 2) {
+    if (data.phones.length <= 1) {
       toast({
         title: 'Minimum requis',
-        description: 'Vous devez avoir au moins 2 numéros de téléphone',
+        description: 'Vous devez avoir au moins 1 numéro de téléphone',
         variant: 'destructive'
       });
       return;
@@ -321,28 +320,27 @@ const VendorOnboardingPage: React.FC = () => {
     });
   };
 
-  // Validation de l'étape 1 (Téléphones)
+  // Validation de l'étape 1 (Téléphones) - Optionnel
   const validateStep1 = (): boolean => {
     const phoneErrors: string[] = [];
     const validPhones = data.phones.filter(p => p.number.trim() !== '');
 
-    // Au moins 2 numéros requis
-    if (validPhones.length < 2) {
-      phoneErrors.push('Veuillez renseigner au moins 2 numéros de téléphone');
-    }
+    // Les numéros sont maintenant optionnels
+    // Validation seulement si des numéros sont fournis
+    if (validPhones.length > 0) {
+      // Validation de chaque numéro
+      validPhones.forEach((phone, index) => {
+        if (!validatePhoneNumber(phone.number)) {
+          phoneErrors.push(`Le numéro ${index + 1} est invalide (format attendu: +221XXXXXXXXX ou 7XXXXXXXX)`);
+        }
+      });
 
-    // Validation de chaque numéro
-    validPhones.forEach((phone, index) => {
-      if (!validatePhoneNumber(phone.number)) {
-        phoneErrors.push(`Le numéro ${index + 1} est invalide (format attendu: +221XXXXXXXXX ou 7XXXXXXXX)`);
+      // Vérifier les doublons
+      const phoneNumbers = validPhones.map(p => p.number.replace(/[\s-]/g, ''));
+      const duplicates = phoneNumbers.filter((num, index) => phoneNumbers.indexOf(num) !== index);
+      if (duplicates.length > 0) {
+        phoneErrors.push('Vous avez saisi le même numéro plusieurs fois');
       }
-    });
-
-    // Vérifier les doublons
-    const phoneNumbers = validPhones.map(p => p.number.replace(/[\s-]/g, ''));
-    const duplicates = phoneNumbers.filter((num, index) => phoneNumbers.indexOf(num) !== index);
-    if (duplicates.length > 0) {
-      phoneErrors.push('Vous avez saisi le même numéro plusieurs fois');
     }
 
     setErrors({ ...errors, phones: phoneErrors.length > 0 ? phoneErrors : undefined });
@@ -368,14 +366,9 @@ const VendorOnboardingPage: React.FC = () => {
     return true;
   };
 
-  // Validation de l'étape 3 (Photo de profil)
+  // Validation de l'étape 3 (Photo de profil) - Optionnel
   const validateStep3 = (): boolean => {
-    // Si une preview existe (image existante ou nouvelle), c'est valide
-    if (!data.profileImagePreview) {
-      setErrors({ ...errors, profileImage: 'Veuillez ajouter une photo de profil' });
-      return false;
-    }
-
+    // La photo est maintenant optionnelle
     setErrors({ ...errors, profileImage: undefined });
     return true;
   };
@@ -412,6 +405,22 @@ const VendorOnboardingPage: React.FC = () => {
     }
   };
 
+  // Ignorer l'onboarding et aller au dashboard
+  const handleSkip = () => {
+    // Marquer dans localStorage que l'utilisateur a ignoré l'onboarding
+    localStorage.setItem('onboarding_skipped', 'true');
+    localStorage.setItem('onboarding_skipped_at', Date.now().toString());
+
+    toast({
+      title: 'Profil à compléter',
+      description: 'Vous pourrez compléter votre profil plus tard depuis votre compte.',
+      variant: 'default'
+    });
+
+    // Rediriger vers le dashboard
+    navigate('/vendeur/dashboard');
+  };
+
   // Soumettre les données
   const handleSubmit = async () => {
     setLoading(true);
@@ -433,23 +442,32 @@ const VendorOnboardingPage: React.FC = () => {
       // Envoyer l'image seulement si c'est un nouveau fichier (pas une URL existante)
       const imageToSend = data.profileImage instanceof File ? data.profileImage : null;
 
+      // Indiquer au backend si on garde l'image existante
+      const keepExistingImage = !imageToSend && !!data.profileImagePreview;
+
       console.log('📤 Envoi des données au backend:', {
         phones: validPhones,
         socialMedia: validSocialMedia,
         hasNewImage: !!imageToSend,
-        hasExistingImage: !!data.profileImagePreview && !imageToSend
+        hasExistingImage: !!data.profileImagePreview && !imageToSend,
+        keepExistingImage
       });
 
-      // Appel API
+      // Appel API - Envoyer même si tout est vide (backend doit accepter)
       const response = await vendorOnboardingService.completeOnboarding(
         {
-          phones: validPhones,
-          socialMedia: validSocialMedia.length > 0 ? validSocialMedia : undefined
+          phones: validPhones.length > 0 ? validPhones : undefined,
+          socialMedia: validSocialMedia.length > 0 ? validSocialMedia : undefined,
+          keepExistingImage
         },
         imageToSend
       );
 
       console.log('✅ Réponse du backend:', response);
+
+      // Supprimer le flag d'onboarding ignoré si on complète
+      localStorage.removeItem('onboarding_skipped');
+      localStorage.removeItem('onboarding_skipped_at');
 
       toast({
         title: 'Profil mis à jour',
@@ -570,7 +588,7 @@ const VendorOnboardingPage: React.FC = () => {
               )}
             </CardTitle>
             <CardDescription className="text-blue-50 text-sm md:text-base">
-              {currentStep === 1 && 'Ajoutez 2 à 3 numéros de téléphone pour être joignable'}
+              {currentStep === 1 && 'Ajoutez 1 à 3 numéros de téléphone pour être joignable'}
               {currentStep === 2 && 'Ajoutez vos réseaux sociaux pour renforcer votre présence (optionnel)'}
               {currentStep === 3 && 'Ajoutez une photo de profil professionnelle'}
             </CardDescription>
@@ -609,11 +627,11 @@ const VendorOnboardingPage: React.FC = () => {
                               Principal
                             </span>
                           )}
-                          {index < 2 && (
+                          {index < 1 && (
                             <span className="ml-1 text-xs text-red-600">*</span>
                           )}
                         </Label>
-                        {index >= 2 && (
+                        {index >= 1 && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -822,45 +840,60 @@ const VendorOnboardingPage: React.FC = () => {
         </Card>
 
         {/* Boutons de navigation */}
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={prevStep}
-            disabled={currentStep === 1 || loading}
-            className="gap-2 w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 order-2 sm:order-1"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm md:text-base">Précédent</span>
-          </Button>
+        <div className="mt-6 space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={prevStep}
+              disabled={currentStep === 1 || loading}
+              className="gap-2 w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 order-2 sm:order-1"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm md:text-base">Précédent</span>
+            </Button>
 
-          <div className="text-sm md:text-base text-gray-600 font-medium order-1 sm:order-2">
-            Étape {currentStep} sur 3
+            <div className="text-sm md:text-base text-gray-600 font-medium order-1 sm:order-2">
+              Étape {currentStep} sur 3
+            </div>
+
+            <Button
+              type="button"
+              onClick={nextStep}
+              disabled={loading}
+              className="gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md order-3"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm md:text-base">Chargement...</span>
+                </>
+              ) : currentStep === 3 ? (
+                <>
+                  <span className="text-sm md:text-base">Terminer</span>
+                  <CheckCircle className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  <span className="text-sm md:text-base">Suivant</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </Button>
           </div>
 
-          <Button
-            type="button"
-            onClick={nextStep}
-            disabled={loading}
-            className="gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md order-3"
-          >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm md:text-base">Chargement...</span>
-              </>
-            ) : currentStep === 3 ? (
-              <>
-                <span className="text-sm md:text-base">Terminer</span>
-                <CheckCircle className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                <span className="text-sm md:text-base">Suivant</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </Button>
+          {/* Bouton Ignorer */}
+          <div className="flex justify-center">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleSkip}
+              disabled={loading}
+              className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 text-sm"
+            >
+              Ignorer et compléter plus tard
+            </Button>
+          </div>
         </div>
       </motion.div>
     </div>

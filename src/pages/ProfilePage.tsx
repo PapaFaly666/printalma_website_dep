@@ -892,21 +892,22 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Section Galerie */}
-          <div className="mb-12">
-            {/* Titre Galerie */}
-            <div className="flex items-center gap-2 mb-6">
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Galerie
-              </h3>
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-            </div>
+          {/* Section Galerie - Affichée seulement si la galerie existe et contient des images */}
+          {(loadingGallery || (gallery && gallery.images && gallery.images.length > 0)) && (
+            <div className="mb-12">
+              {/* Titre Galerie */}
+              <div className="flex items-center gap-2 mb-6">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Galerie
+                </h3>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </div>
 
-            {/* Grille d'images - Galerie du vendeur */}
-            {/* Mobile: grille 2x3, Tablet+: grille 4x2 avec image principale */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+              {/* Grille d'images - Galerie du vendeur */}
+              {/* Mobile: grille 2x3, Tablet+: grille 4x2 avec image principale */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
               {loadingGallery ? (
                 // État de chargement
                 <>
@@ -926,7 +927,7 @@ export default function ProfilePage() {
                     </div>
                   ))}
                 </>
-              ) : gallery && gallery.images && gallery.images.length > 0 ? (
+              ) : (
                 // Afficher la galerie
                 <>
                   {gallery.images.slice(0, 5).map((image, index) => {
@@ -994,24 +995,10 @@ export default function ProfilePage() {
                   })}
                   {/* Compléter la grille si moins de 5 images - Masquer les slots vides */}
                 </>
-              ) : (
-                // État vide - aucune galerie trouvée - Affichage compact
-                <div className="col-span-2 sm:col-span-4">
-                  <div className="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center border border-gray-200">
-                    <div className="max-w-md mx-auto">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center">
-                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-800 mb-1.5 tracking-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>Galerie à venir</h3>
-                      <p className="text-[11px] sm:text-xs text-gray-600 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>Ce vendeur enrichira bientôt sa galerie avec ses meilleures créations</p>
-                    </div>
-                  </div>
-                </div>
               )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Section Produits avec Sidebar */}
           <div className="mb-12">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, ChevronDown, ChevronLeft, ChevronRight, Loader2, Heart } from 'lucide-react';
 import vendorProductsService, { VendorProduct } from '../services/vendorProductsService';
 import { ProductCardWithDesign } from '../components/ProductCardWithDesign';
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
@@ -9,15 +9,17 @@ import { categoriesService, Category } from '../services/categoriesService';
 import { subCategoriesService, SubCategory } from '../services/subCategoriesService';
 import ServiceFeatures from './ServiceFeatures ';
 import Footer from '../components/Footer';
+import { useFavorites } from '../contexts/FavoritesContext';
 
 const FilteredArticlesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const categoryParam = searchParams.get('category');
+  const searchParam = searchParams.get('search');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('product');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParam || '');
 
   // États pour les produits de l'API
   const [products, setProducts] = useState<VendorProduct[]>([]);
@@ -96,6 +98,13 @@ const FilteredArticlesPage: React.FC = () => {
     setHistoryProducts(history);
     console.log('📜 Historique chargé:', history.length, 'produits');
   }, []);
+
+  // Mettre à jour searchTerm quand searchParam change
+  useEffect(() => {
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+  }, [searchParam]);
 
   // États pour les catégories et sous-catégories
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1661,7 +1670,7 @@ const FilteredArticlesPage: React.FC = () => {
                           onProductClick={() => {}}
                           hideValidationBadges={false}
                           imageObjectFit="contain"
-                          initialColorId={historyProduct.selectedColors[0]?.id}
+                          initialColorId={(historyProduct as any).defaultColorId ?? historyProduct.selectedColors[0]?.id}
                         />
 
                         {/* Bouton supprimer en haut à droite */}

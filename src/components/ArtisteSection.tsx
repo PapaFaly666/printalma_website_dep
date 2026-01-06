@@ -3,22 +3,22 @@ import { useNavigate } from 'react-router-dom';
 export default function ArtistesSection() {
   const navigate = useNavigate();
   return (
-    <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+    <div className="w-full py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       {/* Titre principal */}
-      <div className="flex items-center justify-between mb-1 px-4 sm:px-8">
-        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
+      <div className="flex items-center justify-between mb-1 px-3 xs:px-4 sm:px-6">
+        <h2 className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-1.5 xs:gap-2 sm:gap-3">
           <span className="font-bold">Artistes</span>
-          <img src="x_artiste.svg" alt="Artistes" className="w-6 h-6 md:w-8 md:h-8" />
+          <img src="x_artiste.svg" alt="Artistes" className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-8 md:h-8" />
         </h2>
       </div>
 
       {/* Container principal */}
-      <div className="w-full px-4 sm:px-8">
-        <div className="rounded p-4 md:p-6" style={{ backgroundColor: '#049BE5' }}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-center">
+      <div className="w-full px-3 xs:px-4 sm:px-6">
+        <div className="rounded-md p-2 xs:p-2.5 sm:p-3 md:p-4 lg:p-6" style={{ backgroundColor: '#049BE5' }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 xs:gap-3 sm:gap-4 items-center">
 
             {/* Colonne gauche - Grille des artistes */}
-            <div className="grid grid-cols-3 grid-rows-2 gap-1 md:gap-2 w-full h-64 md:h-72 lg:h-80">
+            <div className="grid grid-cols-3 grid-rows-2 gap-0.5 xs:gap-1 sm:gap-1 md:gap-2 w-full h-[16rem] xs:h-[20rem] sm:h-[24rem] lg:h-[28rem] xl:h-[36rem]">
               {/* Ligne 1 - Ebu Jomlong */}
               <div className="relative rounded overflow-hidden">
                 <img
@@ -26,8 +26,8 @@ export default function ArtistesSection() {
                   alt="Ebu Jomlong"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 md:p-2 text-left">
-                  <span className="text-white text-xs md:text-sm font-bold">Ebu Jomlong</span>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 xs:p-1.5 md:p-2 text-left">
+                  <span className="text-white text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-bold leading-tight">Ebu Jomlong</span>
                 </div>
               </div>
 
@@ -38,8 +38,8 @@ export default function ArtistesSection() {
                   alt="Dip Poundou Guiss"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 md:p-2 text-left">
-                  <span className="text-white text-xs md:text-sm font-bold">Dip Poundou Guiss</span>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 xs:p-1.5 md:p-2 text-left">
+                  <span className="text-white text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-bold leading-tight">Dip Poundou Guiss</span>
                 </div>
               </div>
 
@@ -50,8 +50,8 @@ export default function ArtistesSection() {
                   alt="Massamba Amadeus"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 md:p-2 text-left">
-                  <span className="text-white text-xs md:text-sm font-bold">Massamba Amadeus</span>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 xs:p-1.5 md:p-2 text-left">
+                  <span className="text-white text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-bold leading-tight">Massamba Amadeus</span>
                 </div>
               </div>
 
@@ -62,8 +62,8 @@ export default function ArtistesSection() {
                   alt="Amina Abed"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 md:p-2 text-left">
-                  <span className="text-white text-xs md:text-sm font-bold">Amina Abed</span>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 xs:p-1.5 md:p-2 text-left">
+                  <span className="text-white text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-bold leading-tight">Amina Abed</span>
                 </div>
               </div>
 
@@ -74,23 +74,23 @@ export default function ArtistesSection() {
                   alt="Mut Cash"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 md:p-2 text-left">
-                  <span className="text-white text-xs md:text-sm font-bold">Mut Cash</span>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-1 xs:p-1.5 md:p-2 text-left">
+                  <span className="text-white text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-bold leading-tight">Mut Cash</span>
                 </div>
               </div>
             </div>
 
             {/* Colonne droite - Section merchandising */}
-            <div className="text-white flex flex-col justify-center text-center px-2 md:px-4 h-64 md:h-72 lg:h-80">
-              <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 uppercase tracking-wide">
+            <div className="text-white flex flex-col justify-center text-center px-2 xs:px-3 sm:px-4 h-[12rem] xs:h-[16rem] sm:h-[20rem] lg:h-[28rem] xl:h-[36rem]">
+              <h3 className="text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-3 xs:mb-4 sm:mb-5 md:mb-6 uppercase tracking-wide leading-tight">
                 MERCHANDISING MUSICAL
               </h3>
-              <p className="text-sm md:text-base mb-4 leading-relaxed max-w-md mx-auto text-center">
+              <p className="text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl mb-3 xs:mb-4 sm:mb-5 md:mb-6 leading-relaxed max-w-md mx-auto text-center px-1">
                 Soutenez vos artistes favoris avec leur merchandising officiel. Des t-shirts aux accessoires, portez fièrement l'univers de vos stars préférées.
               </p>
               <button
                 onClick={() => navigate('/artistes')}
-                className="bg-white text-[#049BE5] px-4 py-2 rounded-md font-semibold text-sm hover:bg-gray-100 transition-colors duration-200 self-center"
+                className="bg-white text-[#049BE5] px-3 xs:px-4 py-1.5 xs:py-2 rounded-md font-semibold text-[10px] xs:text-xs sm:text-sm hover:bg-gray-100 transition-colors duration-200 self-center"
               >
                 Voir Tous les artistes
               </button>

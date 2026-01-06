@@ -113,52 +113,60 @@ export const useUpdateOrderStatus = () => {
       orderId,
       newStatus,
       notes,
+      silent = false,
     }: {
       orderId: number;
       newStatus: OrderStatus;
       notes?: string;
+      silent?: boolean; // Mode silencieux pour le drag-and-drop
     }) => {
-      console.log('🔄 [useUpdateOrderStatus] Updating order status...', { orderId, newStatus });
+      console.log('🔄 [useUpdateOrderStatus] Updating order status...', { orderId, newStatus, silent });
       await newOrderService.updateOrderStatus(orderId, newStatus, notes);
-      return { orderId, newStatus };
+      return { orderId, newStatus, silent };
     },
     onSuccess: (data) => {
-      console.log('✅ [useUpdateOrderStatus] Order status updated, invalidating cache...');
+      console.log('✅ [useUpdateOrderStatus] Order status updated');
 
-      // Invalider toutes les listes de commandes pour forcer un refetch
-      queryClient.invalidateQueries({
-        queryKey: orderKeys.lists(),
-      });
-
-      // Invalider les statistiques
-      queryClient.invalidateQueries({
-        queryKey: orderKeys.statistics(),
-      });
-
-      // Invalider la commande spécifique
-      queryClient.invalidateQueries({
-        queryKey: orderKeys.detail(data.orderId),
-      });
-
-      // Afficher une notification de succès
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Statut mis à jour', {
-          body: `La commande a été mise à jour avec succès`,
-          icon: '/favicon.ico',
-          tag: 'success',
+      // En mode silencieux (drag-and-drop), ne pas refetch pour éviter le chargement
+      if (!data.silent) {
+        // Invalider toutes les listes de commandes pour forcer un refetch
+        queryClient.invalidateQueries({
+          queryKey: orderKeys.lists(),
         });
+
+        // Invalider les statistiques
+        queryClient.invalidateQueries({
+          queryKey: orderKeys.statistics(),
+        });
+
+        // Invalider la commande spécifique
+        queryClient.invalidateQueries({
+          queryKey: orderKeys.detail(data.orderId),
+        });
+
+        // Afficher une notification de succès
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Statut mis à jour', {
+            body: `La commande a été mise à jour avec succès`,
+            icon: '/favicon.ico',
+            tag: 'success',
+          });
+        }
       }
     },
-    onError: (error: any) => {
+    onError: (error: any, variables) => {
       console.error('❌ [useUpdateOrderStatus] Error:', error);
 
-      // Afficher une notification d'erreur
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Erreur', {
-          body: error?.message || 'Impossible de mettre à jour le statut',
-          icon: '/favicon.ico',
-          tag: 'error',
-        });
+      // En mode silencieux, ne pas afficher de notification
+      if (!variables.silent) {
+        // Afficher une notification d'erreur
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Erreur', {
+            body: error?.message || 'Impossible de mettre à jour le statut',
+            icon: '/favicon.ico',
+            tag: 'error',
+          });
+        }
       }
     },
   });

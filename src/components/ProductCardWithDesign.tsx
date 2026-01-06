@@ -3,6 +3,7 @@ import { Heart } from 'lucide-react';
 import { VendorProduct } from '../services/vendorProductsService';
 import DesignPositionService from '../services/DesignPositionService';
 import { useAuth } from '../contexts/AuthContext';
+import { useFavorites } from '../contexts/FavoritesContext';
 import { vendorProductService } from '../services/vendorProductService';
 import { formatPrice } from '../utils/priceUtils';
 
@@ -38,20 +39,23 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
   selectedColors
 }) => {
   const { user } = useAuth();
+  const { toggleFavorite, isFavorite } = useFavorites();
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageMetrics, setImageMetrics] = useState<ImageMetrics | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const isProductFavorite = isFavorite(product.id);
 
   // Déterminer si le produit a un design
   const hasDesign = product.designApplication?.hasDesign && product.designApplication?.designUrl;
 
   // Fonction pour obtenir l'image en fonction de la ou des couleurs sélectionnées
   const getImageForColor = () => {
-    // Priorité aux couleurs sélectionnées multiples
+    // Priorité aux couleurs sélectionnées multiples (filtres utilisateur)
     const colorsToCheck = selectedColors || (selectedColor ? [selectedColor] : []);
 
+    // Si des couleurs sont filtrées, les utiliser en priorité
     if (colorsToCheck.length > 0 && product.adminProduct?.colorVariations) {
       // Mapping des noms de couleurs vers les codes
       const colorMapping: { [key: string]: string[] } = {
@@ -105,7 +109,24 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
       }
     }
 
+    // Si aucune couleur n'est filtrée, utiliser defaultColorId si disponible
+    const defaultColorId = (product as any).defaultColorId;
+    if (defaultColorId && product.adminProduct?.colorVariations) {
+      console.log(`🎨 [ProductCardWithDesign] Utilisation de defaultColorId: ${defaultColorId} pour produit ${product.id}`);
+      const defaultColorVariation = product.adminProduct.colorVariations.find(
+        (variation: any) => variation.id === defaultColorId
+      );
+
+      if (defaultColorVariation?.images?.length > 0) {
+        console.log(`🎨 [ProductCardWithDesign] ✅ Couleur par défaut trouvée: ${defaultColorVariation.name} (ID: ${defaultColorId})`);
+        return defaultColorVariation.images[0].url;
+      } else {
+        console.warn(`⚠️ [ProductCardWithDesign] defaultColorId ${defaultColorId} non trouvé dans colorVariations`);
+      }
+    }
+
     // Fallback vers l'image par défaut
+    console.log(`🎨 [ProductCardWithDesign] Fallback vers primaryImageUrl pour produit ${product.id}`);
     return product.images?.primaryImageUrl ||
            product.images?.adminReferences?.[0]?.adminImageUrl;
   };
@@ -589,15 +610,25 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
           </>
         )}
 
-        {/* Bouton favori - caché au hover si design */}
-        {(!hasDesign || !isHovered) && (
-          <button
-            className="absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 shadow-md z-10 transition-opacity duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Heart className="w-4 h-4 text-gray-600" />
-          </button>
-        )}
+        {/* Bouton favori - toujours visible */}
+        <button
+          className={`absolute top-3 right-3 bg-white rounded-full p-2 hover:bg-gray-100 shadow-md transition-all duration-300 ${
+            isProductFavorite ? 'bg-pink-50' : ''
+          }`}
+          style={{ zIndex: 50 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleFavorite(product);
+            console.log('💖 [ProductCard] Toggle favori:', product.id, product.vendorName);
+          }}
+          title={isProductFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+        >
+          <Heart
+            className={`w-4 h-4 transition-colors ${
+              isProductFavorite ? 'text-pink-500 fill-pink-500' : 'text-gray-600'
+            }`}
+          />
+        </button>
 
         {/* Badge vendeur - MASQUÉ */}
         {false && product.vendor && (!hasDesign || !isHovered) && (

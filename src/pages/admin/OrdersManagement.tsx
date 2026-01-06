@@ -211,9 +211,8 @@ const formatDate = (dateString: string | null): string => {
 // Type pour les vues
 type ViewMode = 'table' | 'kanban';
 
-// Configuration des colonnes Kanban
+// Configuration des colonnes Kanban - Style Trello
 const KANBAN_COLUMNS: { id: OrderStatus; title: string; color: string; icon: any }[] = [
-  { id: 'PENDING', title: 'En attente', color: 'bg-amber-50 border-amber-200', icon: Clock },
   { id: 'CONFIRMED', title: 'Confirmées', color: 'bg-blue-50 border-blue-200', icon: CheckCircle },
   { id: 'PROCESSING', title: 'En traitement', color: 'bg-purple-50 border-purple-200', icon: Package },
   { id: 'SHIPPED', title: 'Expédiées', color: 'bg-indigo-50 border-indigo-200', icon: Truck },
@@ -249,17 +248,16 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order, onView, onChangeStatus }
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-white rounded-lg border-2 ${
-        isDragging ? 'border-slate-400 shadow-2xl rotate-3 scale-105' : 'border-slate-200 shadow-sm hover:shadow-lg'
-      } p-3 mb-2 transition-all cursor-grab active:cursor-grabbing group`}
+      className={`bg-white rounded-lg ${
+        isDragging ? 'opacity-30 scale-95 shadow-none' : 'shadow-sm hover:shadow-md'
+      } p-3 transition-all duration-200 ease-out cursor-grab active:cursor-grabbing group`}
+      onClick={() => onView(order.id)}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-gradient-to-r from-slate-900 to-slate-600"></div>
-          <span className="font-mono text-xs font-bold text-slate-900">
-            #{order.orderNumber}
-          </span>
-        </div>
+      {/* Header compact style Trello */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-mono text-xs font-bold text-slate-700">
+          #{order.orderNumber}
+        </span>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {onChangeStatus && (
             <Button
@@ -271,234 +269,58 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order, onView, onChangeStatus }
                 onChangeStatus(order);
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="h-6 w-6 p-0 hover:bg-blue-100"
+              className="h-5 w-5 p-0 hover:bg-slate-100 rounded"
               title="Changer le statut"
             >
-              <Package className="h-3 w-3 text-blue-600" />
+              <Package className="h-3 w-3 text-slate-600" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onView(order.id);
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="h-6 w-6 p-0 hover:bg-slate-100"
-            title="Voir les détails"
-          >
-            <Eye className="h-3 w-3" />
-          </Button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-3">
-        <Avatar className="h-9 w-9 border-2 border-slate-100">
-          <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 text-xs font-bold">
-            {getCustomerInitials(order)}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-slate-900 truncate">
-            {getCustomerDisplayName(order)}
-          </p>
-          <p className="text-xs text-slate-500 truncate">
-            {getCustomerEmail(order)}
-          </p>
-        </div>
+      {/* Client - style Trello compact */}
+      <div className="mb-2">
+        <p className="font-medium text-sm text-slate-900 truncate">
+          {getCustomerDisplayName(order)}
+        </p>
+        <p className="text-xs text-slate-500 truncate">
+          {getCustomerEmail(order)}
+        </p>
       </div>
 
-      <Separator className="my-2" />
-
-      <div className="space-y-2 mb-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-500 flex items-center gap-1">
-            <DollarSign className="h-3 w-3" />
-            Montant
-          </span>
-          <span className="font-bold text-slate-900">
+      {/* Montant prominent style Trello */}
+      <div className="bg-slate-50 rounded px-2 py-1.5 mb-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-slate-600">Montant</span>
+          <span className="font-bold text-sm text-slate-900">
             {formatCurrency(order.totalAmount)}
           </span>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-500 flex items-center gap-1">
-            <Package className="h-3 w-3" />
-            Articles
-          </span>
-          <span className="font-semibold text-slate-900">
-            {(order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0}
-          </span>
-        </div>
       </div>
 
-      {/* Aperçu des produits avec designs */}
-      {order.orderItems && order.orderItems.length > 0 && (
-        <div className="space-y-2 mb-2">
-          <div className="text-xs text-slate-500 font-medium">Produits:</div>
-          <div className="grid grid-cols-1 gap-2">
-            {order.orderItems.slice(0, 2).map((item, index) => (
-              <div key={item.id || index} className="flex items-center gap-2 p-1 bg-slate-50 rounded">
-                {/* Mini aperçu du produit avec design selon la documentation API */}
-                <div className="w-10 h-10 bg-white rounded border border-slate-200 flex-shrink-0 overflow-hidden relative">
-                  {(item.adminProduct || item.product) && (
-                    <>
-                      {/* Image du produit selon la structure enrichie */}
-                      <img
-                        src={
-                          // Priorité 1: images.primaryImageUrl (données enrichies)
-                          item.images?.primaryImageUrl ||
-                          // Priorité 2: adminProduct.colorVariations[0].images[0].url
-                          item.adminProduct?.colorVariations?.[0]?.images?.[0]?.url ||
-                          // Priorité 3: product.imageUrl (ancienne structure)
-                          item.product?.imageUrl ||
-                          // Fallback: image par défaut
-                          '/api/placeholder/40/40'
-                        }
-                        alt={
-                          item.adminProduct?.name ||
-                          item.product?.name ||
-                          'Produit'
-                        }
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/api/placeholder/40/40';
-                        }}
-                      />
-
-                      {/* Overlay du design selon designApplication */}
-                      {item.designApplication?.hasDesign && item.designApplication.designUrl && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <img
-                            src={item.designApplication.designUrl}
-                            alt="Design personnalisé"
-                            className="w-6 h-6 object-contain mix-blend-multiply"
-                            style={{
-                              transform: `translate(-50%, -50%) scale(${item.designApplication.scale || 0.6})`,
-                              left: '50%',
-                              top: '50%',
-                              filter: 'drop-shadow(0px 0px 1px rgba(0,0,0,0.3))'
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      {/* Badge design si présent */}
-                      {item.designApplication?.hasDesign && (
-                        <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs rounded-bl px-1">
-                          🎨
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Détails du produit selon la documentation API */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-slate-900 truncate">
-                    {/* Priorité au nom du adminProduct (produit enrichi) */}
-                    {item.adminProduct?.name ||
-                     item.product?.name ||
-                     `Produit ${index + 1}`}
-
-                    {/* Indicateur vendeur si disponible */}
-                    {item.vendor?.shop_name && (
-                      <span className="text-xs text-blue-600 font-normal ml-1">
-                        ({item.vendor.shop_name})
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    {/* Taille */}
-                    {item.size && (
-                      <span className="bg-white px-1 py-0.5 rounded text-slate-600">
-                        {item.size}
-                      </span>
-                    )}
-
-                    {/* Couleur - Priorité aux données enrichies */}
-                    {(item.color ||
-                      (item.adminProduct?.colorVariations?.find(cv => cv.id === item.colorId)?.name) ||
-                      (item.designDelimitations?.[0]?.colorName)
-                    ) && (
-                      <span className="bg-white px-1 py-0.5 rounded text-slate-600 flex items-center gap-1">
-                        {/* Swatch de couleur si disponible */}
-                        {(item.adminProduct?.colorVariations?.find(cv => cv.id === item.colorId)?.colorCode ||
-                          item.designDelimitations?.[0]?.colorCode) && (
-                          <span
-                            className="w-2 h-2 rounded-full border border-slate-300"
-                            style={{
-                              backgroundColor: item.adminProduct?.colorVariations?.find(cv => cv.id === item.colorId)?.colorCode ||
-                                          item.designDelimitations?.[0]?.colorCode || '#ccc'
-                            }}
-                          />
-                        )}
-                        {item.color ||
-                         item.adminProduct?.colorVariations?.find(cv => cv.id === item.colorId)?.name ||
-                         item.designDelimitations?.[0]?.colorName}
-                      </span>
-                    )}
-
-                    {/* Quantité */}
-                    <span className="text-slate-400">
-                      x{item.quantity || 1}
-                    </span>
-
-                    {/* Indicateur de design */}
-                    {item.designApplication?.hasDesign && (
-                      <span className="text-xs text-purple-600 font-medium">
-                        🎨
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Prix unitaire et informations supplémentaires */}
-                  <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <span>Prix unitaire:</span>
-                    <span className="font-medium text-slate-800">
-                      {formatCurrency(item.unitPrice || 0)}
-                    </span>
-
-                    {/* Indicateur de prix suggéré si différent */}
-                    {item.adminProduct?.price &&
-                     item.adminProduct.price !== item.unitPrice && (
-                      <span className="text-xs text-green-600">
-                        (Vendeur: {formatCurrency(item.adminProduct.price)})
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-xs font-bold text-slate-900 flex-shrink-0 text-right">
-                  <div>{formatCurrency((item.unitPrice || 0) * (item.quantity || 1))}</div>
-                  {item.quantity > 1 && (
-                    <div className="text-xs text-slate-500 font-normal">
-                      ({item.quantity} × {formatCurrency(item.unitPrice || 0)})
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {order.orderItems.length > 2 && (
-              <div className="text-xs text-slate-500 italic text-center py-1">
-                +{order.orderItems.length - 2} autre{order.orderItems.length - 2 > 1 ? 's' : ''} produit{order.orderItems.length - 2 > 1 ? 's' : ''}
-              </div>
-            )}
-          </div>
+      {/* Badges info style Trello */}
+      <div className="flex flex-wrap gap-1 mb-2">
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded px-2 py-1">
+          <Package className="h-3 w-3 text-slate-600" />
+          <span className="text-xs font-medium text-slate-700">
+            {(order as any).itemsCount || order.orderItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} articles
+          </span>
         </div>
-      )}
+        {order.orderItems && order.orderItems.length > 0 && order.orderItems[0].designApplication?.hasDesign && (
+          <div className="flex items-center gap-1 bg-purple-50 border border-purple-200 rounded px-2 py-1">
+            <span className="text-xs font-medium text-purple-700">🎨 Personnalisé</span>
+          </div>
+        )}
+      </div>
 
-      <Separator className="my-2" />
-
-      <div className="flex items-center justify-between">
-        <Badge className={`${getPaymentStatusColor((order as any).payment_info?.status || 'PENDING')} text-xs border-2 font-semibold px-2 py-0.5`}>
+      {/* Paiement et date - style Trello */}
+      <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+        <Badge className={`${getPaymentStatusColor((order as any).payment_info?.status || 'PENDING')} text-xs font-medium px-2 py-0.5`}>
           {(order as any).payment_info?.status_text || 'En attente'}
         </Badge>
-        <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+        <span className="text-xs text-slate-500 flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+          {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
         </span>
       </div>
     </div>
@@ -520,38 +342,28 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, orders, onView, onC
   });
 
   return (
-    <div className="flex-shrink-0 w-80">
-      <div
-        className={`${column.color} rounded-xl border-2 ${
-          isOver ? 'border-slate-400 bg-slate-100 scale-102' : ''
-        } p-4 flex flex-col transition-all duration-200`}
-        style={{ minHeight: '600px', maxHeight: '80vh' }}
-      >
-        {/* Header de la colonne style Trello */}
-        <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-slate-200">
+    <div className="flex-shrink-0 w-72">
+      <div className="bg-slate-100 rounded-xl p-3 flex flex-col" style={{ minHeight: '600px', maxHeight: '85vh' }}>
+        {/* Header style Trello simplifié */}
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className={`h-10 w-10 rounded-xl ${column.color.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-200').replace('border-', 'to-')} shadow-md flex items-center justify-center border-2 border-white`}>
-              <Icon className="h-5 w-5 text-slate-700" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm">{column.title}</h3>
-              <p className="text-xs text-slate-500 font-medium">{orders.length} commande{orders.length > 1 ? 's' : ''}</p>
-            </div>
+            <Icon className="h-4 w-4 text-slate-600" />
+            <h3 className="font-semibold text-slate-800 text-sm">{column.title}</h3>
+            <span className="text-xs text-slate-500 font-medium">
+              {orders.length}
+            </span>
           </div>
-          <Badge variant="secondary" className="font-mono font-bold text-sm px-3 py-1 bg-white border-2 border-slate-200">
-            {orders.length}
-          </Badge>
         </div>
 
-        {/* Zone de drop avec scroll */}
+        {/* Zone de drop avec scroll - style Trello */}
         <div
           ref={setNodeRef}
-          className={`flex-1 overflow-y-auto space-y-2 pr-2 ${
-            isOver ? 'bg-blue-50 rounded-lg p-2' : ''
+          className={`flex-1 overflow-y-auto space-y-2 ${
+            isOver ? 'bg-slate-200/50 rounded-lg' : ''
           } transition-colors duration-200`}
           style={{
             scrollbarWidth: 'thin',
-            scrollbarColor: '#cbd5e1 transparent'
+            scrollbarColor: '#94a3b8 transparent'
           }}
         >
           <SortableContext items={orders.map(o => `order-${o.id}`)} strategy={verticalListSortingStrategy}>
@@ -561,10 +373,9 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, orders, onView, onC
           </SortableContext>
 
           {orders.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-400 bg-white/50 rounded-lg border-2 border-dashed border-slate-200">
-              <Package className="h-16 w-16 mb-3 opacity-20" />
-              <p className="text-sm font-medium">Aucune commande</p>
-              <p className="text-xs mt-1">Glissez une commande ici</p>
+            <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+              <Package className="h-12 w-12 mb-2 opacity-30" />
+              <p className="text-xs font-medium">Glissez vos cartes ici</p>
             </div>
           )}
         </div>
@@ -615,7 +426,9 @@ const OrdersManagement = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8, // Légèrement augmenté pour éviter les drags accidentels
+        delay: 0,
+        tolerance: 5,
       },
     })
   );
@@ -693,31 +506,8 @@ const OrdersManagement = () => {
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    // Si on survole une colonne (statut)
-    if (KANBAN_COLUMNS.some(col => col.id === overId)) {
-      return;
-    }
-
-    // Si on survole une autre carte
-    const activeOrderId = parseInt(activeId.replace('order-', ''));
-    const overOrderId = parseInt(overId.replace('order-', ''));
-
-    const activeOrder = orders.find(o => o.id === activeOrderId);
-    const overOrder = orders.find(o => o.id === overOrderId);
-
-    if (!activeOrder || !overOrder) return;
-
-    // Si les deux cartes sont dans des colonnes différentes, mise à jour optimiste locale
-    if (activeOrder.status !== overOrder.status) {
-      updateOrderInCache(activeOrderId, overOrder.status);
-    }
+    // Désactivé - la mise à jour se fait uniquement dans handleDragEnd
+    // pour éviter les mouvements parasites pendant le drag
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -756,9 +546,27 @@ const OrdersManagement = () => {
       }
     }
 
-    // Si le statut a changé, mettre à jour via l'API
+    // Si le statut a changé, mettre à jour de manière optimiste
     if (newStatus && draggedOrder.status !== newStatus) {
-      updateOrderStatus(orderId, newStatus);
+      const oldStatus = draggedOrder.status;
+
+      // 🚀 OPTIMISTIC UPDATE: Mettre à jour l'UI immédiatement
+      updateOrderInCache(orderId, newStatus);
+
+      // 🔄 BACKGROUND API: Synchroniser avec le backend en mode silencieux
+      updateOrderStatusMutation.mutateAsync({
+        orderId,
+        newStatus,
+        silent: true // Mode silencieux = pas de refetch, pas de notification
+      }).then(() => {
+        // ✅ Rafraîchir les statistiques en arrière-plan après un délai
+        setTimeout(() => {
+          refreshStatistics();
+        }, 1000);
+      }).catch(() => {
+        // ⚠️ ROLLBACK: En cas d'erreur, remettre l'ancien statut
+        updateOrderInCache(orderId, oldStatus);
+      });
     }
   };
 
@@ -1301,7 +1109,6 @@ const OrdersManagement = () => {
                         <TableRow className="bg-slate-50/80 hover:bg-slate-50 border-b-2 border-slate-200">
                           <TableHead className="font-semibold text-slate-900">Commande</TableHead>
                           <TableHead className="font-semibold text-slate-900">Client</TableHead>
-                          <TableHead className="font-semibold text-slate-900">Vendeur</TableHead>
                           <TableHead className="font-semibold text-slate-900">Paiement</TableHead>
                           <TableHead className="font-semibold text-slate-900">Statut</TableHead>
                           <TableHead className="font-semibold text-slate-900">Montant</TableHead>
@@ -1343,35 +1150,6 @@ const OrdersManagement = () => {
                                     {getCustomerEmail(order)}
                                   </p>
                                 </div>
-                              </div>
-                            </TableCell>
-
-  
-                              <TableCell>
-                              <div className="space-y-1">
-                                {order.orderItems && order.orderItems.length > 0 && (() => {
-                                  const vendors = order.orderItems
-                                    .map(item => item.vendor?.shop_name || item.vendor?.fullName || 'Vendeur inconnu')
-                                    .filter((vendor, index, arr) => arr.indexOf(vendor) === index);
-
-                                  return (
-                                    <div className="space-y-1">
-                                      {vendors.slice(0, 2).map((vendorName, index) => (
-                                        <div key={index} className="flex items-center gap-2">
-                                          <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                                          <span className="text-sm font-medium text-slate-900 truncate">
-                                            {vendorName}
-                                          </span>
-                                        </div>
-                                      ))}
-                                      {vendors.length > 2 && (
-                                        <div className="text-xs text-slate-500 italic">
-                                          +{vendors.length - 2} autre{vendors.length - 2 > 1 ? 's' : ''} vendeur{vendors.length - 2 > 1 ? 's' : ''}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
                               </div>
                             </TableCell>
 
@@ -1569,9 +1347,12 @@ const OrdersManagement = () => {
                 </CardContent>
               </Card>
 
-              <DragOverlay>
+              <DragOverlay dropAnimation={{
+                duration: 200,
+                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+              }}>
                 {activeId ? (
-                  <div className="rotate-6 scale-105">
+                  <div className="rotate-3 scale-110 cursor-grabbing opacity-90 transition-all duration-150">
                     {(() => {
                       const orderIdMatch = activeId.match(/order-(\d+)/);
                       if (!orderIdMatch) return null;

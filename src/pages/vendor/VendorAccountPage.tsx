@@ -157,8 +157,8 @@ const VendorAccountPage: React.FC = () => {
     // Validation
     const validPhones = editingPhones.filter(p => p.number.trim() !== '');
 
-    if (validPhones.length < 2 || validPhones.length > 3) {
-      toast.error('Vous devez avoir entre 2 et 3 numéros de téléphone');
+    if (validPhones.length < 1 || validPhones.length > 3) {
+      toast.error('Vous devez avoir entre 1 et 3 numéros de téléphone');
       return;
     }
 
@@ -197,8 +197,8 @@ const VendorAccountPage: React.FC = () => {
   };
 
   const removePhone = (index: number) => {
-    if (editingPhones.length <= 2) {
-      toast.error('Minimum 2 numéros requis');
+    if (editingPhones.length <= 1) {
+      toast.error('Minimum 1 numéro requis');
       return;
     }
     setEditingPhones(editingPhones.filter((_, i) => i !== index));

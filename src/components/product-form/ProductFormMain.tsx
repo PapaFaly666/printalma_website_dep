@@ -563,36 +563,6 @@ const ValidationStep: React.FC<{
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-center gap-4">
-          <Button
-            variant="outline"
-            onClick={onPreview}
-            disabled={!formStats.isComplete}
-            className="px-8"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Prévisualiser
-          </Button>
-          
-          <Button
-            onClick={onSubmit}
-            disabled={loading || !formStats.isComplete}
-            className="bg-green-600 hover:bg-green-700 text-white px-8"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Validation...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Valider le produit
-              </>
-            )}
-          </Button>
-        </div>
 
         {/* Message d'aide */}
         {!formStats.isComplete && (

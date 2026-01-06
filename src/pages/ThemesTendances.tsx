@@ -170,7 +170,7 @@ const ThemesTendances = ({ themes: propThemes }: ThemesTendancesProps = {}) => {
   return (
     <div className="w-full py-1 md:py-2 pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       {/* Titre principal et bouton sur la même ligne */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1 px-4 sm:px-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1 px-4 sm:px-6">
         <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-black flex items-center gap-2 sm:gap-3">
           <span className="font-bold">Thèmes tendances</span>
           <svg className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 24 24">
@@ -184,7 +184,7 @@ const ThemesTendances = ({ themes: propThemes }: ThemesTendancesProps = {}) => {
       </div>
 
       {/* Container principal */}
-      <div className="w-full px-4 sm:px-8">
+      <div className="w-full px-4 sm:px-6">
         {renderThemeLayout()}
       </div>
     </div>
