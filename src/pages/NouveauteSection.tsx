@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
+import { API_CONFIG } from '../config/api';
 
 // Interface EXACTE selon l'API new-arrivals réelle (swagger.md)
 interface NewArrivalProduct {
@@ -420,8 +421,8 @@ const NouveautesGrid: React.FC = () => {
   useEffect(() => {
     const fetchNewArrivals = async () => {
       try {
-        // 🔧 Utiliser le serveur local pour avoir defaultColorId
-        const response = await fetch('http://localhost:3004/public/new-arrivals');
+        // 🔧 Utiliser l'URL configurée (localhost en dev, Render en production)
+        const response = await fetch(`${API_CONFIG.BASE_URL}/public/new-arrivals`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -533,7 +534,7 @@ const NouveautesGrid: React.FC = () => {
                 Aucune nouveauté disponible
               </h3>
               <p className="text-xs xs:text-sm text-gray-600 mb-3 xs:mb-4">
-                L'API n'a retourné aucune donnée. Vérifiez que le backend est démarré sur le port 3004.
+                L'API n'a retourné aucune donnée. Vérifiez que le backend est accessible.
               </p>
               <p className="text-[10px] xs:text-xs text-gray-500">
                 Ouvrez la console pour plus de détails sur l'erreur.

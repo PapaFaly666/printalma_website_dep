@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import SimpleProductPreview from './vendor/SimpleProductPreview';
+import { API_CONFIG } from '../config/api';
 
 // Interface EXACTE selon la réponse API best-sellers-v2
 interface BestSellerProduct {
@@ -309,7 +310,7 @@ const BestSellersGrid = () => {
   useEffect(() => {
     const fetchBestSellers = async () => {
       try {
-        const response = await fetch('http://localhost:3004/public/best-sellers-v2');
+        const response = await fetch(`${API_CONFIG.BASE_URL}/public/best-sellers-v2`);
         const result = await response.json();
 
         console.log('📊 Données best-sellers-v2 reçues:', result);
