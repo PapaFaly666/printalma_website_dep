@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import categoryRealApi from '../../services/categoryRealApi';

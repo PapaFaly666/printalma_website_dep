@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 
 // Define the type for a theme

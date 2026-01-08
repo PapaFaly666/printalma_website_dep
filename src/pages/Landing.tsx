@@ -49,7 +49,6 @@ export default function ModernTShirtEcommerce() {
                 {/* Carousel Hero Section */}
                 <div className="relative w-full">
                     <CarousselContainer />
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-50/80 via-transparent to-transparent pointer-events-none" />
                 </div>
 
                 {/* CategoryTabs sticky */}

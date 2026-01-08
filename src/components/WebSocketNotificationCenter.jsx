@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNotificationsWebSocket } from '../hooks/useNotificationsWebSocket';
 import { Bell, Wifi, WifiOff, AlertCircle, RefreshCw, Trash2, ExternalLink } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from './ui/Button';
 import { Badge } from './ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';

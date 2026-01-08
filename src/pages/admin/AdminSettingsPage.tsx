@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Separator } from '../../components/ui/separator';
 import { Switch } from '../../components/ui/switch';
 import { Label } from '../../components/ui/label';

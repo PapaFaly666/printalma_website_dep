@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { categoryProtectionService } from '../../services/categoryProtectionService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Badge } from '../ui/badge';
 import { AlertCircle, ArrowRight, Package } from 'lucide-react';
 import { toast } from 'sonner';

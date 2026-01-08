@@ -10,7 +10,7 @@ import {
 } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Switch } from '../ui/switch';
 import {
   Select,

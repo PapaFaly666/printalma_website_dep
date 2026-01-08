@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { VendeurType } from '../../types/auth.types';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Label } from '../ui/label';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Badge } from '../ui/badge';
 import '../../styles/smooth-slider.css';
 import { 

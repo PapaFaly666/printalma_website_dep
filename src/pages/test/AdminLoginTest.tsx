@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Shield, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import AdminLoginForm from '../../components/admin/AdminLoginForm';

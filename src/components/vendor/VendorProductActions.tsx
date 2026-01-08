@@ -4,7 +4,7 @@ import { ProductStatusBadge } from './ProductStatusBadge';
 import { PublishValidatedProductButton } from './PublishValidatedProductButton';
 import { ValidationActionSelector } from './ValidationActionSelector';
 import { useVendorValidation } from '../../hooks/useVendorValidation';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { 
   Dialog, 
   DialogContent, 

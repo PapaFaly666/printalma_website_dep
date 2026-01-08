@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useCategoryDeletion, DeletionResult } from '../../hooks/useCategoryDeletion';
 import { MigrationDialog } from './MigrationDialog';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Badge } from '../ui/badge';
 import { Rocket, Edit3, Info } from 'lucide-react';
 

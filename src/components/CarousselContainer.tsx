@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Button from "./ui/Button";
 
 // Mock slides data
 const slides = [
@@ -109,9 +110,8 @@ const EnhancedCarousel = () => {
                 transform: index === currentSlide ? 'scale(1.05)' : 'scale(1)'
               }} />
 
-              {/* Gradient overlay pour améliorer la lisibilité */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${slide.bgColor}`} />
-              <div className="absolute inset-0 bg-black/10" />
+              {/* Overlay sombre léger pour améliorer la lisibilité */}
+              <div className="absolute inset-0 bg-black/20" />
 
               {/* Content overlay - Centrage vertical strict avec flexbox */}
               <div className="relative z-20 h-full flex flex-col justify-center px-2 xs:px-3 sm:px-4 md:px-6 py-3 xs:py-4 sm:py-6">
@@ -176,47 +176,34 @@ const EnhancedCarousel = () => {
                   </div>
 
                   {/* Section milieu: Buttons */}
-                  <div className={`flex flex-row gap-2 xs:gap-3 sm:gap-4 justify-center items-center mb-4 xs:mb-6 sm:mb-8 md:mb-10 transition-all duration-1000 ${
+                  <div className={`flex flex-row gap-2 xs:gap-3 sm:gap-4 justify-center items-center mb-4 xs:mb-6 sm:mb-8 md:mb-10 transition-all duration-1000 w-full max-w-[280px] xs:max-w-[300px] sm:max-w-[340px] md:max-w-[380px] lg:max-w-[440px] mx-auto ${
                     index === currentSlide
                         ? 'translate-y-0 opacity-100'
                         : 'translate-y-8 opacity-0'
                   }`} style={{ transitionDelay: index === currentSlide ? '400ms' : '0ms' }}>
-                    
+
                     {/* Bouton "Je personnalise" - Couleur correcte pour chaque slide */}
-                    <button
+                    <Button
                       onClick={handlePersonalize}
-                      className="px-2.5 xs:px-3 sm:px-5 md:px-6 lg:px-7 py-1.5 xs:py-2 sm:py-3 md:py-3.5 text-black font-semibold text-[10px] xs:text-xs sm:text-base md:text-lg transition-all duration-200 hover:opacity-90"
+                      variant="primary"
+                      size="lg"
+                      className="hover:opacity-90 flex-1 whitespace-nowrap"
                       style={{
                         backgroundColor: slide.buttonColor,
-                        borderRadius: '6px',
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        fontWeight: '600',
-                        border: 'none',
-                        minWidth: '90px',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
                       }}
                     >
                       {slide.primaryBtn}
-                    </button>
+                    </Button>
 
                     {/* Bouton "Je Découvre" - Blanc avec texte noir */}
-                    <button
+                    <Button
                       onClick={handleDiscover}
-                      className="px-2.5 xs:px-3 sm:px-5 md:px-6 lg:px-7 py-1.5 xs:py-2 sm:py-3 md:py-3.5 text-black font-semibold text-[10px] xs:text-xs sm:text-base md:text-lg transition-all duration-200 hover:opacity-90"
-                      style={{
-                        backgroundColor: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        fontWeight: '600',
-                        minWidth: '90px',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
-                      }}
+                      variant="outline"
+                      size="lg"
+                      className="bg-white text-black hover:opacity-90 flex-1 whitespace-nowrap"
                     >
                       {slide.secondaryBtn}
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Section basse: Collection badge */}
@@ -225,27 +212,25 @@ const EnhancedCarousel = () => {
                         ? 'translate-y-0 opacity-100'
                         : 'translate-y-6 opacity-0'
                   }`} style={{ transitionDelay: index === currentSlide ? '600ms' : '0ms' }}>
-                    <div className="px-1.5 xs:px-2 sm:px-3 md:px-4 py-1 xs:py-1.5 sm:py-2 md:py-3 rounded-lg text-white border border-white/20" style={{
-                      backgroundColor: 'rgba(0, 0, 0, 0.35)',
-                      backdropFilter: 'blur(15px)',
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-                      minWidth: '180px',
-                      width: 'fit-content'
+                    <div className="px-1 xs:px-1.5 sm:px-2 md:px-3 py-2 xs:py-2.5 sm:py-3 md:py-4 rounded-lg text-white w-full max-w-[280px] xs:max-w-[300px] sm:max-w-[340px] md:max-w-[380px] lg:max-w-[440px] mx-auto" style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
                     }}>
-                      <div className="text-[9px] xs:text-[10px] sm:text-xs font-medium mb-0.5 opacity-80" style={{
+                      <div className="text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl font-black mb-0.5 opacity-90" style={{
                         fontFamily: 'system-ui, -apple-system, sans-serif',
                         letterSpacing: '0.05em'
                       }}>
                         {slide.collection}
                       </div>
-                      <div className="text-[11px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-black mb-0.5" style={{
+                      <div className="text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl font-black mb-0.5 opacity-90" style={{
                         fontFamily: 'system-ui, -apple-system, sans-serif',
-                        letterSpacing: '0.02em'
+                        letterSpacing: '0.05em'
                       }}>
                         {slide.collectionName}
                       </div>
-                      <div className="text-[9px] xs:text-[10px] sm:text-xs opacity-75 italic" style={{
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                      <div className="text-sm xs:text-base sm:text-lg md:text-xl opacity-80 font-semibold italic" style={{
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        letterSpacing: '0.02em'
                       }}>
                         {slide.collectionSubtitle}
                       </div>
@@ -258,51 +243,50 @@ const EnhancedCarousel = () => {
           ))}
         </div>
 
-        {/* Navigation Buttons - Style amélioré et responsive */}
+        {/* Navigation Buttons - Style simplifié sans effets lumineux */}
         <button
-          className="absolute left-1 xs:left-1.5 sm:left-2 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 z-30 w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 xl:w-12 lg:h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg border border-white/30"
+          className="absolute left-1 xs:left-1.5 sm:left-2 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 z-30 w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 xl:w-12 lg:h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.25)',
-            backdropFilter: 'blur(10px)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
           }}
           onClick={goToPrevious}
           aria-label="Slide précédent"
         >
-          <svg className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
         <button
-          className="absolute right-1 xs:right-1.5 sm:right-2 md:right-3 lg:right-4 top-1/2 transform -translate-y-1/2 z-30 w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 xl:w-12 lg:h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg border border-white/30"
+          className="absolute right-1 xs:right-1.5 sm:right-2 md:right-3 lg:right-4 top-1/2 transform -translate-y-1/2 z-30 w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 xl:w-12 lg:h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.25)',
-            backdropFilter: 'blur(10px)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
           }}
           onClick={goToNext}
           aria-label="Slide suivant"
         >
-          <svg className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
 
-        {/* Dots Navigation - Style amélioré et responsive */}
+        {/* Dots Navigation - Style simplifié sans effets lumineux */}
         <div className="absolute bottom-2 xs:bottom-3 sm:bottom-4 md:bottom-6 lg:bottom-8 left-1/2 transform -translate-x-1/2 z-30 flex gap-1 xs:gap-1.5 sm:gap-2 md:gap-3">
           {slides.map((_, index) => (
             <button
               key={index}
               className={`transition-all duration-300 rounded-full ${
                 index === currentSlide
-                    ? 'w-4 xs:w-5 sm:w-6 md:w-7 lg:w-8 h-1.5 xs:h-1.5 sm:h-2 md:h-2.5 lg:h-3 bg-white shadow-lg'
-                    : 'w-1.5 xs:w-1.5 sm:w-2 md:w-3 h-1.5 xs:h-1.5 sm:h-2 md:h-2.5 lg:h-3 bg-white bg-opacity-50 hover:bg-opacity-75'
+                    ? 'w-4 xs:w-5 sm:w-6 md:w-7 lg:w-8 h-1.5 xs:h-1.5 sm:h-2 md:h-2.5 lg:h-3'
+                    : 'w-1.5 xs:w-1.5 sm:w-2 md:w-3 h-1.5 xs:h-1.5 sm:h-2 md:h-2.5 lg:h-3 opacity-60 hover:opacity-80'
               }`}
               onClick={() => goToSlide(index)}
               aria-label={`Aller au slide ${index + 1}`}
               style={{
-                boxShadow: index === currentSlide ? '0 2px 8px rgba(0,0,0,0.3)' : 'none'
+                backgroundColor: index === currentSlide ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.5)',
+                boxShadow: index === currentSlide ? '0 2px 6px rgba(0,0,0,0.2)' : 'none'
               }}
             />
           ))}

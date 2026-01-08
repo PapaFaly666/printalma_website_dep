@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import passwordResetService from '../../services/passwordResetService';
 
 const ForgotPassword: React.FC = () => {

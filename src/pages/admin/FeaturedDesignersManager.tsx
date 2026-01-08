@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import designerService from '../../services/designerService';
 import { Designer } from '../../types/designer.types';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
 import { Badge } from '../../components/ui/badge';

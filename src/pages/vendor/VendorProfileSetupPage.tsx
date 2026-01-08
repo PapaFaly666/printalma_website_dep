@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useVendorProfile } from '../../hooks/useVendorProfile';
 import { VendorProfileForm } from '../../components/VendorProfileForm';
 import { ProfileCompleteBadge } from '../../components/ProfileCompletionBanner';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { ArrowRight, Store, TrendingUp, Users, Star, Target, Award, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';

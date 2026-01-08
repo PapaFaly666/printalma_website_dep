@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useVendorProfile } from '../hooks/useVendorProfile';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';

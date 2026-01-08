@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Loader2, Palette, Save, Move } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { useDesignTransforms } from '../../hooks/useDesignTransforms';
 import { getVendorProductId } from '../../utils/vendorProductHelpers';
 import { useToast } from '../ui/use-toast';

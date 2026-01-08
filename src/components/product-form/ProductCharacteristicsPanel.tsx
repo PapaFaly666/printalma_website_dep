@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Tag, Layers } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Badge } from '../ui/badge';
 
 interface ProductCharacteristicsPanelProps {

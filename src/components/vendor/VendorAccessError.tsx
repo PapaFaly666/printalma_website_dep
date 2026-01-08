@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { AlertTriangle, RefreshCw, LogIn, Mail, Shield } from 'lucide-react';

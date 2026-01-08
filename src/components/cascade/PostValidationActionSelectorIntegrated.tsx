@@ -2,7 +2,7 @@ import React from 'react';
 import { PostValidationAction } from '../../types/cascadeValidation';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Rocket, FileText, Info, CheckCircle, Clock } from 'lucide-react';
 
 interface DesignValidationStatus {

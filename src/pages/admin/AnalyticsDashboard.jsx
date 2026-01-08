@@ -5,7 +5,7 @@ import KPICards from '../../components/admin/KPICards';
 import RevenueChart from '../../components/admin/RevenueChart';
 import TopProducts from '../../components/admin/TopProducts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+import { Button } from '../../components/ui/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Badge } from '../../components/ui/badge';
 import { Alert, AlertDescription } from '../../components/ui/alert';

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { X, TableProperties, ShoppingCart } from 'lucide-react';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
 
 interface SizeQuantity {

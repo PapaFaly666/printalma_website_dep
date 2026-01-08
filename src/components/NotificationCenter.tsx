@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Check, CheckCheck, Trash2, X, Clock, Package, Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import { BackendNotification } from '../services/notificationService';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Badge } from './ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { ScrollArea } from './ui/scroll-area';

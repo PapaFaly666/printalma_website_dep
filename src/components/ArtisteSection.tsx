@@ -1,24 +1,18 @@
 import { useNavigate } from 'react-router-dom';
+import Button from './ui/Button';
 
 export default function ArtistesSection() {
   const navigate = useNavigate();
   return (
     <div className="w-full py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10 lg:pt-12">
-      {/* Titre principal */}
-      <div className="flex items-center justify-between mb-1 px-3 xs:px-4 sm:px-6">
-        <h2 className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-1.5 xs:gap-2 sm:gap-3">
-          <span className="font-bold">Artistes</span>
-          <img src="x_artiste.svg" alt="Artistes" className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-8 md:h-8" />
-        </h2>
-      </div>
-
+      
       {/* Container principal */}
       <div className="w-full px-3 xs:px-4 sm:px-6">
         <div className="rounded-md p-2 xs:p-2.5 sm:p-3 md:p-4 lg:p-6" style={{ backgroundColor: '#049BE5' }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 xs:gap-3 sm:gap-4 items-center">
 
             {/* Colonne gauche - Grille des artistes */}
-            <div className="grid grid-cols-3 grid-rows-2 gap-0.5 xs:gap-1 sm:gap-1 md:gap-2 w-full h-[16rem] xs:h-[20rem] sm:h-[24rem] lg:h-[28rem] xl:h-[36rem]">
+            <div className="grid grid-cols-3 grid-rows-2 gap-0.5 xs:gap-1 sm:gap-1 md:gap-2 w-full min-h-[16rem] xs:min-h-[20rem] sm:min-h-[24rem] lg:h-[28rem] xl:h-[36rem]">
               {/* Ligne 1 - Ebu Jomlong */}
               <div className="relative rounded overflow-hidden">
                 <img
@@ -81,19 +75,26 @@ export default function ArtistesSection() {
             </div>
 
             {/* Colonne droite - Section merchandising */}
-            <div className="text-white flex flex-col justify-center text-center px-2 xs:px-3 sm:px-4 h-[12rem] xs:h-[16rem] sm:h-[20rem] lg:h-[28rem] xl:h-[36rem]">
-              <h3 className="text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-3 xs:mb-4 sm:mb-5 md:mb-6 uppercase tracking-wide leading-tight">
-                MERCHANDISING MUSICAL
+            <div className="text-white flex flex-col justify-center text-center px-2 xs:px-3 sm:px-4 py-4 min-h-[12rem] xs:min-h-[16rem] sm:min-h-[20rem] lg:h-[28rem] xl:h-[36rem]">
+              <img
+                src="/Asset 36.svg"
+                alt="Music Icon"
+                className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 xl:w-40 xl:h-40 mb-3 xs:mb-4 sm:mb-5 md:mb-6 mx-auto"
+              />
+              <h3 className="text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-3 xs:mb-4 sm:mb-5 md:mb-6 uppercase tracking-wide leading-tight max-w-5xl mx-auto">
+                INFLUENCEURS PARTENAIRES
               </h3>
-              <p className="text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl mb-3 xs:mb-4 sm:mb-5 md:mb-6 leading-relaxed max-w-md mx-auto text-center px-1">
-                Soutenez vos artistes favoris avec leur merchandising officiel. Des t-shirts aux accessoires, portez fièrement l'univers de vos stars préférées.
+              <p className="text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl mb-3 xs:mb-4 sm:mb-5 md:mb-6 leading-relaxed max-w-5xl mx-auto px-2">
+                Explorez les univers créatifs de vos influenceurs préférés et adoptez leurs designs signature.
               </p>
-              <button
+              <Button
                 onClick={() => navigate('/artistes')}
-                className="bg-white text-[#049BE5] px-3 xs:px-4 py-1.5 xs:py-2 rounded-md font-semibold text-[10px] xs:text-xs sm:text-sm hover:bg-gray-100 transition-colors duration-200 self-center"
+                variant="outline"
+                size="md"
+                className="bg-white text-[#049BE5] hover:bg-gray-100 text-[10px] xs:text-xs sm:text-sm self-center"
               >
                 Voir Tous les artistes
-              </button>
+              </Button>
             </div>
 
           </div>

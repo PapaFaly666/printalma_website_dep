@@ -6,7 +6,7 @@ import {
   Palette, Ruler, Info, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
-import { Button } from "../components/ui/button";
+import Button from "../components/ui/Button";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";

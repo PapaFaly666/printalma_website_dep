@@ -3,7 +3,7 @@ import {
   Search, X, PlusCircle,  Grid3X3, List,  RefreshCcw, Package, ArrowLeft, Edit, Save, Eye, Trash2, CheckCircle, Info
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from "../components/ui/button";
+import Button from "../components/ui/Button";
 import { Input } from "../components/ui/input";
 import {
   Select,

@@ -4,7 +4,7 @@ import {
   Truck, RotateCcw, ShieldCheck, Package, Eye, CircleUser 
 } from 'lucide-react';
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import Button from "./ui/Button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { 
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle 

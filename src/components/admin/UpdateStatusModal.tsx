@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';

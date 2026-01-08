@@ -1,6 +1,6 @@
 import React from 'react';
 import { useVendorProfile } from '../hooks/useVendorProfile';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Alert, AlertDescription } from './ui/alert';
 import { CheckCircle, Info, User, Globe } from 'lucide-react';
 

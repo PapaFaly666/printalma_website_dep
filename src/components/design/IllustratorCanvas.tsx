@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Loader2, RotateCcw, Save } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 
 interface DesignTransform {
   x: number;

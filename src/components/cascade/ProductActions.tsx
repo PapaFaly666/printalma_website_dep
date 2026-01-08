@@ -1,7 +1,7 @@
 // Actions contextuelles pour les produits selon leur statut
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import Button from '@/components/ui/Button';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { WorkflowSelector } from '../components/vendor/WorkflowSelector';
 import { ModernVendorProductCard } from '../components/vendor/ModernVendorProductCard';
 import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Badge } from '../components/ui/badge';
 import { RefreshCcw, AlertCircle, CheckCircle, Users, Package } from 'lucide-react';
 import { toast } from 'sonner';

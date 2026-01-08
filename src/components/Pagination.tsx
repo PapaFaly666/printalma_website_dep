@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { PaginationInfo } from '../types/auth.types';
 

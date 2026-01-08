@@ -10,7 +10,7 @@ import {
   AlertCircle 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Progress } from '../ui/progress';
 import designService from '../../services/designService';
 import { DesignStats } from '../../types/product';

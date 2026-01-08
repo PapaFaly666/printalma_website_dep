@@ -16,7 +16,7 @@ import {
   ImageIcon
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { useFabricCanvas } from '../../hooks/useFabricCanvas';

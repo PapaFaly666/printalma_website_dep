@@ -13,7 +13,7 @@ import {
   Edit3,
   Eye
 } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
 import { fabric } from 'fabric';

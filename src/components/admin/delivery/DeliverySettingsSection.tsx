@@ -12,7 +12,7 @@ import {
   Info,
   MapPin
 } from 'lucide-react';
-import { Button } from '../../../components/ui/button';
+import Button from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Switch } from '../../../components/ui/switch';
 import { Slider } from '../../../components/ui/slider';

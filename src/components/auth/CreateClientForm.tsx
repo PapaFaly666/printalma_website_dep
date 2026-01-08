@@ -4,7 +4,7 @@ import { VendeurType, VENDEUR_TYPE_METADATA, COUNTRIES_LIST, validateImageFile, 
 import { API_CONFIG } from '../../config/api';
 import { InlineLoading, ButtonLoading } from '../ui/loading';
 import { User, Mail, AlertCircle, CheckCircle, UserPlus, Users, Palette, Video, Sparkles, Phone, MapPin, Home, Store, Camera, Upload } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';

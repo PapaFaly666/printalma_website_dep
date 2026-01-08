@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { AspectRatio } from './ui/aspect-ratio';
 import { Product } from '../schemas/product.schema';
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Rocket, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 

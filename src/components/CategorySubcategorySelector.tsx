@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-react';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Label } from './ui/label';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';

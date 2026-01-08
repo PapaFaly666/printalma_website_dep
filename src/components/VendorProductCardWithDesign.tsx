@@ -15,7 +15,7 @@ import {
   Upload
 } from 'lucide-react';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Card, CardContent } from './ui/card';
 import {
   DropdownMenu,

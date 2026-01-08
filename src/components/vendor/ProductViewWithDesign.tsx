@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDesignTransforms } from '../../hooks/useDesignTransforms';
 import { Loader2, Save, Ruler, Shield, Info } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { debugProductIds } from '../../utils/vendorProductHelpers';
 import { Badge } from '../ui/badge';
 

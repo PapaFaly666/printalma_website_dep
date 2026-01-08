@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Wand2, Download, Loader2, AlertCircle, Sparkles, X } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { useToast } from '../ui/use-toast';
 import geminiService, { GeminiImageRequest } from '../../services/geminiService';
 

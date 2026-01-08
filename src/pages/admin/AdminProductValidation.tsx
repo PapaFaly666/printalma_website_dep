@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { adminValidationService } from '../../services/ProductValidationService';
 import { ProductWithValidation, PaginatedResponse } from '../../types/validation';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import {

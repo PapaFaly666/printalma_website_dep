@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import Button from '../components/ui/Button';
 
 export default function PersonalizationSection() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function PersonalizationSection() {
 
           {/* Section vidéo à gauche */}
           <div className="relative">
-            <div className="bg-gray-100 rounded p-2 xs:p-3 sm:p-3 md:p-4 h-56 xs:h-64 sm:h-80 md:h-96 lg:h-[450px] xl:h-[550px] flex items-center justify-center relative overflow-hidden shadow-md">
+            <div className="bg-gray-100 rounded p-2 xs:p-3 sm:p-3 md:p-4 h-64 xs:h-72 sm:h-96 md:h-[28rem] lg:h-[550px] xl:h-[650px] 2xl:h-[700px] flex items-center justify-center relative overflow-hidden shadow-md">
               <iframe
                 width="100%"
                 height="100%"
@@ -33,49 +34,51 @@ export default function PersonalizationSection() {
           </div>
 
           {/* Section contenu à droite */}
-          <div className="bg-yellow-400 rounded p-2 xs:p-2.5 sm:p-3 md:p-4 lg:p-6 shadow-md h-auto min-h-56 xs:min-h-64 sm:h-80 md:h-96 lg:h-[450px] xl:h-[550px] flex flex-col justify-center text-center overflow-hidden">
+          <div className="bg-yellow-400 rounded p-2 xs:p-2.5 sm:p-3 md:p-4 lg:p-6 shadow-md h-auto min-h-64 xs:min-h-72 sm:h-96 md:h-[28rem] lg:h-[550px] xl:h-[650px] 2xl:h-[700px] flex flex-col justify-center text-center overflow-hidden">
             <div className="space-y-1 xs:space-y-1.5 sm:space-y-2 md:space-y-3 lg:space-y-4 px-1">
-              <h2 className="text-[11px] xs:text-xs sm:text-sm md:text-base lg:text-lg xl:text-2xl font-bold text-black uppercase leading-tight px-1">
+              <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-black uppercase leading-tight px-1">
                 PERSONNALISEZ UN PRODUIT QUI VOUS IDENTIFIE
               </h2>
 
-              <p className="text-black font-medium text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg px-2">
+              <p className="text-black font-bold text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl px-2">
                 Chaque étape est pensée pour que vous soyez le créateur et créatif !
               </p>
 
-              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2 md:space-y-3 max-w-full mx-auto mt-2 xs:mt-3 sm:mt-4 md:mt-6 lg:mt-8 px-1">
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2 md:space-y-3 max-w-md mx-auto mt-2 xs:mt-3 sm:mt-4 md:mt-6 lg:mt-8 px-1">
                 <div className="flex items-start gap-1.5 xs:gap-2 sm:gap-2.5">
-                  <span className="bg-black text-yellow-400 w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 rounded-full flex items-center justify-center text-[10px] xs:text-xs sm:text-sm md:text-base font-bold flex-shrink-0 mt-0">1</span>
-                  <p className="text-black text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-medium text-left leading-snug">Choisissez votre produit</p>
+                  <span className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold flex-shrink-0">1.</span>
+                  <p className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-medium text-left leading-snug">Choisissez votre produit</p>
                 </div>
 
                 <div className="flex items-start gap-1.5 xs:gap-2 sm:gap-2.5">
-                  <span className="bg-black text-yellow-400 w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 rounded-full flex items-center justify-center text-[10px] xs:text-xs sm:text-sm md:text-base font-bold flex-shrink-0 mt-0">2</span>
-                  <p className="text-black text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-medium text-left leading-snug">Sélectionnez ou importez un design</p>
+                  <span className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold flex-shrink-0">2.</span>
+                  <p className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-medium text-left leading-snug">Sélectionnez ou importez un design</p>
                 </div>
 
                 <div className="flex items-start gap-1.5 xs:gap-2 sm:gap-2.5">
-                  <span className="bg-black text-yellow-400 w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 rounded-full flex items-center justify-center text-[10px] xs:text-xs sm:text-sm md:text-base font-bold flex-shrink-0 mt-0">3</span>
-                  <p className="text-black text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-medium text-left leading-snug">Personnalisez à votre façon</p>
+                  <span className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold flex-shrink-0">3.</span>
+                  <p className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-medium text-left leading-snug">Personnalisez à votre façon</p>
                 </div>
 
                 <div className="flex items-start gap-1.5 xs:gap-2 sm:gap-2.5">
-                  <span className="bg-black text-yellow-400 w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 rounded-full flex items-center justify-center text-[10px] xs:text-xs sm:text-sm md:text-base font-bold flex-shrink-0 mt-0">4</span>
-                  <p className="text-black text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-medium text-left leading-snug">Validez votre commande</p>
+                  <span className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold flex-shrink-0">4.</span>
+                  <p className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-medium text-left leading-snug">Validez votre commande</p>
                 </div>
 
                 <div className="flex items-start gap-1.5 xs:gap-2 sm:gap-2.5">
-                  <span className="bg-black text-yellow-400 w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 rounded-full flex items-center justify-center text-[10px] xs:text-xs sm:text-sm md:text-base font-bold flex-shrink-0 mt-0">5</span>
-                  <p className="text-black text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-medium text-left leading-snug">Recevez votre création chez vous</p>
+                  <span className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold flex-shrink-0">5.</span>
+                  <p className="text-black text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-medium text-left leading-snug">Recevez votre création chez vous</p>
                 </div>
               </div>
 
-              <button
+              <Button
                 onClick={handleChooseProduct}
-                className="mt-3 xs:mt-4 sm:mt-6 bg-white text-black px-2 xs:px-3 py-1 xs:py-1.5 sm:px-4 sm:py-2 md:px-6 md:py-3 lg:px-8 lg:py-4 rounded-lg font-semibold text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg hover:bg-gray-100 transition-colors duration-200 mx-auto"
+                variant="outline"
+                size="md"
+                className="mt-3 xs:mt-4 sm:mt-6 bg-white text-black hover:bg-gray-100 mx-auto"
               >
                 Choisir son produit
-              </button>
+              </Button>
             </div>
           </div>
 

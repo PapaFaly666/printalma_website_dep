@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Palette, Brush, Settings } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import IllustratorCanvas from './IllustratorCanvas';
 

@@ -1,5 +1,5 @@
 import { ShoppingCart } from 'lucide-react';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Badge } from './ui/badge';
 import { useCart } from '../hooks/useCart';
 import { useNavigate } from 'react-router-dom';

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Badge } from '../../components/ui/badge';
 import { Separator } from '../../components/ui/separator';
 import { 

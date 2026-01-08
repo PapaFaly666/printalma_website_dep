@@ -3,7 +3,7 @@ import VendorProductCardWithDesign from '../VendorProductCardWithDesign';
 import ProductImageGallery from '../ProductImageGallery';
 import DesignPreview from '../DesignPreview';
 import DesignConfigPanel from '../DesignConfigPanel';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Switch } from '../ui/switch';
 import { Badge } from '../ui/badge';

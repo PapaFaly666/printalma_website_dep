@@ -26,7 +26,7 @@ import {
   Ruler
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 
 // Types basés sur la documentation
 interface VendorOption {

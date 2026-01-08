@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Store } from 'lucide-react';
 
 const VendorPendingPage: React.FC = () => {

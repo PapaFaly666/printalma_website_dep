@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
-import { Button } from './button';
+import Button from './Button';
 import { Check, ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

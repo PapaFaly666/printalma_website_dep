@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Copy, Check, X, ArrowRight } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Badge } from '../ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';

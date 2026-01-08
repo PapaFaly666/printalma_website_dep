@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { useToast } from '../ui/use-toast';
 import vendorOnboardingService from '../../services/vendorOnboardingService';
 

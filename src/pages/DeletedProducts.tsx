@@ -8,7 +8,7 @@ import {
   CheckCircle,
   ArrowLeft
 } from 'lucide-react';
-import { Button } from "../components/ui/button";
+import Button from "../components/ui/Button";
 import { toast } from "sonner";
 import { Product } from '../schemas/product.schema';
 import { useDeletedProducts } from '../hooks/useDeletedProducts';

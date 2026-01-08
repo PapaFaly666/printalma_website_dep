@@ -5,7 +5,7 @@ import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check,
 import designService, { Design } from '../services/designService';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorPublish } from '../hooks/useVendorPublish';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 // ✅ CORRIGÉ : Retour à useDesignTransforms mais sans création automatique

@@ -23,7 +23,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardFooter } from '../ui/card';
 import { toast } from 'sonner';
 import { Skeleton } from '../ui/skeleton';

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { FormControl, FormDescription, FormItem, FormLabel } from "../components/ui/form";
 import { Switch } from "../components/ui/switch";
 import { Textarea } from "../components/ui/textarea";
-import { Button } from "../components/ui/button";
+import Button from "../components/ui/Button";
 
 const ProductAddDrawer = ({ isOpen, onClose, onAddProduct }) => {
   const methods = useForm({

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, CheckCircle, AlertCircle, FileImage } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';

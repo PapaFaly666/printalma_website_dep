@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNotifications } from '../hooks/useNotifications';
 import { BackendNotification } from '../services/notificationService';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/card';
 import { Bell, Check, CheckCheck, Trash2, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

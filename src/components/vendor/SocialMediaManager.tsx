@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Edit3, Save, X, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 

@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import Button from "./ui/Button";
 import { Skeleton } from "./ui/skeleton";
 import { Card, CardContent, CardFooter } from "./ui/card";
 import {

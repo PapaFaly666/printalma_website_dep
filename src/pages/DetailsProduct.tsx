@@ -3,7 +3,7 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Heart, Share2, ChevronRight, Plus, Minus, Truck, Shield, Star } from 'lucide-react';
 import { getRelatedProducts } from '../data/articleData';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
@@ -217,7 +217,7 @@ const DetailsProduct = () => {
                                 ))}
                             </div>
                             <span className="ml-2 text-sm text-gray-500">4.2 (4 avis)</span>
-                            <Button variant="link" className="text-sm px-1 h-auto">
+                            <Button variant="ghost" size="sm" className="text-sm px-1 h-auto">
                                 Lire les avis
                             </Button>
                         </div>
@@ -277,7 +277,7 @@ const DetailsProduct = () => {
                         <div>
                             <div className="flex items-center justify-between mb-3">
                                 <Label className="text-sm font-medium">Taille</Label>
-                                <Button variant="link" className="text-sm h-auto p-0">Guide des tailles</Button>
+                                <Button variant="ghost" size="sm" className="text-sm h-auto p-0">Guide des tailles</Button>
                             </div>
                             <RadioGroup
                                 value={selectedSize}
@@ -306,8 +306,8 @@ const DetailsProduct = () => {
                             <div className="flex items-center border border-gray-300 rounded-lg w-36 overflow-hidden">
                                 <Button
                                     variant="ghost"
-                                    size="icon"
-                                    className="h-10 w-10 rounded-none"
+                                    size="sm"
+                                    className="h-10 w-10 rounded-none p-0"
                                     onClick={decrementQuantity}
                                     disabled={quantity <= 1}
                                 >
@@ -316,8 +316,8 @@ const DetailsProduct = () => {
                                 <span className="flex-1 text-center py-2 font-medium">{quantity}</span>
                                 <Button
                                     variant="ghost"
-                                    size="icon"
-                                    className="h-10 w-10 rounded-none"
+                                    size="sm"
+                                    className="h-10 w-10 rounded-none p-0"
                                     onClick={incrementQuantity}
                                 >
                                     <Plus size={16} />
@@ -329,7 +329,7 @@ const DetailsProduct = () => {
                                 <span>Ajouter au panier</span>
                             </Button>
 
-                            <Button variant="outline" size="icon" className="h-12 w-12">
+                            <Button variant="outline" size="sm" className="h-12 w-12 p-0">
                                 <Heart size={20} />
                             </Button>
                         </div>

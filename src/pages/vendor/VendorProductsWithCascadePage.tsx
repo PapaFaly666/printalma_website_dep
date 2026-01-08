@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useVendorProductsWithCascade } from '../../hooks/useVendorProductsWithCascade';
 import { ProductStatusBadge } from '../../components/vendor/ProductStatusBadge';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';

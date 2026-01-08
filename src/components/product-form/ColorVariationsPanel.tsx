@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Plus, X, Upload, Palette, ImageIcon, Trash2, AlertCircle, Sparkles, Copy } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ColorVariation, ProductImage } from '../../types/product';
 import { resizeImage } from '../../utils/imageResizer';

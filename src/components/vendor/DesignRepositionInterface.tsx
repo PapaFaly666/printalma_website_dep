@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Product } from '../../services/productService';
 import { DesignPosition } from '../../services/designDuplicateService';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Save, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface DesignRepositionInterfaceProps {

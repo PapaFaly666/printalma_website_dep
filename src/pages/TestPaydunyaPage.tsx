@@ -3,7 +3,7 @@ import { orderService } from '../services/orderService';
 import { paydunyaService } from '../services/paydunyaService';
 import { usePaydunya } from '../hooks/usePaydunya';
 import { PAYDUNYA_CONFIG, PAYDUNYA_INSTRUCTIONS } from '../config/paydunyaConfig';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { AlertCircle, CheckCircle, Loader2, CreditCard, Smartphone, Wallet } from 'lucide-react';
 

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Crown, Search, Filter, Grid, List, TrendingUp, ShoppingBag, User } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';

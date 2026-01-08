@@ -18,7 +18,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { formatPrice } from '../../utils/priceUtils';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { useToast } from '../../components/ui/use-toast';
 import vendorDesignRevenueService, { DesignRevenue, DesignUsage } from '../../services/vendorDesignRevenueService';
 

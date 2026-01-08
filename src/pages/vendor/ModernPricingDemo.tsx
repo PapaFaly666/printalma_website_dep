@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ModernPricingProductCard } from '../../components/vendor/ModernPricingProductCard';
 import type { ModernPricingProduct } from '../../components/vendor/ModernPricingProductCard';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';

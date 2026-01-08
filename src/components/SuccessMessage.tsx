@@ -1,5 +1,5 @@
 import { CheckCircle2 } from 'lucide-react';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 
 interface SuccessMessageProps {
   navigate: (path: string) => void;

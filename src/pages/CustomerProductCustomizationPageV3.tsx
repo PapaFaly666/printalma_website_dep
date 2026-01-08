@@ -30,7 +30,7 @@ import {
   ChevronRight,
   Check
 } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { useToast } from '../components/ui/use-toast';
 import adminProductsService, { AdminProduct } from '../services/adminProductsService';
 import designService from '../services/designService';

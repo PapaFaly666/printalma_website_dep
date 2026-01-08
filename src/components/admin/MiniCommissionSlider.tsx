@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { VendeurType } from '../../types/auth.types';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import '../../styles/smooth-slider.css';
 import { 
   Percent, 

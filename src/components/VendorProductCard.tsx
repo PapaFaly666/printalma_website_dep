@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Crown, User, ShoppingBag, Eye } from 'lucide-react';
 
 interface VendorProductCardProps {

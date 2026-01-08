@@ -16,7 +16,7 @@ import {
 } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { ScrollArea, ScrollBar } from '../components/ui/scroll-area';
 
 // Définir le type pour un produit
@@ -224,7 +224,7 @@ const RelatedProductsTabs = () => {
       </Tabs>
 
       <div className="flex justify-end">
-        <Button variant="link" className="text-zinc-900 hover:text-zinc-700 font-medium text-sm p-0 flex items-center">
+        <Button variant="ghost" size="sm" className="text-zinc-900 hover:text-zinc-700 font-medium text-sm p-0 flex items-center">
           Voir tous les produits <ChevronRight className="w-4 h-4 ml-1" />
         </Button>
       </div>

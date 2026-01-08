@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import newOrderService from '../../services/newOrderService';
 import { Order } from '../../types/order';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { ArrowLeft, Package, Phone, Copy, Printer, Download, X, ZoomIn, ZoomOut, Maximize2, RotateCcw, Truck, MapPin, Clock, DollarSign, Calendar, Users } from 'lucide-react';
 import { formatCurrency, getStatusLabel } from '../../utils/orderUtils.tsx';

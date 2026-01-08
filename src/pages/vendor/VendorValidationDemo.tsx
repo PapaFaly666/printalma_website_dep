@@ -4,7 +4,7 @@ import { VendorProductCard } from '../../components/vendor/VendorProductCard';
 import { ValidationActionSelector } from '../../components/vendor/ValidationActionSelector';
 import { PublishValidatedProductButton } from '../../components/vendor/PublishValidatedProductButton';
 import { ProductStatusBadge } from '../../components/vendor/ProductStatusBadge';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { toast } from 'sonner';
 
 export const VendorValidationDemo: React.FC = () => {

@@ -7,7 +7,7 @@ import { hybridAuthService } from '../../services/hybridAuthService';
 import { useTokenRefresh } from '../../hooks/useTokenRefresh';
 import { API_CONFIG, API_ENDPOINTS } from '../../config/api';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/input';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle

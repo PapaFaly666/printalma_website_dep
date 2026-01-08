@@ -6,7 +6,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Button } from "../components/ui/button";
+import Button from "../components/ui/Button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Input } from "../components/ui/input";

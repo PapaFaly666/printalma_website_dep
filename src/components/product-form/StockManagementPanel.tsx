@@ -4,7 +4,7 @@ import { PackageOpen, Plus, Minus, AlertCircle } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 
 // Structure de stock par taille (pour une couleur)
 interface StockBySize {

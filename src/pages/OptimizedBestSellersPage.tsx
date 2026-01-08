@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { OptimizedBestSellersDashboard } from '../components/BestSellers/OptimizedBestSellersDashboard';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 
 export const OptimizedBestSellersPage: React.FC = () => {
   const [useOptimized, setUseOptimized] = useState(true);

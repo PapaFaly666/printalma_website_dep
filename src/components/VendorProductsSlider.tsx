@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import useFeaturedSlider from '../hooks/useFeaturedSlider';
 import VendorProductCard from './VendorProductCard';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 
 interface VendorProduct {
     id: number;

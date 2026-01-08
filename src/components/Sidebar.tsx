@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Separator } from '../components/ui/separator';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';

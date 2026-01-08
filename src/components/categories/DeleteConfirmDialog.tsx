@@ -1,7 +1,7 @@
 // src/components/categories/DeleteConfirmDialog.tsx
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import Button from '@/components/ui/Button';
 import { AlertCircle, Package, AlertTriangle, Trash2 } from 'lucide-react';
 import { DeleteCategoryResult } from '@/services/categoryDeleteService';
 

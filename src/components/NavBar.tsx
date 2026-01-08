@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { categoriesService, Category } from "../services/categoriesService";
 import { subCategoriesService, SubCategory } from "../services/subCategoriesService";
+import Button from "./ui/Button";
 
 const NavBar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -151,51 +152,58 @@ const NavBar = () => {
           {/* Actions droite */}
           <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
             {/* Bouton Devenir Vendeur */}
-            <button
+            <Button
               onClick={() => navigate('/devenir-vendeur')}
-              className="hidden sm:flex text-black font-semibold px-4 py-2 sm:px-5 sm:py-2.5 lg:px-6 lg:py-3 xl:px-7 xl:py-3.5 text-sm sm:text-base lg:text-lg xl:text-xl items-center space-x-1 lg:space-x-2 transition-all duration-200 border-2 border-transparent hover:border-yellow-500"
-              style={{
-                backgroundColor: "#F2D12E",
-                color: "black",
-                borderRadius: "6px"
-              }}
+              variant="primary"
+              size="lg"
+              className="hidden sm:flex"
+              icon={
+                <img
+                  src="/marketplace.svg"
+                  alt="marketplace"
+                  className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6"
+                />
+              }
             >
-              <img
-                src="/marketplace.svg"
-                alt="marketplace"
-                className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6"
-              />
-              <span>Devenir Vendeur</span>
-            </button>
+              Devenir Vendeur
+            </Button>
 
 
             {/* Panier */}
-            <button
-              onClick={() => {
-                console.log('🛒 [NavBar] Clic sur l icône panier, itemCount:', itemCount);
-                openCart();
-              }}
-              className="text-gray-700 hover:bg-gray-100 relative flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-md transition-all duration-200"
-            >
-              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+            <div className="relative">
+              <Button
+                onClick={() => {
+                  console.log('🛒 [NavBar] Clic sur l icône panier, itemCount:', itemCount);
+                  openCart();
+                }}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 sm:h-10 sm:w-10 p-0"
+                icon={<ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />}
+              />
               {itemCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-yellow-400 text-gray-900 text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {itemCount > 99 ? '99+' : itemCount}
                 </span>
               )}
-            </button>
+            </div>
 
             {/* Compte */}
             <div className="hidden md:block relative group">
-              <button className="text-gray-700 hover:bg-gray-100 flex items-center space-x-1 lg:space-x-2 px-2 py-1.5 lg:px-3 lg:py-2 xl:px-4 xl:py-2.5 rounded-md transition-all duration-200">
-                <img src="/connexion.svg" alt="connexion" className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6" />
+              <Button
+                variant="ghost"
+                size="md"
+                icon={<img src="/connexion.svg" alt="connexion" className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6" />}
+                iconPosition="left"
+                className="space-x-1 lg:space-x-2"
+              >
                 <span className="hidden lg:inline text-sm lg:text-base xl:text-lg">
                   {isAuthenticated && user ? `${user.firstName} ${user.lastName}` : 'Compte'}
                 </span>
                 <svg className="h-3 w-3 lg:h-4 lg:w-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-              </button>
+              </Button>
 
               <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="py-2">
@@ -204,7 +212,7 @@ const NavBar = () => {
                       {/* Bouton pour retourner à l'interface admin/vendeur */}
                       {(isAdmin() || isSuperAdmin() || isVendeur()) && (
                         <>
-                          <button
+                          <Button
                             onClick={() => {
                               if (isVendeur()) {
                                 navigate('/vendeur/dashboard');
@@ -212,11 +220,14 @@ const NavBar = () => {
                                 navigate('/admin/dashboard');
                               }
                             }}
-                            className="w-full px-4 py-2.5 text-left hover:bg-[#049be5]/10 transition-colors text-base flex items-center gap-2 text-[#049be5] font-semibold"
+                            variant="ghost"
+                            size="md"
+                            fullWidth
+                            className="justify-start hover:bg-[#049be5]/10 text-[#049be5] rounded-lg"
+                            icon={<LayoutDashboard className="w-5 h-5" />}
                           >
-                            <LayoutDashboard className="w-5 h-5" />
                             {isVendeur() ? 'Mon espace vendeur' : 'Mon espace admin'}
-                          </button>
+                          </Button>
                           <div className="border-t border-gray-100 my-1"></div>
                         </>
                       )}
@@ -225,30 +236,39 @@ const NavBar = () => {
                         {user.email}
                       </div>
 
-                      <button
+                      <Button
                         onClick={() => {
                           logout();
                           navigate('/');
                         }}
-                        className="w-full px-4 py-2 text-left hover:bg-red-50 transition-colors text-base text-red-600 font-medium"
+                        variant="danger"
+                        size="md"
+                        fullWidth
+                        className="justify-start hover:bg-red-50 rounded-lg"
                       >
                         Se déconnecter
-                      </button>
+                      </Button>
                     </>
                   ) : (
                     <>
-                      <button
+                      <Button
                         onClick={() => navigate('/login')}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-base font-medium"
+                        variant="secondary"
+                        size="md"
+                        fullWidth
+                        className="mb-2 rounded-lg"
                       >
                         Se connecter
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => navigate('/register')}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors text-base font-medium"
+                        variant="outline"
+                        size="md"
+                        fullWidth
+                        className="rounded-lg"
                       >
                         S'inscrire
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>
@@ -256,32 +276,40 @@ const NavBar = () => {
             </div>
 
             {/* Favoris */}
-            <button
-              onClick={() => {
-                console.log('💖 [NavBar] Clic sur l icône favoris, favoritesCount:', favoritesCount);
-                openFavorites();
-              }}
-              className="relative text-gray-700 hover:bg-gray-100 h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 xl:h-12 xl:w-12 rounded-md flex items-center justify-center transition-all duration-200"
-            >
-              <svg className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
+            <div className="relative">
+              <Button
+                onClick={() => {
+                  console.log('💖 [NavBar] Clic sur l icône favoris, favoritesCount:', favoritesCount);
+                  openFavorites();
+                }}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 xl:h-12 xl:w-12 p-0"
+                icon={
+                  <svg className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                }
+              />
               {favoritesCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 bg-pink-500 text-white text-xs lg:text-sm rounded-full flex items-center justify-center font-medium">
                   {favoritesCount > 99 ? '99+' : favoritesCount}
                 </span>
               )}
-            </button>
+            </div>
 
             {/* Menu mobile */}
-            <button
-              className="lg:hidden text-gray-700 hover:bg-gray-100 h-8 w-8 sm:h-9 sm:w-9 rounded-md flex items-center justify-center transition-all duration-200"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden h-8 w-8 sm:h-9 sm:w-9 p-0"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+              icon={
+                <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              }
+            />
           </div>
         </div>
       </div>
@@ -353,12 +381,14 @@ const NavBar = () => {
                                   ))}
                                 </div>
                                 <div className="mt-4 pt-4 border-t border-gray-100">
-                                  <button
+                                  <Button
                                     onClick={() => handleCategoryClick(category)}
-                                    className="text-blue-600 hover:text-blue-700 font-semibold text-base lg:text-lg transition-colors"
+                                    variant="ghost"
+                                    size="md"
+                                    className="text-blue-600 hover:text-blue-700 p-0 h-auto"
                                   >
                                     Voir tout dans {category.name} →
-                                  </button>
+                                  </Button>
                                 </div>
                               </div>
                             </div>
@@ -460,12 +490,22 @@ const NavBar = () => {
             <div className="space-y-2">
               {/* Auth section mobile */}
               <div className="flex space-x-2 pb-4 border-b border-gray-200 mb-4">
-                <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-base font-medium rounded-md">
+                <Button
+                  onClick={() => navigate('/login')}
+                  variant="secondary"
+                  size="md"
+                  className="flex-1"
+                >
                   Se connecter
-                </button>
-                <button className="flex-1 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 text-base font-medium rounded-md">
+                </Button>
+                <Button
+                  onClick={() => navigate('/register')}
+                  variant="outline"
+                  size="md"
+                  className="flex-1"
+                >
                   S'inscrire
-                </button>
+                </Button>
               </div>
 
               {/* Bouton Personnalisation toujours visible avec icône fire */}
@@ -497,20 +537,25 @@ const NavBar = () => {
               )}
 
               {/* Devenir Vendeur button mobile */}
-              <button
+              <Button
                 onClick={() => {
                   navigate('/devenir-vendeur');
                   setIsMobileMenuOpen(false);
                 }}
-                className="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-4 py-3 text-base lg:text-lg rounded-md flex items-center justify-center space-x-2 border-2 border-transparent hover:border-yellow-600 transition-all duration-200"
+                variant="primary"
+                size="lg"
+                fullWidth
+                className="mt-4"
+                icon={
+                  <img
+                    src="/marketplace.svg"
+                    alt="marketplace"
+                    className="h-5 w-5 lg:h-6 lg:w-6"
+                  />
+                }
               >
-                <img
-                  src="/marketplace.svg"
-                  alt="marketplace"
-                  className="h-5 w-5 lg:h-6 lg:w-6"
-                />
-                <span>Devenir Vendeur</span>
-              </button>
+                Devenir Vendeur
+              </Button>
             </div>
           </div>
         </div>
@@ -533,12 +578,13 @@ const NavBar = () => {
               <h3 className="text-xl lg:text-2xl font-semibold text-gray-900">
                 Toutes les catégories
               </h3>
-              <button
+              <Button
                 onClick={() => setShowAllCategoriesModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-              >
-                <X className="w-6 h-6 text-gray-500" />
-              </button>
+                variant="ghost"
+                size="sm"
+                className="p-0 h-10 w-10"
+                icon={<X className="w-6 h-6 text-gray-500" />}
+              />
             </div>
 
             {/* Content minimaliste */}
@@ -568,13 +614,15 @@ const NavBar = () => {
                       <div className="px-4 pb-3 bg-gray-50">
                         <div className="flex flex-wrap gap-2">
                           {categorySubCategories.map((subCategory) => (
-                            <button
+                            <Button
                               key={subCategory.id}
                               onClick={() => handleCategoryClick(category, subCategory)}
-                              className="px-3 py-2 text-base font-medium text-gray-700 hover:bg-white hover:text-blue-600 rounded-md border border-gray-200 hover:border-blue-300 transition-colors"
+                              variant="outline"
+                              size="sm"
+                              className="hover:bg-white hover:text-blue-600 hover:border-blue-300"
                             >
                               {subCategory.name}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>

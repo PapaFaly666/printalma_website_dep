@@ -8,7 +8,7 @@ import {
   SheetClose
 } from '../components/ui/sheet';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { AspectRatio } from '../components/ui/aspect-ratio';
 import { X, Heart, ShoppingCart, Check } from 'lucide-react';

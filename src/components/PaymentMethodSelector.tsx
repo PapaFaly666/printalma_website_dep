@@ -1,7 +1,7 @@
 import React from 'react';
 import { usePaydunya } from '../hooks/usePaydunya';
 import { usePaytech } from '../hooks/usePaytech';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { AlertCircle, CheckCircle, CreditCard, Wallet, Smartphone, Info } from 'lucide-react';
 

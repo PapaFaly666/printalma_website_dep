@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Trash2, Undo2, Search, XCircle, CheckCircle, Trash } from 'lucide-react';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 
 const ELEMENT_TYPES = [
   { value: 'product', label: 'Produits' },

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { authService } from '../../services/auth.service';
 import { ExtendedVendorProfile, COUNTRIES_LIST, validateImageFile, formatFileSize } from '../../types/auth.types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Alert, AlertDescription } from '../ui/alert';

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Upload, Loader2, X } from 'lucide-react';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { UPLOAD_CONFIG } from '../config/api';
 
 interface ColorImageUploaderProps {

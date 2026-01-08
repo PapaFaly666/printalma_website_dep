@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { PostValidationAction } from '../../types/cascadeValidation';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Rocket, FileText } from 'lucide-react';
 
 interface ValidationActionSelectorProps {

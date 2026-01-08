@@ -3,7 +3,7 @@ import { useVendors } from '../hooks/useVendors';
 import { formatLastLoginDate, formatJoinDate, getSellerTypeIcon, getSellerTypeLabel } from '../types/auth.types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Badge } from './ui/badge';
 import { 
   Building2, 

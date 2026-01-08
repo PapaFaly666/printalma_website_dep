@@ -11,7 +11,7 @@ import {
 } from '../ui/sheet';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Input } from '../ui/input';

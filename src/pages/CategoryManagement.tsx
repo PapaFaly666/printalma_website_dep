@@ -3,7 +3,7 @@ import {
   PlusCircle, Trash2, RefreshCcw, Loader2, Tag, Search, Package, ArrowLeft, Filter, Eye,
   Grid3X3, List, X
 } from 'lucide-react';
-import { Button } from "../components/ui/button";
+import Button from "../components/ui/Button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { 

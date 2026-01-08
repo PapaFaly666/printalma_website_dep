@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';

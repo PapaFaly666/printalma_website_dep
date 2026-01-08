@@ -8,7 +8,7 @@ import {
   Printer
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import {
   AlertDialog,

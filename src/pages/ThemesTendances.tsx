@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { designCategoryService, DesignCategory } from "../services/designCategoryService";
 import { Loader2 } from "lucide-react";
+import Button from "../components/ui/Button";
 
 interface ThemesTendancesProps {
   themes?: DesignCategory[];
@@ -178,9 +179,13 @@ const ThemesTendances = ({ themes: propThemes }: ThemesTendancesProps = {}) => {
           </svg>
         </h2>
 
-        <button className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-200 self-start sm:self-auto">
+        <Button
+          variant="danger"
+          size="md"
+          className="bg-red-500 hover:bg-red-600 text-xs sm:text-sm self-start sm:self-auto"
+        >
           Voir Tous les thèmes
-        </button>
+        </Button>
       </div>
 
       {/* Container principal */}

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';

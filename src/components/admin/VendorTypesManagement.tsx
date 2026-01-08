@@ -10,7 +10,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';

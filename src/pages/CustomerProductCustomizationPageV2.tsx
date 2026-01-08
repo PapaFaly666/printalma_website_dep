@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, ShoppingCart, ArrowLeft, Upload, Image as ImageIcon, X } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { useToast } from '../components/ui/use-toast';
 import adminProductsService, { AdminProduct } from '../services/adminProductsService';
 import designService, { Design } from '../services/designService';

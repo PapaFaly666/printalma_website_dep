@@ -1,4 +1,4 @@
-import { Button } from "./ui/button"; // Assure-toi que le chemin est correct
+import Button from "./ui/Button"; // Assure-toi que le chemin est correct
 import { useToast } from "./ui/use-toast"; // Assure-toi que le chemin est correct
 
 export const ToastDemo = () => {

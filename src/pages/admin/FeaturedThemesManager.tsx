@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { designCategoryService, DesignCategory } from '../../services/designCategoryService';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Loader2, GripVertical, Star, AlertCircle, Save, X, Plus, Eye, EyeOff, TrendingUp } from 'lucide-react';

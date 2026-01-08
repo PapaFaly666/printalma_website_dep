@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Client } from '../types/client.types';
 import { ClientWithCommission } from '../hooks/useClientsWithCommissions';
 import { VendeurType, VENDEUR_TYPE_METADATA } from '../types/auth.types';
-import { Button } from './ui/button';
+import Button from './ui/Button';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';

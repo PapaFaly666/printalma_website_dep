@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { InteractiveDelimitationCanvas } from '../product-form/InteractiveDelimitationCanvas';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Save, Upload, Image as ImageIcon, CheckCircle } from 'lucide-react';

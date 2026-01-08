@@ -751,21 +751,21 @@ export default function ProfilePage() {
           </div>
         )}
         {/* Fil d'Ariane */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-          <nav className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 mb-6">
+        <div className="px-6 pt-6">
+          <nav className="flex items-center gap-2 sm:gap-3 text-sm sm:text-base text-gray-600 mb-6">
             {/* Accueil */}
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-1 hover:text-blue-600 transition-colors duration-200"
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors duration-200"
             >
-              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
               <span className="hidden xs:inline">Accueil</span>
             </button>
 
             {/* Séparateur */}
-            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
 
@@ -778,7 +778,7 @@ export default function ProfilePage() {
             </button>
 
             {/* Séparateur */}
-            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
 
@@ -793,15 +793,15 @@ export default function ProfilePage() {
         </div>
 
         {/* Section profil - Structure optimisée */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="px-6 py-4 sm:py-6 lg:py-8">
           {/* Hero Profile Section - Structure 3 colonnes */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 sm:p-8 mb-8">
-            <div className="flex flex-col lg:flex-row gap-3 lg:gap-6 items-start w-full">
+          <div className="bg-white rounded-lg border border-gray-200 p-6 sm:p-8 lg:p-10 mb-8">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 items-start w-full">
 
               {/* Colonne 1 - Zone de profil (gauche) */}
               <div className="flex justify-start">
                 <div
-                  className="w-48 h-48 rounded-xl flex items-center justify-center p-6 relative"
+                  className="w-56 h-56 sm:w-64 sm:h-64 rounded-xl flex items-center justify-center p-8 relative"
                   style={{
                     backgroundColor: '#F2D12E' // Jaune selon design spec
                   }}
@@ -815,7 +815,7 @@ export default function ProfilePage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <svg className="w-18 h-18 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-24 h-24 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                       </svg>
                     )}
@@ -824,27 +824,27 @@ export default function ProfilePage() {
               </div>
 
               {/* Colonne 2 - Informations du designer (milieu) */}
-              <div className="flex-1 text-left space-y-1">
+              <div className="flex-1 text-left space-y-2">
                 {/* Nom du designer */}
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 leading-tight" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 leading-tight" style={{ fontFamily: "'Inter', sans-serif" }}>
                   {vendorData?.shop_name || `${vendorData?.firstName || 'Designer'} ${vendorData?.lastName || ''}`.trim()}
                 </h1>
 
                 {/* Rating */}
-                <div className="flex items-center justify-start gap-2">
-                  <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                <div className="flex items-center justify-start gap-2.5">
+                  <svg className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-400 fill-current" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
-                  <span className="text-lg font-bold text-gray-900">4.8</span>
+                  <span className="text-2xl sm:text-3xl font-bold text-gray-900">4.8</span>
                 </div>
 
                 {/* Titre/Fonction */}
-                <p className="text-base text-gray-700 font-medium" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 font-medium" style={{ fontFamily: "'Inter', sans-serif" }}>
                   {vendorBio.professional_title || (vendorData?.shop_name ? 'Créateur de designs personnalisés' : 'Graphic Designer')}
                 </p>
 
                 {/* Réseaux sociaux */}
-                <div className="flex items-center justify-start gap-2">
+                <div className="flex items-center justify-start gap-3">
                   {Object.keys(profile.socialLinks)
                     .filter(network => {
                       const url = profile.socialLinks[network as keyof typeof profile.socialLinks];
@@ -854,7 +854,7 @@ export default function ProfilePage() {
                       <a
                         key={network}
                         href={profile.socialLinks[network as keyof typeof profile.socialLinks]}
-                        className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
                         style={{ backgroundColor: '#F2D12E' }} // Jaune selon design spec
                         target="_blank"
                         rel="noopener noreferrer"
@@ -869,11 +869,11 @@ export default function ProfilePage() {
 
               {/* Colonne 3 - A propos (droite) */}
               <div className="flex-1">
-                <div className="text-left space-y-1">
-                  <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <div className="text-left space-y-2">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: "'Inter', sans-serif" }}>
                     À propos
                   </h2>
-                  <div className="space-y-2 text-gray-700 leading-relaxed text-sm" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  <div className="space-y-3 text-gray-700 leading-relaxed text-base sm:text-lg" style={{ fontFamily: "'Inter', sans-serif" }}>
                     {vendorBio.vendor_bio ? (
                       <p className="whitespace-pre-wrap">{vendorBio.vendor_bio}</p>
                     ) : (
@@ -896,11 +896,11 @@ export default function ProfilePage() {
           {(loadingGallery || (gallery && gallery.images && gallery.images.length > 0)) && (
             <div className="mb-12">
               {/* Titre Galerie */}
-              <div className="flex items-center gap-2 mb-6">
-                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="flex items-center gap-3 mb-6">
+                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Galerie
                 </h3>
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-400 fill-current" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                 </svg>
               </div>
@@ -1004,104 +1004,104 @@ export default function ProfilePage() {
           <div className="mb-12">
             <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
               {/* Sidebar */}
-              <aside className="w-full lg:w-48 lg:flex-shrink-0">
+              <aside className="w-full lg:w-64 lg:flex-shrink-0">
                 {/* Mobile sidebar toggle pour plus tard */}
                 <div className="lg:hidden mb-4">
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg w-full justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <button className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-300 rounded-lg w-full justify-between">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                       </svg>
-                      <span className="font-medium">Filtres</span>
+                      <span className="font-bold text-lg">Filtres</span>
                     </div>
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-5 h-5" />
                   </button>
                 </div>
 
                 {/* Sidebar Content */}
                 <div className="hidden lg:block">
-                  <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
                     {/* Boutique Header */}
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-6">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="mb-8">
+                      <div className="flex items-center gap-3 mb-8">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
-                        <h2 className="font-bold text-base sm:text-lg tracking-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>Boutique</h2>
+                        <h2 className="font-bold text-xl tracking-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>Boutique</h2>
                       </div>
 
                       {/* Catégories */}
-                      <div className="mb-6">
-                        <button className="flex items-center justify-between w-full py-2 text-sm font-medium mb-3">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="mb-8">
+                        <button className="flex items-center justify-between w-full py-3 text-lg font-bold mb-5">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
-                            <span className="font-semibold">Catégories</span>
+                            <span className="font-bold">Catégories</span>
                           </div>
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-6 h-6" />
                         </button>
-                        <div className="pl-6 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="pl-8 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Hommes</label>
+                            <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Hommes</label>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Femmes</label>
+                            <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Femmes</label>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Enfants</label>
+                            <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Enfants</label>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
-                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Bébés</label>
+                            <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Bébés</label>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
-                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Accessoires</label>
+                            <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Accessoires</label>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
-                            <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Stickers</label>
+                            <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Stickers</label>
                           </div>
                         </div>
                       </div>
 
                       {/* Produits */}
                       <div>
-                        <button className="flex items-center justify-between w-full py-2 text-sm font-medium mb-3">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button className="flex items-center justify-between w-full py-3 text-lg font-bold mb-5">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
-                            <span className="font-semibold">Produits</span>
+                            <span className="font-bold">Produits</span>
                           </div>
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-6 h-6" />
                         </button>
-                        <div className="pl-6 space-y-2 text-sm text-gray-700">
+                        <div className="pl-8 space-y-3 text-base text-gray-700">
                           {loadingCategories ? (
-                            <div className="flex items-center gap-2 py-1">
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                            <div className="flex items-center gap-3 py-2">
+                              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                               <span className="text-gray-500">Chargement...</span>
                             </div>
                           ) : (
                             <>
                               {subCategories.length === 0 ? (
-                                <span className="text-gray-500 py-1">Aucune sous-catégorie</span>
+                                <span className="text-gray-500 py-2">Aucune sous-catégorie</span>
                               ) : (
                                 subCategories.map((subCategory) => (
                                   <button
@@ -1112,7 +1112,7 @@ export default function ProfilePage() {
                                         selectedSubCategory?.id === subCategory.id ? null : subCategory
                                       );
                                     }}
-                                    className={`text-left block w-full text-left py-1 transition-colors ${
+                                    className={`text-left block w-full text-left py-2 transition-colors ${
                                       selectedSubCategory?.id === subCategory.id
                                         ? 'text-blue-600 font-semibold'
                                         : 'hover:text-blue-600'
@@ -1134,11 +1134,11 @@ export default function ProfilePage() {
               {/* Main Content */}
               <main className="flex-1 min-w-0">
                 {/* Titre Produits */}
-                <div className="flex items-center gap-2 mb-6">
-                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <div className="flex items-center gap-3 mb-6">
+                  <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                     Produits
                   </h3>
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 sm:w-7 sm:h-7 text-blue-500 fill-current" viewBox="0 0 24 24">
                     <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                   </svg>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Info } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';

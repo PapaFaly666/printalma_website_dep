@@ -382,19 +382,12 @@ const BestSellersGrid = () => {
   return (
     <div className="w-full py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10 lg:pt-12">
       <div className="w-full px-3 xs:px-4 sm:px-6 md:px-8">
-        {/* En-tête avec titre uniforme - identique à NouveautesGrid */}
-        <div className="flex flex-col xs:flex-row sm:flex-row items-start xs:items-center gap-2 xs:gap-3 sm:gap-4 mb-1">
+        {/* En-tête avec titre centré */}
+        <div className="flex flex-col items-center gap-3 xs:gap-4 sm:gap-4 mb-3 xs:mb-4 sm:mb-5 md:mb-6">
           <h2 className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-1.5 xs:gap-2">
             <span className="font-bold">Les meilleures ventes</span>
             <img src="/fire.svg" alt="Fire" className="w-4 h-4 xs:w-5 xs:h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
           </h2>
-
-          <button
-            onClick={() => navigate('/best-sellers')}
-            className="bg-red-500 hover:bg-red-600 text-white px-2 xs:px-2.5 py-1 xs:py-1.5 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-lg text-[10px] xs:text-xs sm:text-sm md:text-base font-medium transition-colors duration-200"
-          >
-            Voir toutes
-          </button>
         </div>
 
         {/* Container avec navigation latérale - identique à NouveautesGrid */}
@@ -474,12 +467,20 @@ const BestSellersGrid = () => {
           </button>
         </div>
 
+        {/* Bouton "Voir plus" centré */}
+        <div className="flex justify-center mt-3 xs:mt-4 sm:mt-4">
+          <button
+            onClick={() => navigate('/best-sellers')}
+            className="bg-red-500 hover:bg-red-600 text-white px-2 xs:px-2.5 py-1 xs:py-1.5 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-[10px] xs:text-xs sm:text-sm md:text-base font-medium transition-colors duration-200"
+          >
+            Voir plus
+          </button>
+        </div>
+
         {/* Message informatif - identique à NouveautesGrid */}
-        {bestSellersData.length <= 4 && (
-          <div className="text-center text-gray-500 text-[10px] xs:text-xs sm:text-sm mt-2 xs:mt-3 sm:mt-4">
-            {bestSellersData.length} produit{bestSellersData.length > 1 ? 's' : ''} disponible{bestSellersData.length > 1 ? 's' : ''}
-          </div>
-        )}
+        <div className="text-center text-gray-500 text-[10px] xs:text-xs sm:text-sm mt-2 xs:mt-3 sm:mt-4">
+          {bestSellersData.length} produit{bestSellersData.length > 1 ? 's' : ''} disponible{bestSellersData.length > 1 ? 's' : ''}
+        </div>
       </div>
     </div>
   );

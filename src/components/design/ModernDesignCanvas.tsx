@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Loader2, Move, Save, Ruler, Palette, X, Plus, Info, PencilLine } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useDesignTransforms } from '../../hooks/useDesignTransforms';

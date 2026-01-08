@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';

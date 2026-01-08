@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ProductListModern } from '../../components/admin/ProductListModern';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { apiGet, apiPatch, apiDelete, is404Error } from '../../utils/apiHelpers';
 import { Plus, Package } from 'lucide-react';
 

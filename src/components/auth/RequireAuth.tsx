@@ -3,7 +3,7 @@ import { checkAdminAuth, redirectToLogin, type AuthCheckResult } from '../../mid
 import { Card, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2, Shield, AlertTriangle, Lock } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 
 interface RequireAuthProps {
   children: ReactNode;

@@ -1,7 +1,8 @@
 import React, { useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Crown, TrendingUp, User } from 'lucide-react';
-import { Button } from './ui/button';
+import Button from './ui/Button';
+import CustomButton from './ui/Button';
 import { BestSellerCard } from './BestSellerCard';
 import { useBestSellers } from '../hooks/useBestSellers';
 import { BestSellerProduct } from '../types/bestSellers';
@@ -264,9 +265,9 @@ const BestSellersCarousel: React.FC<BestSellersCarouselProps> = ({
                 nos clients les plus exigeants.
               </p>
               {showViewAllButton && (
-                <button 
+                <button
                   onClick={() => navigate('/best-sellers')}
-                  className="bg-white text-[#F59E0B] px-6 py-2 rounded-md font-semibold text-sm hover:bg-gray-100 transition-colors duration-200"
+                  className="bg-white text-[#F59E0B] hover:bg-gray-100 px-2 xs:px-2.5 py-1 xs:py-1.5 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-[10px] xs:text-xs sm:text-sm md:text-base font-medium transition-colors duration-200"
                 >
                   Voir tout
                 </button>

@@ -8,7 +8,7 @@ import { ClientsTable } from '../components/ClientsTable';
 import { Pagination } from '../components/Pagination';
 import { ClientDetailsSheet } from '../components/admin/ClientDetailsSheet';
 import { VendorTypesManagementModal } from '../components/admin/VendorTypesManagementModal';
-import { Button } from '../components/ui/button';
+import Button from '../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';

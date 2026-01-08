@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LogIn, Eye, EyeOff, User, Lock, AlertCircle, CheckCircle } from 'lucide-react';
-import { Button } from '../ui/button';
+import Button from '../ui/Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';

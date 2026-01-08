@@ -16,7 +16,7 @@ import {
   XCircle,
   Zap
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
+import Button from '../../components/ui/Button';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent } from '../../components/ui/card';
 import { Separator } from '../../components/ui/separator';

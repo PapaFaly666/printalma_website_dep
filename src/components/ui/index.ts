@@ -1,7 +1,7 @@
 // Export all reusable UI components for easy imports
 export { CategoryAutocomplete } from './category-autocomplete';
 export { ChipsInput } from './chips-input';
-export { Button } from './button';
+export { default as Button } from './Button';
 export { Input } from './input';
 export { Badge } from './badge';
 export { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './card';

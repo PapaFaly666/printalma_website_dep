@@ -4,7 +4,7 @@ import {
   Loader2, Package, ArrowLeft, Edit, Trash2, Eye, Rocket
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from "../../components/ui/button";
+import Button from "../../components/ui/Button";
 import { Input } from "../../components/ui/input";
 import {
   Select,
