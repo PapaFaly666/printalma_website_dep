@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
+import Button from '../components/ui/Button';
 
 export default function BecomeVendorPage() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ export default function BecomeVendorPage() {
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-red-500"></div>
 
         {/* Container principal avec même padding que NavBar */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-10 lg:px-16 xl:px-20 2xl:px-24">
           <div className="max-w-3xl mx-auto text-center">
             {/* Titre principal avec soulignement */}
             <div className="mb-6">
@@ -45,67 +46,72 @@ export default function BecomeVendorPage() {
             </p>
 
             {/* Bouton CTA */}
-            <button
+            <Button
               onClick={() => navigate('/vendeur/register')}
-              className="inline-block bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-lg px-10 py-3 rounded shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+              variant="primary"
+              size="lg"
             >
               Je me lance !
-            </button>
+            </Button>
           </div>
         </div>
       </section>
 
       {/* Section avec deux colonnes - Image + Contenu jaune */}
       <section className="py-16 lg:py-20 bg-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="w-full px-10 lg:px-16 xl:px-20 2xl:px-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-stretch">
 
             {/* Colonne gauche - Image mockup */}
-            <div className="order-2 lg:order-1">
-              <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center">
-                <img
-                  src="/Asset 22@200x-100.jpg"
-                  alt="Mockup boutique en ligne"
-                  className="w-full h-auto object-cover max-h-[440px]"
-                />
-              </div>
+            <div className="order-2 lg:order-1 h-[600px] rounded-2xl overflow-hidden">
+              <img
+                src="/Asset 22@200x-100.jpg"
+                alt="Mockup boutique en ligne"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             {/* Colonne droite - Encadré jaune */}
-            <div className="order-1 lg:order-2">
-              <div className="bg-yellow-400 rounded-lg p-6 lg:p-8 shadow-lg flex flex-col">
-                <h2 className="text-2xl sm:text-3xl font-black text-black mb-6 italic text-center font-bold">
-                  Designer , Artiste ou influancer,<br />
-                  Créé ta boutique et gagne de<br />
-                  l'argent.
-                </h2>
+            <div className="order-1 lg:order-2 h-[600px]">
+              <div className="bg-yellow-400 rounded-2xl p-5 sm:p-6 lg:p-7 shadow-lg flex flex-col justify-between h-full">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-black mb-4 sm:mb-5 italic text-center">
+                    Designer , Artiste ou influancer,<br />
+                    Créé ta boutique et gagne de<br />
+                    l'argent.
+                  </h2>
 
-                {/* Illustrations produits */}
-                <div className="flex justify-center gap-6 mb-6">
-                  <div className="w-20 h-20 rounded transform rotate-12 flex items-center justify-center">
-                    <img src="/Asset 24.svg" alt="Package" className="w-full h-full object-contain" />
+                  {/* Illustrations produits */}
+                  <div className="flex justify-center items-center gap-6 sm:gap-8 lg:gap-10 mb-4 sm:mb-5">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded transform rotate-12 flex items-center justify-center -mt-6 sm:-mt-8">
+                      <img src="/Asset 24.svg" alt="Package" className="w-full h-full object-contain" />
+                    </div>
+                    <div className="w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-lg flex items-center justify-center">
+                      <img src="/Asset 23.svg" alt="T-shirt" className="w-full h-full object-contain" />
+                    </div>
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded transform -rotate-12 flex items-center justify-center -mt-6 sm:-mt-8">
+                      <img src="/Asset 25.svg" alt="Palette" className="w-full h-full object-contain" />
+                    </div>
                   </div>
-                  <div className="w-24 h-24 rounded-lg flex items-center justify-center -mt-2">
-                    <img src="/Asset 23.svg" alt="T-shirt" className="w-full h-full object-contain" />
-                  </div>
-                  <div className="w-20 h-20 rounded transform -rotate-12 flex items-center justify-center">
-                    <img src="/Asset 25.svg" alt="Palette" className="w-full h-full object-contain" />
-                  </div>
-                </div>
 
-                {/* Liste numérotée */}
-                <div className="mb-3 text-center">
-                  <p className="text-black text-sm sm:text-base italic">1. Lorem ipsum dolor sit amet,</p>
-                  <p className="text-black text-sm sm:text-base italic">2. consectetuer adipiscing elit,</p>
-                  <p className="text-black text-sm sm:text-base italic">3. sed diam nonummy nibh euismod</p>
-                  <p className="text-black text-sm sm:text-base italic">4. incidunt ut laoreet dolore magna</p>
+                  {/* Liste numérotée */}
+                  <div className="mb-2 mx-auto w-fit text-left">
+                    <p className="text-black text-lg sm:text-xl lg:text-2xl font-medium italic">1.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Lorem ipsum dolor sit amet,</p>
+                    <p className="text-black text-lg sm:text-xl lg:text-2xl font-medium italic">2.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;consectetuer adipiscing elit,</p>
+                    <p className="text-black text-lg sm:text-xl lg:text-2xl font-medium italic">3.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sed diam nonummy nibh euismod</p>
+                    <p className="text-black text-lg sm:text-xl lg:text-2xl font-medium italic">4.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;incidunt ut laoreet dolore magna</p>
+                  </div>
                 </div>
 
                 {/* Bouton */}
-                <div className="text-center">
-                  <button className="bg-white hover:bg-gray-100 text-black font-semibold text-sm px-8 py-2 rounded shadow hover:shadow-md transition-all duration-300">
+                <div className="text-center mt-auto">
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    className="bg-white hover:bg-gray-100 text-black border-2 border-gray-300"
+                  >
                     Plus de détails
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -115,49 +121,50 @@ export default function BecomeVendorPage() {
       </section>
 
       {/* Section Mettez vos designs en vente */}
-      <section className="py-16 lg:py-20 bg-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="py-0 bg-white">
+        <div className="w-full px-10 lg:px-16 xl:px-20 2xl:px-24 text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-black mb-4 italic">
             Mettez vos design en vente<br />
             sur plusieurs produits !
           </h2>
 
-          <p className="text-base sm:text-lg text-black mb-12 italic">
+          <p className="text-base sm:text-lg text-black mb-12 italic font-bold">
             Creer votre E-shop marketplace, uploaderr vos<br />
             design sur les produits , et vendez vos produits sans dépenser de l'argent.
           </p>
 
           {/* Carrousel de produits avec carrés roses */}
           <div className="relative mb-16">
-            {/* Carrés produits - Centrés dans le container */}
-            <div className="flex justify-center items-center gap-4 lg:gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="relative flex-shrink-0"
-                  style={{
-                    width: i === 2 || i === 3 ? '200px' : '180px',
-                    height: i === 2 || i === 3 ? '200px' : '180px'
-                  }}
-                >
-                  <div className="w-full h-full bg-pink-500 rounded-lg border-4 border-white shadow-lg relative overflow-hidden">
-                    {/* Diagonales blanches */}
-                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="1" opacity="0.5" />
-                      <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="1" opacity="0.5" />
-                    </svg>
-                  </div>
+            {/* Container avec espace pour les boutons */}
+            <div className="relative">
+              {/* Carrés produits - Responsive sans overflow hidden */}
+              <div className="overflow-x-visible">
+                <div className="flex justify-center items-center gap-3 sm:gap-4 md:gap-5 lg:gap-7 pb-4 px-18 sm:px-22 md:px-26">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="relative flex-shrink-0 w-54 h-64 sm:w-62 sm:h-72 md:w-68 md:h-80 lg:w-76 lg:h-96 xl:w-88 xl:h-[28rem]"
+                    >
+                      <div className="w-full h-full bg-pink-500 rounded-lg border-4 border-white shadow-lg relative overflow-hidden">
+                        {/* Diagonales blanches */}
+                        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                          <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="1" opacity="0.5" />
+                          <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="1" opacity="0.5" />
+                        </svg>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
 
-            {/* Boutons de navigation - Positionnés en absolu */}
-            <button className="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center hover:bg-gray-400 transition-colors">
-              <span className="text-gray-600 text-xl font-bold">‹</span>
-            </button>
-            <button className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center hover:bg-gray-400 transition-colors">
-              <span className="text-gray-600 text-xl font-bold">›</span>
-            </button>
+              {/* Boutons de navigation - Positionnés en absolu */}
+              <button className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 shadow-lg z-10">
+                <span className="text-gray-700 text-2xl sm:text-3xl lg:text-4xl font-bold">‹</span>
+              </button>
+              <button className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 shadow-lg z-10">
+                <span className="text-gray-700 text-2xl sm:text-3xl lg:text-4xl font-bold">›</span>
+              </button>
+            </div>
           </div>
 
           {/* Section rouge - On s'occupe de tout */}
@@ -201,23 +208,23 @@ export default function BecomeVendorPage() {
       {/* Section Témoignages - Grille 2x2 */}
       {/* Section Témoignages - Grille horizontale 4 cartes */}
       <section className="py-16 lg:py-20 bg-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="w-full px-10 lg:px-16 xl:px-20 2xl:px-24">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               { name: 'Khalil', title: 'Graphiste Designer' },
               { name: 'Tanor Custom', title: 'Designer' },
               { name: 'Fatou Fall', title: 'Influencer' },
               { name: 'Bmjaay', title: 'Artiste Rappeur' }
             ].map((person, index) => (
-              <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="flex flex-col items-center text-center mb-4">
-                  <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center text-white text-xl font-bold mb-3">
+              <div key={index} className="bg-white border-2 border-gray-200 rounded-xl p-10 shadow-md hover:shadow-xl transition-all duration-300 min-h-[500px] flex flex-col">
+                <div className="flex flex-col items-center text-center mb-8">
+                  <div className="w-28 h-28 bg-black rounded-full flex items-center justify-center text-white text-4xl font-bold mb-5">
                     {person.name.charAt(0)}
                   </div>
-                  <h4 className="font-bold text-base text-black">{person.name}</h4>
-                  <p className="text-xs text-gray-600">{person.title}</p>
+                  <h4 className="font-bold text-2xl text-black mb-2">{person.name}</h4>
+                  <p className="text-base text-gray-600">{person.title}</p>
                 </div>
-                <p className="text-xs text-gray-700 leading-relaxed italic text-center">
+                <p className="text-base text-gray-700 leading-relaxed italic text-center flex-grow">
                   " Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio"
                 </p>
               </div>
@@ -228,7 +235,7 @@ export default function BecomeVendorPage() {
 
       {/* Section Marques qui nous font confiance */}
       <section className="py-12 bg-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-10 lg:px-16 xl:px-20 2xl:px-24">
           <h2 className="text-2xl sm:text-3xl font-black text-black text-center mb-8 italic">
             D'innombrables marques, nous font confiance !
           </h2>

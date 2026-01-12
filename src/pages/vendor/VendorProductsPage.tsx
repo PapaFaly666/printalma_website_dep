@@ -16,7 +16,8 @@ import {
   Settings,
   Search,
   X,
-  Save
+  Save,
+  Sticker
 } from 'lucide-react';
 import {
   Dialog,
@@ -27,6 +28,7 @@ import {
   DialogClose
 } from '../../components/ui/dialog';
 import { SimpleProductPreview } from '../../components/vendor/SimpleProductPreview';
+import { VendorStickersList } from '../../components/vendor/VendorStickersList';
 
 // Services et hooks
 import { vendorProductService } from '../../services/vendorProductService';
@@ -200,6 +202,7 @@ export const VendorProductsPage: React.FC = () => {
   }>>({});
   
   // États pour les filtres et la vue
+  const [activeTab, setActiveTab] = useState<'products' | 'stickers'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
@@ -959,8 +962,50 @@ export const VendorProductsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        {/* Onglets Produits / Stickers */}
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`
+                py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                ${activeTab === 'products'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                <span>Produits avec Design</span>
+                <Badge variant="secondary" className="ml-1">{stats.total}</Badge>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('stickers')}
+              className={`
+                py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                ${activeTab === 'stickers'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              <div className="flex items-center gap-2">
+                <Sticker className="w-5 h-5" />
+                <span>Autocollants</span>
+              </div>
+            </button>
+          </nav>
+        </div>
+
+        {/* Contenu selon l'onglet actif */}
+        {activeTab === 'stickers' ? (
+          <VendorStickersList />
+        ) : (
+          <>
+            {/* Statistiques */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -1808,6 +1853,8 @@ export const VendorProductsPage: React.FC = () => {
             </div>
           </DialogContent>
         </Dialog>
+          </>
+        )}
       </div>
     </div>
   );

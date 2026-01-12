@@ -43,6 +43,7 @@ import SizeQuantityModal from '../components/SizeQuantityModal';
 import { useCart } from '../contexts/CartContext';
 import Footer from '../components/Footer';
 import AIImageGenerator from '../components/ai-image-generator/AIImageGenerator';
+import SynchronizedStickerPreview from '../components/SynchronizedStickerPreview';
 
 // Fonction debounce pour l'auto-sauvegarde
 function debounce<T extends (...args: any[]) => any>(

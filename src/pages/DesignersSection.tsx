@@ -19,11 +19,11 @@ export default function DesignersSection() {
 
       {/* Container principal */}
       <div className="w-full px-3 xs:px-4 sm:px-6">
-        <div className="rounded-md overflow-hidden">
+        <div className="rounded-2xl overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[20rem] xs:min-h-[24rem] sm:min-h-[28rem] lg:h-[36rem]">
 
             {/* Colonne gauche */}
-            <div className="text-black flex flex-col justify-center items-center px-3 xs:px-4 sm:px-5 md:px-6 py-4 xs:py-6 sm:py-8 bg-yellow-400 text-center">
+            <div className="text-black flex flex-col justify-center items-center px-3 xs:px-4 sm:px-5 md:px-6 py-4 xs:py-6 sm:py-8 text-center" style={{ backgroundColor: '#f1d12d' }}>
               <img
                 src="/Asset 35.svg"
                 alt="Design Icon"
@@ -40,20 +40,20 @@ export default function DesignersSection() {
               <Button
                 onClick={() => navigate('/designers')}
                 variant="outline"
-                size="md"
-                className="bg-white text-black hover:bg-gray-100 text-[10px] xs:text-xs sm:text-sm"
+                size="xl"
+                className="bg-[#e61d2c] text-white hover:bg-red-700 px-6 xs:px-8 py-2.5 xs:py-3 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium"
               >
                 Découvrir
               </Button>
             </div>
 
             {/* Colonne droite - Grille designers statique */}
-            <div className="bg-yellow-400 relative">
+            <div className="relative" style={{ backgroundColor: '#f1d12d' }}>
               <div className="grid grid-cols-3 gap-0.5 xs:gap-1 sm:gap-1 md:gap-2 p-2 xs:p-2.5 sm:p-3 md:p-4 h-full auto-rows-fr">
                 {displayDesigners.map((designer, index) => (
                   <div
                     key={designer.id}
-                    className={`${index === 3 ? "row-span-3" : index === 0 || index === 2 || index === 4 || index === 5 ? "row-span-2" : ""} bg-black rounded overflow-hidden relative group flex flex-col items-center justify-center text-white`}
+                    className={`${index === 3 ? "row-span-3" : index === 0 || index === 2 || index === 4 || index === 5 ? "row-span-2" : ""} bg-black rounded-2xl overflow-hidden relative group flex flex-col items-center justify-center text-white`}
                   >
                     <img
                       src={designer.avatarUrl}

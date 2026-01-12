@@ -31,7 +31,8 @@ import {
     User,
     Banknote,
     Layers,
-    Sparkles
+    Sparkles,
+    Sticker
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -165,6 +166,8 @@ export default function VendorSidebar() {
             setActiveItem('deleted-products');
         } else if (location.pathname.includes('/vendeur/sales')) {
             setActiveItem('sales');
+        } else if (location.pathname.includes('/vendeur/stickers')) {
+            setActiveItem('stickers');
         } else if (location.pathname.includes('/vendeur/sell-design')) {
             setActiveItem('sell-design');
         } else if (location.pathname.includes('/vendeur/account')) {
@@ -423,6 +426,16 @@ export default function VendorSidebar() {
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'sell-design'}
                             onClick={() => handleNavigation('sell-design')}
+                            badge=""
+                            textColor=""
+                        />
+
+                        <NavItem
+                            icon={<Sticker size={20} />}
+                            label="Stickers"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'stickers'}
+                            onClick={() => handleNavigation('stickers')}
                             badge=""
                             textColor=""
                         />

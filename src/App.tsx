@@ -109,7 +109,7 @@ import { DelimitationExample } from './components/examples/DelimitationExample';
 
 // Page d'upload de design pour les vendeurs
 import SellDesignPage from './pages/SellDesignPage';
-import VendorStickerPage from './pages/vendor/VendorStickerPage';
+import VendorStickerSimplePage from './pages/vendor/VendorStickerSimplePage';
 
 // 🚀 Interface moderne des produits
 import { ProductListModernPage } from './pages/admin/ProductListModernPage';
@@ -215,6 +215,9 @@ import TestPaydunyaFixPage from './pages/TestPaydunyaFixPage';
 
 // 🧪 Page de test authentification
 import TestAuth from './pages/TestAuth';
+
+// 🧪 Page de test stickers
+import StickerTestPage from './pages/StickerTestPage';
 
 // 🏆 Best Sellers
 import BestSellersPage from './pages/BestSellersPage';
@@ -415,8 +418,8 @@ function App() {
                   <Route path="sales" element={<VendorSales />} />
                   <Route path="sales/:orderId" element={<VendorOrderDetailPage />} />
                   <Route path="sell-design" element={<SellDesignPage />} />
-                  <Route path="create-product" element={<CreateProductWizardPage /                                                                                                                      >} />
-                  <Route path="stickers" element={<VendorStickerPage />} />
+                  <Route path="create-product" element={<CreateProductWizardPage />} />
+                  <Route path="stickers" element={<VendorStickerSimplePage />} />
                   <Route path="account" element={<VendorAccountPage />} />
                   <Route path="appel-de-fonds" element={<VendorFundsRequestPage />} />
                   <Route path="retraits" element={<VendorWithdrawalsPage />} />

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import SimpleProductPreview from './vendor/SimpleProductPreview';
 import { API_CONFIG } from '../config/api';
+import Button from './ui/Button';
 
 // Interface EXACTE selon la réponse API best-sellers-v2
 interface BestSellerProduct {
@@ -469,12 +470,14 @@ const BestSellersGrid = () => {
 
         {/* Bouton "Voir plus" centré */}
         <div className="flex justify-center mt-3 xs:mt-4 sm:mt-4">
-          <button
+          <Button
             onClick={() => navigate('/best-sellers')}
-            className="bg-red-500 hover:bg-red-600 text-white px-2 xs:px-2.5 py-1 xs:py-1.5 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-full text-[10px] xs:text-xs sm:text-sm md:text-base font-medium transition-colors duration-200"
+            variant="outline"
+            size="xl"
+            className="bg-red-500 hover:bg-red-600 text-white border-red-500 hover:border-red-600 px-6 xs:px-8 py-2.5 xs:py-3 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium"
           >
             Voir plus
-          </button>
+          </Button>
         </div>
 
         {/* Message informatif - identique à NouveautesGrid */}

@@ -7,6 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { categoriesService, Category } from "../services/categoriesService";
 import { subCategoriesService, SubCategory } from "../services/subCategoriesService";
 import Button from "./ui/Button";
+import SearchAutocomplete from "./search/SearchAutocomplete";
 
 const NavBar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -16,7 +17,6 @@ const NavBar = () => {
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAllCategoriesModal, setShowAllCategoriesModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const VISIBLE_CATEGORIES_LIMIT = 4;
   // Filtrer pour n'afficher que les catégories avec des sous-catégories
@@ -94,14 +94,6 @@ const NavBar = () => {
     setShowAllCategoriesModal(false);
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/filtered-articles?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery("");
-    }
-  };
-
   return (
     <>
       {/* Header supérieur - Blanc avec logo et actions - Disparaît au scroll */}
@@ -118,7 +110,7 @@ const NavBar = () => {
         }}
       >
         {/* Container principal avec même padding que ArtistesSection */}
-        <div className="w-full px-6 h-full flex items-center justify-between">
+        <div className="w-full px-10 lg:px-16 xl:px-20 2xl:px-24 h-full flex items-center justify-between">
           {/* Logo Printalma */}
           <div className="flex-shrink-0 flex items-center">
             <div
@@ -128,25 +120,17 @@ const NavBar = () => {
               <img
                 src="/printalma_logo.svg"
                 alt="Logo Printalma"
-                className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-32 lg:w-32 xl:h-36 xl:w-36 2xl:h-40 2xl:w-40 object-contain transition-all duration-200"
+                className="h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 lg:h-40 lg:w-40 xl:h-44 xl:w-44 2xl:h-48 2xl:w-48 object-contain transition-all duration-200"
               />
             </div>
           </div>
 
-          {/* Barre de recherche centrale - Repositionnée */}
+          {/* Barre de recherche avec autocomplétion */}
           <div className="hidden md:flex flex-1 justify-center px-8">
-            <form onSubmit={handleSearchSubmit} className="relative w-full max-w-lg">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 lg:h-5 lg:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Recherche de designs/produits"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 lg:pl-12 pr-4 py-2.5 lg:py-3 xl:py-3.5 rounded-full border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm lg:text-base xl:text-lg transition-all duration-200"
-              />
-            </form>
+            <SearchAutocomplete
+              placeholder="Recherche de designs/produits"
+              className="relative w-full max-w-3xl ml-auto mr-28"
+            />
           </div>
 
           {/* Actions droite */}
@@ -328,7 +312,7 @@ const NavBar = () => {
         }}
       >
         {/* Container principal avec même padding que ArtistesSection */}
-        <div className="container mx-auto px-0 h-full">
+        <div className="w-full px-10 lg:px-16 xl:px-20 2xl:px-24 h-full">
           <div className="flex items-center justify-center h-full">
             {/* Navigation Desktop */}
             <div className="hidden lg:flex items-center space-x-8">
@@ -486,8 +470,15 @@ const NavBar = () => {
       {isMobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-gray-200 shadow-lg relative z-30">
           {/* Container principal avec même padding que ArtistesSection */}
-          <div className="container mx-auto px-0 py-2">
+          <div className="container mx-auto px-4 py-2">
             <div className="space-y-2">
+              {/* Recherche mobile avec autocomplétion */}
+              <div className="pb-4 border-b border-gray-200">
+                <SearchAutocomplete
+                  placeholder="Rechercher..."
+                  className="w-full"
+                />
+              </div>
               {/* Auth section mobile */}
               <div className="flex space-x-2 pb-4 border-b border-gray-200 mb-4">
                 <Button

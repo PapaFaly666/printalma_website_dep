@@ -76,11 +76,12 @@ export default function RelatedProducts({ currentProduct, products, limit = 4 }:
         {relatedProducts.length >= limit && (
           <Button
             variant="outline"
+            size="xl"
             onClick={() => navigate(`/products?category=${currentProduct.category?.name}`)}
-            className="hidden sm:flex items-center space-x-2"
+            className="hidden sm:flex items-center space-x-2 px-10 py-4 text-lg"
           >
             <span>Voir plus</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-5 h-5" />
           </Button>
         )}
       </div>
@@ -166,11 +167,12 @@ export default function RelatedProducts({ currentProduct, products, limit = 4 }:
         <div className="mt-8 text-center sm:hidden">
           <Button
             variant="outline"
+            size="xl"
             onClick={() => navigate(`/products?category=${currentProduct.category?.name}`)}
-            className="w-full"
+            className="w-full px-8 py-4 text-base"
           >
             <span>Voir plus de produits similaires</span>
-            <ArrowRight className="w-4 h-4 ml-2" />
+            <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
         </div>
       )}

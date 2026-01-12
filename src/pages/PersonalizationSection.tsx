@@ -18,7 +18,7 @@ export default function PersonalizationSection() {
 
           {/* Section vidéo à gauche */}
           <div className="relative">
-            <div className="bg-gray-100 rounded p-2 xs:p-3 sm:p-3 md:p-4 h-64 xs:h-72 sm:h-96 md:h-[28rem] lg:h-[550px] xl:h-[650px] 2xl:h-[700px] flex items-center justify-center relative overflow-hidden shadow-md">
+            <div className="bg-gray-100 rounded-2xl p-2 xs:p-3 sm:p-3 md:p-4 h-64 xs:h-72 sm:h-96 md:h-[28rem] lg:h-[550px] xl:h-[650px] 2xl:h-[700px] flex items-center justify-center relative overflow-hidden shadow-md">
               <iframe
                 width="100%"
                 height="100%"
@@ -28,13 +28,13 @@ export default function PersonalizationSection() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
-                className="absolute inset-0 rounded"
+                className="absolute inset-0 rounded-2xl"
               ></iframe>
             </div>
           </div>
 
           {/* Section contenu à droite */}
-          <div className="bg-yellow-400 rounded p-2 xs:p-2.5 sm:p-3 md:p-4 lg:p-6 shadow-md h-auto min-h-64 xs:min-h-72 sm:h-96 md:h-[28rem] lg:h-[550px] xl:h-[650px] 2xl:h-[700px] flex flex-col justify-center text-center overflow-hidden">
+          <div className="rounded-2xl p-2 xs:p-2.5 sm:p-3 md:p-4 lg:p-6 shadow-md h-auto min-h-64 xs:min-h-72 sm:h-96 md:h-[28rem] lg:h-[550px] xl:h-[650px] 2xl:h-[700px] flex flex-col justify-center text-center overflow-hidden" style={{ backgroundColor: '#f1d12d' }}>
             <div className="space-y-1 xs:space-y-1.5 sm:space-y-2 md:space-y-3 lg:space-y-4 px-1">
               <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-black uppercase leading-tight px-1">
                 PERSONNALISEZ UN PRODUIT QUI VOUS IDENTIFIE
@@ -74,8 +74,8 @@ export default function PersonalizationSection() {
               <Button
                 onClick={handleChooseProduct}
                 variant="outline"
-                size="md"
-                className="mt-3 xs:mt-4 sm:mt-6 bg-white text-black hover:bg-gray-100 mx-auto"
+                size="xl"
+                className="mt-3 xs:mt-4 sm:mt-6 mx-auto bg-white text-black hover:bg-gray-100"
               >
                 Choisir son produit
               </Button>
