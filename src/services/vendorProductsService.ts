@@ -125,6 +125,16 @@ export interface VendorProduct {
     colorCode: string;
   }>;
   designId: number | null; // ✅ Changé à "number | null" pour compatibilité avec SimpleProductPreview
+  // ✅ Images finales avec design appliqué (mockup + design inclus)
+  finalImages?: Array<{
+    id: number;
+    colorId: number;
+    colorName: string;
+    colorCode: string;
+    finalImageUrl: string;
+    mockupUrl: string;
+  }>;
+  defaultColorId?: number | null;
 }
 
 export interface VendorProductsResponse {

@@ -24,7 +24,12 @@ export const formatPriceInFCFA = (price: number): string => {
  * @param price - Le prix brut (en centimes ou en FCFA)
  * @returns Le prix formaté en FCFA
  */
-export const formatPrice = (price: number): string => {
+export const formatPrice = (price: number | undefined | null): string => {
+  // Vérifier si le prix est valide
+  if (price === undefined || price === null || isNaN(price)) {
+    return '0 FCFA';
+  }
+
   // Déterminer si le prix est en centimes (< 1000) ou déjà en FCFA (>= 1000)
   const priceInFCFA = price >= 1000 ? price : price;
 

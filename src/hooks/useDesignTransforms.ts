@@ -10,15 +10,28 @@ import { useAuth } from '../contexts/AuthContext';
 import { vendorProductService } from '../services/vendorProductService';
 
 // Types pour les transformations (V2)
+// 📐 IMPORTANT: Le positionnement suit l'algorithme backend décrit dans:
+// - BACKEND_DESIGN_POSITIONING_EXACT.md
+// - x,y sont des OFFSETS depuis le CENTRE de la délimitation
+// - scale s'applique à la DÉLIMITATION pour calculer les dimensions du conteneur
+// - Le design est ensuite redimensionné avec object-fit: contain (comme Sharp fit: 'inside')
 export interface Transform {
-  x: number;
-  y: number;
-  scale: number;
-  rotation: number;
-  // 🆕 Propriétés optionnelles pour les dimensions intrinsèques du design
-  designWidth?: number;
-  designHeight?: number;
-  designScale?: number;
+  x: number; // Offset horizontal depuis le centre de la délimitation (pixels ou %)
+  y: number; // Offset vertical depuis le centre de la délimitation (pixels ou %)
+  scale: number; // Échelle globale (legacy, utilisez designScale à la place)
+  rotation: number; // Rotation en degrés
+  // ❌ PLUS NÉCESSAIRE: Le backend calcule designWidth/designHeight avec fit: 'inside'
+  // designWidth?: number;
+  // designHeight?: number;
+  designScale?: number; // Échelle appliquée à la délimitation (0.8 = 80% de la zone)
+  // ❌ PLUS NÉCESSAIRE: Le backend recalcule containerWidth/containerHeight
+  // containerWidth?: number;
+  // containerHeight?: number;
+  // 🆕 COHÉRENCE BACKEND: Unité de position (pixels ou pourcentage)
+  positionUnit?: 'PIXEL' | 'PERCENTAGE'; // Défaut: PIXEL
+  // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+  delimitationWidth?: number;  // Largeur de la délimitation en pixels sur l'image originale
+  delimitationHeight?: number; // Hauteur de la délimitation en pixels sur l'image originale
 }
 
 // Types pour les transformations
@@ -115,10 +128,17 @@ export function useDesignTransforms(product: any, designUrl?: string, vendorProd
           y: position.y,
           scale: finalScale, // ✅ Utiliser designScale au lieu de scale traditionnel
           rotation: position.rotation,
-          // 🆕 Nouvelles propriétés pour les dimensions intrinsèques du design
-          designWidth: position.designWidth,
-          designHeight: position.designHeight,
+          positionUnit: position.positionUnit || 'PIXEL', // 🆕 COHÉRENCE BACKEND
+          // ❌ PLUS NÉCESSAIRE: Le backend calcule designWidth/designHeight avec fit: 'inside'
+          // designWidth: position.designWidth,
+          // designHeight: position.designHeight,
           designScale: position.designScale,
+          // ❌ PLUS NÉCESSAIRE: Le backend recalcule containerWidth/containerHeight
+          // containerWidth: position.containerWidth,
+          // containerHeight: position.containerHeight,
+          // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+          delimitationWidth: position.delimitationWidth,
+          delimitationHeight: position.delimitationHeight,
           timestamp: Date.now()
         };
 
@@ -170,13 +190,22 @@ export function useDesignTransforms(product: any, designUrl?: string, vendorProd
       setIsSaving(true);
 
       // Préparer l'objet position en s'assurant que toutes les clés sont présentes
+      // 📐 COHÉRENCE BACKEND: Le backend calcule designWidth/designHeight avec fit: 'inside'
       const backendPosition = {
         x: position.x,
         y: position.y,
         scale: position.designScale || position.scale || 1,
         rotation: position.rotation ?? 0,
-        designWidth: position.designWidth,
-        designHeight: position.designHeight,
+        positionUnit: position.positionUnit || 'PIXEL', // 🆕 PIXEL par défaut (x,y en pixels)
+        // ❌ PLUS NÉCESSAIRE: Le backend calcule designWidth/designHeight avec fit: 'inside'
+        // designWidth: position.designWidth,
+        // designHeight: position.designHeight,
+        // ❌ PLUS NÉCESSAIRE: Le backend recalcule containerWidth/containerHeight
+        // containerWidth: position.containerWidth,
+        // containerHeight: position.containerHeight,
+        // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+        delimitationWidth: position.delimitationWidth,
+        delimitationHeight: position.delimitationHeight,
       };
 
       console.log('🌐 Sauvegarde au backend:', {
@@ -222,10 +251,16 @@ export function useDesignTransforms(product: any, designUrl?: string, vendorProd
           y: savedPosition.position.y,
           scale: savedPosition.position.scale,
           rotation: savedPosition.position.rotation,
-          // 🆕 Nouvelles propriétés pour les dimensions intrinsèques du design
-          designWidth: savedPosition.position.designWidth,
-          designHeight: savedPosition.position.designHeight,
+          // ❌ PLUS NÉCESSAIRE: Le backend calcule designWidth/designHeight avec fit: 'inside'
+          // designWidth: savedPosition.position.designWidth,
+          // designHeight: savedPosition.position.designHeight,
           designScale: savedPosition.position.designScale,
+          // ❌ PLUS NÉCESSAIRE: Le backend recalcule containerWidth/containerHeight
+          // containerWidth: savedPosition.position.containerWidth,
+          // containerHeight: savedPosition.position.containerHeight,
+          // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+          delimitationWidth: savedPosition.position.delimitationWidth,
+          delimitationHeight: savedPosition.position.delimitationHeight,
         };
       }
     } catch (error) {
@@ -253,15 +288,21 @@ export function useDesignTransforms(product: any, designUrl?: string, vendorProd
     }
     
     // Pour les autres index, utiliser l'état local
-    return transformStates[index] || { 
-      x: 0, 
-      y: 0, 
-      scale: 1, 
+    return transformStates[index] || {
+      x: 0,
+      y: 0,
+      scale: 1,
       rotation: 0,
-      // 🆕 Inclure les propriétés de dimensions du design dans les valeurs par défaut
-      designWidth: undefined,
-      designHeight: undefined,
+      // ❌ PLUS NÉCESSAIRE: Le backend calcule designWidth/designHeight avec fit: 'inside'
+      // designWidth: undefined,
+      // designHeight: undefined,
       designScale: undefined,
+      // ❌ PLUS NÉCESSAIRE: Le backend recalcule containerWidth/containerHeight
+      // containerWidth: undefined,
+      // containerHeight: undefined,
+      // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+      delimitationWidth: undefined,
+      delimitationHeight: undefined,
     };
   }, [transformStates, isolatedPosition, productIds.validProductId]);
 
@@ -427,15 +468,21 @@ export function useDesignTransforms(product: any, designUrl?: string, vendorProd
 
   // Fonction pour réinitialiser toutes les transformations
   const resetTransforms = useCallback(async () => {
-    const defaultTransform: Transform = { 
-      x: 0, 
-      y: 0, 
-      scale: 1, 
+    const defaultTransform: Transform = {
+      x: 0,
+      y: 0,
+      scale: 1,
       rotation: 0,
-      // 🆕 Réinitialiser aussi les nouvelles propriétés de dimensions
-      designWidth: undefined,
-      designHeight: undefined,
+      // ❌ PLUS NÉCESSAIRE: Le backend calcule designWidth/designHeight avec fit: 'inside'
+      // designWidth: undefined,
+      // designHeight: undefined,
       designScale: undefined,
+      // ❌ PLUS NÉCESSAIRE: Le backend recalcule containerWidth/containerHeight
+      // containerWidth: undefined,
+      // containerHeight: undefined,
+      // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+      delimitationWidth: undefined,
+      delimitationHeight: undefined,
     };
     
     // Réinitialiser le design principal via l'isolation

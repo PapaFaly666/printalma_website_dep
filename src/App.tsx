@@ -89,6 +89,9 @@ import VendorGalleryPage from './pages/vendor/VendorGalleryPage';
 // Page de création de produits avec wizard
 import CreateProductWizardPage from './pages/vendor/CreateProductWizardPage';
 
+// Page de gestion des posters/tableaux
+import { VendorPostersPage } from './pages/vendor/VendorPostersPage';
+
 // Page d'appel de fonds
 import AppelDeFondsPage from './pages/AppelDeFondsPage';
 
@@ -285,6 +288,7 @@ function App() {
                 <Route path="/product/:id" element={<ModernProductDetail />} />
                 <Route path="/vendor-product/:id" element={<VendorProductDetails />} />
                 <Route path="/vendor-product-detail/:id" element={<PublicVendorProductDetailPage />} />
+                <Route path="/public-sticker/:id" element={<PublicVendorProductDetailPage />} />
                 <Route path='/filtered-articles' element={<FilteredArticlesPage />} />
                 <Route path='/customize-product' element={<AdminMockupsPage />} />
                 <Route path='/product/:id/customize' element={<CustomerProductCustomizationPageV3 />} />
@@ -420,6 +424,7 @@ function App() {
                   <Route path="sell-design" element={<SellDesignPage />} />
                   <Route path="create-product" element={<CreateProductWizardPage />} />
                   <Route path="stickers" element={<VendorStickerSimplePage />} />
+                  <Route path="posters" element={<VendorPostersPage />} />
                   <Route path="account" element={<VendorAccountPage />} />
                   <Route path="appel-de-fonds" element={<VendorFundsRequestPage />} />
                   <Route path="retraits" element={<VendorWithdrawalsPage />} />

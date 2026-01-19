@@ -50,6 +50,9 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
   // Déterminer si le produit a un design
   const hasDesign = product.designApplication?.hasDesign && product.designApplication?.designUrl;
 
+  // Déterminer si c'est un sticker
+  const isSticker = (product as any).isSticker === true;
+
   // Fonction pour obtenir l'image en fonction de la ou des couleurs sélectionnées
   const getImageForColor = () => {
     // Priorité aux couleurs sélectionnées multiples (filtres utilisateur)
@@ -476,14 +479,18 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
 
   return (
     <div
-      className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 cursor-pointer group"
+      className={`bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group ${
+        isSticker ? 'border-0' : 'border border-gray-200'
+      }`}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
         ref={containerRef}
-        className="relative aspect-square flex items-center justify-center bg-gray-100 overflow-hidden"
+        className={`relative aspect-square flex items-center justify-center overflow-hidden ${
+          isSticker ? 'bg-white' : 'bg-gray-100'
+        }`}
       >
         {/* Image du produit - cachée au hover s'il y a un design */}
         {(!hasDesign || !isHovered) && (
@@ -491,7 +498,9 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
             ref={imgRef}
             src={primaryImage}
             alt={product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
-            className={`w-full h-full object-cover transition-all duration-300 ${hasDesign && isHovered ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}
+            className={`w-full h-full transition-all duration-300 ${
+              isSticker ? 'object-contain' : 'object-cover'
+            } ${hasDesign && isHovered ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}
             onLoad={() => setImageLoaded(true)}
           />
         )}
@@ -596,12 +605,18 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
 
             {/* Affichage plein écran au hover (style Spreadshirt) */}
             {isHovered && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white transition-all duration-300 ease-in-out">
-                <div className="w-full h-full flex items-center justify-center p-6 sm:p-8">
+              <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out ${
+                isSticker ? 'bg-gray-200' : 'bg-white'
+              }`}>
+                <div className={`w-full h-full flex items-center justify-center ${
+                  isSticker ? '' : 'p-6 sm:p-8'
+                }`}>
                   <img
                     src={product.designApplication.designUrl}
                     alt="Design"
-                    className="max-w-full max-h-full object-contain transition-all duration-300 ease-in-out transform group-hover:scale-110"
+                    className={`max-w-full max-h-full object-contain transition-all duration-300 ease-in-out ${
+                      isSticker ? '' : 'transform group-hover:scale-110'
+                    }`}
                     draggable={false}
                   />
                 </div>

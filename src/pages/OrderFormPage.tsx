@@ -20,6 +20,7 @@ import { orderService, type CreateOrderRequest as OrderRequest } from '../servic
 import { paymentStatusService } from '../services/paymentStatusService';
 import { validatePaymentData } from '../types/payment';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
+import vendorProductsService from '../services/vendorProductsService';
 import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
 import SimpleDeliveryForm from '../components/delivery/SimpleDeliveryForm';
 import { isSenegalCountry, generateDeliverySummary } from '../utils/deliveryInfoUtils';
@@ -343,6 +344,9 @@ const OrderFormPage: React.FC = () => {
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
   const [deliveryValidationErrors, setDeliveryValidationErrors] = useState<string[]>([]);
 
+  // 🆕 État pour les données du produit vendeur (pour finalImages)
+  const [vendorProductData, setVendorProductData] = useState<any>(null);
+
   // Déterminer si c'est une commande internationale
   const isInternational = !isSenegalCountry(formData.country, 'SN');
 
@@ -356,6 +360,33 @@ const OrderFormPage: React.FC = () => {
       return;
     }
   }, [cartItem, navigate]);
+
+  // 🆕 Charger les données du produit vendeur pour finalImages
+  useEffect(() => {
+    const loadVendorProductData = async () => {
+      if (!cartItem?.vendorProductId) {
+        setVendorProductData(null);
+        return;
+      }
+
+      try {
+        console.log('🏪 [OrderFormPage] Chargement produit vendeur:', cartItem.vendorProductId);
+        const response = await vendorProductsService.getProductById(cartItem.vendorProductId);
+
+        if (response.success && response.data) {
+          console.log('✅ [OrderFormPage] Produit vendeur chargé avec finalImages:', {
+            hasFinalImages: !!response.data.finalImages,
+            finalImagesCount: response.data.finalImages?.length || 0
+          });
+          setVendorProductData(response.data);
+        }
+      } catch (error) {
+        console.error('❌ [OrderFormPage] Erreur chargement produit vendeur:', error);
+      }
+    };
+
+    loadVendorProductData();
+  }, [cartItem?.vendorProductId]);
 
   // États de chargement et erreurs
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -853,6 +884,25 @@ const OrderFormPage: React.FC = () => {
                       {productData?.customizationIds && productData?.designElementsByView ? (
                         <div className="flex justify-center">
                           <ProductPreviewWithViews productData={productData} />
+                        </div>
+                      ) : vendorProductData?.finalImages && vendorProductData.finalImages.length > 0 ? (
+                        // 🆕 Afficher l'image finale pré-générée pour les produits vendeur
+                        <div className="flex justify-center">
+                          <div className="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            {(() => {
+                              // Trouver l'image finale correspondant à la couleur sélectionnée
+                              const finalImage = vendorProductData.finalImages.find(
+                                (fi: any) => fi.colorId === productData?.colorVariationId
+                              ) || vendorProductData.finalImages[0];
+                              return (
+                                <img
+                                  src={finalImage.finalImageUrl}
+                                  alt={`${vendorProductData.vendorName} - ${finalImage.colorName}`}
+                                  className="w-full h-full object-contain"
+                                />
+                              );
+                            })()}
+                          </div>
                         </div>
                       ) : getProductForPreview() ? (
                         <div className="flex justify-center">

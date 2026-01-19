@@ -1,26 +1,18 @@
 import React from 'react';
 import {
-  generateStickerFilters,
   getGridDimensions,
-  getStickerStyle,
   type StickerType,
   type BorderColor
 } from '../utils/stickerFilters';
 
 interface SynchronizedStickerPreviewProps {
   /**
-   * URL de l'image du design original
+   * URL de l'image du sticker générée par le backend
    */
-  designUrl: string;
+  stickerImage: string;
 
   /**
-   * URL de l'image pré-générée par le backend (avec bordures intégrées)
-   * Si fournie, elle sera utilisée en priorité (pas de filtres CSS)
-   */
-  stickerImage?: string;
-
-  /**
-   * Configuration du sticker
+   * Configuration du sticker (pour informations seulement)
    */
   stickerType: StickerType;
   borderColor?: BorderColor;
@@ -32,62 +24,37 @@ interface SynchronizedStickerPreviewProps {
   className?: string;
   showGrid?: boolean;
   alt?: string;
-
-  /**
-   * Force l'utilisation des filtres CSS même si stickerImage est fourni
-   * (utile pour comparer les rendus ou déboguer)
-   */
-  forceCssFilters?: boolean;
 }
 
 /**
- * SynchronizedStickerPreview - Aperçu de sticker synchronisé CSS/Sharp
+ * SynchronizedStickerPreview - Aperçu de sticker
  *
- * IMPORTANT: Ce composant garantit que l'aperçu CSS correspond EXACTEMENT
- * au rendu Sharp du backend.
+ * ✅ SYNCHRONISATION BACKEND/FRONTEND :
  *
- * 🔄 CONFIGURATION SYNCHRONISÉE:
- * Voir ../utils/stickerFilters.ts pour les valeurs exactes
+ * Les effets "autocollant cartoon" sont maintenant générés entièrement par le backend
+ * via le service StickerGeneratorService (Sharp).
  *
- * 📋 MODES D'AFFICHAGE:
+ * Ce composant affiche uniquement l'image pré-générée par le backend, sans aucun
+ * filtre CSS destructeur côté client.
  *
- * 1. Mode "Image pré-générée" (stickerImage fourni)
- *    - Affiche directement l'image du backend
- *    - PAS de filtres CSS (les bordures sont dans l'image)
- *    - Utilisation: Affichage après création, liste des stickers
+ * Les effets générés par le backend incluent :
+ * - Bordures blanches (contour cartoon)
+ * - Contour gris fin (trait de découpe)
+ * - Ombres portées (effet décollé)
+ * - Amélioration des couleurs (brightness, contrast, saturation)
+ * - Effet glossy (si demandé)
  *
- * 2. Mode "Aperçu en direct" (designUrl sans stickerImage)
- *    - Affiche le design avec filtres CSS
- *    - Les filtres correspondent EXACTEMENT au traitement Sharp
- *    - Utilisation: Création/édition de sticker (aperçu temps réel)
- *
- * 🎨 CONFIGURATION CSS = SHARP:
- * ----------------------------------------
- * Autocollant (16 layers blanc + 4 layers gris + 3 ombres):
- * - Contour: drop-shadow(1px 0 0 white) ... drop-shadow(16px 0 0 white)
- * - Définition: drop-shadow(0.3px 0 0 rgba(50,50,50,0.7))
- * - Ombres: drop-shadow(2px 3px 5px rgba(0,0,0,0.3))
- * - Glossy: brightness(1.15) saturate(1.1) contrast(1.1)
- *
- * Pare-chocs (bordure large 25px):
- * - border: 8px solid white
- * - box-shadow: 0 0 0 4px white, 0 0 0 8px #f0f0f0
+ * @see StickerGeneratorService pour la génération des effets
  */
 const SynchronizedStickerPreview: React.FC<SynchronizedStickerPreviewProps> = ({
-  designUrl,
   stickerImage,
   stickerType,
   borderColor = 'glossy-white',
   size = '83 mm x 100 mm',
   className = '',
   showGrid = false,
-  alt = 'Aperçu du sticker',
-  forceCssFilters = false
+  alt = 'Aperçu du sticker'
 }) => {
-  // Déterminer si on utilise l'image pré-générée ou le design avec filtres
-  const usePregenerated = stickerImage && !forceCssFilters;
-  const displayUrl = usePregenerated ? stickerImage : designUrl;
-
   // Style de base de l'image
   const baseStyle: React.CSSProperties = {
     display: 'block',
@@ -95,11 +62,6 @@ const SynchronizedStickerPreview: React.FC<SynchronizedStickerPreviewProps> = ({
     maxHeight: '100%',
     objectFit: 'contain'
   };
-
-  // Appliquer les filtres CSS seulement en mode "aperçu direct"
-  const finalStyle = usePregenerated
-    ? baseStyle
-    : { ...baseStyle, ...getStickerStyle(stickerType, borderColor) };
 
   // Rendu de la grille dimensionnelle
   const renderGrid = () => {
@@ -134,41 +96,20 @@ const SynchronizedStickerPreview: React.FC<SynchronizedStickerPreviewProps> = ({
     );
   };
 
-  // Mode pare-chocs avec CSS
-  if (stickerType === 'pare-chocs' && !usePregenerated) {
-    return (
-      <div
-        className={`inline-block ${className}`}
-        style={{
-          backgroundColor: 'white',
-          padding: '40px',
-          boxShadow: '0 0 0 4px #ffffff, 0 0 0 8px #f0f0f0, 0 8px 16px -2px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        <img
-          src={displayUrl}
-          alt={alt}
-          style={baseStyle}
-        />
-        {renderGrid()}
-      </div>
-    );
-  }
-
-  // Mode autocollant (CSS ou image pré-générée)
+  // Affichage de l'image générée par le backend
   return (
     <div className={`relative inline-block ${className}`}>
       <img
-        src={displayUrl}
+        src={stickerImage}
         alt={alt}
-        style={finalStyle}
+        style={baseStyle}
       />
       {renderGrid()}
 
       {/* Badge debug (uniquement en développement) */}
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute top-0 right-0 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-mono">
-          {usePregenerated ? '📸 Pré-généré' : '🎨 CSS Live'}
+          📸 Backend Generated
         </div>
       )}
     </div>

@@ -76,19 +76,41 @@ const VendorProductPreview: React.FC<{
     );
   }
 
-  // Utiliser SimpleProductPreview comme sur la page de détail
+  // 🆕 Utiliser finalImages si disponible, sinon SimpleProductPreview en fallback
+  const hasFinalImages = vendorProduct.finalImages && vendorProduct.finalImages.length > 0;
+
+  // Trouver l'image finale correspondant à la couleur sélectionnée
+  const getFinalImage = () => {
+    if (!hasFinalImages) return null;
+    // Chercher par colorVariationId, sinon prendre la première
+    return vendorProduct.finalImages.find((fi: any) => fi.colorId === item.colorVariationId)
+      || vendorProduct.finalImages[0];
+  };
+
+  const finalImage = getFinalImage();
+
   return (
     <div className="relative flex flex-col gap-1">
       <div className="w-32 h-32 bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <SimpleProductPreview
-          product={vendorProduct}
-          showColorSlider={false}
-          showDelimitations={false}
-          onProductClick={() => {}}
-          hideValidationBadges={true}
-          initialColorId={item.colorVariationId}
-          imageObjectFit="contain"
-        />
+        {finalImage ? (
+          // 🆕 Afficher l'image finale pré-générée (mockup + design)
+          <img
+            src={finalImage.finalImageUrl}
+            alt={`${vendorProduct.vendorName} - ${finalImage.colorName}`}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          // Fallback sur SimpleProductPreview si pas de finalImages
+          <SimpleProductPreview
+            product={vendorProduct}
+            showColorSlider={false}
+            showDelimitations={false}
+            onProductClick={() => {}}
+            hideValidationBadges={true}
+            initialColorId={item.colorVariationId}
+            imageObjectFit="contain"
+          />
+        )}
       </div>
       <div className="text-center text-[10px] font-semibold text-purple-600">
         🏪 Design vendeur

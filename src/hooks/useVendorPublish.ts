@@ -64,8 +64,17 @@ interface VendorPublishData {
     y: number;
     scale: number;
     rotation?: number;
-    designWidth?: number;
-    designHeight?: number;
+    // ❌ SUPPRIMÉ: designWidth et designHeight ne sont PAS utilisés par le backend
+    // Le backend calcule les dimensions du design avec fit: 'inside' (Sharp)
+    // designWidth?: number;
+    // designHeight?: number;
+    // ❌ SUPPRIMÉ: containerWidth et containerHeight sont recalculés par le backend
+    // containerWidth?: number;
+    // containerHeight?: number;
+    // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+    delimitationWidth: number;
+    delimitationHeight: number;
+    positionUnit?: 'PIXEL' | 'PERCENTAGE';
   };
   forcedStatus?: 'DRAFT' | 'PENDING';
   postValidationAction?: 'AUTO_PUBLISH' | 'TO_DRAFT';
@@ -191,11 +200,18 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
         forcedStatus: productData.forcedStatus || 'DRAFT',
         postValidationAction: productData.postValidationAction || 'AUTO_PUBLISH',
         
-        // 🆕 Position design depuis localStorage (avec dimensions)
+        // 🆕 Position design envoyée au backend
+        // 📐 COHÉRENCE BACKEND: Le backend calcule lui-même les dimensions avec fit: 'inside'
+        // Voir BACKEND_DESIGN_POSITIONING_EXACT.md pour la logique complète
         designPosition: {
-          ...productData.designPosition,
-          designWidth: productData.designPosition?.designWidth,
-          designHeight: productData.designPosition?.designHeight
+          x: productData.designPosition?.x || 0,
+          y: productData.designPosition?.y || 0,
+          scale: productData.designPosition?.scale || 0.8,
+          rotation: productData.designPosition?.rotation || 0,
+          // ✅ SEULES les dimensions de la délimitation sont nécessaires
+          delimitationWidth: productData.designPosition?.delimitationWidth || 0,
+          delimitationHeight: productData.designPosition?.delimitationHeight || 0,
+          positionUnit: productData.designPosition?.positionUnit || 'PIXEL'
         },
         
         // 🆕 FLAG BYPASS VALIDATION
@@ -410,18 +426,25 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
             if (foundData) {
               // 🔧 EXTRACTION CORRECTE des données selon la structure localStorage
               const positionData = foundData.position || foundData;
-              
+
               designDimensions = {
-                designWidth: positionData.designWidth ?? foundData.designWidth ?? 200,
-                designHeight: positionData.designHeight ?? foundData.designHeight ?? 200,
-                designScale: positionData.scale ?? positionData.designScale ?? foundData.scale ?? 0.6,
+                // ❌ PLUS NÉCESSAIRE: Le backend calcule designWidth/designHeight avec fit: 'inside'
+                // designWidth: positionData.designWidth ?? foundData.designWidth ?? 200,
+                // designHeight: positionData.designHeight ?? foundData.designHeight ?? 200,
+                designScale: positionData.scale ?? positionData.designScale ?? foundData.scale ?? 0.8,
                 rotation: positionData.rotation ?? foundData.rotation ?? 0,
                 // 🔧 CORRECTION CRITIQUE : Utiliser ?? au lieu de || pour gérer les valeurs 0
-                x: positionData.x ?? foundData.x ?? 0.5,
-                y: positionData.y ?? foundData.y ?? 0.5
+                x: positionData.x ?? foundData.x ?? 0,
+                y: positionData.y ?? foundData.y ?? 0,
+                // ❌ PLUS NÉCESSAIRE: Le backend recalcule containerWidth/containerHeight
+                // containerWidth: positionData.containerWidth ?? foundData.containerWidth,
+                // containerHeight: positionData.containerHeight ?? foundData.containerHeight,
+                // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+                delimitationWidth: positionData.delimitationWidth ?? foundData.delimitationWidth,
+                delimitationHeight: positionData.delimitationHeight ?? foundData.delimitationHeight,
               };
 
-              console.log(`📏 Dimensions extraites pour produit ${productId}:`, {
+              console.log(`📏 Position extraite pour produit ${productId}:`, {
                 usedKey,
                 originalData: foundData,
                 positionData: positionData,
@@ -496,15 +519,18 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
                 scale: designDimensions.designScale
               }
             },
-            // 🆕 UTILISER designPosition AVEC LES DIMENSIONS (supporté par le backend)
+            // ✅ Position design envoyée au backend
+            // 📐 COHÉRENCE BACKEND: Le backend calcule les dimensions avec fit: 'inside'
+            // Voir BACKEND_DESIGN_POSITIONING_EXACT.md pour la logique complète
             designPosition: {
-              x: designDimensions.x,
-              y: designDimensions.y,
-              scale: designDimensions.designScale,
-              rotation: designDimensions.rotation,
-              // 🆕 AJOUTER LES DIMENSIONS DANS designPosition
-              designWidth: designDimensions.designWidth,
-              designHeight: designDimensions.designHeight
+              x: designDimensions.x || 0,
+              y: designDimensions.y || 0,
+              scale: designDimensions.designScale || 0.8,
+              rotation: designDimensions.rotation || 0,
+              positionUnit: 'PIXEL',
+              // ✅ SEULES les dimensions de la délimitation sont nécessaires
+              delimitationWidth: designDimensions.delimitationWidth || 0,
+              delimitationHeight: designDimensions.delimitationHeight || 0,
             },
             forcedStatus: forcedStatus || 'PENDING',
             postValidationAction: designData.postValidationAction as 'AUTO_PUBLISH' | 'TO_DRAFT' || 'AUTO_PUBLISH',

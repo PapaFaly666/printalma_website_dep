@@ -8,6 +8,7 @@ import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/priceUtils';
 import ServiceFeatures from './ServiceFeatures ';
 import Footer from '../components/Footer';
+import { publicStickerService, PublicSticker } from '../services/publicStickerService';
 
 const PublicVendorProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -15,44 +16,63 @@ const PublicVendorProductDetailPage: React.FC = () => {
   const location = useLocation();
 
   // Extraire l'ID du produit depuis l'URL en fallback
-  const getProductIdFromUrl = (): string | null => {
+  const getProductIdFromUrl = (): { id: string | null; isSticker: boolean } => {
     // Essayer useParams d'abord
     if (productId) {
       console.log('✅ [PublicVendorProductDetailPage] ID trouvé via useParams:', productId);
-      return productId;
+      const isStickerRoute = location.pathname.includes('/public-sticker/');
+      return { id: productId, isSticker: isStickerRoute };
     }
 
     // Fallback: extraire depuis le pathname
     const pathnameParts = location.pathname.split('/');
-    const vendorProductDetailIndex = pathnameParts.indexOf('vendor-product-detail');
 
+    // Vérifier si c'est une route sticker
+    const stickerIndex = pathnameParts.indexOf('public-sticker');
+    if (stickerIndex !== -1 && pathnameParts[stickerIndex + 1]) {
+      const extractedId = pathnameParts[stickerIndex + 1];
+      console.log('🔧 [PublicVendorProductDetailPage] ID sticker extrait depuis pathname:', extractedId);
+      return { id: extractedId, isSticker: true };
+    }
+
+    // Vérifier si c'est une route produit vendeur
+    const vendorProductDetailIndex = pathnameParts.indexOf('vendor-product-detail');
     if (vendorProductDetailIndex !== -1 && pathnameParts[vendorProductDetailIndex + 1]) {
       const extractedId = pathnameParts[vendorProductDetailIndex + 1];
-      console.log('🔧 [PublicVendorProductDetailPage] ID extrait depuis pathname:', extractedId);
-      return extractedId;
+      console.log('🔧 [PublicVendorProductDetailPage] ID produit extrait depuis pathname:', extractedId);
+      return { id: extractedId, isSticker: false };
     }
 
     console.log('❌ [PublicVendorProductDetailPage] Impossible de trouver l\'ID du produit');
-    return null;
+    return { id: null, isSticker: false };
   };
 
-  const actualProductId = getProductIdFromUrl();
+  const { id: actualProductId, isSticker: isStickerRoute } = getProductIdFromUrl();
+
+  // Mettre à jour l'état isSticker
+  useEffect(() => {
+    setIsSticker(isStickerRoute);
+  }, [isStickerRoute]);
 
   // Debug: Afficher les informations de routage
   console.log('🔍 [PublicVendorProductDetailPage] Infos routage:', {
     pathname: location.pathname,
     productIdFromParams: productId,
     extractedProductId: actualProductId,
+    isSticker: isStickerRoute,
     allParams: useParams(),
     search: location.search,
     hash: location.hash
   });
 
   const [product, setProduct] = useState<VendorProduct | null>(null);
+  const [sticker, setSticker] = useState<PublicSticker | null>(null);
+  const [isSticker, setIsSticker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
   const [selectedSize, setSelectedSize] = useState<{ id: number; sizeName: string } | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
 
@@ -157,7 +177,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [loading]);
 
-  // Charger les détails du produit
+  // Charger les détails du produit ou du sticker
   useEffect(() => {
     const loadProduct = async () => {
       if (!actualProductId) {
@@ -172,35 +192,72 @@ const PublicVendorProductDetailPage: React.FC = () => {
 
       try {
         const productIdNum = parseInt(actualProductId);
-        console.log('🔍 [PublicVendorProductDetailPage] Chargement produit:', {
-          productId: actualProductId,
-          productIdNum,
-          url: `/public/vendor-products/${productIdNum}`
-        });
 
-        // Utiliser l'API individuelle pour récupérer les détails du produit
-        const response = await vendorProductsService.getProductById(productIdNum);
-
-        console.log('📡 [PublicVendorProductDetailPage] Réponse API:', {
-          success: response.success,
-          hasData: !!response.data,
-          message: response.message
-        });
-
-        if (response.success && response.data) {
-          const foundProduct = response.data;
-          console.log('✅ [PublicVendorProductDetailPage] Produit trouvé:', {
-            id: foundProduct.id,
-            name: foundProduct.vendorName,
-            hasDesign: foundProduct.designApplication.hasDesign,
-            designPositions: foundProduct.designPositions?.length || 0,
-            colors: foundProduct.selectedColors.length
+        // Si c'est un sticker, charger depuis l'API stickers
+        if (isStickerRoute) {
+          console.log('🔍 [PublicVendorProductDetailPage] Chargement sticker:', {
+            stickerId: actualProductId,
+            stickerIdNum: productIdNum,
+            url: `/public/stickers/${productIdNum}`
           });
 
-          setProduct(foundProduct);
+          const response = await publicStickerService.getPublicSticker(productIdNum);
 
-          // 🎨 Sélectionner la couleur par défaut (defaultColorId) ou la première couleur
-          if (foundProduct.selectedColors && foundProduct.selectedColors.length > 0) {
+          console.log('📡 [PublicVendorProductDetailPage] Réponse API sticker:', {
+            success: response.success,
+            hasData: !!response.data,
+          });
+
+          if (response.success && response.data) {
+            const foundSticker = response.data;
+            console.log('✅ [PublicVendorProductDetailPage] Sticker trouvé:', {
+              id: foundSticker.id,
+              name: foundSticker.name,
+              price: foundSticker.price
+            });
+
+            setSticker(foundSticker);
+            // Convertir le sticker en format VendorProduct pour réutiliser les composants
+            const convertedProduct = publicStickerService.convertToVendorProduct(foundSticker);
+            setProduct(convertedProduct);
+
+            // Pour les stickers, définir la quantité minimale
+            setQuantity(foundSticker.minimumOrder || 1);
+          } else {
+            console.log('❌ [PublicVendorProductDetailPage] Sticker non trouvé');
+            setError('Sticker non trouvé');
+          }
+        } else {
+          // Sinon, charger un produit vendeur normal
+          console.log('🔍 [PublicVendorProductDetailPage] Chargement produit:', {
+            productId: actualProductId,
+            productIdNum,
+            url: `/public/vendor-products/${productIdNum}`
+          });
+
+          // Utiliser l'API individuelle pour récupérer les détails du produit
+          const response = await vendorProductsService.getProductById(productIdNum);
+
+          console.log('📡 [PublicVendorProductDetailPage] Réponse API:', {
+            success: response.success,
+            hasData: !!response.data,
+            message: response.message
+          });
+
+          if (response.success && response.data) {
+            const foundProduct = response.data;
+            console.log('✅ [PublicVendorProductDetailPage] Produit trouvé:', {
+              id: foundProduct.id,
+              name: foundProduct.vendorName,
+              hasDesign: foundProduct.designApplication.hasDesign,
+              designPositions: foundProduct.designPositions?.length || 0,
+              colors: foundProduct.selectedColors.length
+            });
+
+            setProduct(foundProduct);
+
+            // 🎨 Sélectionner la couleur par défaut (defaultColorId) ou la première couleur
+            if (foundProduct.selectedColors && foundProduct.selectedColors.length > 0) {
             // Priorité 1: defaultColorId si défini
             const defaultColorId = (foundProduct as any).defaultColorId;
             if (defaultColorId) {
@@ -224,14 +281,15 @@ const PublicVendorProductDetailPage: React.FC = () => {
             }
           }
 
-          // Sélectionner la première taille par défaut
-          if (foundProduct.selectedSizes && foundProduct.selectedSizes.length > 0) {
-            setSelectedSize(foundProduct.selectedSizes[0]);
-            console.log('📏 [PublicVendorProductDetailPage] Taille par défaut sélectionnée:', foundProduct.selectedSizes[0]);
+            // Sélectionner la première taille par défaut
+            if (foundProduct.selectedSizes && foundProduct.selectedSizes.length > 0) {
+              setSelectedSize(foundProduct.selectedSizes[0]);
+              console.log('📏 [PublicVendorProductDetailPage] Taille par défaut sélectionnée:', foundProduct.selectedSizes[0]);
+            }
+          } else {
+            console.log('❌ [PublicVendorProductDetailPage] Produit non trouvé ou erreur:', response.message);
+            setError(response.message || 'Produit non trouvé');
           }
-        } else {
-          console.log('❌ [PublicVendorProductDetailPage] Produit non trouvé ou erreur:', response.message);
-          setError(response.message || 'Produit non trouvé');
         }
       } catch (err) {
         console.error('❌ [PublicVendorProductDetailPage] Erreur complète:', err);
@@ -554,13 +612,26 @@ const PublicVendorProductDetailPage: React.FC = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!product || !selectedColorId || !selectedSize) {
-      console.error('Produit, couleur ou taille non sélectionnée');
-      return;
+    // Pour les stickers, vérifier seulement le produit et la quantité
+    if (isSticker) {
+      if (!product || !sticker) {
+        console.error('Sticker non chargé');
+        return;
+      }
+      if (quantity < (sticker.minimumOrder || 1)) {
+        console.error('Quantité insuffisante');
+        return;
+      }
+    } else {
+      // Pour les produits normaux, vérifier couleur et taille
+      if (!product || !selectedColorId || !selectedSize) {
+        console.error('Produit, couleur ou taille non sélectionnée');
+        return;
+      }
     }
 
-    const selectedColor = product.selectedColors.find(c => c.id === selectedColorId);
-    if (!selectedColor) {
+    const selectedColor = product.selectedColors?.find(c => c.id === selectedColorId);
+    if (!selectedColor && !isSticker) {
       console.error('Couleur sélectionnée non trouvée');
       return;
     }
@@ -744,7 +815,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
     );
   }
 
-  const currentColor = product.selectedColors.find(c => c.id === selectedColorId);
+  const currentColor = product.selectedColors?.find(c => c.id === selectedColorId);
 
   return (
     <div className="min-h-screen bg-white">
@@ -770,50 +841,133 @@ const PublicVendorProductDetailPage: React.FC = () => {
           {/* Colonne gauche : Images du produit */}
           <div className="space-y-6">
             {/* Image principale */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 aspect-square flex items-center justify-center">
-              <SimpleProductPreview
-                product={product}
-                onColorChange={handleColorChange}
-                showColorSlider={false}
-                showDelimitations={false} // Mettre à true pour voir les zones de délimitation en mode debug
-                onProductClick={() => {}}
-                hideValidationBadges={false}
-                initialColorId={selectedColorId}
-                imageObjectFit="contain"
-              />
-            </div>
-
-            {/* Miniatures des vues */}
-            <div className="grid grid-cols-6 gap-3">
-              {/* Première miniature : produit avec design incorporé - Utilise SimpleProductPreview pour garantir le même positionnement */}
-              <div className="relative aspect-square">
+            <div className={`rounded-2xl aspect-square flex items-center justify-center border-0 overflow-hidden ${
+              isSticker ? 'bg-gray-200' : 'bg-white p-8'
+            }`}>
+              {isSticker && sticker ? (
+                // Pour les stickers : afficher l'image générée avec bordures
+                <img
+                  src={sticker.imageUrl}
+                  alt={sticker.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : product.finalImages && product.finalImages.length > 0 ? (
+                // ✅ Utiliser les finalImages si disponibles (produit + design déjà appliqué)
+                (() => {
+                  const finalImage = product.finalImages.find(fi => fi.colorId === selectedColorId) || product.finalImages[0];
+                  return (
+                    <img
+                      src={finalImage.finalImageUrl}
+                      alt={`${product.vendorName} - ${finalImage.colorName}`}
+                      className="w-full h-full object-contain"
+                    />
+                  );
+                })()
+              ) : (
+                // Fallback : utiliser SimpleProductPreview
                 <SimpleProductPreview
                   product={product}
+                  onColorChange={handleColorChange}
                   showColorSlider={false}
                   showDelimitations={false}
                   onProductClick={() => {}}
                   hideValidationBadges={false}
                   initialColorId={selectedColorId}
                   imageObjectFit="contain"
-                  className="border-2 border-blue-500 ring-2 ring-blue-200"
                 />
-                {/* Indicateur de sélection principale */}
-                <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center z-20">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
-              </div>
+              )}
+            </div>
 
-              {/* Miniature du design seul */}
-              {product.designApplication?.hasDesign && product.designApplication.designUrl && (
-                <div className="aspect-square bg-white rounded-lg border-2 border-gray-200 flex items-center justify-center relative overflow-hidden">
-                  <div className="w-full h-full relative bg-white p-4">
-                    <img
-                      src={product.designApplication.designUrl}
-                      alt="Design"
-                      className="w-full h-full object-contain"
-                    />
+            {/* Miniatures des vues */}
+            <div className="grid grid-cols-6 gap-3">
+              {isSticker && sticker ? (
+                // Pour les stickers : miniature du sticker et du design source
+                <>
+                  {/* Miniature du sticker avec bordures */}
+                  <div className="relative aspect-square">
+                    <div className="w-full h-full bg-white rounded-lg overflow-hidden border-2 border-blue-500 ring-2 ring-blue-200">
+                      <img
+                        src={sticker.imageUrl}
+                        alt={sticker.name}
+                        className="w-full h-full object-contain p-2"
+                      />
+                    </div>
+                    {/* Indicateur de sélection principale */}
+                    <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center z-20">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
                   </div>
-                </div>
+
+                  {/* Miniature du design source (sans bordures) */}
+                  {sticker.design?.imageUrl && (
+                    <div className="aspect-square bg-white rounded-lg border-2 border-gray-200 flex items-center justify-center relative overflow-hidden">
+                      <div className="w-full h-full relative bg-white p-4">
+                        <img
+                          src={sticker.design.imageUrl}
+                          alt="Design original"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : product.finalImages && product.finalImages.length > 0 ? (
+                // ✅ Pour les produits normaux : utiliser les finalImages
+                product.finalImages.map((finalImage, index) => (
+                  <div
+                    key={finalImage.id}
+                    className={`relative aspect-square cursor-pointer ${
+                      selectedColorId === finalImage.colorId
+                        ? 'border-2 border-blue-500 ring-2 ring-blue-200'
+                        : 'border-2 border-gray-200 hover:border-gray-300'
+                    } rounded-lg overflow-hidden`}
+                    onClick={() => handleColorChange(finalImage.colorId)}
+                  >
+                    <img
+                      src={finalImage.finalImageUrl}
+                      alt={`${product.vendorName} - ${finalImage.colorName}`}
+                      className="w-full h-full object-contain bg-white"
+                    />
+                    {selectedColorId === finalImage.colorId && (
+                      <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center z-20">
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                // Fallback : miniatures classiques avec SimpleProductPreview
+                <>
+                  <div className="relative aspect-square">
+                    <SimpleProductPreview
+                      product={product}
+                      showColorSlider={false}
+                      showDelimitations={false}
+                      onProductClick={() => {}}
+                      hideValidationBadges={false}
+                      initialColorId={selectedColorId}
+                      imageObjectFit="contain"
+                      className="border-2 border-blue-500 ring-2 ring-blue-200"
+                    />
+                    {/* Indicateur de sélection principale */}
+                    <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center z-20">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                  </div>
+
+                  {/* Miniature du design seul */}
+                  {product.designApplication?.hasDesign && product.designApplication.designUrl && (
+                    <div className="aspect-square bg-white rounded-lg border-2 border-gray-200 flex items-center justify-center relative overflow-hidden">
+                      <div className="w-full h-full relative bg-white p-4">
+                        <img
+                          src={product.designApplication.designUrl}
+                          alt="Design"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -841,97 +995,138 @@ const PublicVendorProductDetailPage: React.FC = () => {
             <div className="pb-6">
               <div className="mb-2">
                 <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900" style={{ fontStyle: 'italic' }}>
-                  {formatPrice(product.price)}
+                  {formatPrice(isSticker && sticker ? sticker.price : product.price)}
                 </p>
               </div>
               <p className="text-xs text-gray-500" style={{ fontStyle: 'italic' }}>
-                Prix de base, hors personnalisation
+                {isSticker ? 'Prix unitaire' : 'Prix de base, hors personnalisation'}
               </p>
             </div>
 
-            {/* Couleur sélectionnée - sans bordure */}
-            <div className="pb-6">
-              <p className="text-xs sm:text-sm text-gray-700 mb-4" style={{ fontStyle: 'italic' }}>
-                couleur selectionnée : <span className="text-gray-900 font-semibold">{currentColor?.name?.toUpperCase() || 'SÉLECTIONNEZ UNE COULEUR'}</span>
-              </p>
-
-              {/* Section avec checkbox */}
-              <div className="flex items-center gap-2 sm:gap-3 mb-4">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-gray-900 rounded flex items-center justify-center">
-                  <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <p className="text-sm sm:text-base text-gray-900">
-                  Couleur selectionnée : <span className="font-semibold">{currentColor?.name?.toUpperCase() || 'BLEU'}</span>
+            {/* Couleur sélectionnée - masquée pour les stickers */}
+            {!isSticker && (
+              <div className="pb-6">
+                <p className="text-xs sm:text-sm text-gray-700 mb-4" style={{ fontStyle: 'italic' }}>
+                  couleur selectionnée : <span className="text-gray-900 font-semibold">{currentColor?.name?.toUpperCase() || 'SÉLECTIONNEZ UNE COULEUR'}</span>
                 </p>
-              </div>
 
-              <div className="flex flex-wrap gap-2 sm:gap-3">
-                {product.selectedColors.map((color) => (
-                  <button
-                    key={color.id}
-                    onClick={() => handleColorChange(color.id)}
-                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 transition-all relative ${
-                      color.id === selectedColorId
-                        ? 'border-blue-500'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    style={{ backgroundColor: color.colorCode }}
-                    title={color.name}
-                  >
-                    {color.id === selectedColorId && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Taille - sans bordure */}
-            <div className="pb-6">
-              {/* Section avec checkbox */}
-              <div className="flex items-center gap-2 sm:gap-3 mb-4">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-gray-900 rounded flex items-center justify-center">
-                  <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                {/* Section avec checkbox */}
+                <div className="flex items-center gap-2 sm:gap-3 mb-4">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-gray-900 rounded flex items-center justify-center">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                  <p className="text-sm sm:text-base text-gray-900">
+                    Couleur selectionnée : <span className="font-semibold">{currentColor?.name?.toUpperCase() || 'BLEU'}</span>
+                  </p>
                 </div>
-                <p className="text-sm sm:text-base text-gray-900">
-                  Taille selectionnée : <span className="font-semibold">{selectedSize?.sizeName || 'Sélectionner une taille'}</span>
-                </p>
-              </div>
 
-              <div className="flex flex-wrap gap-2 sm:gap-3">
-                {product.selectedSizes.map((size) => (
-                  <button
-                    key={size.id}
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg border-2 font-medium transition-all ${
-                      selectedSize?.id === size.id
-                        ? 'border-blue-500 bg-blue-400 text-white'
-                        : 'border-gray-900 bg-white text-gray-900'
-                    }`}
-                  >
-                    {size.sizeName}
-                  </button>
-                ))}
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  {product.selectedColors.map((color) => (
+                    <button
+                      key={color.id}
+                      onClick={() => handleColorChange(color.id)}
+                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 transition-all relative ${
+                        color.id === selectedColorId
+                          ? 'border-blue-500'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: color.colorCode }}
+                      title={color.name}
+                    >
+                      {color.id === selectedColorId && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Taille - masquée pour les stickers */}
+            {!isSticker && (
+              <div className="pb-6">
+                {/* Section avec checkbox */}
+                <div className="flex items-center gap-2 sm:gap-3 mb-4">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-gray-900 rounded flex items-center justify-center">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                  <p className="text-sm sm:text-base text-gray-900">
+                    Taille selectionnée : <span className="font-semibold">{selectedSize?.sizeName || 'Sélectionner une taille'}</span>
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  {product.selectedSizes.map((size) => (
+                    <button
+                      key={size.id}
+                      onClick={() => setSelectedSize(size)}
+                      className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg border-2 font-medium transition-all ${
+                        selectedSize?.id === size.id
+                          ? 'border-blue-500 bg-blue-400 text-white'
+                          : 'border-gray-900 bg-white text-gray-900'
+                      }`}
+                    >
+                      {size.sizeName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quantité - uniquement pour les stickers */}
+            {isSticker && sticker && (
+              <div className="pb-6">
+                <div className="flex items-center gap-2 sm:gap-3 mb-4">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-gray-900 rounded flex items-center justify-center">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                  <p className="text-sm sm:text-base text-gray-900">
+                    Quantité : <span className="font-semibold">{quantity}</span>
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setQuantity(Math.max(sticker.minimumOrder || 1, quantity - 1))}
+                    className="w-10 h-10 rounded-lg border-2 border-gray-900 hover:bg-gray-100 flex items-center justify-center font-bold text-xl"
+                  >
+                    -
+                  </button>
+                  <span className="text-2xl font-bold min-w-[60px] text-center">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="w-10 h-10 rounded-lg border-2 border-gray-900 hover:bg-gray-100 flex items-center justify-center font-bold text-xl"
+                  >
+                    +
+                  </button>
+                </div>
+                {sticker.minimumOrder > 1 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Commande minimum : {sticker.minimumOrder} unités
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Bouton commander */}
             <div className="pt-4">
               <button
                 onClick={handleAddToCart}
-                disabled={isAddingToCart || !selectedColorId || !selectedSize}
+                disabled={isAddingToCart || (!isSticker && (!selectedColorId || !selectedSize)) || (isSticker && sticker && quantity < (sticker.minimumOrder || 1))}
                 className={`w-full flex items-center justify-center gap-2 sm:gap-3 py-3 sm:py-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 ${
                   isAddingToCart
                     ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
-                    : !selectedColorId || !selectedSize
+                    : (!isSticker && (!selectedColorId || !selectedSize)) || (isSticker && sticker && quantity < (sticker.minimumOrder || 1))
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-yellow-400 text-gray-900 hover:bg-yellow-500 shadow-md hover:shadow-lg'
                 }`}
@@ -951,15 +1146,21 @@ const PublicVendorProductDetailPage: React.FC = () => {
                 )}
               </button>
 
-              {!selectedColorId && (
+              {!isSticker && !selectedColorId && (
                 <p className="text-red-500 text-xs sm:text-sm mt-2">
                   Veuillez sélectionner une couleur
                 </p>
               )}
 
-              {!selectedSize && (
+              {!isSticker && !selectedSize && (
                 <p className="text-red-500 text-xs sm:text-sm mt-1">
                   Veuillez sélectionner une taille
+                </p>
+              )}
+
+              {isSticker && sticker && quantity < (sticker.minimumOrder || 1) && (
+                <p className="text-red-500 text-xs sm:text-sm mt-2">
+                  Quantité minimale : {sticker.minimumOrder} unités
                 </p>
               )}
             </div>
@@ -1069,17 +1270,25 @@ const PublicVendorProductDetailPage: React.FC = () => {
                     className="group cursor-pointer"
                     onClick={() => navigate(`/vendor-product-detail/${sameDesignProduct.id}`)}
                   >
-                    {/* Utiliser SimpleProductPreview pour un positionnement correct du design */}
+                    {/* ✅ Utiliser finalImage si disponible, sinon SimpleProductPreview */}
                     <div className="aspect-square bg-white rounded-xl sm:rounded-2xl mb-2 sm:mb-3 overflow-hidden relative border border-gray-200 hover:shadow-lg transition-shadow">
-                      <SimpleProductPreview
-                        product={sameDesignProduct}
-                        showColorSlider={false}
-                        showDelimitations={false}
-                        onProductClick={() => {}}
-                        hideValidationBadges={false}
-                        imageObjectFit="contain"
-                        initialColorId={(sameDesignProduct as any).defaultColorId ?? sameDesignProduct.selectedColors[0]?.id}
-                      />
+                      {sameDesignProduct.finalImages && sameDesignProduct.finalImages.length > 0 ? (
+                        <img
+                          src={sameDesignProduct.finalImages[0]?.finalImageUrl}
+                          alt={`${sameDesignProduct.vendorName} - ${sameDesignProduct.finalImages[0]?.colorName}`}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <SimpleProductPreview
+                          product={sameDesignProduct}
+                          showColorSlider={false}
+                          showDelimitations={false}
+                          onProductClick={() => {}}
+                          hideValidationBadges={false}
+                          imageObjectFit="contain"
+                          initialColorId={(sameDesignProduct as any).defaultColorId ?? sameDesignProduct.selectedColors[0]?.id}
+                        />
+                      )}
                     </div>
                     <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
                       {sameDesignProduct.vendorName || sameDesignProduct.adminProduct?.name}
@@ -1284,17 +1493,25 @@ const PublicVendorProductDetailPage: React.FC = () => {
                   className="group cursor-pointer relative"
                   onClick={() => navigate(`/vendor-product-detail/${historyProduct.id}`)}
                 >
-                  {/* Utiliser SimpleProductPreview pour un affichage cohérent avec le même positionnement que le produit principal */}
+                  {/* ✅ Utiliser finalImage si disponible, sinon SimpleProductPreview */}
                   <div className="aspect-square bg-white rounded-2xl overflow-hidden relative border border-gray-200 hover:shadow-lg transition-shadow">
-                    <SimpleProductPreview
-                      product={historyProduct}
-                      showColorSlider={false}
-                      showDelimitations={false}
-                      onProductClick={() => {}}
-                      hideValidationBadges={false}
-                      imageObjectFit="contain"
-                      initialColorId={(historyProduct as any).defaultColorId ?? historyProduct.selectedColors[0]?.id}
-                    />
+                    {historyProduct.finalImages && historyProduct.finalImages.length > 0 ? (
+                      <img
+                        src={historyProduct.finalImages[0]?.finalImageUrl}
+                        alt={`${historyProduct.vendorName} - ${historyProduct.finalImages[0]?.colorName}`}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <SimpleProductPreview
+                        product={historyProduct}
+                        showColorSlider={false}
+                        showDelimitations={false}
+                        onProductClick={() => {}}
+                        hideValidationBadges={false}
+                        imageObjectFit="contain"
+                        initialColorId={(historyProduct as any).defaultColorId ?? historyProduct.selectedColors[0]?.id}
+                      />
+                    )}
 
                     {/* Bouton supprimer en haut à droite */}
                     <button

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
-import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { API_CONFIG } from '../config/api';
 import Button from '../components/ui/Button';
 
@@ -38,6 +37,15 @@ interface NewArrivalProduct {
     };
     createdAt: string;
     updatedAt: string;
+  }>;
+  // ✅ Images finales avec design appliqué (mockup + design inclus)
+  finalImages: Array<{
+    id: number;
+    colorId: number;
+    colorName: string;
+    colorCode: string;
+    finalImageUrl: string;
+    mockupUrl: string;
   }>;
   baseProduct: {
     id: number;
@@ -295,41 +303,22 @@ const adaptNewArrivalToVendorProduct = (item: NewArrivalProduct) => {
   return adaptedProduct;
 };
 
-// Composant ProductCard utilisant SimpleProductPreview
+// Composant ProductCard utilisant directement les finalImages de l'API
 const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimitations = false, onProductClick }) => {
-  const adaptedProduct = adaptNewArrivalToVendorProduct(item);
+  // Utiliser les finalImages de l'API
+  // Si finalImages existe et n'est pas vide, l'utiliser
+  // Sinon, utiliser l'ancienne méthode avec adaptNewArrivalToVendorProduct
+  const hasFinalImages = item.finalImages && item.finalImages.length > 0;
+  const displayImage = hasFinalImages
+    ? item.finalImages[0]?.finalImageUrl || item.baseProduct.colorVariations[0]?.images[0]?.url
+    : item.baseProduct.colorVariations[0]?.images[0]?.url;
 
-  // Si l'adaptation échoue, ne pas afficher le produit
-  if (!adaptedProduct) {
-    return null;
-  }
-
-  // Logs de débogage détaillés pour comprendre pourquoi le design ne s'affiche pas
-  const firstColorVariation = adaptedProduct.adminProduct?.colorVariations?.[0];
-  const firstImage = firstColorVariation?.images?.find(img => img.viewType === 'Front') || firstColorVariation?.images?.[0];
-
-  console.log('🎨 [ProductCard] Produit adapté pour nouveautés:', {
-    id: adaptedProduct.id,
-    hasDesign: adaptedProduct.designApplication.hasDesign,
-    designUrl: adaptedProduct.designApplication.designUrl,
-    designId: adaptedProduct.designId,
-    designPositions: adaptedProduct.designPositions,
-    designPosition: adaptedProduct.designPositions?.[0]?.position,
-    adminProductExists: !!adaptedProduct.adminProduct,
-    colorVariations: adaptedProduct.adminProduct?.colorVariations?.length,
-    firstColorVariation: {
-      id: firstColorVariation?.id,
-      name: firstColorVariation?.name,
-      imagesCount: firstColorVariation?.images?.length
-    },
-    firstImage: {
-      url: firstImage?.url,
-      viewType: firstImage?.viewType,
-      hasDelimitations: firstImage?.delimitations?.length > 0,
-      delimitations: firstImage?.delimitations
-    },
-    isTraditionalProduct: !!adaptedProduct.designId && adaptedProduct.designId !== null && adaptedProduct.designId !== 0,
-    currentColorId: adaptedProduct.selectedColors?.[0]?.id
+  console.log('🎨 [ProductCard] Image finale utilisée:', {
+    id: item.id,
+    hasFinalImages,
+    finalImagesCount: item.finalImages?.length || 0,
+    displayImage,
+    firstFinalImage: item.finalImages?.[0]
   });
 
   // Gestionnaire de clic pour la navigation
@@ -350,16 +339,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ item, formatPrice, showDelimi
       }}
     >
       <div className="absolute inset-0 w-full h-full overflow-hidden">
-        <SimpleProductPreview
-          product={adaptedProduct}
-          showColorSlider={false}
-          showDelimitations={showDelimitations}
-          className="w-full h-full"
-          onColorChange={() => {}}
-          hideValidationBadges={true}
-          imageObjectFit="cover"
-          initialColorId={adaptedProduct.defaultColorId ?? undefined}
-        />
+        <div className="aspect-square relative bg-white rounded-lg overflow-hidden w-full h-full">
+          <img
+            alt={item.name}
+            className="w-full h-full object-cover"
+            src={displayImage}
+          />
+        </div>
       </div>
 
       {/* Overlay texte avec z-index plus élevé mais ne couvrant que le bas */}

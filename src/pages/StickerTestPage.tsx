@@ -1,26 +1,29 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
-import SynchronizedStickerPreview from '../components/SynchronizedStickerPreview';
-import { generateStickerFilters, getStickerStyle, BORDER_OPTIONS, STICKER_TYPE_OPTIONS, STICKER_SIZES, type StickerType, type BorderColor } from '../utils/stickerFilters';
+import { ArrowLeft } from 'lucide-react';
+import { BORDER_OPTIONS, STICKER_TYPE_OPTIONS, type StickerType, type BorderColor } from '../utils/stickerFilters';
 import Button from '../components/ui/Button';
 
 /**
- * Page de test pour les filtres CSS de stickers
- * Permet de tester visuellement les différents types et configurations
+ * Page de test pour les stickers
+ *
+ * ✅ SYNCHRONISATION BACKEND/FRONTEND :
+ *
+ * Cette page de test affiche les informations sur les configurations possibles
+ * pour les stickers. Les effets sont maintenant générés côté serveur.
+ *
+ * Pour tester visuellement les effets, utilisez l'aperçu dans le flux de création
+ * de sticker qui affiche l'image générée par le backend.
  */
 const StickerTestPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Configuration
+  // Configuration (pour affichage des options)
   const [stickerType, setStickerType] = useState<StickerType>('autocollant');
   const [borderColor, setBorderColor] = useState<BorderColor>('glossy-white');
-  const [showGrid, setShowGrid] = useState(true);
 
-  // Design de test (une image simple avec transparence)
+  // Design de test
   const testDesignUrl = 'https://res.cloudinary.com/dsxab4qnu/raw/upload/v1766578630/vendor-designs/vendor_3_design_1766578606404.svg';
-
-  const previewStyle = getStickerStyle(stickerType, borderColor);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -33,8 +36,8 @@ const StickerTestPage: React.FC = () => {
               Retour
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Test Stickers CSS</h1>
-              <p className="text-sm text-gray-600">Test des filtres CSS synchronisés avec Sharp</p>
+              <h1 className="text-xl font-bold text-gray-900">Test Stickers</h1>
+              <p className="text-sm text-gray-600">Configuration et options des stickers</p>
             </div>
           </div>
         </div>
@@ -101,25 +104,15 @@ const StickerTestPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Options */}
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showGrid}
-                    onChange={(e) => setShowGrid(e.target.checked)}
-                    className="w-4 h-4 text-primary rounded"
-                  />
-                  <span className="text-sm font-medium text-gray-700">Afficher la grille</span>
-                </label>
-              </div>
-
-              {/* Code CSS généré */}
-              <div className="bg-gray-900 rounded-lg p-4">
-                <div className="text-xs text-gray-400 mb-2">Filtres CSS générés:</div>
-                <code className="text-xs text-green-400 break-all font-mono">
-                  {previewStyle.filter}
-                </code>
+              {/* Informations sur l'architecture */}
+              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <h4 className="font-semibold text-green-900 mb-2">Architecture Backend/Frontend</h4>
+                <ul className="text-sm text-green-800 space-y-1">
+                  <li>✅ Effets générés côté serveur (Sharp)</li>
+                  <li>✅ Plus de filtres CSS destructeurs</li>
+                  <li>✅ Performance optimale client</li>
+                  <li>✅ Images PNG haute qualité</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -129,7 +122,7 @@ const StickerTestPage: React.FC = () => {
             <div className="bg-white rounded-lg border p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-6">Aperçu</h2>
 
-              {/* Fond avec damier pour voir la transparence */}
+              {/* Aperçu du design original */}
               <div className="relative">
                 {/* Damier de fond */}
                 <div
@@ -148,28 +141,19 @@ const StickerTestPage: React.FC = () => {
 
                 {/* Zone de test sur fond gris clair */}
                 <div className="relative bg-gray-200 rounded-lg p-12 min-h-[500px] flex items-center justify-center">
-                  <SynchronizedStickerPreview
-                    designUrl={testDesignUrl}
-                    stickerType={stickerType}
-                    borderColor={borderColor}
-                    size="83 mm x 100 mm"
-                    showGrid={showGrid}
-                    alt="Test sticker"
-                    className="max-w-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Comparaison sans composant */}
-              <div className="mt-8 pt-8 border-t">
-                <h3 className="text-md font-bold text-gray-900 mb-4">Test direct (sans composant)</h3>
-                <div className="bg-gray-200 rounded-lg p-12 flex items-center justify-center">
-                  <img
-                    src={testDesignUrl}
-                    alt="Test direct"
-                    style={previewStyle}
-                    className="max-w-sm"
-                  />
+                  <div className="text-center space-y-4">
+                    <img
+                      src={testDesignUrl}
+                      alt="Design original"
+                      className="max-w-xs mx-auto"
+                    />
+                    <p className="text-sm text-gray-600">
+                      Design original (sans effets)
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Les effets sont appliqués lors de la création du sticker par le backend
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -179,9 +163,18 @@ const StickerTestPage: React.FC = () => {
                 <ul className="text-sm text-blue-800 space-y-1">
                   <li><strong>Type:</strong> {stickerType}</li>
                   <li><strong>Bordure:</strong> {borderColor}</li>
-                  <li><strong>Grille:</strong> {showGrid ? 'Oui' : 'Non'}</li>
                   <li><strong>URL design:</strong> {testDesignUrl}</li>
                 </ul>
+              </div>
+
+              {/* Note importante */}
+              <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <h4 className="font-semibold text-yellow-900 mb-2">Note</h4>
+                <p className="text-sm text-yellow-800">
+                  Pour tester visuellement les effets avec bordures, ombres et couleurs,
+                  utilisez le flux de création de sticker dans l'interface vendeur.
+                  L'aperçu affichera l'image générée par le backend avec tous les effets appliqués.
+                </p>
               </div>
             </div>
           </div>

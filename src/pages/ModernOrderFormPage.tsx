@@ -127,7 +127,7 @@ const ProductPreviewWithViews: React.FC<{
     loadVendorProduct();
   }, [productData?.vendorProductId]);
 
-  // 🏪 Si c'est un produit vendeur, utiliser SimpleProductPreview
+  // 🏪 Si c'est un produit vendeur, utiliser finalImages si disponible
   if (productData?.vendorProductId) {
     if (loadingVendorProduct) {
       return (
@@ -138,6 +138,34 @@ const ProductPreviewWithViews: React.FC<{
     }
 
     if (vendorProduct) {
+      // 🆕 Vérifier si finalImages est disponible
+      const hasFinalImages = vendorProduct.finalImages && vendorProduct.finalImages.length > 0;
+
+      if (hasFinalImages) {
+        // Trouver l'image finale correspondant à la couleur sélectionnée
+        const finalImage = vendorProduct.finalImages.find(
+          (fi: any) => fi.colorId === productData.colorVariationId
+        ) || vendorProduct.finalImages[0];
+
+        return (
+          <div className="flex flex-col gap-2 sm:gap-3">
+            <div className="w-full aspect-square bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <img
+                src={finalImage.finalImageUrl}
+                alt={`${vendorProduct.vendorName} - ${finalImage.colorName}`}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="text-center">
+              <span className="inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-800">
+                🏪 Design vendeur
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      // Fallback sur SimpleProductPreview si pas de finalImages
       return (
         <div className="flex flex-col gap-2 sm:gap-3">
           <SimpleProductPreview

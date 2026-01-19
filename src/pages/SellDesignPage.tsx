@@ -46,6 +46,14 @@ import DesignCategorySelector from '../components/DesignCategorySelector';
 // 🆕 Import du nouveau composant Canvas
 // import ProductViewWithDesign from '../components/design/ProductViewWithDesign'; // Conflit avec le composant local
 
+// 🆕 Import de l'utilitaire de calcul de bounding box
+import {
+  calculateDesignPositioning,
+  convertDelimitationToAbsolute,
+  type DelimitationInfo,
+  type DesignTransform as BoundingBoxTransform
+} from '../utils/boundingBoxCalculator';
+
 // Déclaration de type pour dom-to-image-more
 declare module 'dom-to-image-more' {
   export function toPng(node: HTMLElement, options?: any): Promise<string>;
@@ -67,15 +75,23 @@ interface DesignProperties {
 }
 
 // 🆕 Interface simplifiée pour la transformation (position + rotation)
+// 📐 NOTE: Cette interface est utilisée localement dans SellDesignPage pour l'affichage CSS
+// Les champs designWidth, designHeight, containerWidth, containerHeight sont utilisés pour l'affichage
+// mais NE sont PAS envoyés au backend (le backend les calcule avec fit: 'inside')
 interface SimpleTransform {
   x: number;
   y: number;
-  // 🆕 Ajout des propriétés de design
-  designWidth?: number;
-  designHeight?: number;
+  // 🔴 Ces champs sont utilisés pour l'affichage CSS dans SellDesignPage
+  // mais ne sont PAS envoyés au backend
+  designWidth?: number;   // ❌ PAS ENVOYÉ au backend
+  designHeight?: number;  // ❌ PAS ENVOYÉ au backend
   designScale?: number;
-  // 🆕 Ajout de la rotation
   rotation?: number; // En degrés
+  containerWidth?: number;   // ❌ PAS ENVOYÉ au backend (recalculé)
+  containerHeight?: number;  // ❌ PAS ENVOYÉ au backend (recalculé)
+  // ✅ SEULS ces champs sont envoyés au backend :
+  delimitationWidth?: number;  // ✅ ENVOYÉ au backend
+  delimitationHeight?: number; // ✅ ENVOYÉ au backend
 }
 
 // 🆕 Fonction utilitaire pour calculer une taille de design adaptée aux délimitations
@@ -376,42 +392,55 @@ const ModernDesignCanvas: React.FC<{
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!containerRef.current || !dragStart || !initialTransform || selectedIdx === null || !isDragging) return;
-    
+
     const rect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
+
     const deltaX = mouseX - dragStart.x;
     const deltaY = mouseY - dragStart.y;
-    
-    // Déplacement fluide
-    const newX = initialTransform.x + deltaX;
-    const newY = initialTransform.y + deltaY;
-    
-    // Contraintes pour garder le design dans la délimitation avec nouveau système de ratio
-    const delim = delimitations[selectedIdx];
-    const pos = computePxPosition(delim);
-    
-    // 🎯 SYSTÈME DE RATIO CONSTANT : utiliser le même système que dans l'affichage
-    const designScale = initialTransform.designScale || 0.9;
-    const designWidth = pos.width * designScale;
-    const designHeight = pos.height * designScale;
-    
-    const maxX = (pos.width - designWidth) / 2;
-    const minX = -(pos.width - designWidth) / 2;
-    const maxY = (pos.height - designHeight) / 2;
-    const minY = -(pos.height - designHeight) / 2;
-    
-    const constrainedX = Math.max(minX, Math.min(maxX, newX));
-    const constrainedY = Math.max(minY, Math.min(maxY, newY));
 
-    // Mise à jour temps réel
+    // 📐 NOUVEAU CALCUL COHÉRENT AVEC BACKEND
+    const delim = delimitations[selectedIdx];
+    const pos = computePxPosition(delim); // Dimensions affichées (viewport)
+    const designScale = initialTransform.designScale || 0.9;
+
+    // 🆕 Préparer les infos de délimitation pour le calcul
+    const delimInfo: DelimitationInfo = {
+      x: delim.x,
+      y: delim.y,
+      width: delim.width,
+      height: delim.height,
+      coordinateType: delim.coordinateType,
+      imageWidth: naturalSize.width || 1200,
+      imageHeight: naturalSize.height || 1200,
+    };
+
+    // 🆕 Calculer toutes les infos nécessaires (bounding box, contraintes, etc.)
+    const positioning = calculateDesignPositioning(
+      delimInfo,
+      { x: 0, y: 0, designScale }, // Transform temporaire pour obtenir contraintes
+      { width: pos.width, height: pos.height }
+    );
+
+    // Calculer la nouvelle position EN PIXELS ABSOLUS
+    // Les deltas de la souris sont en coordonnées viewport, on les scale
+    const newX = initialTransform.x + (deltaX * positioning.scaleRatio);
+    const newY = initialTransform.y + (deltaY * positioning.scaleRatio);
+
+    // Appliquer les contraintes (empêche de sortir de la délimitation)
+    const constrainedX = Math.max(positioning.constraints.minX, Math.min(positioning.constraints.maxX, newX));
+    const constrainedY = Math.max(positioning.constraints.minY, Math.min(positioning.constraints.maxY, newY));
+
+    // Mise à jour avec toutes les informations nécessaires au backend
     updateTransform(selectedIdx, {
       ...initialTransform,
       x: constrainedX,
-      y: constrainedY
+      y: constrainedY,
+      delimitationWidth: positioning.delimAbsolute.width,
+      delimitationHeight: positioning.delimAbsolute.height,
     });
-  }, [isDragging, dragStart, initialTransform, selectedIdx, delimitations, updateTransform]);
+  }, [isDragging, dragStart, initialTransform, selectedIdx, delimitations, naturalSize, updateTransform, computePxPosition]);
 
   const handleMouseUp = useCallback(() => {
     // 🔧 Annuler toute animation en cours pour un nettoyage propre
@@ -456,16 +485,27 @@ const ModernDesignCanvas: React.FC<{
         const deltaY = mouseY - dragStart.y;
         const delim = delimitations[selectedIdx];
         const pos = computePxPosition(delim);
+        const delimInPixels = computeDelimitationInPixels(delim); // 🆕 NOUVEAU: Dimensions absolues
         const designScale = (initialTransform.designScale || 0.8);
         const designWidth = pos.width * designScale;
         const designHeight = pos.height * designScale;
+        const containerWidth = delimInPixels.width * designScale;   // 🆕 NOUVEAU: Conteneur absolu
+        const containerHeight = delimInPixels.height * designScale; // 🆕 NOUVEAU: Conteneur absolu
         const maxX = (pos.width - designWidth) / 2;
         const minX = -(pos.width - designWidth) / 2;
         const maxY = (pos.height - designHeight) / 2;
         const minY = -(pos.height - designHeight) / 2;
         const constrainedX = Math.max(minX, Math.min(maxX, initialTransform.x + deltaX));
         const constrainedY = Math.max(minY, Math.min(maxY, initialTransform.y + deltaY));
-        updateTransform(selectedIdx, { ...initialTransform, x: constrainedX, y: constrainedY });
+        updateTransform(selectedIdx, {
+          ...initialTransform,
+          x: constrainedX,
+          y: constrainedY,
+          containerWidth,   // 🆕 NOUVEAU: Taille absolue du conteneur
+          containerHeight,  // 🆕 NOUVEAU: Taille absolue du conteneur
+          delimitationWidth: delimInPixels.width,   // 🆕 NOUVEAU: Dimensions de la délimitation
+          delimitationHeight: delimInPixels.height, // 🆕 NOUVEAU: Dimensions de la délimitation
+        });
       };
       const touchEnd = () => handleMouseUp();
       document.addEventListener('touchmove', touchMove, { passive: false });
@@ -584,21 +624,41 @@ const ModernDesignCanvas: React.FC<{
         break;
     }
     
-    // Contraintes rapides pour la délimitation
+    // 📐 NOUVEAU CALCUL COHÉRENT AVEC BACKEND
     const delim = delimitations[selectedIdx];
     const pos = computePxPosition(delim);
-    
+
     // Calcul direct de la nouvelle échelle
     let newScale = Math.min(newDisplayWidth / pos.width, newDisplayHeight / pos.height);
-    
+
     // Contrainte maximale pour rester dans la délimitation
     if (newScale > 1) newScale = 1;
     if (newScale < 0.1) newScale = 0.1; // Minimum de 10%
-    
+
+    // 🆕 Préparer les infos de délimitation
+    const delimInfo: DelimitationInfo = {
+      x: delim.x,
+      y: delim.y,
+      width: delim.width,
+      height: delim.height,
+      coordinateType: delim.coordinateType,
+      imageWidth: naturalSize.width || 1200,
+      imageHeight: naturalSize.height || 1200,
+    };
+
+    // 🆕 Calculer les dimensions absolues avec le nouveau scale
+    const positioning = calculateDesignPositioning(
+      delimInfo,
+      { x: initialTransform.x, y: initialTransform.y, designScale: newScale },
+      { width: pos.width, height: pos.height }
+    );
+
     // Mise à jour immédiate pour la fluidité
     updateTransform(selectedIdx, {
       ...initialTransform,
-      designScale: newScale
+      designScale: newScale,
+      delimitationWidth: positioning.delimAbsolute.width,
+      delimitationHeight: positioning.delimAbsolute.height,
     });
   }, [isResizing, resizeStart, initialSize, initialTransform, selectedIdx, delimitations, updateTransform, resizeHandle, aspectRatioLocked, designNaturalSize]);
 
@@ -739,6 +799,19 @@ const ModernDesignCanvas: React.FC<{
     };
   }, [selectedIdx]);
 
+  // 🆕 Calculer les dimensions de la délimitation en pixels absolus (image originale)
+  // Utilisé pour calculer le bounding box à envoyer au backend
+  const computeDelimitationInPixels = useCallback((delim: any) => {
+    const isPixel = delim.coordinateType === 'PIXEL' || delim.x > 100 || delim.y > 100;
+    const imgW = naturalSize.width || 1200;
+    const imgH = naturalSize.height || 1200;
+
+    return {
+      width: isPixel ? delim.width : (delim.width / 100) * imgW,
+      height: isPixel ? delim.height : (delim.height / 100) * imgH,
+    };
+  }, [naturalSize]);
+
   // 🆕 Fonction pour gérer le clic en dehors
   const handleContainerClick = (e: React.MouseEvent) => {
     // Vérifier si on clique dans une zone vide (pas sur un design ou ses contrôles)
@@ -860,19 +933,36 @@ const ModernDesignCanvas: React.FC<{
           const isSelected = selectedIdx === idx;
           const isHovered = hoveredIdx === idx;
           
-          // 🎯 SYSTÈME DE RATIO CONSTANT : Le design utilise toujours le même pourcentage de la délimitation
-          // Comme "le produit et l'image sont fusionnés", le design garde sa proportion constante
-          const designScale = t.designScale || 0.8; // Ratio constant : 80% de la délimitation par défaut
+          // 📐 NOUVEAU CALCUL COHÉRENT AVEC BACKEND
+          // Utilise le système de bounding box unifié
+          const designScale = t.designScale || 0.8;
+
+          // 🆕 Préparer les infos de délimitation
+          const delimInfo: DelimitationInfo = {
+            x: delim.x,
+            y: delim.y,
+            width: delim.width,
+            height: delim.height,
+            coordinateType: delim.coordinateType,
+            imageWidth: naturalSize.width || 1200,
+            imageHeight: naturalSize.height || 1200,
+          };
+
+          // 🆕 Calculer positionnement avec le système unifié
+          const positioning = calculateDesignPositioning(
+            delimInfo,
+            { x: t.x, y: t.y, designScale },
+            { width: pos.width, height: pos.height }
+          );
+
+          // Dimensions d'affichage viewport (pour le CSS)
           const designWidth = pos.width * designScale;
           const designHeight = pos.height * designScale;
-          
-          const maxX = (pos.width - designWidth) / 2;
-          const minX = -(pos.width - designWidth) / 2;
-          const maxY = (pos.height - designHeight) / 2;
-          const minY = -(pos.height - designHeight) / 2;
-          
-          const x = Math.max(minX, Math.min(t.x, maxX));
-          const y = Math.max(minY, Math.min(t.y, maxY));
+
+          // Offsets contraints pour l'affichage
+          // On scale les offsets absolus au viewport
+          const x = (t.x / positioning.scaleRatio);
+          const y = (t.y / positioning.scaleRatio);
           
           return (
             <div
@@ -893,15 +983,20 @@ const ModernDesignCanvas: React.FC<{
              
               
               {/* Design déplaçable style Illustrator épuré */}
+              {/* 📐 POSITIONNEMENT CSS - ÉQUIVALENT À L'ALGORITHME BACKEND */}
+              {/* - left: 50%, top: 50% → Positionne le coin supérieur gauche au centre de la délimitation */}
+              {/* - translate(-50%, -50%) → Centre le design sur ce point */}
+              {/* - translate(${x}px, ${y}px) → Applique l'offset depuis le centre */}
+              {/* - Résultat: position finale = delimCenter + offset (comme le backend) */}
               <div
                 className={`modern-design absolute ${isSelected ? 'selected' : ''} ${isDragging && selectedIdx === idx ? 'dragging' : ''}`}
                 onMouseDown={e => handleDesignMouseDown(e, idx)}
                 onTouchStart={e => handleDesignTouchStart(e, idx)}
                 style={{
-                  left: '50%',
-                  top: '50%',
-                  width: designWidth,
-                  height: designHeight,
+                  left: '50%',  // Position au centre horizontal de la délimitation
+                  top: '50%',   // Position au centre vertical de la délimitation
+                  width: designWidth,   // Largeur du conteneur calculée (delimWidth × scale)
+                  height: designHeight, // Hauteur du conteneur calculée (delimHeight × scale)
                   transform: `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${t.rotation || 0}deg)`,
                   transformOrigin: 'center center',
                   cursor: isDragging && selectedIdx === idx ? 'grabbing' : 'grab',
@@ -912,14 +1007,19 @@ const ModernDesignCanvas: React.FC<{
                   : `Cliquez pour sélectionner ce design`
                 }
               >
+                {/* Image du design avec object-fit: contain */}
+                {/* 📐 REDIMENSIONNEMENT - ÉQUIVALENT À Sharp fit: 'inside' */}
+                {/* - object-contain préserve l'aspect ratio du design */}
+                {/* - Le design est centré dans le conteneur (designWidth × designHeight) */}
+                {/* - Exactement comme le backend fait avec Sharp.resize({ fit: 'inside' }) */}
                 <img
                   src={designUrl}
                   alt="Design"
                   className="object-contain pointer-events-none select-none"
-                    style={{ 
-                    width: '100%',
-                    height: '100%',
-                    transform: `scale(1)`,
+                    style={{
+                    width: '100%',  // 100% du conteneur calculé
+                    height: '100%', // 100% du conteneur calculé
+                    transform: `scale(1)`, // Pas de scale supplémentaire
                   }}
                   draggable={false}
                 />
@@ -1145,9 +1245,14 @@ const ModernDesignCanvas: React.FC<{
                         
                         // 🎯 NOUVEAU SYSTÈME : Sauvegarder le ratio basé sur les nouvelles dimensions
                         const newScale = Math.min(newWidth / pos.width, newHeight / pos.height);
+                        const delimInPixels = computeDelimitationInPixels(delim); // 🆕 NOUVEAU: Dimensions absolues
                         updateTransform(selectedIdx, {
                           ...currentTransform,
-                          designScale: newScale  // 🎯 Sauvegarder le ratio par rapport à la délimitation
+                          designScale: newScale,  // 🎯 Sauvegarder le ratio par rapport à la délimitation
+                          containerWidth: delimInPixels.width * newScale,   // 🆕 NOUVEAU: Conteneur recalculé
+                          containerHeight: delimInPixels.height * newScale, // 🆕 NOUVEAU: Conteneur recalculé
+                          delimitationWidth: delimInPixels.width,   // 🆕 NOUVEAU: Dimensions de la délimitation
+                          delimitationHeight: delimInPixels.height, // 🆕 NOUVEAU: Dimensions de la délimitation
                         });
                       }}
                       className="w-full px-4 py-3 text-sm border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
@@ -1172,9 +1277,14 @@ const ModernDesignCanvas: React.FC<{
                         
                         // 🎯 NOUVEAU SYSTÈME : Sauvegarder le ratio basé sur les nouvelles dimensions
                         const newScale = Math.min(newWidth / pos.width, newHeight / pos.height);
+                        const delimInPixels = computeDelimitationInPixels(delim); // 🆕 NOUVEAU: Dimensions absolues
                         updateTransform(selectedIdx, {
                           ...currentTransform,
-                          designScale: newScale  // 🎯 Sauvegarder le ratio par rapport à la délimitation
+                          designScale: newScale,  // 🎯 Sauvegarder le ratio par rapport à la délimitation
+                          containerWidth: delimInPixels.width * newScale,   // 🆕 NOUVEAU: Conteneur recalculé
+                          containerHeight: delimInPixels.height * newScale, // 🆕 NOUVEAU: Conteneur recalculé
+                          delimitationWidth: delimInPixels.width,   // 🆕 NOUVEAU: Dimensions de la délimitation
+                          delimitationHeight: delimInPixels.height, // 🆕 NOUVEAU: Dimensions de la délimitation
                         });
                       }}
                       className="w-full px-4 py-3 text-sm border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
@@ -1193,11 +1303,16 @@ const ModernDesignCanvas: React.FC<{
                       value={Math.round(currentTransform.designScale! * 100)}
                       onChange={(e) => {
                         const newScale = Number(e.target.value) / 100;
-                        
+
                         // 🎯 NOUVEAU SYSTÈME : Sauvegarder directement le nouveau ratio
+                        const delimInPixels = computeDelimitationInPixels(delim); // 🆕 NOUVEAU: Dimensions absolues
                         updateTransform(selectedIdx, {
                           ...currentTransform,
-                          designScale: newScale  // 🎯 Sauvegarder le nouveau ratio directement
+                          designScale: newScale,  // 🎯 Sauvegarder le nouveau ratio directement
+                          containerWidth: delimInPixels.width * newScale,   // 🆕 NOUVEAU: Conteneur recalculé
+                          containerHeight: delimInPixels.height * newScale, // 🆕 NOUVEAU: Conteneur recalculé
+                          delimitationWidth: delimInPixels.width,   // 🆕 NOUVEAU: Dimensions de la délimitation
+                          delimitationHeight: delimInPixels.height, // 🆕 NOUVEAU: Dimensions de la délimitation
                         });
                       }}
                       className="w-full px-4 py-3 text-sm border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
@@ -1615,12 +1730,17 @@ const ProductViewWithDesign: React.FC<ProductViewWithDesignProps> = ({ view, des
     if (!dragState.current) return;
     const { delimIdx, startX, startY, origX, origY } = dragState.current;
     if (delimIdx === null) return;
-    
+
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
 
-    updateTransform(delimIdx, { x: origX + dx, y: origY + dy });
-  }, [updateTransform]);
+    const currentTransform = getTransform(delimIdx); // 🆕 NOUVEAU: Préserver les autres propriétés
+    updateTransform(delimIdx, {
+      ...currentTransform, // 🆕 NOUVEAU: Préserver toutes les propriétés existantes
+      x: origX + dx,
+      y: origY + dy
+    });
+  }, [updateTransform, getTransform]);
 
   const handleMouseUp = useCallback(() => {
     // 🔧 Annuler toute animation en cours pour un nettoyage propre

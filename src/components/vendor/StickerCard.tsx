@@ -11,52 +11,26 @@ interface StickerCardProps {
 }
 
 /**
- * StickerCard - Carte d'affichage d'un sticker style autocollant cartoon
+ * StickerCard - Carte d'affichage d'un sticker
  *
- * OPTIMISATIONS APPLIQUÉES :
- * - will-change: transform pour accélération GPU
- * - transform: translateZ(0) pour forcer layer GPU
- * - Lazy loading des images
- * - contain: layout style paint pour isolation du rendu
- * - Filtres CSS pré-calculés en constante
+ * SYNCHRONISATION BACKEND/FRONTEND :
+ *
+ * ✅ Les effets "autocollant cartoon" sont maintenant générés par le backend
+ *    via le service StickerGeneratorService (Sharp).
+ *
+ * ✅ Plus aucun filtre CSS destructeur n'est appliqué côté client.
+ *
+ * ✅ Performance optimale : 0 opération GPU pour les effets visuels.
+ *
+ * Les effets générés par le backend incluent :
+ * - Bordures blanches (contour cartoon)
+ * - Contour gris fin (trait de découpe)
+ * - Ombres portées (effet décollé)
+ * - Amélioration des couleurs (brightness, contrast, saturation)
+ * - Effet glossy (si demandé)
+ *
+ * @see StickerGeneratorService pour la génération des effets
  */
-
-// 🚀 OPTIMISATION 1: Pré-calculer les filtres CSS (évite recalcul à chaque render)
-const STICKER_FILTER = [
-  // Contour blanc épais externe (style cartoon/sticker)
-  'drop-shadow(1px 0 0 white)',
-  'drop-shadow(-1px 0 0 white)',
-  'drop-shadow(0 1px 0 white)',
-  'drop-shadow(0 -1px 0 white)',
-  'drop-shadow(2px 0 0 white)',
-  'drop-shadow(-2px 0 0 white)',
-  'drop-shadow(0 2px 0 white)',
-  'drop-shadow(0 -2px 0 white)',
-  'drop-shadow(3px 0 0 white)',
-  'drop-shadow(-3px 0 0 white)',
-  'drop-shadow(0 3px 0 white)',
-  'drop-shadow(0 -3px 0 white)',
-  'drop-shadow(2px 2px 0 white)',
-  'drop-shadow(-2px -2px 0 white)',
-  'drop-shadow(2px -2px 0 white)',
-  'drop-shadow(-2px 2px 0 white)',
-
-  // Contour gris foncé interne très fin
-  'drop-shadow(0.3px 0 0 rgba(50, 50, 50, 0.7))',
-  'drop-shadow(-0.3px 0 0 rgba(50, 50, 50, 0.7))',
-  'drop-shadow(0 0.3px 0 rgba(50, 50, 50, 0.7))',
-  'drop-shadow(0 -0.3px 0 rgba(50, 50, 50, 0.7))',
-
-  // Ombres pour effet autocollant décollé
-  'drop-shadow(2px 3px 5px rgba(0, 0, 0, 0.3))',
-  'drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.25))',
-  'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.2))',
-
-  // Amélioration légère des couleurs
-  'brightness(1.02)',
-  'contrast(1.05)',
-  'saturate(1.1)'
-].join(' ');
 
 const StickerCard: React.FC<StickerCardProps> = ({
   sticker,
@@ -78,40 +52,21 @@ const StickerCard: React.FC<StickerCardProps> = ({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-lg transition-all overflow-hidden">
-      {/* Zone d'aperçu - Fond gris pour mieux voir les bordures (comme CustomerProductCustomizationPageV3) */}
-      {/* 🚀 OPTIMISATION 2: contain pour isolation du rendu */}
-      <div
-        className="relative aspect-square bg-gray-200 p-6 flex items-center justify-center"
-        style={{ contain: 'layout style paint' }}
-      >
-        {/* Image du sticker avec effet autocollant : bordure blanche + ombre */}
-        {/* 🚀 OPTIMISATION 3: will-change + translateZ pour accélération GPU */}
-        <div
-          className="relative inline-block"
+      {/* Zone d'aperçu - Fond gris pour mieux voir les stickers */}
+      <div className="relative aspect-square bg-gray-200 p-6 flex items-center justify-center">
+        {/* Image du sticker générée par le backend */}
+        <img
+          src={sticker.stickerImage || sticker.designPreview}
+          alt={sticker.name}
+          loading="lazy"
+          decoding="async"
+          className="max-w-full max-h-full object-contain"
           style={{
-            willChange: 'transform',
-            transform: 'translateZ(0)'
+            maxWidth: '280px',
+            maxHeight: '280px',
+            display: 'block'
           }}
-        >
-          <img
-            src={sticker.stickerImage || sticker.designPreview}
-            alt={sticker.name}
-            loading="lazy" // 🚀 OPTIMISATION 4: Lazy loading natif
-            decoding="async" // 🚀 OPTIMISATION 5: Décodage asynchrone
-            className="max-w-full max-h-full object-contain"
-            style={{
-              maxWidth: '280px',
-              maxHeight: '280px',
-              display: 'block',
-              filter: STICKER_FILTER, // 🚀 Utilisation de la constante pré-calculée
-              // 🚀 OPTIMISATION 6: backface-visibility pour GPU
-              backfaceVisibility: 'hidden',
-              // 🚀 OPTIMISATION 7: perspective pour GPU layer
-              WebkitTransform: 'translateZ(0)',
-              WebkitFontSmoothing: 'antialiased'
-            }}
-          />
-        </div>
+        />
 
         {/* Badge statut */}
         <div className="absolute top-2 right-2">

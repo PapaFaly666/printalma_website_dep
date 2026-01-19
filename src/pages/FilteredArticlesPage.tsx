@@ -10,6 +10,7 @@ import { subCategoriesService, SubCategory } from '../services/subCategoriesServ
 import ServiceFeatures from './ServiceFeatures ';
 import Footer from '../components/Footer';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { publicStickerService, PublicSticker } from '../services/publicStickerService';
 
 const FilteredArticlesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -23,6 +24,7 @@ const FilteredArticlesPage: React.FC = () => {
 
   // États pour les produits de l'API
   const [products, setProducts] = useState<VendorProduct[]>([]);
+  const [stickers, setStickers] = useState<PublicSticker[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
@@ -349,17 +351,36 @@ const FilteredArticlesPage: React.FC = () => {
           offset
         });
 
-        const response = await vendorProductsService.searchProducts({
-          search: searchQuery,
-          limit: itemsPerPage,
-          offset
-        });
+        // Charger les produits traditionnels ET les stickers en parallèle
+        const [productsResponse, stickersResponse] = await Promise.all([
+          vendorProductsService.searchProducts({
+            search: searchQuery,
+            limit: itemsPerPage,
+            offset
+          }),
+          // Charger les stickers (limité pour l'instant)
+          publicStickerService.getPublicStickers({
+            search: searchQuery,
+            limit: 6, // Moins de stickers que de produits
+            page: currentPage
+          }).catch(() => ({ success: false, data: { stickers: [], pagination: { totalItems: 0 } } }))
+        ]);
 
-        if (response.success) {
+        if (productsResponse.success) {
           // Filtrer pour n'afficher que les produits publiés
-          let publishedProducts = response.data.filter(product =>
+          let publishedProducts = productsResponse.data.filter(product =>
             product.status && product.status.toLowerCase() === 'published'
           );
+
+          // Stocker les stickers convertis en format VendorProduct
+          const loadedStickers = (stickersResponse.success && stickersResponse.data.stickers.length > 0)
+            ? stickersResponse.data.stickers.map(s => publicStickerService.convertToVendorProduct(s))
+            : [];
+
+          setStickers(stickersResponse.success ? stickersResponse.data.stickers : []);
+          if (loadedStickers.length > 0) {
+            console.log('✅ [FilteredArticlesPage] Stickers chargés:', loadedStickers.length);
+          }
 
           // Appliquer les filtres de couleur, taille et prix
           if (selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) {
@@ -506,12 +527,14 @@ const FilteredArticlesPage: React.FC = () => {
             publishedProducts = filteredProducts;
           }
 
-          setProducts(publishedProducts);
+          // Fusionner produits et stickers
+          const allProducts = [...loadedStickers, ...publishedProducts];
+          setProducts(allProducts);
 
           // Calculer correctement la pagination pour les produits filtrés
           if (selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) {
             // Pour les filtres, nous avons besoin de compter tous les produits correspondants
-            const allFilteredProducts = response.data.filter(product => {
+            const allFilteredProducts = productsResponse.data.filter(product => {
               if (!product.status || product.status.toLowerCase() !== 'published') return false;
 
               // Fonction pour normaliser les noms de couleurs et comparer (même fonction que ci-dessus)
@@ -628,30 +651,31 @@ const FilteredArticlesPage: React.FC = () => {
             });
 
             setPagination({
-              total: allFilteredProducts.length,
+              total: allFilteredProducts.length + loadedStickers.length,
               hasMore: false // Désactiver la pagination pour les filtres de couleur pour l'instant
             });
           } else {
             setPagination({
-              total: response.pagination.total,
-              hasMore: response.pagination.hasMore
+              total: productsResponse.pagination.total + loadedStickers.length,
+              hasMore: productsResponse.pagination.hasMore
             });
           }
-          console.log('✅ [FilteredArticlesPage] Produits chargés:', response.data.length);
+          console.log('✅ [FilteredArticlesPage] Produits chargés:', productsResponse.data.length);
           console.log('📊 [FilteredArticlesPage] Produits publiés:', publishedProducts.length);
+          console.log('🎨 [FilteredArticlesPage] Stickers chargés:', loadedStickers.length);
           console.log('🎨 [FilteredArticlesPage] Couleurs sélectionnées:', selectedColors);
 
           // Debug: Afficher la structure d'un produit exemple
-          if (response.data.length > 0) {
+          if (productsResponse.data.length > 0) {
             console.log('📋 [DEBUG] Structure produit exemple:', {
-              id: response.data[0].id,
-              status: response.data[0].status,
-              hasAdminProduct: !!response.data[0].adminProduct,
-              colorVariations: response.data[0].adminProduct?.colorVariations
+              id: productsResponse.data[0].id,
+              status: productsResponse.data[0].status,
+              hasAdminProduct: !!productsResponse.data[0].adminProduct,
+              colorVariations: productsResponse.data[0].adminProduct?.colorVariations
             });
           }
         } else {
-          setError(response.message);
+          setError(productsResponse.message);
           setProducts([]);
         }
       } catch (err) {
@@ -1447,7 +1471,7 @@ const FilteredArticlesPage: React.FC = () => {
               {!loading && !error && products.length > 0 && (
                 <>
                   <div className="mb-4 text-sm text-gray-600">
-                    {pagination.total} produit{pagination.total > 1 ? 's' : ''} trouvé{pagination.total > 1 ? 's' : ''}
+                    {pagination.total} résultat{pagination.total > 1 ? 's' : ''} trouvé{pagination.total > 1 ? 's' : ''}
                     {categoryParam && ` pour "${selectedCategory?.name || categoryParam}"`}
                     {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) && (
                       <span className="font-medium"> avec les filtres:</span>
@@ -1477,9 +1501,12 @@ const FilteredArticlesPage: React.FC = () => {
                         onClick={() => {
                           // Ajouter à l'historique avant de naviguer
                           addToHistory(product);
-                          // Navigation vers la page détails du produit
-                          console.log('Navigation vers détail produit:', product.id);
-                          navigate(`/vendor-product-detail/${product.id}`);
+                          // Navigation vers la page détail du produit (ou sticker)
+                          if ((product as any).isSticker) {
+                            navigate(`/public-sticker/${product.id}`);
+                          } else {
+                            navigate(`/vendor-product-detail/${product.id}`);
+                          }
                         }}
                       />
                     ))}
