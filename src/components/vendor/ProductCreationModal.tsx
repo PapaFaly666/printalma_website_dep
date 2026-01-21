@@ -119,10 +119,20 @@ export const ProductCreationModal: React.FC<ProductCreationModalProps> = ({
             scale: 0.6
           }
         },
-        
+
         // 🆕 Position design depuis localStorage
-        designPosition: savedPosition.position,
-        
+        // Transformer designWidth/designHeight en delimitationWidth/delimitationHeight
+        designPosition: {
+          x: savedPosition.position.x,
+          y: savedPosition.position.y,
+          scale: savedPosition.position.scale,
+          rotation: savedPosition.position.rotation || 0,
+          // Utiliser designWidth/designHeight comme delimitationWidth/delimitationHeight
+          delimitationWidth: savedPosition.position.delimitationWidth || savedPosition.position.designWidth || 0,
+          delimitationHeight: savedPosition.position.delimitationHeight || savedPosition.position.designHeight || 0,
+          positionUnit: 'PERCENTAGE' as const
+        },
+
         // 🔧 OPTIONS
         forcedStatus: 'DRAFT' as const,
         postValidationAction: 'AUTO_PUBLISH' as const,

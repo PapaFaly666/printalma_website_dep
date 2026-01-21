@@ -290,7 +290,7 @@ export const VendorPostersPage: React.FC = () => {
       });
 
       console.log('✅ [Posters] Designs validés trouvés:', validatedDesigns.length);
-      setDesigns(validatedDesigns);
+      setDesigns(validatedDesigns as any);
     } catch (error: any) {
       console.error('Erreur chargement données:', error);
       toast.error('Erreur', {

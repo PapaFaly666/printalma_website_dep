@@ -20,13 +20,10 @@ export interface Transform {
   y: number; // Offset vertical depuis le centre de la délimitation (pixels ou %)
   scale: number; // Échelle globale (legacy, utilisez designScale à la place)
   rotation: number; // Rotation en degrés
-  // ❌ PLUS NÉCESSAIRE: Le backend calcule designWidth/designHeight avec fit: 'inside'
-  // designWidth?: number;
-  // designHeight?: number;
+  // ✅ Dimensions du design (nécessaires pour compatibilité)
+  designWidth?: number;
+  designHeight?: number;
   designScale?: number; // Échelle appliquée à la délimitation (0.8 = 80% de la zone)
-  // ❌ PLUS NÉCESSAIRE: Le backend recalcule containerWidth/containerHeight
-  // containerWidth?: number;
-  // containerHeight?: number;
   // 🆕 COHÉRENCE BACKEND: Unité de position (pixels ou pourcentage)
   positionUnit?: 'PIXEL' | 'PERCENTAGE'; // Défaut: PIXEL
   // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend

@@ -62,6 +62,7 @@ export interface PublicSticker {
   shape?: string;
   price?: number;
   minimumOrder?: number;
+  maximumOrder?: number;
   viewCount?: number;
   saleCount?: number;
 }
@@ -177,13 +178,14 @@ class PublicStickerService {
 
         // Ajouter les propriétés calculées pour compatibilité
         // Vérifier que les objets imbriqués existent avant d'y accéder
-        sticker.size = sticker.configuration?.size
-          ? `${sticker.configuration.size.width}x${sticker.configuration.size.height}cm`
-          : '10x10cm';
+        const sizeWidth = sticker.configuration?.size?.width || 10;
+        const sizeHeight = sticker.configuration?.size?.height || 10;
+        sticker.size = `${sizeWidth}x${sizeHeight}cm`;
         sticker.finish = sticker.configuration?.finish || 'glossy';
         sticker.shape = sticker.configuration?.shape || 'SQUARE';
         sticker.price = sticker.pricing?.finalPrice || 0;
         sticker.minimumOrder = sticker.stock?.minimumOrder || 1;
+        sticker.maximumOrder = sticker.stock?.maximumOrder || 10000;
         sticker.viewCount = sticker.stats?.viewCount || 0;
         sticker.saleCount = sticker.stats?.saleCount || 0;
 

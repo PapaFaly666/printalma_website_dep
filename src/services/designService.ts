@@ -60,6 +60,17 @@ export interface Design {
   earnings?: number;
   views?: number;
   likes?: number;
+  // Propriétés additionnelles pour compatibilité
+  vendorId?: number;
+  themeId?: number;
+  categoryId?: number;
+  themeName?: string;
+  validationStatus?: 'PENDING' | 'VALIDATED' | 'REJECTED';
+  validatedAt?: string;
+  validatorName?: string;
+  rejectionReason?: string;
+  submittedForValidationAt?: string;
+  isDelete?: boolean;
 }
 
 export type DesignList = Design[];

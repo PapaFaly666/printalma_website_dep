@@ -792,7 +792,8 @@ const PublicVendorProductDetailPage: React.FC = () => {
         productData.stickerId = sticker.id;
         productData.color = 'N/A'; // Pas de couleur pour les stickers
         productData.colorCode = '#FFFFFF';
-        productData.size = `${sticker.size.width}x${sticker.size.height} cm`;
+        // sticker.size est déjà une string au format "10x10cm"
+        productData.size = typeof sticker.size === 'string' ? sticker.size : 'Standard';
         productData.designUrl = sticker.design?.imageUrl;
         productData.designId = sticker.design?.id;
         // ⚠️ NE PAS ajouter vendorProductId pour les stickers

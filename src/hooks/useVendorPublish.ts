@@ -348,7 +348,16 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
         }
 
           // 🆕 RÉCUPÉRER LES DIMENSIONS DU DESIGN SPÉCIFIQUES À CE PRODUIT
-          let designDimensions = {
+          let designDimensions: {
+            designWidth?: number;
+            designHeight?: number;
+            designScale: number;
+            rotation: number;
+            x: number;
+            y: number;
+            delimitationWidth?: number;
+            delimitationHeight?: number;
+          } = {
             designWidth: 200,
             designHeight: 200,
             designScale: 0.6,
@@ -440,8 +449,9 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
                 // containerWidth: positionData.containerWidth ?? foundData.containerWidth,
                 // containerHeight: positionData.containerHeight ?? foundData.containerHeight,
                 // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
-                delimitationWidth: positionData.delimitationWidth ?? foundData.delimitationWidth,
-                delimitationHeight: positionData.delimitationHeight ?? foundData.delimitationHeight,
+                // Fallback sur designWidth/designHeight si delimitationWidth/delimitationHeight non disponibles
+                delimitationWidth: positionData.delimitationWidth ?? foundData.delimitationWidth ?? positionData.designWidth ?? foundData.designWidth ?? 0,
+                delimitationHeight: positionData.delimitationHeight ?? foundData.delimitationHeight ?? positionData.designHeight ?? foundData.designHeight ?? 0,
               };
 
               console.log(`📏 Position extraite pour produit ${productId}:`, {

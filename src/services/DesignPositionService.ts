@@ -11,6 +11,10 @@ export interface DesignPositionData {
     designWidth?: number;
     designHeight?: number;
     designScale?: number;
+    // ✅ ESSENTIEL: Dimensions de la délimitation pour le backend
+    delimitationWidth?: number;
+    delimitationHeight?: number;
+    positionUnit?: 'PIXEL' | 'PERCENTAGE';
   };
   timestamp: number;
   vendorId: number;
