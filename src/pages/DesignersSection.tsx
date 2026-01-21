@@ -41,7 +41,7 @@ export default function DesignersSection() {
                 onClick={() => navigate('/designers')}
                 variant="outline"
                 size="xl"
-                className="bg-[#e61d2c] text-white hover:bg-red-700 px-6 xs:px-8 py-2.5 xs:py-3 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium"
+                className="bg-[#e61d2c] text-white hover:bg-red-700 px-4 py-1.5 xs:px-6 xs:py-2 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium min-h-[32px] xs:min-h-[36px] sm:min-h-[56px] rounded-lg xs:rounded-xl sm:rounded-full"
               >
                 Découvrir
               </Button>

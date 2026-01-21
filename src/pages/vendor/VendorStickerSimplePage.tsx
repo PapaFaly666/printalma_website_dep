@@ -6,10 +6,21 @@ import {
   Loader2,
   Search,
   Check,
-  ArrowLeft
+  ArrowLeft,
+  X,
+  Package,
+  DollarSign
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
 import designService, { Design } from '../../services/designService';
 import vendorStickerService from '../../services/vendorStickerService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,6 +34,14 @@ const VendorStickerSimplePage: React.FC = () => {
   const [isLoadingDesigns, setIsLoadingDesigns] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [creatingStickerId, setCreatingStickerId] = useState<string | number | null>(null);
+
+  // États pour la modale de configuration
+  const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [minQuantity, setMinQuantity] = useState<number>(1);
+  const [maxQuantity, setMaxQuantity] = useState<number>(100);
+  const [customPrice, setCustomPrice] = useState<number>(1500);
+  const [priceMode, setPriceMode] = useState<'auto' | 'custom'>('auto');
 
   // Charger les designs du vendeur
   useEffect(() => {
@@ -85,29 +104,63 @@ const VendorStickerSimplePage: React.FC = () => {
     design.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Créer automatiquement un autocollant depuis un design
-  const handleCreateSticker = async (design: Design) => {
-    try {
-      setCreatingStickerId(design.id);
+  // Ouvrir la modale de configuration
+  const openConfigModal = (design: Design) => {
+    setSelectedDesign(design);
 
-      // Configuration simplifiée - Taille et prix définis directement
+    // Calculer le prix auto suggéré
+    const basePrice = 1500;
+    const designPrice = design.price || 0;
+    const suggestedPrice = basePrice + designPrice;
+
+    setCustomPrice(suggestedPrice);
+    setMinQuantity(1);
+    setMaxQuantity(100);
+    setPriceMode('auto');
+    setIsConfigModalOpen(true);
+  };
+
+  // Fermer la modale
+  const closeConfigModal = () => {
+    setIsConfigModalOpen(false);
+    setSelectedDesign(null);
+  };
+
+  // Calculer le prix final
+  const getFinalPrice = (): number => {
+    if (priceMode === 'auto' && selectedDesign) {
+      const basePrice = 1500;
+      const designPrice = selectedDesign.price || 0;
+      return basePrice + designPrice;
+    }
+    return customPrice;
+  };
+
+  // Créer un autocollant depuis un design avec configuration personnalisée
+  const handleCreateSticker = async () => {
+    if (!selectedDesign) return;
+
+    try {
+      setCreatingStickerId(selectedDesign.id);
+
       const stickerWidth = 10;  // 10 cm
       const stickerHeight = 10; // 10 cm
-      const basePrice = 1500;   // Prix de base en FCFA
-      const designPrice = design.price || 0;
-      const totalPrice = basePrice + designPrice;
+      const finalPrice = getFinalPrice();
 
-      console.log('💰 Calcul prix:', {
-        basePrice,
-        designPrice,
-        total: totalPrice
+      console.log('💰 Configuration finale:', {
+        priceMode,
+        basePrice: 1500,
+        designPrice: selectedDesign.price || 0,
+        finalPrice,
+        minQuantity,
+        maxQuantity
       });
 
       // Configuration au format simplifié attendu par le backend
       const stickerPayload = {
-        designId: design.id,
-        name: `Autocollant - ${design.name}`,
-        description: design.description || `Autocollant personnalisé avec le design ${design.name}`,
+        designId: selectedDesign.id,
+        name: `Autocollant - ${selectedDesign.name}`,
+        description: selectedDesign.description || `Autocollant personnalisé avec le design ${selectedDesign.name}`,
 
         // Taille simplifiée (seulement width et height)
         size: {
@@ -115,14 +168,15 @@ const VendorStickerSimplePage: React.FC = () => {
           height: stickerHeight
         },
 
-        // Prix défini directement par le vendeur
-        price: totalPrice,
+        // Prix défini par le vendeur
+        price: finalPrice,
 
         // Forme
         shape: 'DIE_CUT',
 
-        // Stock
-        stockQuantity: 50,
+        // Quantités minimale et maximale
+        minQuantity: minQuantity,
+        maxQuantity: maxQuantity,
 
         // Configuration de génération d'image
         stickerType: 'autocollant' as const,
@@ -162,9 +216,11 @@ const VendorStickerSimplePage: React.FC = () => {
 
       toast.dismiss('creating-sticker');
       toast.success(`✅ Autocollant créé: ${stickerPayload.name}`, {
-        description: `Prix: ${totalPrice.toLocaleString()} FCFA - Image générée par le serveur`,
+        description: `Prix: ${finalPrice.toLocaleString()} FCFA | Qté min: ${minQuantity}, max: ${maxQuantity}`,
         duration: 4000
       });
+
+      closeConfigModal();
 
       setTimeout(() => {
         navigate('/vendeur/products');
@@ -179,6 +235,13 @@ const VendorStickerSimplePage: React.FC = () => {
     } finally {
       setCreatingStickerId(null);
     }
+  };
+
+  // Prix calculé pour affichage dans la grille
+  const getDisplayPrice = (design: Design): number => {
+    const basePrice = 1500;
+    const designPrice = design.price || 0;
+    return basePrice + designPrice;
   };
 
   return (
@@ -214,33 +277,6 @@ const VendorStickerSimplePage: React.FC = () => {
 
       {/* Contenu principal */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Info box */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <Sticker className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-blue-900 mb-1">
-                Autocollants créés automatiquement
-              </h3>
-              <p className="text-sm text-blue-800">
-                Cliquez sur un design pour créer un autocollant avec :
-              </p>
-              <ul className="text-sm text-blue-800 mt-2 space-y-1 list-disc list-inside">
-                <li>Bordure blanche brillante (effet glossy) générée par le serveur</li>
-                <li>Taille: 100 mm x 100 mm (10 cm x 10 cm)</li>
-                <li>Forme: Découpe personnalisée (contour du design)</li>
-                <li>Prix: 1,500 FCFA (base) + prix du design</li>
-                <li>Stock initial: 50 unités</li>
-                <li><strong>Image finale avec contours blancs pré-générée (Sharp)</strong></li>
-              </ul>
-              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
-                Les images sont générées côté serveur avec Sharp pour des performances optimales et une qualité constante.
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Barre de recherche */}
         <div className="mb-6">
@@ -314,7 +350,7 @@ const VendorStickerSimplePage: React.FC = () => {
 
                     {/* Bouton de création */}
                     <Button
-                      onClick={() => handleCreateSticker(design)}
+                      onClick={() => openConfigModal(design)}
                       disabled={isCreating}
                       className="w-full"
                       size="sm"
@@ -327,7 +363,7 @@ const VendorStickerSimplePage: React.FC = () => {
                       ) : (
                         <>
                           <Check className="w-3 h-3 mr-2" />
-                          Créer autocollant
+                          Configurer
                         </>
                       )}
                     </Button>
@@ -335,12 +371,7 @@ const VendorStickerSimplePage: React.FC = () => {
 
                   {/* Badge prix calculé */}
                   <div className="absolute top-2 right-2 bg-primary text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                    {(() => {
-                      // Calcul simplifié (identique à handleCreateSticker)
-                      const basePrice = 1500;
-                      const designPrice = design.price || 0;
-                      return (basePrice + designPrice).toLocaleString();
-                    })()} FCFA
+                    {getDisplayPrice(design).toLocaleString()} FCFA
                   </div>
                 </div>
               );
@@ -355,11 +386,142 @@ const VendorStickerSimplePage: React.FC = () => {
               {filteredDesigns.length} design{filteredDesigns.length > 1 ? 's' : ''} disponible{filteredDesigns.length > 1 ? 's' : ''} pour créer des autocollants
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              Les autocollants sont créés en brouillon. Vous pourrez les modifier avant publication.
+              Définissez les quantités minimale (≥1) et maximale par commande. Pas de stock à gérer.
             </p>
           </div>
         )}
       </div>
+
+      {/* Modale de configuration du sticker */}
+      {isConfigModalOpen && selectedDesign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* En-tête de la modale */}
+            <div className="sticky top-0 bg-white border-b p-4 rounded-t-2xl z-10">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Configurer l'autocollant
+                </h2>
+                <button
+                  onClick={closeConfigModal}
+                  disabled={creatingStickerId !== null}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            {/* Corps de la modale */}
+            <div className="p-4 space-y-4">
+              {/* Aperçu du design */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+                  <img
+                    src={selectedDesign.imageUrl || selectedDesign.thumbnailUrl}
+                    alt={selectedDesign.name}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900">{selectedDesign.name}</h3>
+                  {selectedDesign.price > 0 && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      +{selectedDesign.price} FCFA
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Configuration du prix */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-700">Prix de vente</Label>
+
+                {/* Sélection du mode de prix */}
+                <Select value={priceMode} onValueChange={(value: 'auto' | 'custom') => setPriceMode(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">
+                      Automatique (1,500 FCFA + design)
+                    </SelectItem>
+                    <SelectItem value="custom">
+                      Personnalisé
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Affichage du prix */}
+                {priceMode === 'auto' ? (
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm text-gray-600">Prix total</span>
+                      <span className="text-xl font-semibold text-gray-900">
+                        {getFinalPrice().toLocaleString()} FCFA
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      id="customPrice"
+                      type="number"
+                      min="100"
+                      step="100"
+                      value={customPrice}
+                      onChange={(e) => setCustomPrice(Number(e.target.value))}
+                      placeholder="Ex: 2000"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Suggéré: {(1500 + (selectedDesign.price || 0)).toLocaleString()} FCFA
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Résumé */}
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Taille</span>
+                  <span className="font-medium text-gray-900">10 cm x 10 cm</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Pied de la modale */}
+            <div className="sticky bottom-0 bg-white border-t p-4 rounded-b-2xl">
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={closeConfigModal}
+                  disabled={creatingStickerId !== null}
+                  className="flex-1"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleCreateSticker}
+                  disabled={creatingStickerId !== null}
+                  className="flex-1"
+                >
+                  {creatingStickerId ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-2" />
+                      Créer
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

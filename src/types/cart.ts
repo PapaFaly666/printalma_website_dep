@@ -26,6 +26,10 @@ export interface CartItem {
   imageUrl: string;
   designUrl?: string;
   vendorName?: string;
+
+  // ✅ Support des stickers
+  productType?: 'STICKER' | 'PRODUCT';  // Type de produit
+  stickerId?: number;                    // ID du sticker si applicable
   // Propriétés nécessaires pour afficher le design
   designId?: number;
   adminProductId?: number;

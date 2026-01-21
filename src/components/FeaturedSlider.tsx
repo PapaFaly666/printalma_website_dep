@@ -277,6 +277,7 @@ const BestSellersGrid = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
   // Fonction de navigation vers la page de détail du produit
   const handleProductClick = (productId: number) => {
@@ -287,23 +288,39 @@ const BestSellersGrid = () => {
   // Fonction pour le scroll horizontal sur mobile
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
-      const scrollAmount = window.innerWidth < 640
-        ? window.innerWidth * 0.75  // 75vw on mobile
-        : window.innerWidth < 1024
-          ? window.innerWidth * 0.50  // 50vw on tablet
-          : window.innerWidth * 0.25;  // 25vw on desktop
-      scrollContainerRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      const container = scrollContainerRef.current;
+
+      // Calculer la largeur exacte d'une carte avec son gap
+      const cardWidth = container.firstElementChild?.getBoundingClientRect().width || 0;
+      const computedStyle = window.getComputedStyle(container);
+      const gap = parseFloat(computedStyle.gap) || 16; // gap par défaut si pas de gap
+
+      // Scroller d'une carte complète avec transition fluide
+      const scrollDistance = cardWidth + gap;
+
+      container.scrollBy({
+        left: -scrollDistance,
+        behavior: 'smooth'
+      });
     }
   };
 
   const scrollRight = () => {
     if (scrollContainerRef.current) {
-      const scrollAmount = window.innerWidth < 640
-        ? window.innerWidth * 0.75  // 75vw on mobile
-        : window.innerWidth < 1024
-          ? window.innerWidth * 0.50  // 50vw on tablet
-          : window.innerWidth * 0.25;  // 25vw on desktop
-      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      const container = scrollContainerRef.current;
+
+      // Calculer la largeur exacte d'une carte avec son gap
+      const cardWidth = container.firstElementChild?.getBoundingClientRect().width || 0;
+      const computedStyle = window.getComputedStyle(container);
+      const gap = parseFloat(computedStyle.gap) || 16; // gap par défaut si pas de gap
+
+      // Scroller d'une carte complète avec transition fluide
+      const scrollDistance = cardWidth + gap;
+
+      container.scrollBy({
+        left: scrollDistance,
+        behavior: 'smooth'
+      });
     }
   };
 
@@ -336,28 +353,64 @@ const BestSellersGrid = () => {
     }).format(price);
   };
 
-  // Navigation functions (identiques à NouveautesGrid)
+  // Calculer les produits actuellement affichés
+  const getCurrentProducts = () => {
+    return bestSellersData.slice(currentIndex, currentIndex + 4);
+  };
+
+  // Vérifier s'il y a plus de produits
+  const canGoLeft = currentIndex > 0;
+  const canGoRight = currentIndex < bestSellersData.length - 4;
+
+  // Navigation functions avec animation fluide
   const goToPrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+      // Ajouter classe d'animation
+      if (gridContainerRef.current) {
+        gridContainerRef.current.style.opacity = '0';
+        gridContainerRef.current.style.transform = 'translateX(20px)';
+      }
+
+      setTimeout(() => {
+        setCurrentIndex(currentIndex - 1);
+
+        if (gridContainerRef.current) {
+          gridContainerRef.current.style.transform = 'translateX(-20px)';
+          setTimeout(() => {
+            if (gridContainerRef.current) {
+              gridContainerRef.current.style.opacity = '1';
+              gridContainerRef.current.style.transform = 'translateX(0)';
+            }
+          }, 50);
+        }
+      }, 200);
     }
   };
 
   const goToNext = () => {
     const maxIndex = Math.max(0, bestSellersData.length - 4);
     if (currentIndex < maxIndex) {
-      setCurrentIndex(currentIndex + 1);
+      // Ajouter classe d'animation
+      if (gridContainerRef.current) {
+        gridContainerRef.current.style.opacity = '0';
+        gridContainerRef.current.style.transform = 'translateX(-20px)';
+      }
+
+      setTimeout(() => {
+        setCurrentIndex(currentIndex + 1);
+
+        if (gridContainerRef.current) {
+          gridContainerRef.current.style.transform = 'translateX(20px)';
+          setTimeout(() => {
+            if (gridContainerRef.current) {
+              gridContainerRef.current.style.opacity = '1';
+              gridContainerRef.current.style.transform = 'translateX(0)';
+            }
+          }, 50);
+        }
+      }, 200);
     }
   };
-
-  // Calculer les produits actuellement affichés (identique à NouveautesGrid)
-  const getCurrentProducts = () => {
-    return bestSellersData.slice(currentIndex, currentIndex + 4);
-  };
-
-  // Vérifier s'il y a plus de produits (identique à NouveautesGrid)
-  const canGoLeft = currentIndex > 0;
-  const canGoRight = currentIndex < bestSellersData.length - 4;
 
   // Loading state identique à NouveautesGrid
   if (isLoading) {
@@ -404,11 +457,9 @@ const BestSellersGrid = () => {
             }}
             disabled={!canGoLeft && window.innerWidth >= 1024}
             className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 xs:w-8 xs:h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
-              window.innerWidth < 1024
+              window.innerWidth < 1024 || canGoLeft
                 ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
-                : canGoLeft
-                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
-                  : 'border-gray-300 text-gray-300 cursor-not-allowed'
+                : 'border-gray-300 text-gray-300 cursor-not-allowed'
             } -translate-x-3 xs:-translate-x-4 sm:-translate-x-5 md:-translate-x-6`}
             aria-label="Produits précédents"
           >
@@ -418,18 +469,42 @@ const BestSellersGrid = () => {
           </button>
 
           {/* Grille de 4 produits avec SimpleProductPreview - Scroll horizontal sur mobile */}
+          {/* Grille de produits - Scroll horizontal sur mobile, pagination sur desktop */}
           <div
             ref={scrollContainerRef}
-            className="flex lg:grid lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 md:gap-6 lg:gap-8 transition-all duration-300 overflow-x-auto lg:overflow-visible snap-x snap-mandatory scrollbar-hide"
+            className="flex lg:hidden gap-2 xs:gap-3 sm:gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+            style={{
+              WebkitOverflowScrolling: 'touch'
+            }}
           >
-            {currentProducts.map((item, index) => (
-              <div key={item.id} className="flex-shrink-0 w-[70vw] xs:w-[60vw] sm:w-[45vw] md:w-[48vw] lg:w-auto snap-start">
+            {bestSellersData.map((item, index) => (
+              <div key={item.id} className="flex-shrink-0 w-[70vw] xs:w-[60vw] sm:w-[45vw] md:w-[48vw] snap-start">
                 <ProductCard
                   item={item}
                   formatPrice={formatPrice}
                   onProductClick={handleProductClick}
                 />
               </div>
+            ))}
+          </div>
+
+          {/* Grille desktop avec pagination animée */}
+          <div
+            ref={gridContainerRef}
+            className="hidden lg:grid lg:grid-cols-4 gap-8"
+            style={{
+              transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
+              opacity: 1,
+              transform: 'translateX(0)'
+            }}
+          >
+            {currentProducts.map((item, index) => (
+              <ProductCard
+                key={item.id}
+                item={item}
+                formatPrice={formatPrice}
+                onProductClick={handleProductClick}
+              />
             ))}
           </div>
 
@@ -454,11 +529,9 @@ const BestSellersGrid = () => {
             }}
             disabled={!canGoRight && window.innerWidth >= 1024}
             className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 xs:w-8 xs:h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-lg border-2 flex items-center justify-center transition-all duration-200 ${
-              window.innerWidth < 1024
+              window.innerWidth < 1024 || canGoRight
                 ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
-                : canGoRight
-                  ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
-                  : 'border-gray-300 text-gray-300 cursor-not-allowed'
+                : 'border-gray-300 text-gray-300 cursor-not-allowed'
             } translate-x-3 xs:translate-x-4 sm:translate-x-5 md:translate-x-6`}
             aria-label="Produits suivants"
           >
@@ -474,7 +547,7 @@ const BestSellersGrid = () => {
             onClick={() => navigate('/best-sellers')}
             variant="outline"
             size="xl"
-            className="bg-red-500 hover:bg-red-600 text-white border-red-500 hover:border-red-600 px-6 xs:px-8 py-2.5 xs:py-3 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium"
+            className="bg-red-500 hover:bg-red-600 text-white border-red-500 hover:border-red-600 px-4 py-1.5 xs:px-6 xs:py-2 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium min-h-[32px] xs:min-h-[36px] sm:min-h-[56px] rounded-lg xs:rounded-xl sm:rounded-full"
           >
             Voir plus
           </Button>

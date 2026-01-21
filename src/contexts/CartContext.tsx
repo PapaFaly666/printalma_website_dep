@@ -128,6 +128,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   const addToCart = (product: {
     id: number | string;
+    productId?: number; // ✅ Ajouter productId explicite
     name: string;
     price: number;
     suggestedPrice?: number;
@@ -175,6 +176,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     customizationIds?: Record<string, number>; // 🆕 Plusieurs IDs de personnalisation
     designElements?: any[]; // @deprecated
     designElementsByView?: Record<string, any[]>; // 🆕 Organisé par vue
+    // ✅ Support stickers
+    productType?: 'STICKER' | 'PRODUCT';
+    stickerId?: number;
   }) => {
     console.log('🛒 [CartContext] Ajout au panier:', product);
     // Utiliser la vraie taille si disponible, sinon la taille de base
@@ -229,7 +233,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         console.log('🛒 [CartContext] Nouveau produit, ajout au panier');
         const newItem: CartItem = {
           id: cartItemId,
-          productId: typeof product.id === 'number' ? product.id : parseInt(product.id),
+          productId: product.productId || (typeof product.id === 'number' ? product.id : parseInt(product.id as string)),
           name: product.name,
           price: product.price,
           suggestedPrice: product.suggestedPrice,
@@ -261,7 +265,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           customizationId: product.customizationId,
           customizationIds: product.customizationIds, // 🆕 Plusieurs IDs
           designElements: product.designElements, // @deprecated
-          designElementsByView: product.designElementsByView // 🆕 Organisé par vue
+          designElementsByView: product.designElementsByView, // 🆕 Organisé par vue
+          // ✅ Support stickers
+          productType: product.productType,
+          stickerId: product.stickerId
         };
 
         console.log('🎨 [CartContext] Personnalisation incluse:', {

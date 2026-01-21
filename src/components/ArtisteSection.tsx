@@ -20,7 +20,7 @@ export default function ArtistesSection() {
                   alt="Ebu Jomlong"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-left opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                   <span className="text-white text-xs xs:text-sm md:text-base font-bold leading-tight">Ebu Jomlong</span>
                 </div>
               </div>
@@ -32,7 +32,7 @@ export default function ArtistesSection() {
                   alt="Dip Poundou Guiss"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-left opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                   <span className="text-white text-xs xs:text-sm md:text-base font-bold leading-tight">Dip Poundou Guiss</span>
                 </div>
               </div>
@@ -44,7 +44,7 @@ export default function ArtistesSection() {
                   alt="Massamba Amadeus"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-left opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                   <span className="text-white text-xs xs:text-sm md:text-base font-bold leading-tight">Massamba Amadeus</span>
                 </div>
               </div>
@@ -56,7 +56,7 @@ export default function ArtistesSection() {
                   alt="Amina Abed"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-left opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                   <span className="text-white text-xs xs:text-sm md:text-base font-bold leading-tight">Amina Abed</span>
                 </div>
               </div>
@@ -68,7 +68,7 @@ export default function ArtistesSection() {
                   alt="Mut Cash"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-left opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                   <span className="text-white text-xs xs:text-sm md:text-base font-bold leading-tight">Mut Cash</span>
                 </div>
               </div>
@@ -91,7 +91,7 @@ export default function ArtistesSection() {
                 onClick={() => navigate('/artistes')}
                 variant="outline"
                 size="xl"
-                className="bg-[#e61d2c] text-white hover:bg-red-700 px-6 xs:px-8 py-2.5 xs:py-3 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium self-center"
+                className="bg-[#e61d2c] text-white hover:bg-red-700 px-4 py-1.5 xs:px-6 xs:py-2 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium self-center min-h-[32px] xs:min-h-[36px] sm:min-h-[56px] rounded-lg xs:rounded-xl sm:rounded-full"
               >
                 Découvrir
               </Button>

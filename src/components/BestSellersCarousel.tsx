@@ -122,23 +122,55 @@ const BestSellersCarousel: React.FC<BestSellersCarouselProps> = ({
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
-      // Scroll de 2 cartes vers la gauche
-      const cardWidth = (scrollContainerRef.current.clientWidth + 24) / 4; // 24px pour les gaps
-      scrollContainerRef.current.scrollBy({
-        left: -cardWidth * 2,
+      const container = scrollContainerRef.current;
+
+      // Calculer la largeur exacte d'une carte avec son gap
+      const cardWidth = container.firstElementChild?.getBoundingClientRect().width || 0;
+      const gap = 24; // gap-6 = 24px
+
+      // Scroller d'une carte complète (largeur carte + gap)
+      const scrollDistance = cardWidth + gap;
+
+      // Activer transition fluide
+      container.style.scrollBehavior = 'smooth';
+
+      // Scroll avec animation fluide
+      container.scrollBy({
+        left: -scrollDistance,
         behavior: 'smooth'
       });
+
+      // Réinitialiser après l'animation
+      setTimeout(() => {
+        container.style.scrollBehavior = '';
+      }, 600);
     }
   };
 
   const scrollRight = () => {
     if (scrollContainerRef.current) {
-      // Scroll de 2 cartes vers la droite
-      const cardWidth = (scrollContainerRef.current.clientWidth + 24) / 4; // 24px pour les gaps
-      scrollContainerRef.current.scrollBy({
-        left: cardWidth * 2,
+      const container = scrollContainerRef.current;
+
+      // Calculer la largeur exacte d'une carte avec son gap
+      const cardWidth = container.firstElementChild?.getBoundingClientRect().width || 0;
+      const gap = 24; // gap-6 = 24px
+
+      // Scroller d'une carte complète (largeur carte + gap)
+      const scrollDistance = cardWidth + gap;
+
+      // Activer transition fluide
+      container.style.scrollBehavior = 'smooth';
+
+      // Scroll avec animation fluide
+      container.scrollBy({
+        left: scrollDistance,
         behavior: 'smooth'
       });
+
+      // Réinitialiser après l'animation
+      setTimeout(() => {
+        container.style.scrollBehavior = '';
+      }, 600);
     }
   };
 
@@ -298,11 +330,12 @@ const BestSellersCarousel: React.FC<BestSellersCarouselProps> = ({
               {/* Container de scroll avec 4 cartes visibles */}
               <div
                 ref={scrollContainerRef}
-                className="flex gap-6 overflow-x-auto scroll-smooth pb-4"
-                style={{ 
-                  scrollbarWidth: 'none', 
+                className="flex gap-6 overflow-x-auto pb-4"
+                style={{
+                  scrollbarWidth: 'none',
                   msOverflowStyle: 'none',
-                  scrollSnapType: 'x mandatory'
+                  scrollBehavior: 'smooth',
+                  transition: 'scroll-position 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               >
                 {rankedBestSellers.map((product, index) => (

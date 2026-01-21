@@ -5622,242 +5622,87 @@ const SellDesignPage: React.FC = () => {
         setCheckoutOpen(open);
       }}>
         <SheetContent className="w-3/4 sm:max-w-2xl lg:max-w-4xl h-full overflow-y-auto p-4 sm:p-6" side="right">
-          <SheetHeader className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
-            <SheetTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold">
-              <Rocket className="h-5 w-5 sm:h-6 sm:w-6" />
-              Prévisualiser et publier
+          <SheetHeader className="border-b pb-4 mb-6">
+            <SheetTitle className="text-lg font-bold">
+              Prévisualiser et publier ({selectedProductIds.length})
             </SheetTitle>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-              Vérifiez vos produits avant de les publier sur la plateforme
-            </p>
           </SheetHeader>
 
           {/* Barre de progression lors de la publication */}
           {isPublishing && (
-            <div className="mt-4 space-y-3">
+            <div className="mb-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">{currentStep || 'Préparation...'}</span>
+                <span className="text-gray-600">{currentStep || 'Préparation...'}</span>
                 <span className="font-medium">{publishProgress}%</span>
               </div>
               <Progress value={publishProgress} className="w-full" />
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Veuillez patienter, traitement en cours...
-              </p>
             </div>
           )}
-                    
-          <div className="mt-6 space-y-6">
-            {/* Résumé de la sélection */}
-            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-800/50 rounded-full flex items-center justify-center flex-shrink-0">
-                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 text-base sm:text-lg">
-                    {selectedProductIds.length} produit{selectedProductIds.length > 1 ? 's' : ''} sélectionné{selectedProductIds.length > 1 ? 's' : ''}
-                  </h3>
-                  <p className="text-sm sm:text-base text-blue-700 dark:text-blue-300 mt-1">
-                    Votre design sera appliqué sur ces produits et mis en vente
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {/* Aperçu du design */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 sm:p-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-base sm:text-lg">Votre design</h3>
-              <div className="flex flex-col sm:flex-row items-start gap-4">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 mx-auto sm:mx-0 flex-shrink-0">
-                  <img 
-                    src={designUrl} 
-                    alt="Votre design" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 text-center sm:text-left">
-                  <h4 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">
-                    {designName || designFile?.name || 'Design personnalisé'}
-                  </h4>
-                  {designDescription && (
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2 line-clamp-3">
-                      {designDescription}
-                    </p>
-                  )}
-                  {designPrice > 0 && (
-                    <div className="flex items-center justify-center sm:justify-start text-sm sm:text-base text-green-600 dark:text-green-400 mt-3 bg-green-50 dark:bg-green-900/30 px-3 py-2 rounded-lg">
-                      <DollarSign className="w-4 h-4 mr-1" />
-                      <span className="font-medium">Revenus: {designPrice} FCFA par vente</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="space-y-4">
 
             {/* Liste des produits sélectionnés */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">Produits à publier</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
-                {selectedProductIds.map((idStr) => {
-                  const product = products.find(p => p.id === Number(idStr));
-                  if (!product) return null;
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-2">
+              {selectedProductIds.map((idStr) => {
+                const product = products.find(p => p.id === Number(idStr));
+                if (!product) return null;
 
-                  const activeColors = (productColors[product.id] || []).filter(c => c.isActive);
-                  const activeSizes = (productSizes[product.id] || []).filter(s => s.isActive);
-                                const view = getPreviewView(product);
+                const view = getPreviewView(product);
 
-                  return (
-                    <div key={product.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 sm:p-5 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
-                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                        {/* Miniature cliquable */}
-                        <button
-                          onClick={() => openDetailedPreview(product)}
-                          className="w-16 h-16 sm:w-18 sm:h-18 rounded-lg overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex-shrink-0 hover:border-blue-400 transition-colors relative group mx-auto sm:mx-0"
-                        >
-                          {view ? (
-                            <ProductViewWithDesign 
-                              view={view} 
-                              designUrl={designUrl} 
-                              productId={getVendorProductId(product) ?? 0} 
-                              products={products} 
-                              vendorDesigns={existingDesignsWithValidation}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <ImageIcon className="h-6 w-6 text-gray-400" />
-                            </div>
-                          )}
-                          {/* Overlay d'aperçu */}
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="text-white text-xs font-medium">Aperçu</span>
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => openDetailedPreview(product)}
+                    className="bg-gray-50 rounded-lg p-3 border hover:border-blue-400 transition-colors text-left"
+                  >
+                    <div className="flex gap-3">
+                      {/* Miniature */}
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-white border flex-shrink-0">
+                        {view ? (
+                          <ProductViewWithDesign
+                            view={view}
+                            designUrl={designUrl}
+                            productId={getVendorProductId(product) ?? 0}
+                            products={products}
+                            vendorDesigns={existingDesignsWithValidation}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="h-5 w-5 text-gray-400" />
                           </div>
-                        </button>
-                            
-                        {/* Détails */}
-                        <div className="flex-1 min-w-0 text-center sm:text-left">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
-                                {editStates[product.id]?.name || product.name}
-                              </h4>
-                              <p className="text-sm sm:text-base font-bold text-gray-700 dark:text-gray-300 mt-1">
-                                {getSalePrice(product).toLocaleString()} FCFA
-                              </p>
-                            </div>
-                            {/* Bouton aperçu détaillé */}
-                            <Button
-                              onClick={() => openDetailedPreview(product)}
-                              variant="outline"
-                              size="sm"
-                              className="ml-2 h-7 px-2 text-xs"
-                            >
-                              <ImageIcon className="h-3 w-3 mr-1" />
-                              Aperçu
-                            </Button>
-                          </div>
-                          
-                          {/* Description */}
-                          {(editStates[product.id]?.description || product.description) && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                              {editStates[product.id]?.description || product.description}
-                            </p>
-                          )}
+                        )}
+                      </div>
 
-                          {/* Couleurs actives */}
-                          {activeColors.length > 0 && (
-                            <div className="flex items-center gap-1 mt-2">
-                              <span className="text-xs text-gray-500">Couleurs:</span>
-                              <div className="flex gap-1">
-                                {activeColors.slice(0, 4).map(color => (
-                                  <div
-                                    key={color.id}
-                                    className="w-3 h-3 rounded-full border border-gray-300"
-                                    style={{ backgroundColor: color.colorCode }}
-                                    title={color.name}
-                                  />
-                                ))}
-                                {activeColors.length > 4 && (
-                                  <span className="text-xs text-gray-500">+{activeColors.length - 4}</span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Tailles actives */}
-                          {activeSizes.length > 0 && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <span className="text-xs text-gray-500">Tailles:</span>
-                              <span className="text-xs text-gray-700 dark:text-gray-300">
-                                {activeSizes.map(s => s.sizeName).join(', ')}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                      {/* Infos */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm truncate">
+                          {editStates[product.id]?.name || product.name}
+                        </h4>
+                        <p className="text-sm font-bold text-gray-700 mt-1">
+                          {getSalePrice(product).toLocaleString()} FCFA
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-                        </div>
+                  </button>
+                );
+              })}
             </div>
-                    </div>
+          </div>
 
-          <SheetFooter className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
-            <div className="flex flex-col gap-4 w-full">
-            <SheetClose asChild>
-                <Button variant="outline" className="w-full py-3 text-sm sm:text-base" disabled={isPublishing}>
-                Modifier la sélection
-              </Button>
-            </SheetClose>
-            
-            {/* 🆕 Sélecteur d'action post-validation */}
-            <div className="mb-4">
-              <PostValidationActionSelectorIntegrated
-                currentAction={postValidationAction}
-                onActionChange={setPostValidationAction}
-                disabled={isPublishing}
-                designValidationStatus={designValidationStatus}
-              />
-            </div>
-            
-              <div className="flex flex-col sm:flex-row gap-3">
+          <SheetFooter className="mt-6 border-t pt-4">
+            <div className="flex gap-3 w-full">
               <Button
                 onClick={handleSaveAsDraft}
                 disabled={isPublishing}
                 variant="outline"
-                  className="flex-1 py-3"
+                className="flex-1"
               >
                 {isPublishing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      <span className="hidden sm:inline">Sauvegarde...</span>
-                      <span className="sm:hidden">...</span>
-                  </>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
                     <Edit3 className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">Mettre en brouillon</span>
-                      <span className="sm:hidden">Brouillon</span>
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handlePublishFromDraft}
-                disabled={isPublishing}
-                variant="secondary"
-                  className="flex-1 py-3"
-              >
-                {isPublishing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      <span className="hidden sm:inline">Publication...</span>
-                      <span className="sm:hidden">...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">Publier depuis brouillon</span>
-                      <span className="sm:hidden">Publier</span>
+                    Brouillon
                   </>
                 )}
               </Button>
@@ -5865,36 +5710,20 @@ const SellDesignPage: React.FC = () => {
               <Button
                 onClick={handlePublishProducts}
                 disabled={isPublishing}
-                  className="flex-1 py-3 bg-black hover:bg-gray-800 text-white font-semibold"
+                className="flex-1 bg-black hover:bg-gray-800 text-white font-semibold"
               >
                 {isPublishing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      <span className="hidden sm:inline">{currentStep || 'Publication en cours...'}</span>
-                      <span className="sm:hidden">...</span>
+                    {currentStep || 'Publication...'}
                   </>
                 ) : (
                   <>
                     <Rocket className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">Publier directement</span>
-                      <span className="sm:hidden">Publier</span>
+                    Publier
                   </>
                 )}
               </Button>
-            </div>
-            
-              {/* Textes explicatifs pour desktop uniquement */}
-              <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 mt-3 px-2">
-                <div className="flex-1 text-center">
-                <p>Créer en brouillon pour publication manuelle plus tard</p>
-              </div>
-                <div className="flex-1 text-center">
-                <p>Publier des designs sauvegardés en brouillon</p>
-              </div>
-                <div className="flex-1 text-center">
-                <p>Publication immédiate disponible à la vente</p>
-              </div>
-            </div>
             </div>
           </SheetFooter>
         </SheetContent>

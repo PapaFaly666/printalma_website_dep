@@ -28,7 +28,7 @@ export default function InfluenceursSection() {
               onClick={() => navigate('/influenceurs')}
               variant="outline"
               size="xl"
-              className="bg-white text-black hover:bg-gray-100 px-6 xs:px-8 py-2.5 xs:py-3 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium self-center border-transparent"
+              className="bg-white text-black hover:bg-gray-100 px-4 py-1.5 xs:px-6 xs:py-2 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium self-center border-transparent min-h-[32px] xs:min-h-[36px] sm:min-h-[56px] rounded-lg xs:rounded-xl sm:rounded-full"
             >
               Découvrir
             </Button>
@@ -44,7 +44,7 @@ export default function InfluenceursSection() {
                 alt="Bathie Drizzy"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                 <p className="text-white text-xs xs:text-sm md:text-base font-semibold leading-tight">Bathie Drizzy</p>
               </div>
             </div>
@@ -56,7 +56,7 @@ export default function InfluenceursSection() {
                 alt="Latzo Dozé"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                 <p className="text-white text-xs xs:text-sm md:text-base font-semibold leading-tight">Latzo Dozé</p>
               </div>
             </div>
@@ -67,7 +67,7 @@ export default function InfluenceursSection() {
                 alt="Jaaw Ketchup"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                 <p className="text-white text-xs xs:text-sm md:text-base font-semibold leading-tight">Jaaw Ketchup</p>
               </div>
             </div>
@@ -79,7 +79,7 @@ export default function InfluenceursSection() {
                 alt="Dudu FDV"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                 <p className="text-white text-xs xs:text-sm md:text-base font-semibold leading-tight">Dudu FDV</p>
               </div>
             </div>
@@ -91,7 +91,7 @@ export default function InfluenceursSection() {
                 alt="Adja Everywhere"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                 <p className="text-white text-xs xs:text-sm md:text-base font-semibold leading-tight">Adja Everywhere</p>
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function InfluenceursSection() {
                 alt="Pape Sidy Fall"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 xs:p-2.5 md:p-3 text-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 ease-in-out">
                 <p className="text-white text-xs xs:text-sm md:text-base font-semibold leading-tight">Pape Sidy Fall</p>
               </div>
             </div>

@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { 
-  ArrowLeft, 
-  Edit, 
-  Trash2, 
-  ExternalLink, 
-  Package, 
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  ExternalLink,
+  Package,
   Image as ImageIcon,
   Palette,
   Ruler,
@@ -14,7 +14,8 @@ import {
   Download,
   CheckCircle,
   XCircle,
-  Zap
+  Zap,
+  Search
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { Badge } from '../../components/ui/badge';

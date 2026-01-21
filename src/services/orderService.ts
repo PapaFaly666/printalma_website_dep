@@ -432,6 +432,38 @@ export class OrderService {
       // Validation des productIds selon la documentation
       // Important: Utiliser productId (number) et non id (string composite "1-Blanc-X")
       const itemsWithPrices = cartItems.map((item, index) => {
+        // ✅ Détection des stickers
+        const isSticker = item.productType === 'STICKER' || !!item.stickerId;
+
+        console.log(`🎨 [OrderService] Item ${index}:`, {
+          productType: item.productType,
+          stickerId: item.stickerId,
+          isSticker,
+          productId: item.productId
+        });
+
+        // ✅ Pour les stickers : validation du stickerId
+        if (isSticker) {
+          const stickerId = Number(item.stickerId);
+          if (!stickerId || stickerId <= 0) {
+            throw new Error(`Invalid stickerId in cart item ${index}: ${item.stickerId}. Must be greater than 0`);
+          }
+
+          // 🎨 Construire l'objet orderItem pour un sticker
+          const orderItem: any = {
+            stickerId: stickerId,
+            quantity: item.quantity || 1,
+            unitPrice: item.price || item.unitPrice || 0,
+            size: item.size,
+            color: item.color || 'N/A',
+            colorId: null
+          };
+
+          console.log('🎨 [OrderService] Sticker OrderItem construit:', orderItem);
+          return orderItem;
+        }
+
+        // ✅ Pour les produits normaux : validation du productId
         const productId = Number(item.productId);
         if (!productId || productId <= 0) {
           throw new Error(`Invalid productId in cart item ${index}: ${item.productId}. Must be greater than 0`);

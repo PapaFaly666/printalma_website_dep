@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import CategoryTabs from '../components/CategoryTabs';
 import ServiceFeatures from '../pages/ServiceFeatures ';
 import { VendorServiceInstance } from '../services/vendorService';
+import DesignersSection from './DesignersSection';
 
 interface Designer {
   id: number;
@@ -17,100 +18,6 @@ interface Designer {
   shopUrl?: string;
 }
 
-// Composant DesignerSection sans bouton pour la page Designers (conservé avec images existantes)
-function DesignerSectionWithoutButton() {
-  return (
-    <div className="w-full py-0 sm:py-1 md:py-2 pt-3 sm:pt-4 md:pt-6 lg:pt-8 xl:pt-10">
-      {/* Container principal avec même padding que NavBar */}
-      <div className="w-full px-4 sm:px-6">
-        <div className="rounded-md overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2 h-auto lg:h-[32rem] xl:h-[36rem]">
-
-            {/* Colonne gauche */}
-            <div className="text-black flex flex-col justify-center items-center px-3 xs:px-4 sm:px-5 md:px-6 py-4 xs:py-6 sm:py-8 bg-yellow-400 text-center">
-              <h3 className="text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-3 xs:mb-4 sm:mb-5 md:mb-6 uppercase tracking-wide leading-tight">
-                DESIGNS EXCLUSIFS
-              </h3>
-              <p className="text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl mb-3 xs:mb-4 sm:mb-5 md:mb-6 leading-relaxed max-w-md mx-auto px-2">
-                Découvrez des milliers de designs exclusifs créés par nos designers.
-                Des motifs tendance aux illustrations artistiques, pour vos produits
-                personnalisés.
-              </p>
-              <button className="bg-white text-black px-3 xs:px-4 sm:px-5 md:px-6 py-1.5 xs:py-2 rounded-md font-semibold text-[10px] xs:text-xs sm:text-sm hover:bg-gray-100 transition-colors duration-200">
-                Découvrir
-              </button>
-            </div>
-
-            {/* Colonne droite - Grille designers (images existantes conservées) */}
-            <div className="bg-yellow-400 relative">
-              <div className="grid grid-cols-3 gap-0.5 xs:gap-1 sm:gap-1 md:gap-2 p-2 xs:p-2.5 sm:p-3 md:p-4 h-full auto-rows-fr">
-                {/* Pap Musa */}
-                <div className="row-span-2 bg-black rounded overflow-hidden relative group flex flex-col items-center justify-center text-white">
-                  <img
-                    src="/x_pap_musa.svg"
-                    alt="Pap Musa"
-                    className="w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 lg:w-16 lg:h-16 mb-1 xs:mb-1.5 sm:mb-2 group-hover:scale-110 transition-transform duration-300 object-cover"
-                  />
-                  <span className="font-bold text-[9px] xs:text-[10px] sm:text-xs md:text-sm">Pap Musa</span>
-                </div>
-
-                {/* Ceeneer */}
-                <div className="bg-black rounded overflow-hidden relative group flex flex-col items-center justify-center text-white">
-                  <img
-                    src="/x_ceeneer.svg"
-                    alt="Ceeneer"
-                    className="w-5 h-5 xs:w-7 xs:h-7 sm:w-9 sm:h-9 md:w-10 lg:w-12 lg:h-12 mb-0.5 xs:mb-1 sm:mb-1 group-hover:scale-110 transition-transform duration-300 object-cover"
-                  />
-                  <span className="font-bold text-[9px] xs:text-[10px] sm:text-xs md:text-sm">Ceeneer</span>
-                </div>
-
-                {/* K & C */}
-                <div className="row-span-2 bg-black rounded overflow-hidden relative group flex flex-col items-center justify-center text-white">
-                  <img
-                    src="/x_kethiakh.svg"
-                    alt="K & C"
-                    className="w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 lg:w-16 lg:h-16 mb-1 xs:mb-1.5 sm:mb-2 group-hover:scale-110 transition-transform duration-300 object-cover"
-                  />
-                  <span className="font-bold text-[9px] xs:text-[10px] sm:text-xs md:text-sm">K & C</span>
-                </div>
-
-                {/* Breadwinner */}
-                <div className="row-span-3 bg-black rounded overflow-hidden relative group flex flex-col items-center justify-center text-white">
-                  <img
-                    src="/x_breadwinner.svg"
-                    alt="Breadwinner"
-                    className="w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 md:w-16 lg:w-20 lg:h-20 mb-1 xs:mb-1.5 sm:mb-2 group-hover:scale-110 transition-transform duration-300 object-cover"
-                  />
-                  <span className="font-bold text-[9px] xs:text-[10px] sm:text-xs md:text-sm">Breadwinner</span>
-                </div>
-
-                {/* Meissa Biguey */}
-                <div className="row-span-2 bg-black rounded overflow-hidden relative group flex flex-col items-center justify-center text-white">
-                  <img
-                    src="/x_maisssa_biguey.svg"
-                    alt="Meissa Biguey"
-                    className="w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 lg:w-16 lg:h-16 mb-1 xs:mb-1.5 sm:mb-2 group-hover:scale-110 transition-transform duration-300 object-cover"
-                  />
-                  <span className="font-bold text-[9px] xs:text-[10px] sm:text-xs md:text-sm">Meissa Biguey</span>
-                </div>
-
-                {/* DAD */}
-                <div className="row-span-2 bg-black rounded overflow-hidden relative group flex flex-col items-center justify-center text-white">
-                  <img
-                    src="/x_dad.svg"
-                    alt="DAD"
-                    className="w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 lg:w-16 lg:h-16 mb-1 xs:mb-1.5 sm:mb-2 group-hover:scale-110 transition-transform duration-300 object-cover"
-                  />
-                  <span className="font-bold text-[9px] xs:text-[10px] sm:text-xs md:text-sm">DAD</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function DesignersPage() {
   const navigate = useNavigate();
@@ -184,8 +91,8 @@ export default function DesignersPage() {
           </button>
         </div>
 
-        {/* Section Designers sans bouton (images existantes conservées) */}
-        <DesignerSectionWithoutButton />
+        {/* Section Designers avec le composant de la landing */}
+        <DesignersSection />
 
         {/* Header de la page */}
         <div className="px-4 sm:px-6 py-6 sm:py-8 lg:py-12">

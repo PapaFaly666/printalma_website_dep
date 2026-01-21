@@ -176,13 +176,16 @@ class PublicStickerService {
         const sticker = result.data;
 
         // Ajouter les propriétés calculées pour compatibilité
-        sticker.size = `${sticker.configuration.size.width}x${sticker.configuration.size.height}cm`;
-        sticker.finish = sticker.configuration.finish;
-        sticker.shape = sticker.configuration.shape;
-        sticker.price = sticker.pricing.finalPrice;
-        sticker.minimumOrder = sticker.stock.minimumOrder;
-        sticker.viewCount = sticker.stats.viewCount;
-        sticker.saleCount = sticker.stats.saleCount;
+        // Vérifier que les objets imbriqués existent avant d'y accéder
+        sticker.size = sticker.configuration?.size
+          ? `${sticker.configuration.size.width}x${sticker.configuration.size.height}cm`
+          : '10x10cm';
+        sticker.finish = sticker.configuration?.finish || 'glossy';
+        sticker.shape = sticker.configuration?.shape || 'SQUARE';
+        sticker.price = sticker.pricing?.finalPrice || 0;
+        sticker.minimumOrder = sticker.stock?.minimumOrder || 1;
+        sticker.viewCount = sticker.stats?.viewCount || 0;
+        sticker.saleCount = sticker.stats?.saleCount || 0;
 
         console.log('✅ Sticker normalisé:', {
           id: sticker.id,

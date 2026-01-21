@@ -182,7 +182,7 @@ const ThemesTendances = ({ themes: propThemes }: ThemesTendancesProps = {}) => {
         <Button
           variant="danger"
           size="md"
-          className="bg-red-500 hover:bg-red-600 text-xs sm:text-sm self-start sm:self-auto"
+          className="bg-red-500 hover:bg-red-600 text-xs sm:text-sm self-start sm:self-auto px-3 py-1.5 sm:px-4 sm:py-2"
         >
           Voir Tous les thèmes
         </Button>

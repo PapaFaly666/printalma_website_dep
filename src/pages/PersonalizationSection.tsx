@@ -75,7 +75,7 @@ export default function PersonalizationSection() {
                 onClick={handleChooseProduct}
                 variant="outline"
                 size="xl"
-                className="mt-3 xs:mt-4 sm:mt-6 mx-auto bg-white text-black hover:bg-gray-100"
+                className="mt-3 xs:mt-4 sm:mt-6 mx-auto bg-white text-black hover:bg-gray-100 px-4 py-1.5 xs:px-6 xs:py-2 sm:px-10 sm:py-4 text-xs xs:text-sm sm:text-base min-h-[32px] xs:min-h-[36px] sm:min-h-[56px] rounded-lg xs:rounded-xl sm:rounded-full"
               >
                 Choisir son produit
               </Button>

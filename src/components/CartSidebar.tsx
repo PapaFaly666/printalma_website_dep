@@ -16,6 +16,26 @@ interface CartSidebarProps {
   onCheckout: () => void;
 }
 
+// 🎨 Composant pour afficher un sticker
+const StickerPreview: React.FC<{
+  item: CartItem;
+}> = ({ item }) => {
+  return (
+    <div className="relative flex flex-col gap-1">
+      <div className="w-32 h-32 bg-gray-200 rounded-lg border border-gray-200 overflow-hidden flex items-center justify-center">
+        <img
+          src={item.imageUrl}
+          alt={item.name}
+          className="w-full h-full object-contain"
+        />
+      </div>
+      <div className="text-center text-[10px] font-semibold text-blue-600">
+        🎨 Autocollant
+      </div>
+    </div>
+  );
+};
+
 // 🏪 Composant pour afficher un produit vendeur avec son design
 const VendorProductPreview: React.FC<{
   item: CartItem;
@@ -446,15 +466,35 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                {items.map((item) => (
-                  <div key={item.id} className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-                    <div className="flex gap-4">
-                      {/* Image du produit avec design intégré */}
-                      {item.vendorProductId ? (
-                        <VendorProductPreview item={item} />
-                      ) : (
-                        <ProductWithDesign item={item} user={user} />
-                      )}
+                {items.map((item) => {
+                  // ✅ Détecter si c'est un sticker (priorité à productType)
+                  const isSticker = (item as any).productType === 'STICKER' || !!(item as any).stickerId;
+
+                  // ✅ Seulement charger VendorProductPreview si ce n'est PAS un sticker
+                  const isVendorProduct = !isSticker && !!item.vendorProductId;
+
+                  console.log('🛒 [CartSidebar] Item:', {
+                    id: item.id,
+                    name: item.name,
+                    productType: (item as any).productType,
+                    stickerId: (item as any).stickerId,
+                    vendorProductId: item.vendorProductId,
+                    isSticker,
+                    isVendorProduct,
+                    imageUrl: item.imageUrl
+                  });
+
+                  return (
+                    <div key={item.id} className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+                      <div className="flex gap-4">
+                        {/* Image du produit avec design intégré */}
+                        {isSticker ? (
+                          <StickerPreview item={item} />
+                        ) : isVendorProduct ? (
+                          <VendorProductPreview item={item} />
+                        ) : (
+                          <ProductWithDesign item={item} user={user} />
+                        )}
 
                       {/* Détails du produit */}
                       <div className="flex-1 min-w-0">
@@ -466,19 +506,27 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                             Par {item.vendorName}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 text-xs text-gray-600 mb-2 flex-wrap">
-                          <div className="flex items-center gap-1">
-                            <div
-                              className="w-4 h-4 rounded-full border border-gray-300 shadow-sm"
-                              style={{ backgroundColor: item.colorCode }}
-                            />
-                            <span className="truncate">{item.color}</span>
+
+                        {/* Affichage différent pour les stickers */}
+                        {isSticker ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                            <span className="truncate">{item.size}</span>
                           </div>
-                          <span className="text-gray-400">•</span>
-                          <span className="truncate">
-                            Taille {item.selectedSize?.sizeName || item.sizeName || item.size}
-                          </span>
-                        </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-gray-600 mb-2 flex-wrap">
+                            <div className="flex items-center gap-1">
+                              <div
+                                className="w-4 h-4 rounded-full border border-gray-300 shadow-sm"
+                                style={{ backgroundColor: item.colorCode }}
+                              />
+                              <span className="truncate">{item.color}</span>
+                            </div>
+                            <span className="text-gray-400">•</span>
+                            <span className="truncate">
+                              Taille {item.selectedSize?.sizeName || item.sizeName || item.size}
+                            </span>
+                          </div>
+                        )}
                         <p className="font-bold text-gray-900 text-base">
                           {formatPrice(item.price)}
                         </p>
@@ -514,10 +562,11 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                             <Plus className="w-3 h-3 text-gray-600" />
                           </button>
                         </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

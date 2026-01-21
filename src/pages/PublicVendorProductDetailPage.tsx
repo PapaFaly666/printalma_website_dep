@@ -90,7 +90,27 @@ const PublicVendorProductDetailPage: React.FC = () => {
   // États pour l'historique
   const [historyProducts, setHistoryProducts] = useState<VendorProduct[]>([]);
 
+  // 🆕 États pour le zoom interactif
+  const [isZooming, setIsZooming] = useState(false);
+  const [zoomPosition, setZoomPosition] = useState({ x: 50, y: 50 });
+
   const { addToCart, openCart } = useCart();
+
+  // 🆕 Gestionnaire de zoom interactif
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPosition({ x, y });
+  };
+
+  const handleMouseEnter = () => {
+    setIsZooming(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsZooming(false);
+  };
 
   // ============ GESTION DE L'HISTORIQUE ============
   const HISTORY_STORAGE_KEY = 'vendor_products_history';
@@ -615,13 +635,29 @@ const PublicVendorProductDetailPage: React.FC = () => {
     // Pour les stickers, vérifier seulement le produit et la quantité
     if (isSticker) {
       if (!product || !sticker) {
-        console.error('Sticker non chargé');
+        console.error('❌ [PublicVendorProduct] Sticker non chargé');
         return;
       }
-      if (quantity < (sticker.minimumOrder || 1)) {
-        console.error('Quantité insuffisante');
+
+      const minQuantity = sticker.minimumOrder || 1;
+      const maxQuantity = sticker.maximumOrder || 10000;
+
+      if (quantity < minQuantity) {
+        console.error(`❌ [PublicVendorProduct] Quantité insuffisante: ${quantity} < ${minQuantity}`);
         return;
       }
+
+      if (quantity > maxQuantity) {
+        console.error(`❌ [PublicVendorProduct] Quantité trop élevée: ${quantity} > ${maxQuantity}`);
+        return;
+      }
+
+      console.log('✅ [PublicVendorProduct] Validation sticker OK:', {
+        quantity,
+        minQuantity,
+        maxQuantity,
+        stickerId: sticker.id
+      });
     } else {
       // Pour les produits normaux, vérifier couleur et taille
       if (!product || !selectedColorId || !selectedSize) {
@@ -740,39 +776,53 @@ const PublicVendorProductDetailPage: React.FC = () => {
       const delimitation = allDelimitations.length > 0 ? allDelimitations[0] : undefined;
 
       // Préparer les données du produit pour le formulaire de commande
-      const productData = {
+      const productData: any = {
         id: product.id,
+        productId: product.id, // ✅ Ajouter productId explicitement
         name: product.vendorName || product.adminProduct?.name || 'Produit sans nom',
-        price: product.price,
-        color: selectedColor.name,
-        colorCode: selectedColor.colorCode,
-        colorVariationId: selectedColorId, // 🆕 ID de la variation de couleur sélectionnée
-        size: selectedSize.sizeName, // Pour compatibilité
-        imageUrl: mockupUrl,
-        designUrl: product.designApplication?.designUrl,
+        price: isSticker && sticker ? sticker.price : product.price,
+        imageUrl: isSticker && sticker ? sticker.imageUrl : mockupUrl, // ✅ Utiliser l'image du sticker
         vendorName: product.vendor?.shop_name || product.vendor?.fullName,
-        // Nouvelles propriétés pour afficher le design dans le panier
-        designId: product.designId || undefined,
-        adminProductId: product.adminProduct?.id,
-        designScale: product.designApplication?.scale,
-        // 🆕 TOUTES les délimitations de TOUTES les vues
-        delimitations: allDelimitations,
-        // Propriétés pour les vraies tailles de la base de données
-        selectedSize: selectedSize,
-        sizeId: selectedSize.id,
-        sizeName: selectedSize.sizeName,
-
-        // 🎨 NOUVEAUX CHAMPS POUR LA SAUVEGARDE DU DESIGN DANS LES COMMANDES
-        vendorProductId: product.id,
-        mockupUrl: mockupUrl,
-        designPositions: designPositions,
-        designMetadata: designMetadata,
-        delimitation: delimitation,
-
-        // 🆕 CHAMPS POUR L'AFFICHAGE MULTI-VUES DANS LE PANIER
-        customizationIds: Object.keys(customizationIds).length > 0 ? customizationIds : undefined,
-        designElementsByView: Object.keys(designElementsByView).length > 0 ? designElementsByView : undefined
+        quantity: quantity, // ✅ Quantité sélectionnée
       };
+
+      // ✅ Pour les stickers : données simplifiées SANS vendorProductId
+      if (isSticker && sticker) {
+        productData.productType = 'STICKER';
+        productData.stickerId = sticker.id;
+        productData.color = 'N/A'; // Pas de couleur pour les stickers
+        productData.colorCode = '#FFFFFF';
+        productData.size = `${sticker.size.width}x${sticker.size.height} cm`;
+        productData.designUrl = sticker.design?.imageUrl;
+        productData.designId = sticker.design?.id;
+        // ⚠️ NE PAS ajouter vendorProductId pour les stickers
+
+        console.log('🎨 [PublicVendorProduct] Données sticker pour panier:', productData);
+      } else {
+        // ✅ Pour les produits normaux : ajouter vendorProductId
+        productData.vendorProductId = product.id;
+        // ✅ Pour les produits normaux : données complètes avec couleur/taille
+        productData.color = selectedColor.name;
+        productData.colorCode = selectedColor.colorCode;
+        productData.colorVariationId = selectedColorId;
+        productData.size = selectedSize.sizeName;
+        productData.designUrl = product.designApplication?.designUrl;
+        productData.designId = product.designId || undefined;
+        productData.adminProductId = product.adminProduct?.id;
+        productData.designScale = product.designApplication?.scale;
+        productData.delimitations = allDelimitations;
+        productData.selectedSize = selectedSize;
+        productData.sizeId = selectedSize.id;
+        productData.sizeName = selectedSize.sizeName;
+        productData.mockupUrl = mockupUrl;
+        productData.designPositions = designPositions;
+        productData.designMetadata = designMetadata;
+        productData.delimitation = delimitation;
+        productData.customizationIds = Object.keys(customizationIds).length > 0 ? customizationIds : undefined;
+        productData.designElementsByView = Object.keys(designElementsByView).length > 0 ? designElementsByView : undefined;
+
+        console.log('🎨 [PublicVendorProduct] Données produit pour panier:', productData);
+      }
 
       console.log('✅ [PublicVendorProduct] Produit ajouté au panier:', productData);
 
@@ -840,16 +890,29 @@ const PublicVendorProductDetailPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Colonne gauche : Images du produit */}
           <div className="space-y-6">
-            {/* Image principale */}
-            <div className={`rounded-2xl aspect-square flex items-center justify-center border-0 overflow-hidden ${
-              isSticker ? 'bg-gray-200' : 'bg-white p-8'
-            }`}>
+            {/* Image principale avec zoom interactif */}
+            <div
+              className={`rounded-2xl aspect-square flex items-center justify-center border-0 relative ${
+                isSticker ? 'bg-gray-200' : 'bg-white p-8'
+              }`}
+              onMouseMove={handleMouseMove}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              style={{
+                overflow: 'hidden',
+                cursor: isZooming ? 'zoom-in' : 'default'
+              }}
+            >
               {isSticker && sticker ? (
                 // Pour les stickers : afficher l'image générée avec bordures
                 <img
                   src={sticker.imageUrl}
                   alt={sticker.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-200 ease-out"
+                  style={{
+                    transform: isZooming ? 'scale(2)' : 'scale(1)',
+                    transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`
+                  }}
                 />
               ) : product.finalImages && product.finalImages.length > 0 ? (
                 // ✅ Utiliser les finalImages si disponibles (produit + design déjà appliqué)
@@ -859,23 +922,47 @@ const PublicVendorProductDetailPage: React.FC = () => {
                     <img
                       src={finalImage.finalImageUrl}
                       alt={`${product.vendorName} - ${finalImage.colorName}`}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain transition-transform duration-200 ease-out"
+                      style={{
+                        transform: isZooming ? 'scale(2)' : 'scale(1)',
+                        transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`
+                      }}
                     />
                   );
                 })()
               ) : (
                 // Fallback : utiliser SimpleProductPreview
-                <SimpleProductPreview
-                  product={product}
-                  onColorChange={handleColorChange}
-                  showColorSlider={false}
-                  showDelimitations={false}
-                  onProductClick={() => {}}
-                  hideValidationBadges={false}
-                  initialColorId={selectedColorId}
-                  imageObjectFit="contain"
-                />
+                <div
+                  className="w-full h-full transition-transform duration-200 ease-out"
+                  style={{
+                    transform: isZooming ? 'scale(2)' : 'scale(1)',
+                    transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`
+                  }}
+                >
+                  <SimpleProductPreview
+                    product={product}
+                    onColorChange={handleColorChange}
+                    showColorSlider={false}
+                    showDelimitations={false}
+                    onProductClick={() => {}}
+                    hideValidationBadges={false}
+                    initialColorId={selectedColorId}
+                    imageObjectFit="contain"
+                  />
+                </div>
               )}
+
+              {/* Indicateur de zoom */}
+              <div
+                className={`absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs transition-opacity duration-200 pointer-events-none flex items-center gap-1.5 ${
+                  isZooming ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                </svg>
+                Zoom x2
+              </div>
             </div>
 
             {/* Miniatures des vues */}
@@ -1098,23 +1185,50 @@ const PublicVendorProductDetailPage: React.FC = () => {
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => setQuantity(Math.max(sticker.minimumOrder || 1, quantity - 1))}
-                    className="w-10 h-10 rounded-lg border-2 border-gray-900 hover:bg-gray-100 flex items-center justify-center font-bold text-xl"
+                    disabled={quantity <= (sticker.minimumOrder || 1)}
+                    className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center font-bold text-xl transition-colors ${
+                      quantity <= (sticker.minimumOrder || 1)
+                        ? 'border-gray-300 text-gray-300 cursor-not-allowed'
+                        : 'border-gray-900 hover:bg-gray-100'
+                    }`}
                   >
                     -
                   </button>
                   <span className="text-2xl font-bold min-w-[60px] text-center">{quantity}</span>
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="w-10 h-10 rounded-lg border-2 border-gray-900 hover:bg-gray-100 flex items-center justify-center font-bold text-xl"
+                    onClick={() => {
+                      const maxQuantity = sticker.maximumOrder || 10000;
+                      setQuantity(Math.min(maxQuantity, quantity + 1));
+                    }}
+                    disabled={quantity >= (sticker.maximumOrder || 10000)}
+                    className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center font-bold text-xl transition-colors ${
+                      quantity >= (sticker.maximumOrder || 10000)
+                        ? 'border-gray-300 text-gray-300 cursor-not-allowed'
+                        : 'border-gray-900 hover:bg-gray-100'
+                    }`}
                   >
                     +
                   </button>
                 </div>
-                {sticker.minimumOrder > 1 && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Commande minimum : {sticker.minimumOrder} unités
-                  </p>
-                )}
+
+                {/* Informations min/max */}
+                <div className="mt-3 space-y-1">
+                  {sticker.minimumOrder > 1 && (
+                    <p className="text-xs text-gray-600">
+                      Minimum : <span className="font-semibold">{sticker.minimumOrder}</span> unité{sticker.minimumOrder > 1 ? 's' : ''}
+                    </p>
+                  )}
+                  {sticker.maximumOrder && sticker.maximumOrder < 10000 && (
+                    <p className="text-xs text-gray-600">
+                      Maximum : <span className="font-semibold">{sticker.maximumOrder}</span> unités
+                    </p>
+                  )}
+                  {quantity > 1 && (
+                    <p className="text-sm text-gray-900 font-medium mt-2">
+                      Total : <span className="text-primary">{formatPrice(sticker.price * quantity)}</span>
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1122,11 +1236,22 @@ const PublicVendorProductDetailPage: React.FC = () => {
             <div className="pt-4">
               <button
                 onClick={handleAddToCart}
-                disabled={isAddingToCart || (!isSticker && (!selectedColorId || !selectedSize)) || (isSticker && sticker && quantity < (sticker.minimumOrder || 1))}
+                disabled={
+                  isAddingToCart ||
+                  (!isSticker && (!selectedColorId || !selectedSize)) ||
+                  (isSticker && sticker && (
+                    quantity < (sticker.minimumOrder || 1) ||
+                    quantity > (sticker.maximumOrder || 10000)
+                  ))
+                }
                 className={`w-full flex items-center justify-center gap-2 sm:gap-3 py-3 sm:py-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 ${
                   isAddingToCart
                     ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
-                    : (!isSticker && (!selectedColorId || !selectedSize)) || (isSticker && sticker && quantity < (sticker.minimumOrder || 1))
+                    : (!isSticker && (!selectedColorId || !selectedSize)) ||
+                      (isSticker && sticker && (
+                        quantity < (sticker.minimumOrder || 1) ||
+                        quantity > (sticker.maximumOrder || 10000)
+                      ))
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-yellow-400 text-gray-900 hover:bg-yellow-500 shadow-md hover:shadow-lg'
                 }`}
@@ -1158,10 +1283,19 @@ const PublicVendorProductDetailPage: React.FC = () => {
                 </p>
               )}
 
-              {isSticker && sticker && quantity < (sticker.minimumOrder || 1) && (
-                <p className="text-red-500 text-xs sm:text-sm mt-2">
-                  Quantité minimale : {sticker.minimumOrder} unités
-                </p>
+              {isSticker && sticker && (
+                <>
+                  {quantity < (sticker.minimumOrder || 1) && (
+                    <p className="text-red-500 text-xs sm:text-sm mt-2">
+                      ⚠️ Quantité minimale : {sticker.minimumOrder} unités
+                    </p>
+                  )}
+                  {quantity > (sticker.maximumOrder || 10000) && (
+                    <p className="text-red-500 text-xs sm:text-sm mt-2">
+                      ⚠️ Quantité maximale : {sticker.maximumOrder} unités
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
