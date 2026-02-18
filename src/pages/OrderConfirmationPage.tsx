@@ -59,13 +59,11 @@ const OrderConfirmationPage: React.FC = () => {
     }
   }, []);
 
-  // WebSocket pour les mises à jour en temps réel
-  // Désactivé dès que le statut est terminal pour éviter les reconnexions inutiles
-  const isTerminal = paymentStatus === 'paid' || paymentStatus === 'failed';
+  // WebSocket désactivé - le polling HTTP suffit pour vérifier le statut
   const { isConnected: wsConnected } = usePaymentWebSocket({
     orderNumber,
     onStatusChange: handleWsStatusChange,
-    enabled: !!token && !isTerminal
+    enabled: false
   });
 
   // Polling continu du statut de paiement PayDunya (sans limite de temps)
@@ -100,6 +98,9 @@ const OrderConfirmationPage: React.FC = () => {
 
         if (response.status === PaymentStatus.FAILED || response.status === PaymentStatus.CANCELLED) {
           console.log('❌ [OrderConfirmation] Paiement échoué - arrêt du polling.');
+          if (response.failure_reason) {
+            console.error('💳 [OrderConfirmation] Raison d\'échec PayDunya:', response.failure_reason);
+          }
           setPaymentStatus('failed');
           clearInterval(intervalId);
           return;

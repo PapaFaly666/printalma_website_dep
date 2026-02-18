@@ -24,9 +24,15 @@ export const usePaymentWebSocket = ({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const reconnectAttemptsRef = useRef<number>(0);
+  // Ref pour vérifier si on doit encore reconnecter (évite la race condition
+  // entre le polling qui désactive enabled et les timeouts de reconnexion)
+  const enabledRef = useRef<boolean>(enabled);
 
   const maxReconnectAttempts = 5;
   const reconnectDelay = 3000;
+
+  // Synchroniser enabledRef à chaque render
+  enabledRef.current = enabled;
 
   useEffect(() => {
     if (!enabled || !orderNumber) {
@@ -34,6 +40,11 @@ export const usePaymentWebSocket = ({
     }
 
     const connectWebSocket = () => {
+      // Ne pas reconnecter si désactivé entre temps (statut terminal)
+      if (!enabledRef.current) {
+        return;
+      }
+
       try {
         // Déterminer l'URL du WebSocket en fonction de l'environnement
         // Forcer wss: si le host est distant (Render ne supporte pas ws: non sécurisé)
@@ -103,6 +114,11 @@ export const usePaymentWebSocket = ({
         ws.onclose = () => {
           console.log('🔌 [WebSocket] Déconnecté');
           setIsConnected(false);
+
+          // Ne pas reconnecter si le statut est terminal (enabled=false)
+          if (!enabledRef.current) {
+            return;
+          }
 
           // Tentative de reconnexion
           if (reconnectAttemptsRef.current < maxReconnectAttempts) {

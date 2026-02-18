@@ -56,6 +56,16 @@ export class PaymentStatusService {
 
       console.log(`🔍 [PaymentStatus] Statut déterminé: ${status} (depuis data.status: ${paymentStatus})`);
 
+      // Extraire le fail_reason depuis les différents endroits possibles dans la réponse PayDunya
+      const failReason = data.data.fail_reason
+        || data.data.invoice?.fail_reason
+        || data.data.cancel_reason
+        || undefined;
+
+      if (failReason) {
+        console.warn(`⚠️ [PaymentStatus] Raison d'échec PayDunya: ${failReason}`);
+      }
+
       return {
         success: true,
         status,
@@ -63,6 +73,7 @@ export class PaymentStatusService {
         transaction_id: data.data.transaction_id,
         response_code: data.data.response_code,
         response_text: data.data.response_text,
+        failure_reason: failReason,
       };
     } catch (error: any) {
       console.error('❌ [PaymentStatus] Erreur vérification statut:', error);
