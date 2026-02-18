@@ -7,6 +7,109 @@
 
 import { getElementCanvasTransform, calculateCanvasDimensions } from './positioningUtils';
 
+// 🎨 Polices disponibles (doit correspondre à ProductDesignEditor.FONTS)
+export const FONTS = [
+  { name: 'Arial', value: 'Arial, sans-serif' },
+  { name: 'Times New Roman', value: '"Times New Roman", serif' },
+  { name: 'Courier New', value: '"Courier New", monospace' },
+  { name: 'Georgia', value: 'Georgia, serif' },
+  { name: 'Verdana', value: 'Verdana, sans-serif' },
+  { name: 'Comic Sans MS', value: '"Comic Sans MS", cursive' },
+  { name: 'Impact', value: 'Impact, fantasy' },
+  { name: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif' }
+];
+
+// 📋 Liste des polices web Google qui pourraient être utilisées
+const GOOGLE_FONTS = [
+  'Roboto',
+  'Open Sans',
+  'Lato',
+  'Montserrat',
+  'Oswald',
+  'Playfair Display',
+  'Dancing Script',
+  'Pacifico',
+  'Bebas Neue',
+  'Lobster'
+];
+
+/**
+ * Charge une police web spécifique depuis Google Fonts
+ * Retourne une promesse qui se résout quand la police est chargée
+ */
+const loadWebFont = (fontName: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    // Vérifier si la police est déjà chargée
+    if (document.fonts && document.fonts.check(`12px "${fontName}"`)) {
+      console.log(`✅ [PrintExport] Police ${fontName} déjà chargée`);
+      resolve();
+      return;
+    }
+
+    // Créer un lien vers Google Fonts
+    const link = document.createElement('link');
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName).replace(/ /g, '+')}:wght@400;700&display=swap`;
+    link.rel = 'stylesheet';
+    link.onload = () => {
+      console.log(`✅ [PrintExport] Police ${fontName} chargée depuis Google Fonts`);
+      resolve();
+    };
+    link.onerror = () => {
+      console.warn(`⚠️ [PrintExport] Impossible de charger la police ${fontName} depuis Google Fonts`);
+      // On résout quand même pour ne pas bloquer l'export
+      resolve();
+    };
+
+    document.head.appendChild(link);
+  });
+};
+
+/**
+ * Charge toutes les polices personnalisées utilisées dans les éléments
+ * avant de commencer l'export
+ */
+const loadRequiredFonts = async (designElements: DesignElement[]): Promise<void> => {
+  const fontSet = new Set<string>();
+
+  // Extraire toutes les polices utilisées
+  designElements.forEach(element => {
+    if (element.type === 'text' && element.fontFamily) {
+      // Nettoyer le nom de la police (enlever les guillemets et les fallbacks)
+      const cleanFontName = element.fontFamily
+        .replace(/"/g, '')
+        .replace(/'.*/g, '')
+        .split(',')[0]
+        .trim();
+
+      fontSet.add(cleanFontName);
+    }
+  });
+
+  console.log('🔤 [PrintExport] Polices requises:', Array.from(fontSet));
+
+  // Charger toutes les polices en parallèle
+  const fontLoadPromises = Array.from(fontSet).map(async (fontName) => {
+    // Vérifier si c'est une police système (déjà disponible)
+    const systemFonts = FONTS.map(f => f.name);
+    if (systemFonts.includes(fontName) || systemFonts.some(sf => fontName.includes(sf))) {
+      console.log(`✅ [PrintExport] Police système ${fontName} - pas de chargement nécessaire`);
+      return;
+    }
+
+    // Charger les polices web
+    if (GOOGLE_FONTS.includes(fontName) || GOOGLE_FONTS.some(gf => fontName.includes(gf))) {
+      return loadWebFont(fontName);
+    }
+
+    console.log(`⚠️ [PrintExport] Police ${fontName} non reconnue comme système ou Google Font`);
+  });
+
+  await Promise.all(fontLoadPromises);
+
+  // Attendre un petit délai supplémentaire pour s'assurer que les polices sont prêtes
+  await new Promise(resolve => setTimeout(resolve, 200));
+};
+
 // Types pour les éléments de design
 interface DesignElement {
   id: string;
@@ -112,8 +215,44 @@ const getElementPosition = (
 };
 
 /**
+ * Simule le word wrap automatique du HTML pour découper le texte en lignes
+ * Reproduit le comportement de whiteSpace: 'normal' et wordWrap: 'break-word'
+ */
+const wrapText = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string[] => {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const metrics = ctx.measureText(testLine);
+
+    if (metrics.width > maxWidth && currentLine) {
+      // La ligne est trop longue, on passe à la ligne suivante
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+
+  // Ajouter la dernière ligne
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+};
+
+/**
  * Dessine un élément texte sur le canvas
  * Utilise la logique unifiée de positioningUtils pour garantir la cohérence
+ * ✨ Supporte les sauts de ligne (\n) ET le word wrap automatique
  */
 const drawTextElement = (
   ctx: CanvasRenderingContext2D,
@@ -138,23 +277,7 @@ const drawTextElement = (
 
   const transform = getElementCanvasTransform(element as any, canvasDimensions, delimitation);
 
-  console.log('🎨 [PrintExport] Drawing text element with unified positioning:', {
-    text: element.text,
-    elementId: element.id,
-    position: { x: transform.x.toFixed(0), y: transform.y.toFixed(0) },
-    dimensions: { width: transform.width.toFixed(0), height: transform.height.toFixed(0) },
-    fontSize: transform.fontSize?.toFixed(0),
-    scale: transform.scale.toFixed(3),
-    rotation: element.rotation
-  });
-
-  ctx.save();
-
-  // Appliquer la rotation (même logique que ProductDesignEditor)
-  ctx.translate(transform.x, transform.y);
-  ctx.rotate((element.rotation * Math.PI) / 180);
-
-  // Style du texte
+  // Style du texte (doit être défini AVANT wrapText pour measureText)
   const fontStyle = element.fontStyle || 'normal';
   const fontWeight = element.fontWeight || 'normal';
   const fontFamily = element.fontFamily || 'Arial';
@@ -163,20 +286,80 @@ const drawTextElement = (
   ctx.textAlign = element.textAlign || 'center';
   ctx.textBaseline = 'middle';
 
-  // Dessiner le texte (même logique que ProductDesignEditor)
-  ctx.fillText(element.text, 0, 0, transform.width);
+  // 🆕 Diviser le texte en lignes en gérant DEUX types de sauts de ligne :
+  // 1. Les sauts de ligne explicites (\n)
+  // 2. Le word wrap automatique (quand le texte est trop long)
+  const explicitLines = element.text.split('\n');
+  const allLines: string[] = [];
 
-  // Ajouter la décoration de texte si nécessaire
-  if (element.textDecoration === 'underline') {
-    const metrics = ctx.measureText(element.text);
-    const textWidth = Math.min(metrics.width, transform.width);
-    ctx.beginPath();
-    ctx.moveTo(-textWidth / 2, transform.fontSize * 0.1);
-    ctx.lineTo(textWidth / 2, transform.fontSize * 0.1);
-    ctx.strokeStyle = element.color || '#000000';
-    ctx.lineWidth = transform.fontSize * 0.05;
-    ctx.stroke();
-  }
+  // Pour chaque ligne explicite, appliquer le word wrap si nécessaire
+  explicitLines.forEach(line => {
+    if (line.trim()) {
+      // Appliquer le word wrap pour cette ligne
+      const wrappedLines = wrapText(ctx, line, transform.width);
+      allLines.push(...wrappedLines);
+    } else {
+      // Ligne vide (saut de ligne explicite)
+      allLines.push('');
+    }
+  });
+
+  console.log('🎨 [PrintExport] Drawing text element with unified positioning:', {
+    text: element.text,
+    elementId: element.id,
+    explicitLinesCount: explicitLines.length,
+    totalLinesCount: allLines.length,
+    position: { x: transform.x.toFixed(0), y: transform.y.toFixed(0) },
+    dimensions: { width: transform.width.toFixed(0), height: transform.height.toFixed(0) },
+    fontSize: transform.fontSize?.toFixed(0),
+    scale: transform.scale.toFixed(3),
+    rotation: element.rotation,
+    lines: allLines
+  });
+
+  ctx.save();
+
+  // Appliquer la rotation (même logique que ProductDesignEditor)
+  ctx.translate(transform.x, transform.y);
+  ctx.rotate((element.rotation * Math.PI) / 180);
+
+  // Calculer l'espacement entre les lignes (line-height: 1.2)
+  const lineHeight = transform.fontSize * 1.2;
+
+  // Calculer la hauteur totale du bloc de texte
+  const totalTextHeight = allLines.length * lineHeight;
+
+  // Calculer l'offset Y pour centrer verticalement toutes les lignes
+  const startY = -(totalTextHeight / 2) + (lineHeight / 2);
+
+  // Dessiner chaque ligne séparément
+  allLines.forEach((line, index) => {
+    const yPos = startY + (index * lineHeight);
+
+    // Dessiner la ligne de texte
+    ctx.fillText(line, 0, yPos, transform.width);
+
+    // Ajouter la décoration de texte si nécessaire
+    if (element.textDecoration === 'underline' && line.trim()) {
+      const metrics = ctx.measureText(line);
+      const textWidth = Math.min(metrics.width, transform.width);
+      ctx.beginPath();
+
+      // Ajuster la position X pour le soulignement selon l'alignement
+      let underlineX = 0;
+      if (ctx.textAlign === 'left') {
+        underlineX = textWidth / 2;
+      } else if (ctx.textAlign === 'right') {
+        underlineX = -textWidth / 2;
+      }
+
+      ctx.moveTo(underlineX - textWidth / 2, yPos + transform.fontSize * 0.1);
+      ctx.lineTo(underlineX + textWidth / 2, yPos + transform.fontSize * 0.1);
+      ctx.strokeStyle = element.color || '#000000';
+      ctx.lineWidth = transform.fontSize * 0.05;
+      ctx.stroke();
+    }
+  });
 
   ctx.restore();
 };

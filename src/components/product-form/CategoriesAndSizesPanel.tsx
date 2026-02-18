@@ -14,16 +14,39 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-import Button from '../ui/Button';
+import { AdminButton } from '../admin/AdminButton';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import categoryRealApi from '../../services/categoryRealApi';
+import { toast } from 'sonner';
+
+// Structure pour les prix par catégorie
+export interface CategoryPricing {
+  category: string; // Format: "Parent > Enfant > Variation"
+  suggestedPrice: number; // Prix de vente suggéré en FCFA
+  costPrice?: number; // Prix de revient en FCFA
+}
+
+// Structure pour les prix par taille
+export interface SizePricing {
+  size: string;
+  suggestedPrice: number; // Prix de vente suggéré en FCFA
+  costPrice: number; // Prix de revient en FCFA
+}
 
 interface CategoriesAndSizesPanelProps {
   categories: string[];
   sizes: string[];
+  categoryPricing?: CategoryPricing[]; // 🆕 Prix par catégorie
+  sizePricing?: SizePricing[]; // Prix par taille
+  useGlobalPricing?: boolean; // Utiliser les mêmes prix pour toutes les tailles
+  globalCostPrice?: number; // Prix de revient global
+  globalSuggestedPrice?: number; // Prix de vente suggéré global
   onCategoriesUpdate: (categories: string[]) => void;
   onSizesUpdate: (sizes: string[]) => void;
+  onCategoryPricingUpdate?: (pricing: CategoryPricing[]) => void; // 🆕 Callback pour les prix par catégorie
+  onSizePricingUpdate?: (pricing: SizePricing[]) => void; // Callback pour les prix par taille
+  onUseGlobalPricingChange?: (value: boolean) => void; // 🆕 Callback pour désactiver useGlobalPricing
 }
 
 // Interface pour la structure transformée
@@ -225,13 +248,20 @@ const CATEGORIES_HIERARCHY_OLD: any[] = [
 export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = ({
   categories = [],
   sizes = [],
+  sizePricing = [],
+  useGlobalPricing = false,
+  globalCostPrice = 0,
+  globalSuggestedPrice = 0,
   onCategoriesUpdate,
-  onSizesUpdate
+  onSizesUpdate,
+  onSizePricingUpdate,
+  onUseGlobalPricingChange
 }) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const [newCustomSize, setNewCustomSize] = useState('');
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [hierarchicalCategories, setHierarchicalCategories] = useState<CategoryForDisplay[]>([]);
+  const [localSizePricing, setLocalSizePricing] = useState<SizePricing[]>(sizePricing);
 
   // Charger les catégories depuis les endpoints réels (cate.md)
   useEffect(() => {
@@ -306,6 +336,48 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
 
     loadCategories();
   }, []);
+
+  // Initialiser/Mettre à jour les prix par taille quand les tailles changent
+  useEffect(() => {
+    if (sizes.length > 0) {
+      setLocalSizePricing((prevPricing) => {
+        const newPricing: SizePricing[] = sizes.map((size) => {
+          const existing = prevPricing.find((p) => p.size === size);
+
+          // Si useGlobalPricing est activé, utiliser les prix globaux
+          if (useGlobalPricing) {
+            return {
+              size,
+              suggestedPrice: globalSuggestedPrice || 0,
+              costPrice: globalCostPrice || 0
+            };
+          }
+
+          // Sinon, utiliser les valeurs existantes ou des valeurs par défaut
+          return existing || {
+            size,
+            suggestedPrice: 0,
+            costPrice: 0
+          };
+        });
+        return newPricing;
+      });
+    } else {
+      setLocalSizePricing([]);
+    }
+  }, [sizes, useGlobalPricing, globalCostPrice, globalSuggestedPrice]);
+
+  // Appeler onSizePricingUpdate quand localSizePricing change
+  useEffect(() => {
+    console.log('🔍 [DEBUG CategoriesAndSizesPanel] localSizePricing changed:', {
+      localSizePricing,
+      hasCallback: !!onSizePricingUpdate
+    });
+    if (onSizePricingUpdate && localSizePricing.length > 0) {
+      console.log('✅ [DEBUG CategoriesAndSizesPanel] Calling onSizePricingUpdate with:', localSizePricing);
+      onSizePricingUpdate(localSizePricing);
+    }
+  }, [localSizePricing, onSizePricingUpdate]);
 
   // État pour suivre quelle sous-catégorie (enfant) est actuellement sélectionnée
   const [selectedChild, setSelectedChild] = useState<{ parent: string; child: string } | null>(null);
@@ -428,6 +500,47 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
   // Pas de tailles suggérées automatiques - l'utilisateur les ajoute manuellement
   const suggestedSizes: string[] = [];
 
+  // Fonction pour mettre à jour un champ de prix pour une taille
+  const updateSizePricing = (size: string, field: keyof Omit<SizePricing, 'size'>, value: number) => {
+    console.log('🔍 [DEBUG updateSizePricing] Called:', { size, field, value });
+
+    // 🔧 CORRECTION: Si useGlobalPricing est activé et que l'utilisateur modifie manuellement un prix,
+    // désactiver automatiquement useGlobalPricing
+    if (useGlobalPricing && onUseGlobalPricingChange) {
+      console.log('⚠️ [DEBUG] Modification manuelle détectée alors que useGlobalPricing est actif');
+      console.log('🔧 [DEBUG] Désactivation automatique de useGlobalPricing');
+      onUseGlobalPricingChange(false);
+      toast.info('Mode "prix global" désactivé suite à votre modification manuelle', {
+        duration: 3000
+      });
+    }
+
+    setLocalSizePricing((prev) => {
+      const updated = prev.map((p) =>
+        p.size === size ? { ...p, [field]: value } : p
+      );
+      console.log('🔍 [DEBUG updateSizePricing] New localSizePricing:', updated);
+
+      // 🔧 CORRECTION: Appeler onSizePricingUpdate immédiatement pour éviter les délais de useEffect
+      // Cela garantit que le parent reçoit les données à jour même si le formulaire est soumis immédiatement
+      if (onSizePricingUpdate && updated.length > 0) {
+        console.log('✅ [DEBUG updateSizePricing] Calling onSizePricingUpdate immediately with:', updated);
+        onSizePricingUpdate(updated);
+      }
+
+      return updated;
+    });
+  };
+
+  // Récupérer les prix pour une taille donnée
+  const getSizePricing = (size: string): SizePricing => {
+    return localSizePricing.find((p) => p.size === size) || {
+      size,
+      suggestedPrice: 0,
+      costPrice: 0
+    };
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -436,9 +549,9 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
       className="space-y-6"
     >
       {/* Panel Sélection moderne de catégories */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {/* En-tête */}
-        <div className="bg-gray-900 dark:bg-black p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-gray-900 p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <Tag className="h-5 w-5 text-white" />
             <div>
@@ -454,14 +567,14 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+              className="flex items-center gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200"
             >
               <div className="flex-1 flex items-center gap-2 overflow-x-auto">
-                <Badge className="bg-gray-900 text-white dark:bg-white dark:text-gray-900 shrink-0">
+                <Badge className="bg-gray-900 text-white shrink-0">
                   {selectedParent}
                 </Badge>
                 <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
-                <Badge className="bg-gray-700 text-white dark:bg-gray-300 dark:text-gray-900 shrink-0">
+                <Badge className="bg-gray-700 text-white shrink-0">
                   {selectedChildName}
                 </Badge>
                 <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
@@ -469,21 +582,21 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
                   {selectedVariations.map((variation, idx) => (
                     <React.Fragment key={variation}>
                       {idx > 0 && <span className="text-gray-400 text-xs">•</span>}
-                      <Badge className="bg-gray-600 text-white dark:bg-gray-400 dark:text-gray-900 shrink-0 text-xs">
+                      <Badge className="bg-gray-600 text-white shrink-0 text-xs">
                         {variation}
                       </Badge>
                     </React.Fragment>
                   ))}
                 </div>
               </div>
-              <Button
+              <AdminButton
                 size="sm"
                 variant="ghost"
                 onClick={removeSelectedCategory}
-                className="shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                className="shrink-0 hover:bg-gray-200"
               >
                 <X className="h-4 w-4" />
-              </Button>
+              </AdminButton>
             </motion.div>
           )}
 
@@ -491,10 +604,10 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
           {selectedVariations.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                <Label className="text-sm font-semibold text-gray-900">
                   Variations sélectionnées
                 </Label>
-                <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600">
+                <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
                   {selectedVariations.length}
                 </Badge>
               </div>
@@ -509,13 +622,13 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
                       layout
                     >
                       <Badge
-                        className="flex items-center gap-2 px-3 py-2 bg-gray-900 text-white dark:bg-white dark:text-gray-900 border border-gray-900 dark:border-white"
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-900 text-white border border-gray-900"
                       >
                         <Check className="h-3 w-3" />
                         <span className="font-medium">{variation}</span>
                         <button
                           onClick={() => removeVariation(variation)}
-                          className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5 transition-colors"
+                          className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -530,13 +643,13 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
           {/* État vide */}
           {!selectedParent && (
             <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                <Tag className="h-8 w-8 text-gray-600 dark:text-gray-400" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                <Tag className="h-8 w-8 text-gray-600" />
               </div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">
                 Aucune catégorie sélectionnée
               </h4>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500">
                 Parcourez les catégories ci-dessous pour commencer
               </p>
             </div>
@@ -544,23 +657,23 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
 
           {/* Liste des catégories */}
           <div className="space-y-3">
-            <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <ChevronDown className="h-4 w-4" />
               {selectedParent ? 'Changer de catégorie' : 'Parcourir les catégories'}
             </Label>
 
             {loadingCategories ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
-                <Loader2 className="h-10 w-10 animate-spin text-gray-900 dark:text-gray-100" />
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Chargement des catégories...</p>
+                <Loader2 className="h-10 w-10 animate-spin text-gray-900" />
+                <p className="text-sm font-medium text-gray-600">Chargement des catégories...</p>
               </div>
             ) : hierarchicalCategories.length === 0 ? (
-              <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+              <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
                 <Tag className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                <h4 className="font-semibold text-gray-700 mb-1">
                   Aucune catégorie disponible
                 </h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-500">
                   Créez des catégories dans la page de gestion
                 </p>
               </div>
@@ -570,18 +683,18 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
                   <motion.div
                     key={category.id}
                     layout
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-gray-900 dark:hover:border-gray-100 transition-colors"
+                    className="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-900 transition-colors"
                   >
                     {/* En-tête catégorie parent */}
                     <button
                       onClick={() => toggleCategoryExpansion(category.id)}
-                      className="w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
                     >
                       <div className="text-left">
-                        <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                        <h4 className="font-semibold text-gray-900">
                           {category.name}
                         </h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-gray-500">
                           {category.children.length} sous-{category.children.length > 1 ? 'catégories' : 'catégorie'}
                         </p>
                       </div>
@@ -601,7 +714,7 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                          className="border-t border-gray-200 bg-gray-50"
                         >
                           <div className="p-4 space-y-3">
                             {category.children.map((child) => {
@@ -612,17 +725,17 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
                                   key={child.id}
                                   className={`rounded-lg border overflow-hidden transition-all ${
                                     isChildSelected
-                                      ? 'border-gray-900 dark:border-gray-100 bg-gray-100 dark:bg-gray-800'
-                                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+                                      ? 'border-gray-900 bg-gray-100'
+                                      : 'border-gray-300 bg-white'
                                   }`}
                                 >
                                   {/* En-tête sous-catégorie */}
-                                  <div className="p-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                                  <div className="p-3 bg-gray-100 border-b border-gray-200">
                                     <div className="flex items-center justify-between">
-                                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                      <span className="font-semibold text-gray-900">
                                         {child.name}
                                       </span>
-                                      <Badge variant="outline" className="text-xs bg-white dark:bg-gray-900">
+                                      <Badge variant="outline" className="text-xs bg-white">
                                         {child.variations.length} variation{child.variations.length > 1 ? 's' : ''}
                                       </Badge>
                                     </div>
@@ -647,10 +760,10 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
                                             className={`
                                               relative p-3 rounded-lg border font-medium text-sm transition-all
                                               ${isDifferentChild
-                                                ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700'
+                                                ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-300'
                                                 : isSelected
-                                                ? 'border-gray-900 dark:border-gray-100 bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                                                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-gray-900 dark:hover:border-gray-100 hover:bg-gray-50 dark:hover:bg-gray-750'
+                                                ? 'border-gray-900 bg-gray-900 text-white'
+                                                : 'border-gray-300 bg-white hover:border-gray-900 hover:bg-gray-50'
                                               }
                                             `}
                                           >
@@ -660,7 +773,7 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
                                                 <motion.div
                                                   initial={{ scale: 0 }}
                                                   animate={{ scale: 1 }}
-                                                  className="absolute -top-1 -right-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full p-1"
+                                                  className="absolute -top-1 -right-1 bg-gray-900 text-white rounded-full p-1"
                                                 >
                                                   <Check className="h-3 w-3" />
                                                 </motion.div>
@@ -688,40 +801,103 @@ export const CategoriesAndSizesPanel: React.FC<CategoriesAndSizesPanelProps> = (
 
       {/* Panel Tailles - Simplifié : les variations = tailles */}
       {selectedVariations.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="bg-gray-900 dark:bg-black p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-gray-900 p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Ruler className="h-5 w-5 text-white" />
-                <h3 className="text-base font-semibold text-white">Tailles (basées sur les variations)</h3>
+                <h3 className="text-base font-semibold text-white">Tailles et tarification</h3>
               </div>
               <Badge className="bg-white text-gray-900 text-xs">
-                {sizes.length}
+                {sizes.length} taille{sizes.length > 1 ? 's' : ''}
               </Badge>
             </div>
           </div>
 
           <div className="p-6">
-            <div className="flex flex-wrap gap-2">
-              <AnimatePresence mode="popLayout">
-                {sizes.map((size) => (
+            <p className="text-xs text-gray-500 mb-4">
+              Les tailles correspondent aux variations sélectionnées ci-dessus. Définissez les tarifs pour chaque taille.
+            </p>
+
+            {/* Tableau des prix par taille */}
+            <div className="space-y-4">
+              {sizes.map((size) => {
+                const pricing = getSizePricing(size);
+                return (
                   <motion.div
                     key={size}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border border-gray-200 rounded-lg p-4 bg-gray-50"
                   >
-                    <Badge className="px-3 py-1.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 border border-gray-900 dark:border-white">
-                      {size}
-                    </Badge>
+                    {/* Nom de la taille */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <Badge className="bg-gray-900 text-white border border-gray-900">
+                        {size}
+                      </Badge>
+                    </div>
+
+                    {/* Champs de prix */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Prix de revient */}
+                      <div className="space-y-2">
+                        <Label htmlFor={`costPrice-${size}`} className="text-sm font-medium">
+                          💰 Prix de revient (FCFA)
+                        </Label>
+                        <Input
+                          id={`costPrice-${size}`}
+                          type="number"
+                          value={pricing.costPrice || ''}
+                          onChange={(e) => updateSizePricing(size, 'costPrice', parseFloat(e.target.value) || 0)}
+                          placeholder="Coût de production"
+                          min="0"
+                          step="100"
+                          className="font-semibold"
+                        />
+                      </div>
+
+                      {/* Prix de vente suggéré */}
+                      <div className="space-y-2">
+                        <Label htmlFor={`suggestedPrice-${size}`} className="text-sm font-medium">
+                          💡 Prix de vente suggéré (FCFA)
+                        </Label>
+                        <Input
+                          id={`suggestedPrice-${size}`}
+                          type="number"
+                          value={pricing.suggestedPrice || ''}
+                          onChange={(e) => updateSizePricing(size, 'suggestedPrice', parseFloat(e.target.value) || 0)}
+                          placeholder="Prix recommandé"
+                          min="0"
+                          step="100"
+                          className="font-semibold border-green-500"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Indicateur de marge */}
+                    {pricing.costPrice > 0 && pricing.suggestedPrice > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <span className={`text-xs font-medium ${
+                          pricing.suggestedPrice > pricing.costPrice
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }`}>
+                          Marge: {pricing.suggestedPrice - pricing.costPrice} FCFA
+                          {pricing.costPrice > 0 && ` (${Math.round(((pricing.suggestedPrice - pricing.costPrice) / pricing.costPrice) * 100)}%)`}
+                        </span>
+                      </div>
+                    )}
                   </motion.div>
-                ))}
-              </AnimatePresence>
+                );
+              })}
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-              Les tailles correspondent aux variations sélectionnées ci-dessus
-            </p>
+
+            {sizes.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                Aucune taille sélectionnée
+              </p>
+            )}
           </div>
         </div>
       )}

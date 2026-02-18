@@ -275,13 +275,30 @@ class CustomizationService {
    */
   async uploadImage(file: File): Promise<{ url: string; publicId: string; width: number; height: number }> {
     try {
+      console.log('📤 [CustomizationService] Upload image:', {
+        fileName: file.name,
+        fileSize: (file.size / 1024).toFixed(2) + ' KB',
+        fileType: file.type
+      });
+
+      // Créer le FormData
       const formData = new FormData();
       formData.append('file', file);
 
+      // Ajouter le sessionId si c'est un guest (pas de token)
+      const token = this.getAuthToken();
+      if (!token) {
+        const sessionId = this.getOrCreateSessionId();
+        formData.append('sessionId', sessionId);
+        console.log('👤 [CustomizationService] Guest upload avec sessionId:', sessionId);
+      }
+
+      // ⚠️ IMPORTANT: Ne PAS spécifier Content-Type manuellement
+      // Axios le gère automatiquement avec FormData et ajoute la boundary
       const response = await axios.post(`${API_BASE}/customizations/upload-image`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-          ...(this.getAuthToken() && { Authorization: `Bearer ${this.getAuthToken()}` })
+          // Seulement le token si présent
+          ...(token && { Authorization: `Bearer ${token}` })
         }
       });
 
@@ -289,7 +306,26 @@ class CustomizationService {
       return response.data;
     } catch (error: any) {
       console.error('❌ [CustomizationService] Erreur upload image:', error);
-      throw error;
+
+      // Extraire le message d'erreur du backend
+      const errorMessage = error.response?.data?.message ||
+                          error.response?.data?.error ||
+                          error.message ||
+                          'Erreur inconnue lors de l\'upload';
+
+      console.error('📝 [CustomizationService] Détails erreur:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: errorMessage
+      });
+
+      // Créer une erreur avec un message clair
+      const uploadError = new Error(errorMessage);
+      (uploadError as any).status = error.response?.status;
+      (uploadError as any).originalError = error;
+
+      throw uploadError;
     }
   }
 

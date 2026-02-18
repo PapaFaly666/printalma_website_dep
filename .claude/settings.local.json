@@ -1,11 +1,11 @@
 {
-  "env": {
+ /* "env": {
     "ANTHROPIC_AUTH_TOKEN": "b6329664b2704a3892c0a03ad2c06904.O66zTVDNj3nowjuf",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6", 
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
-  }, 
+  }, */
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
@@ -24,7 +24,7 @@
       "Bash(npm install)",
       "Bash(npm start)",
       "Bash(grep:*)",
-      "WebFetch(domain:github.com)",  
+      "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "mcp__ide__getDiagnostics",
       "Bash(npm install:*)",
@@ -43,7 +43,12 @@
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Bash(timeout:*)",
-      "Bash('http://localhost:3004/vendor/orders/381' )"
+      "Bash('http://localhost:3004/vendor/orders/381' )",
+      "Bash(__NEW_LINE__ echo -e \"\\n\\n=== Test avec ''image'' ===\")",
+      "Bash(__NEW_LINE__ echo -e \"\\n\\n=== Test avec ''images'' ===\")",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(dos2unix:*)"
     ],
     "deny": [],
     "ask": [],

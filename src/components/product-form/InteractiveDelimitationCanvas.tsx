@@ -13,7 +13,7 @@ import {
   Edit3,
   Eye
 } from 'lucide-react';
-import Button from '../ui/Button';
+import { AdminButton } from '../admin/AdminButton';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
 import { fabric } from 'fabric';
@@ -502,15 +502,15 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
 
   // 🎨 Interface utilisateur
   return (
-    <Card className={`overflow-hidden border-gray-200 dark:border-gray-700 ${className}`}>
+    <Card className={`overflow-hidden border-gray-200 ${className}`}>
       {/* Header avec titre et statut */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-[rgb(20,104,154)]/5 p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+            <h3 className="font-bold text-lg text-gray-900">
               Définir la zone de personnalisation
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm text-gray-600 mt-1">
               Tracez la zone où le design personnalisé pourra être appliqué
             </p>
           </div>
@@ -518,7 +518,7 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
             {currentDelimitation && (
               <Badge 
                 variant={editMode === 'edition' ? 'default' : 'secondary'}
-                className={editMode === 'edition' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
+                className={editMode === 'edition' ? 'bg-[rgb(20,104,154)]/10 text-[rgb(20,104,154)]' : 'bg-green-100 text-green-800'}
               >
                 {editMode === 'edition' ? (
                   <>
@@ -540,7 +540,7 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
       <CardContent className="p-6">
         {/* Canvas principal */}
         <div className="relative mb-6">
-          <div className="relative w-full bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+          <div className="relative w-full bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
             <canvas 
               ref={canvasRef}
               className="w-full h-full"
@@ -549,27 +549,27 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
             
             {/* Overlay d'information */}
             {currentDelimitation && (
-              <div className="absolute top-4 right-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-lg p-3 text-xs font-mono min-w-[160px] shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+              <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 text-xs font-mono min-w-[160px] shadow-lg border border-gray-200/50">
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-500 dark:text-gray-400">X:</span>
+                  <span className="text-gray-500">X:</span>
                   <span className="font-medium">{currentDelimitation.x}px</span>
                 </div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-500 dark:text-gray-400">Y:</span>
+                  <span className="text-gray-500">Y:</span>
                   <span className="font-medium">{currentDelimitation.y}px</span>
                 </div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-500 dark:text-gray-400">L:</span>
+                  <span className="text-gray-500">L:</span>
                   <span className="font-medium">{currentDelimitation.width}px</span>
                 </div>
                 <div className="flex justify-between mb-2">
-                  <span className="text-gray-500 dark:text-gray-400">H:</span>
+                  <span className="text-gray-500">H:</span>
                   <span className="font-medium">{currentDelimitation.height}px</span>
                 </div>
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-2">
+                <div className="border-t border-gray-200 pt-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Surface:</span>
-                    <span className="text-blue-600 dark:text-blue-400 font-medium">
+                    <span className="text-gray-500">Surface:</span>
+                    <span className="text-[rgb(20,104,154)] font-medium">
                       {(currentDelimitation.width * currentDelimitation.height).toLocaleString()}px²
                     </span>
                   </div>
@@ -579,7 +579,7 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
 
             {/* Indicateur de dessin */}
             {isDrawing && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 shadow-lg">
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-[rgb(20,104,154)] text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 shadow-lg">
                 <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                 Tracez votre zone de délimitation
               </div>
@@ -591,24 +591,24 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
         <div className="space-y-4">
           {/* Instructions ou help text */}
           {!currentDelimitation && !isDrawing && (
-            <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
-              <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-3">
-                <Square className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+            <div className="text-center py-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <Square className="h-8 w-8 text-gray-400" />
               </div>
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+              <h4 className="font-medium text-gray-900 mb-2">
                 Aucune zone définie
               </h4>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-gray-500 mb-4">
                 Cliquez sur le bouton "Tracer une zone" pour commencer
               </p>
-              <Button 
+              <AdminButton 
                 onClick={enableDrawingMode}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] text-white"
                 disabled={isDrawing}
               >
                 <Square className="w-4 h-4 mr-2" />
                 Tracer une zone
-              </Button>
+              </AdminButton>
             </div>
           )}
 
@@ -623,21 +623,21 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
                   exit={{ opacity: 0, y: -20 }}
                   className="flex items-center justify-center space-x-3"
                 >
-                  <Button
+                  <AdminButton
                     onClick={enterEditMode}
-                    className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 px-6 py-3 font-medium"
+                    className="bg-white text-gray-900 border border-gray-300 hover:bg-gray-50 px-6 py-3 font-medium"
                   >
                     <Edit3 className="w-4 h-4 mr-2" />
                     Modifier
-                  </Button>
-                  <Button
+                  </AdminButton>
+                  <AdminButton
                     onClick={removeDelimitation}
                     variant="outline"
                     className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Supprimer
-                  </Button>
+                  </AdminButton>
                 </motion.div>
               ) : (
                 <motion.div
@@ -647,7 +647,7 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
                   exit={{ opacity: 0, y: -20 }}
                   className="flex items-center justify-center space-x-3"
                 >
-                  <Button
+                  <AdminButton
                     onClick={cancelEdit}
                     variant="outline"
                     className="px-6 py-3 font-medium"
@@ -655,10 +655,10 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
                   >
                     <X className="w-4 h-4 mr-2" />
                     Annuler
-                  </Button>
-                  <Button
+                  </AdminButton>
+                  <AdminButton
                     onClick={saveChanges}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 font-medium"
+                    className="bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] text-white px-6 py-3 font-medium"
                     disabled={isSaving}
                   >
                     {isSaving ? (
@@ -672,7 +672,7 @@ export const InteractiveDelimitationCanvas: React.FC<InteractiveDelimitationCanv
                         Sauvegarder les changements
                       </>
                     )}
-                  </Button>
+                  </AdminButton>
                 </motion.div>
               )}
             </AnimatePresence>

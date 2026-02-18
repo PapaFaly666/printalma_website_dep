@@ -57,10 +57,10 @@ const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'category': return 'text-blue-600 dark:text-blue-400';
-      case 'subcategory': return 'text-green-600 dark:text-green-400';
-      case 'variation': return 'text-orange-600 dark:text-orange-400';
-      default: return 'text-gray-600 dark:text-gray-400';
+      case 'category': return 'text-blue-600';
+      case 'subcategory': return 'text-green-600';
+      case 'variation': return 'text-orange-600';
+      default: return 'text-gray-600';
     }
   };
 
@@ -79,26 +79,26 @@ const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
 
         <div className="space-y-4">
           {/* Informations sur l'élément */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
             <span className="text-2xl">{getTypeIcon(element.type)}</span>
             <div className="flex-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Type:</p>
+              <p className="text-sm text-gray-600">Type:</p>
               <p className={`font-medium ${getTypeColor(element.type)}`}>
                 {getTypeLabel(element.type)}
               </p>
             </div>
             <div className="flex-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Nom:</p>
-              <p className="font-medium text-gray-900 dark:text-white truncate">
+              <p className="text-sm text-gray-600">Nom:</p>
+              <p className="font-medium text-gray-900 truncate">
                 {element.name}
               </p>
             </div>
           </div>
 
           {/* Message de confirmation */}
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600">
             Êtes-vous sûr de vouloir supprimer la {getTypeLabel(element.type).toLowerCase()}{' '}
-            <span className="font-semibold text-gray-900 dark:text-white">"{element.name}"</span> ?
+            <span className="font-semibold text-gray-900">"{element.name}"</span> ?
           </p>
 
           {/* Erreur de suppression */}

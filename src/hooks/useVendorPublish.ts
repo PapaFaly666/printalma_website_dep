@@ -79,6 +79,17 @@ interface VendorPublishData {
   forcedStatus?: 'DRAFT' | 'PENDING';
   postValidationAction?: 'AUTO_PUBLISH' | 'TO_DRAFT';
   bypassValidation?: boolean;
+
+  // 🆕 Prix par taille
+  useGlobalPricing?: boolean; // Utiliser les mêmes prix pour toutes les tailles
+  globalCostPrice?: number; // Prix de revient global
+  globalSuggestedPrice?: number; // Prix de vente suggéré global
+  sizePricing?: Array<{
+    size: string; // Nom de la taille (ex: "S", "M", "L")
+    costPrice: number; // Prix de revient
+    suggestedPrice: number; // Prix de vente suggéré
+    salePrice: number; // Prix de vente défini par le vendeur
+  }>;
 }
 
 interface VendorPublishResponse {
@@ -88,6 +99,21 @@ interface VendorPublishResponse {
   status: 'DRAFT' | 'PENDING' | 'PUBLISHED';
   needsValidation?: boolean;
   imagesProcessed?: number;
+  timing?: {
+    totalGenerationTime: number;
+    totalColors: number;
+    colorsProcessed: number;
+    colorsRemaining: number;
+    averageTimePerColor: number;
+    estimatedRemainingTime: number;
+    colorTimings: Array<{
+      colorName: string;
+      duration: number;
+      success: boolean;
+    }>;
+    estimatedTimePerImage: number;
+    completionPercentage: number;
+  };
 }
 
 interface PublishResult {
@@ -213,9 +239,15 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
           delimitationHeight: productData.designPosition?.delimitationHeight || 0,
           positionUnit: productData.designPosition?.positionUnit || 'PIXEL'
         },
-        
+
         // 🆕 FLAG BYPASS VALIDATION
-        bypassValidation: productData.bypassValidation ?? false
+        bypassValidation: productData.bypassValidation ?? false,
+
+        // 🆕 PRIX PAR TAILLE
+        useGlobalPricing: productData.useGlobalPricing ?? false,
+        globalCostPrice: productData.globalCostPrice,
+        globalSuggestedPrice: productData.globalSuggestedPrice,
+        sizePricing: productData.sizePricing || []
       };
 
       console.log('📦 Payload final avec dimensions:', {
@@ -291,7 +323,9 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
     },
     getPreviewView: (product: any) => any,
     forcedStatus?: 'DRAFT' | 'PENDING',
-    defaultColorIds?: Record<number, number>
+    defaultColorIds?: Record<number, number>,
+    // 🆕 Prix par taille pour chaque produit
+    sizePricingByProduct?: Record<number, Record<string, { salePrice: number; profit: number }>>
   ): Promise<PublishResult[]> => {
     try {
       setIsPublishing(true);
@@ -312,11 +346,12 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
 
       const results: PublishResult[] = [];
 
+      // Traitement séquentiel des produits
       for (let i = 0; i < selectedProductIds.length; i++) {
         const productIdStr = selectedProductIds[i];
         const productId = Number(productIdStr);
         const product = products.find(p => p.id === productId);
-        
+
         if (!product) {
           console.warn(`⚠️ Produit ${productId} non trouvé`);
           results.push({
@@ -327,7 +362,8 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
           continue;
         }
 
-        const progressPercent = (i / selectedProductIds.length) * 100;
+        // Mise à jour de progression
+        const progressPercent = ((i + 1) / selectedProductIds.length) * 100;
         updateProgress(`Publication ${i + 1}/${selectedProductIds.length}...`, progressPercent);
 
         try {
@@ -485,10 +521,8 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
           // 🆕 RÉCUPÉRER LES POSITIONS DU DESIGN depuis les délimitations
           const previewView = getPreviewView(product);
 
-          // 🆕 Générer une description personnalisée si nécessaire
-          const customDescription = editStates[productId]?.description
-            || `${editStates[productId]?.name || product.name} avec design personnalisé "${designData.designName || 'Design unique'}". ${product.description || 'Produit de qualité avec impression personnalisée.'}`
-            || product.description;
+          // 🆕 Récupérer la description personnalisée du vendeur SANS générer de description automatique
+          const customDescription = editStates[productId]?.description || '';
 
           // Préparer les données du produit
           const productData: VendorPublishData = {
@@ -544,7 +578,46 @@ export const useVendorPublish = (options: UseVendorPublishOptions = {}) => {
             },
             forcedStatus: forcedStatus || 'PENDING',
             postValidationAction: designData.postValidationAction as 'AUTO_PUBLISH' | 'TO_DRAFT' || 'AUTO_PUBLISH',
-            bypassValidation: true
+            bypassValidation: true,
+
+            // 🆕 PRIX PAR TAILLE - Récupérer depuis sizePricingByProduct si disponible
+            useGlobalPricing: product.useGlobalPricing ?? false,
+            globalCostPrice: product.globalCostPrice,
+            globalSuggestedPrice: product.globalSuggestedPrice,
+            sizePricing: (() => {
+              const productSizePricing = sizePricingByProduct?.[productId];
+              if (!productSizePricing || Object.keys(productSizePricing).length === 0) {
+                // Pas de prix personnalisé, utiliser les prix du produit admin SEULEMENT pour les tailles actives
+                if (product.sizePrices && product.sizePrices.length > 0) {
+                  return product.sizePrices
+                    .filter((sp: any) => activeSizes.some((as: any) => as.sizeName === sp.size))
+                    .map((sp: any) => ({
+                      size: sp.size,
+                      costPrice: sp.costPrice,
+                      suggestedPrice: sp.suggestedPrice,
+                      salePrice: sp.suggestedPrice
+                    }));
+                }
+                return undefined;
+              }
+
+              // Convertir les prix personnalisés au format attendu par le backend
+              // ✅ FILTRER: Ne garder que les tailles actives (isActive: true)
+              return Object.entries(productSizePricing)
+                .filter(([sizeName]) => activeSizes.some((as: any) => as.sizeName === sizeName))
+                .map(([sizeName, priceData]) => {
+                  // Trouver le prix de revient correspondant depuis le produit admin
+                  const adminSizePrice = product.sizePrices?.find((sp: any) => sp.size === sizeName);
+                  const costPrice = adminSizePrice?.costPrice || product.price || 0;
+
+                  return {
+                    size: sizeName,
+                    costPrice: costPrice,
+                    suggestedPrice: adminSizePrice?.suggestedPrice || (costPrice * 1.5),
+                    salePrice: priceData.salePrice
+                  };
+                });
+            })()
           };
 
           console.log('📦 Payload avec dimensions dans designPosition:', {

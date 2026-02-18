@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Plus, X, Upload, Palette, ImageIcon, Trash2, AlertCircle, Sparkles, Copy } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
-import Button from '../ui/Button';
+import { AdminButton } from '../admin/AdminButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ColorVariation, ProductImage } from '../../types/product';
 import { resizeImage } from '../../utils/imageResizer';
@@ -17,6 +17,8 @@ interface ColorVariationsPanelProps {
   onUpdateImage: (colorId: string, imageId: string, updates: Partial<ProductImage>) => void;
   onReplaceImage?: (colorId: string, imageId: string, file: File) => Promise<void>;
   onSuggestedPriceChange?: (price: number) => void;
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU';
+  suggestedPrice?: number;
 }
 
 const VIEW_OPTIONS = [
@@ -57,6 +59,8 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
   onUpdateImage,
   onReplaceImage,
   onSuggestedPriceChange,
+  genre,
+  suggestedPrice,
 }) => {
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const replaceInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -294,34 +298,35 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Variations de couleur
-          </CardTitle>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setQuickAddMode(!quickAddMode)}
-              size="sm"
-              variant="outline"
-              className="text-purple-600 border-purple-600 hover:bg-purple-50"
-            >
-              <Sparkles className="h-4 w-4 mr-1" />
-              Ajout rapide
-            </Button>
-            <Button onClick={onAddColorVariation} size="sm" variant="outline">
-              <Plus className="h-4 w-4 mr-1" />
-              Ajouter couleur
-            </Button>
+      <Card className="border-gray-200">
+        <CardHeader className="border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
+              <Palette className="h-5 w-5" />
+              Variations de couleur
+            </CardTitle>
+            <div className="flex gap-2">
+              <AdminButton
+                onClick={() => setQuickAddMode(!quickAddMode)}
+                size="sm"
+                variant="outline"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Ajout rapide</span>
+              </AdminButton>
+              <AdminButton onClick={onAddColorVariation} size="sm" variant="primary">
+                <Plus className="h-4 w-4" />
+                <span>Ajouter</span>
+              </AdminButton>
+            </div>
           </div>
         </CardHeader>
 
         {/* Mode d'ajout rapide */}
         {quickAddMode && (
-          <CardContent className="border-t border-gray-200 dark:border-gray-700 bg-purple-50 dark:bg-purple-900/20">
+          <CardContent className="border-t border-gray-200 bg-[rgb(20,104,154)]/5">
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-100 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[rgb(16,83,123)] flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
                 Ajout rapide de couleurs
               </h3>
@@ -348,15 +353,15 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                         isAlreadyAdded
                           ? 'opacity-50 cursor-not-allowed border-gray-300'
                           : isSelected
-                            ? 'border-purple-500 scale-110 shadow-md'
-                            : 'border-gray-300 hover:border-purple-400 hover:scale-105'
+                            ? 'border-[rgb(20,104,154)] scale-110 shadow-md'
+                            : 'border-gray-300 hover:border-[rgb(20,104,154)]/70 hover:scale-105'
                       }`}
                       style={{ backgroundColor: preset.code }}
                       title={`${preset.name} ${isAlreadyAdded ? '(déjà ajoutée)' : ''}`}
                     >
                       {isSelected && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-purple-500/20 rounded-lg">
-                          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                        <div className="absolute inset-0 flex items-center justify-center bg-[rgb(20,104,154)]/50/20 rounded-lg">
+                          <div className="w-2 h-2 bg-[rgb(16,83,123)] rounded-full"></div>
                         </div>
                       )}
                     </button>
@@ -366,26 +371,25 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
 
               {/* Actions rapides */}
               <div className="flex items-center justify-between">
-                <p className="text-xs text-purple-700 dark:text-purple-300">
+                <p className="text-xs text-[rgb(20,104,154)]">
                   {selectedPresetColors.length} couleur(s) sélectionnée(s)
                 </p>
                 <div className="flex gap-2">
-                  <Button
+                  <AdminButton
                     onClick={() => setSelectedPresetColors([])}
                     size="sm"
-                    variant="ghost"
-                    className="text-purple-600"
+                    variant="outline"
                   >
-                    Effacer
-                  </Button>
-                  <Button
+                    <span>Effacer</span>
+                  </AdminButton>
+                  <AdminButton
                     onClick={handleQuickAddColors}
                     size="sm"
                     disabled={selectedPresetColors.length === 0}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    variant="primary"
                   >
-                    Ajouter les couleurs
-                  </Button>
+                    <span>Ajouter les couleurs</span>
+                  </AdminButton>
                 </div>
               </div>
             </div>
@@ -393,21 +397,21 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
         )}
         <CardContent className="space-y-6">
           {/* Galerie d'images uploadées */}
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="p-4 bg-[rgb(20,104,154)]/5 border border-[rgb(20,104,154)]/30 rounded-lg">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[rgb(16,83,123)] flex items-center gap-2">
                 <Upload className="h-4 w-4" />
                 Galerie d'images ({uploadedImages.length})
               </h3>
               <div className="flex gap-2">
-                <Button
+                <AdminButton
                   onClick={() => setShowImageGallery(!showImageGallery)}
                   size="sm"
                   variant="outline"
-                  className="text-blue-600 border-blue-600"
+                  className="text-[rgb(20,104,154)] border-[rgb(20,104,154)]"
                 >
                   {showImageGallery ? 'Masquer' : 'Voir'} la galerie
-                </Button>
+                </AdminButton>
                 <input
                   ref={quickAddInputRef}
                   type="file"
@@ -416,18 +420,18 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                   onChange={(e) => handleImagesToGallery(e.target.files)}
                   className="hidden"
                 />
-                <Button
+                <AdminButton
                   onClick={() => quickAddInputRef.current?.click()}
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] text-white"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Ajouter des images
-                </Button>
+                </AdminButton>
               </div>
             </div>
 
-            <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">
+            <p className="text-xs text-[rgb(20,104,154)] mb-3">
               Uploadez plusieurs images puis assignez-les aux couleurs de votre choix
             </p>
 
@@ -438,12 +442,12 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
               onDrop={handleDrop}
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
                 dropZoneActive
-                  ? 'border-blue-500 bg-blue-100 dark:bg-blue-800/50'
-                  : 'border-blue-300 hover:border-blue-400'
+                  ? 'border-[rgb(20,104,154)] bg-[rgb(20,104,154)]/10'
+                  : 'border-[rgb(20,104,154)]/50 hover:border-[rgb(20,104,154)]/70'
               }`}
             >
-              <Upload className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <Upload className="h-8 w-8 mx-auto mb-2 text-[rgb(20,104,154)]" />
+              <p className="text-sm text-[rgb(20,104,154)]">
                 Glissez-déposez vos images ici ou cliquez sur "Ajouter des images"
               </p>
             </div>
@@ -452,7 +456,7 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
             {showImageGallery && uploadedImages.length > 0 && (
               <div className="mt-4 space-y-3">
                 {/* Barre d'actions */}
-                <div className="flex items-center justify-between p-3 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-[rgb(20,104,154)]/10 rounded-lg">
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -461,12 +465,12 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                         onChange={selectAllImages}
                         className="rounded"
                       />
-                      <span className="text-sm text-blue-900 dark:text-blue-100">
+                      <span className="text-sm text-[rgb(16,83,123)]">
                         Tout sélectionner ({selectedImages.size})
                       </span>
                     </label>
                   </div>
-                  <Button
+                  <AdminButton
                     onClick={removeImagesFromGallery}
                     size="sm"
                     variant="ghost"
@@ -474,18 +478,18 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                     className="text-red-600 hover:bg-red-50"
                   >
                     Supprimer la sélection
-                  </Button>
+                  </AdminButton>
                 </div>
 
                 {/* Grille d'images */}
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-96 overflow-y-auto p-3 bg-white dark:bg-gray-800 rounded-lg">
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-96 overflow-y-auto p-3 bg-white rounded-lg">
                   {uploadedImages.map((image) => (
                     <div
                       key={image.id}
                       className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
                         selectedImages.has(image.id)
-                          ? 'border-blue-500 shadow-md'
-                          : 'border-gray-200 hover:border-blue-300'
+                          ? 'border-[rgb(20,104,154)] shadow-md'
+                          : 'border-gray-200 hover:border-[rgb(20,104,154)]/50'
                       }`}
                       onClick={() => toggleImageSelection(image.id)}
                     >
@@ -501,7 +505,7 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                       <div className="absolute top-1 left-1">
                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                           selectedImages.has(image.id)
-                            ? 'bg-blue-500 border-blue-500'
+                            ? 'bg-[rgb(20,104,154)]/50 border-[rgb(20,104,154)]'
                             : 'bg-white border-gray-300'
                         }`}>
                           {selectedImages.has(image.id) && (
@@ -524,8 +528,8 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
 
             {/* Instructions d'assignation */}
             {uploadedImages.length > 0 && (
-              <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-xs text-yellow-800 dark:text-yellow-200">
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs text-yellow-800">
                   💡 Sélectionnez des images dans la galerie, puis utilisez le bouton "Assigner" sur chaque couleur ci-dessous
                 </p>
               </div>
@@ -538,12 +542,12 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
             return (
             <div
               key={color.id}
-              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4"
+              className="p-4 border border-gray-200 rounded-lg space-y-4"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-8 h-8 rounded-full border-2 border-gray-300 dark:border-gray-600"
+                    className="w-8 h-8 rounded-full border-2 border-gray-300"
                     style={{ backgroundColor: color.colorCode }}
                   />
                   <div className="flex items-center gap-2">
@@ -567,32 +571,51 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                           </div>
                         )}
                       </div>
+                      {(genre === 'AUTOCOLLANT' || genre === 'TABLEAU') && (
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={color.price ?? suggestedPrice ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? undefined : Number(e.target.value);
+                              onUpdateColorVariation(color.id, { price: value });
+                            }}
+                            placeholder="Prix (FCFA)"
+                            className="w-32"
+                            min="0"
+                            step="100"
+                          />
+                          <div className="absolute -bottom-6 left-0 text-xs text-gray-500">
+                            Prix pour cette couleur
+                          </div>
+                        </div>
+                      )}
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button
+                  <AdminButton
                     onClick={() => handleDuplicateColor(color)}
                     size="sm"
                     variant="ghost"
-                    className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900"
+                    className="text-[rgb(20,104,154)] hover:text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)]/5"
                     title="Dupliquer cette couleur"
                   >
                     <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
+                  </AdminButton>
+                  <AdminButton
                     onClick={() => onRemoveColorVariation(color.id)}
                     size="sm"
                     variant="ghost"
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Button>
+                  </AdminButton>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <p className="text-sm font-medium text-gray-700">
                     Images ({color.images.length})
                   </p>
                   <div className="flex gap-2">
@@ -606,7 +629,7 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                       onChange={(e) => handleImageUpload(color.id, e)}
                       className="hidden"
                     />
-                    <Button
+                    <AdminButton
                       onClick={() => fileInputRefs.current[color.id]?.click()}
                       size="sm"
                       variant="outline"
@@ -615,9 +638,9 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                     >
                       <Upload className="h-4 w-4 mr-1" />
                       Ajouter images
-                    </Button>
+                    </AdminButton>
                     {uploadedImages.length > 0 && hasValidName && (
-                      <Button
+                      <AdminButton
                         onClick={() => assignImagesToColor(color.id, color.name)}
                         size="sm"
                         disabled={selectedImages.size === 0}
@@ -631,18 +654,18 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Assigner ({selectedImages.size})
-                      </Button>
+                      </AdminButton>
                     )}
                   </div>
                 </div>
 
                   {!hasValidName && (
-                    <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                      <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-yellow-800">
                         <AlertCircle className="h-4 w-4" />
                         <span className="text-sm font-medium">Nom de couleur requis</span>
                       </div>
-                      <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                      <p className="text-xs text-yellow-700 mt-1">
                         Vous devez définir un nom pour cette couleur avant de pouvoir ajouter des images.
                       </p>
                     </div>
@@ -652,21 +675,21 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                   {color.images.map((image) => (
                     <div key={image.id} className="space-y-2">
                       <div className="relative group">
-                        <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                        <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                           <img
                             src={image.url}
                             alt={`Variation ${color.name}`}
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <Button
+                        <AdminButton
                           variant="ghost"
                           size="icon"
                           className="absolute top-1 right-1 h-7 w-7 bg-black/50 text-white hover:bg-black/70 z-10"
                           onClick={() => removeImageFromColor(color.id, image.id)}
                         >
                           <X className="h-4 w-4" />
-                        </Button>
+                        </AdminButton>
                         {/* Bouton remplacer l'image */}
                         <input
                           ref={el => {
@@ -683,7 +706,7 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                             }
                           }}
                         />
-                        <Button
+                        <AdminButton
                           variant="outline"
                           size="icon"
                           className="absolute bottom-1 right-1 h-7 w-7 bg-white/80 text-gray-700 hover:bg-gray-200 z-10"
@@ -691,7 +714,7 @@ export const ColorVariationsPanel: React.FC<ColorVariationsPanelProps> = ({
                           onClick={() => replaceInputRefs.current[`${color.id}_${image.id}`]?.click()}
                         >
                           <Upload className="h-4 w-4" />
-                        </Button>
+                        </AdminButton>
                       </div>
                       <Select
                         value={image.view}

@@ -23,11 +23,13 @@ import {
   DollarSign,
   ShoppingCart,
   Eye,
-  Sparkles
+  Sparkles,
+  Target
 } from 'lucide-react';
 
 // Import des services
 import designService, { Design } from '../../services/designService';
+import vendorStickerService, { StickerType, StickerSurface } from '../../services/vendorStickerService';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface StickerSize {
@@ -36,6 +38,8 @@ interface StickerSize {
   width: number; // en cm
   height: number; // en cm
   basePrice: number; // prix de base
+  costPrice: number; // prix de revient
+  suggestedPrice: number; // prix de vente suggéré
   description: string;
 }
 
@@ -63,10 +67,12 @@ const VendorStickerPage: React.FC = () => {
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
 
   // Configuration du sticker
+  const [stickerType, setStickerType] = useState<StickerType>('autocollant');
   const [selectedSize, setSelectedSize] = useState<StickerSize | null>(null);
   const [selectedFinish, setSelectedFinish] = useState<StickerFinish | null>(null);
   const [selectedShape, setSelectedShape] = useState<StickerShape | null>(null);
-  const [quantity, setQuantity] = useState<number>(1);
+  const [borderColor, setBorderColor] = useState<string>('glossy-white');
+  const [quantity, setQuantity] = useState<number>(10);
   const [customPrice, setCustomPrice] = useState<number>(0);
   const [stickerName, setStickerName] = useState('');
   const [stickerDescription, setStickerDescription] = useState('');
@@ -87,6 +93,8 @@ const VendorStickerPage: React.FC = () => {
       width: 5,
       height: 5,
       basePrice: 500,
+      costPrice: 300,
+      suggestedPrice: 800,
       description: '5cm x 5cm - Parfait pour ordinateur portable'
     },
     {
@@ -95,6 +103,8 @@ const VendorStickerPage: React.FC = () => {
       width: 10,
       height: 10,
       basePrice: 1000,
+      costPrice: 600,
+      suggestedPrice: 1200,
       description: '10cm x 10cm - Taille standard polyvalente'
     },
     {
@@ -103,6 +113,8 @@ const VendorStickerPage: React.FC = () => {
       width: 15,
       height: 15,
       basePrice: 1500,
+      costPrice: 900,
+      suggestedPrice: 1800,
       description: '15cm x 15cm - Grand format pour décoration'
     },
     {
@@ -111,6 +123,8 @@ const VendorStickerPage: React.FC = () => {
       width: 20,
       height: 20,
       basePrice: 2500,
+      costPrice: 1500,
+      suggestedPrice: 3000,
       description: '20cm x 20cm - Format XXL'
     },
     {
@@ -119,6 +133,8 @@ const VendorStickerPage: React.FC = () => {
       width: 0,
       height: 0,
       basePrice: 0,
+      costPrice: 0,
+      suggestedPrice: 0,
       description: 'Dimensions personnalisées'
     }
   ];
@@ -209,11 +225,12 @@ const VendorStickerPage: React.FC = () => {
   const calculateTotalPrice = (): number => {
     if (!selectedSize || !selectedFinish) return 0;
 
-    const basePrice = selectedSize.basePrice;
+    // Utiliser le prix personnalisé si défini, sinon le prix suggéré
+    const basePrice = customPrice > 0 ? customPrice : selectedSize.suggestedPrice;
     const finishMultiplier = selectedFinish.priceMultiplier;
-    const total = basePrice * finishMultiplier * quantity;
+    const total = basePrice * finishMultiplier;
 
-    return customPrice > 0 ? customPrice : total;
+    return total;
   };
 
   // Filtrer les designs
@@ -230,6 +247,9 @@ const VendorStickerPage: React.FC = () => {
     setCurrentStep('configure');
   };
 
+  // État pour l'image générée
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+
   // Gérer la publication
   const handlePublish = async () => {
     if (!selectedDesign || !selectedSize || !selectedFinish || !selectedShape) {
@@ -239,35 +259,58 @@ const VendorStickerPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // TODO: Appel API pour créer le produit sticker
-      const stickerData = {
-        designId: selectedDesign.id,
+      // Mapper shape vers le format API
+      const shapeMapping: Record<string, 'SQUARE' | 'CIRCLE' | 'RECTANGLE' | 'DIE_CUT'> = {
+        'square': 'SQUARE',
+        'circle': 'CIRCLE',
+        'rectangle': 'RECTANGLE',
+        'die-cut': 'DIE_CUT'
+      };
+
+      // Construire le payload selon le format backend DTO
+      const payload = {
+        designId: typeof selectedDesign.id === 'string' ? parseInt(selectedDesign.id) : selectedDesign.id,
         name: stickerName,
-        description: stickerDescription,
+        description: stickerDescription || undefined,
         size: {
           id: selectedSize.id,
           width: selectedSize.width,
           height: selectedSize.height
         },
-        finish: selectedFinish.id,
-        shape: selectedShape.id,
+        finish: selectedFinish.id, // matte, glossy, transparent, holographic, metallic
+        shape: shapeMapping[selectedShape.id] || 'SQUARE',
         price: calculateTotalPrice(),
-        quantity: quantity,
-        vendorId: user?.id
+        stockQuantity: quantity,
+        stickerType, // optionnel: autocollant | pare-chocs
+        borderColor // optionnel: white, glossy-white, etc.
       };
 
-      console.log('📦 Création du sticker:', stickerData);
+      console.log('📦 Création du sticker via service (backend DTO format):', payload);
 
-      toast.success('Sticker publié avec succès !');
+      const result = await vendorStickerService.createStickerProduct(payload);
 
-      // Rediriger vers le dashboard
+      // Stocker l'URL de l'image générée
+      if (result.data?.imageUrl) {
+        setGeneratedImageUrl(result.data.imageUrl);
+        console.log('✅ Image générée avec bordures:', result.data.imageUrl);
+      }
+
+      toast.success('Sticker publié avec succès !', {
+        description: result.data?.imageUrl
+          ? 'Image avec bordures générée par le serveur'
+          : `Le produit "${stickerName}" a été créé`
+      });
+
+      // Rediriger vers la liste des produits
       setTimeout(() => {
-        navigate('/vendeur/dashboard');
+        navigate('/vendeur/products');
       }, 1500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la publication:', error);
-      toast.error('Erreur lors de la publication du sticker');
+      toast.error('Erreur lors de la publication du sticker', {
+        description: error.message || 'Une erreur est survenue'
+      });
     } finally {
       setIsSaving(false);
     }
@@ -435,7 +478,93 @@ const VendorStickerPage: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sélection de la taille */}
+        {/* Type de sticker */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-green-500" />
+              Type de sticker
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                stickerType === 'autocollant'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setStickerType('autocollant')}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold">Autocollant</h4>
+                  <p className="text-sm text-gray-600">Bordure fine personnalisable (4px)</p>
+                </div>
+                {stickerType === 'autocollant' && (
+                  <Check className="w-5 h-5 text-green-500" />
+                )}
+              </div>
+            </div>
+            <div
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                stickerType === 'pare-chocs'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setStickerType('pare-chocs')}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold">Pare-chocs</h4>
+                  <p className="text-sm text-gray-600">Bordure blanche large (25px)</p>
+                </div>
+                {stickerType === 'pare-chocs' && (
+                  <Check className="w-5 h-5 text-green-500" />
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Couleur de bordure (autocollants uniquement) */}
+        {stickerType === 'autocollant' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-500" />
+                Couleur de bordure
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {vendorStickerService.getAvailableBorderColors().map((border) => (
+                <div
+                  key={border.value}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    borderColor === border.value
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setBorderColor(border.value)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-8 h-8 rounded border-2 border-gray-300"
+                        style={{ backgroundColor: border.preview }}
+                      />
+                      <span className="font-semibold">{border.label}</span>
+                    </div>
+                    {borderColor === border.value && (
+                      <Check className="w-5 h-5 text-purple-500" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Sélection de la taille avec pricing */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -460,7 +589,8 @@ const VendorStickerPage: React.FC = () => {
                     <p className="text-sm text-gray-600">{size.description}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-blue-600">{size.basePrice} FCFA</p>
+                    <p className="font-bold text-blue-600">{size.suggestedPrice} FCFA</p>
+                    <p className="text-xs text-gray-500">Prix suggéré</p>
                     {selectedSize?.id === size.id && (
                       <Check className="w-5 h-5 text-blue-500 ml-auto mt-1" />
                     )}
@@ -470,6 +600,110 @@ const VendorStickerPage: React.FC = () => {
             ))}
           </CardContent>
         </Card>
+
+        {/* Configuration des prix par taille */}
+        {selectedSize && selectedSize.id !== 'custom' && (
+          <Card className="border-purple-200 dark:border-purple-700">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-purple-500" />
+                Configuration des prix - {selectedSize.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Info banner */}
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                <div className="flex items-center gap-2 mb-3">
+                  <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <h5 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                    Système de prix suggéré activé
+                  </h5>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-white/50 dark:bg-gray-800/50 rounded p-3 border border-purple-100 dark:border-purple-800">
+                    <div className="text-gray-600 dark:text-gray-400 mb-1">Prix de revient</div>
+                    <div className="font-semibold text-gray-800 dark:text-gray-200">
+                      {selectedSize.costPrice.toLocaleString()} F CFA
+                    </div>
+                  </div>
+                  <div className="bg-purple-100/50 dark:bg-purple-900/50 rounded p-3 border border-purple-200 dark:border-purple-700">
+                    <div className="text-purple-600 dark:text-purple-300 mb-1">Prix suggéré</div>
+                    <div className="font-bold text-purple-800 dark:text-purple-200">
+                      {selectedSize.suggestedPrice.toLocaleString()} F CFA
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-purple-700 dark:text-purple-300 bg-purple-100/50 dark:bg-purple-900/30 rounded p-2">
+                  <span className="font-medium">💡 Info:</span> Ajoutez votre bénéfice au-dessus de ce prix suggéré.
+                </div>
+              </div>
+
+              {/* Margin recommendation */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                <div className="text-xs text-blue-700 dark:text-blue-300">
+                  <span className="font-medium">💡 MARGE RECOMMANDÉE:</span> Il est conseillé de vendre au minimum à prix de revient + 10%<br />
+                  <span className="text-blue-600 dark:text-blue-400">
+                    Prix de revient {selectedSize.costPrice.toLocaleString()} FCFA → Prix recommandé: {Math.round(selectedSize.costPrice * 1.1).toLocaleString()} FCFA (vous pouvez vendre moins ou plus)
+                  </span>
+                </div>
+              </div>
+
+              {/* Sale price input */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Prix de vente suggéré
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="100"
+                    value={customPrice > 0 ? customPrice : selectedSize.suggestedPrice}
+                    onChange={(e) => setCustomPrice(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">FCFA</span>
+                </div>
+              </div>
+
+              {/* Profit input */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-green-700 dark:text-green-300">
+                  Votre bénéfice
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="100"
+                    value={customPrice > 0 ? customPrice - selectedSize.costPrice : selectedSize.suggestedPrice - selectedSize.costPrice}
+                    onChange={(e) => {
+                      const newProfit = Number(e.target.value);
+                      setCustomPrice(selectedSize.costPrice + newProfit);
+                    }}
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-green-600 dark:text-green-400 font-medium">FCFA</span>
+                </div>
+              </div>
+
+              {/* Revenue summary */}
+              <div className="bg-green-50 dark:bg-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm text-green-700 dark:text-green-300 font-medium">
+                      Vos revenus par vente
+                    </span>
+                  </div>
+                  <div className="text-lg font-bold text-green-800 dark:text-green-200">
+                    {customPrice > 0
+                      ? (customPrice - selectedSize.costPrice).toLocaleString()
+                      : (selectedSize.suggestedPrice - selectedSize.costPrice).toLocaleString()} FCFA
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Sélection de la finition */}
         <Card>
@@ -566,26 +800,39 @@ const VendorStickerPage: React.FC = () => {
 
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">Prix calculé:</span>
-                <span className="font-bold text-lg">{calculateTotalPrice()} FCFA</span>
+                <span className="text-sm text-gray-600">Prix par sticker:</span>
+                <span className="font-bold text-lg">{calculateTotalPrice().toLocaleString()} FCFA</span>
               </div>
               <p className="text-xs text-gray-500">
-                Prix par sticker (base × finition × quantité)
+                Prix de vente × finition ({selectedFinish ? (selectedFinish.priceMultiplier > 1 ? `+${((selectedFinish.priceMultiplier - 1) * 100).toFixed(0)}%` : 'Standard') : '-'})
               </p>
             </div>
 
-            <div>
-              <Label htmlFor="customPrice">Prix personnalisé (optionnel)</Label>
-              <Input
-                id="customPrice"
-                type="number"
-                min="0"
-                placeholder="Laissez vide pour prix auto"
-                value={customPrice || ''}
-                onChange={(e) => setCustomPrice(parseInt(e.target.value) || 0)}
-                className="mt-2"
-              />
-            </div>
+            {selectedSize && (
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 border border-gray-200 dark:border-gray-700">
+                  <div className="text-gray-600 dark:text-gray-400 mb-1">Prix de revient</div>
+                  <div className="font-semibold text-gray-800 dark:text-gray-200">
+                    {selectedSize.costPrice.toLocaleString()} F CFA
+                  </div>
+                </div>
+                <div className="bg-purple-100/50 dark:bg-purple-900/50 rounded p-3 border border-purple-200 dark:border-purple-700">
+                  <div className="text-purple-600 dark:text-purple-300 mb-1">Prix suggéré</div>
+                  <div className="font-bold text-purple-800 dark:text-purple-200">
+                    {selectedSize.suggestedPrice.toLocaleString()} F CFA
+                  </div>
+                </div>
+                <div className="bg-green-100/50 dark:bg-green-900/50 rounded p-3 border border-green-200 dark:border-green-700">
+                  <div className="text-green-600 dark:text-green-300 mb-1">Votre bénéfice</div>
+                  <div className="font-bold text-green-800 dark:text-green-200">
+                    {(customPrice > 0
+                      ? customPrice - selectedSize.costPrice
+                      : selectedSize.suggestedPrice - selectedSize.costPrice
+                    ).toLocaleString()} F CFA
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -680,9 +927,16 @@ const VendorStickerPage: React.FC = () => {
                   {selectedFinish?.id === 'transparent' && (
                     <div className="absolute inset-0 bg-gradient-to-br from-gray-200 via-transparent to-gray-200 opacity-30 pointer-events-none" />
                   )}
+                  {/* Aperçu de bordure */}
+                  {borderColor !== 'transparent' && stickerType === 'autocollant' && (
+                    <div className="absolute inset-0 border-4 border-white/40 pointer-events-none rounded-sm" />
+                  )}
                 </div>
               )}
             </div>
+            <p className="text-center text-sm text-gray-600 mt-4">
+              L'image finale avec bordures sera générée par le serveur
+            </p>
           </CardContent>
         </Card>
 
@@ -696,6 +950,22 @@ const VendorStickerPage: React.FC = () => {
               <h4 className="font-semibold text-sm text-gray-600 mb-2">Design</h4>
               <p className="font-medium">{selectedDesign?.name}</p>
             </div>
+
+            <div>
+              <h4 className="font-semibold text-sm text-gray-600 mb-2">Type de sticker</h4>
+              <p className="font-medium">
+                {stickerType === 'autocollant' ? 'Autocollant' : 'Pare-chocs'}
+              </p>
+            </div>
+
+            {stickerType === 'autocollant' && (
+              <div>
+                <h4 className="font-semibold text-sm text-gray-600 mb-2">Bordure</h4>
+                <p className="font-medium">
+                  {vendorStickerService.getAvailableBorderColors().find(b => b.value === borderColor)?.label || 'N/A'}
+                </p>
+              </div>
+            )}
 
             <div>
               <h4 className="font-semibold text-sm text-gray-600 mb-2">Taille</h4>
@@ -716,8 +986,8 @@ const VendorStickerPage: React.FC = () => {
             </div>
 
             <div>
-              <h4 className="font-semibold text-sm text-gray-600 mb-2">Quantité minimum</h4>
-              <p className="font-medium">{quantity} sticker(s)</p>
+              <h4 className="font-semibold text-sm text-gray-600 mb-2">Stock initial</h4>
+              <p className="font-medium">{quantity} unité(s)</p>
             </div>
 
             <div className="pt-4 border-t">

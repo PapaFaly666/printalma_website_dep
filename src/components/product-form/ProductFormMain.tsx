@@ -18,7 +18,7 @@ import {
   PackageOpen
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import Button from '../ui/Button';
+import { AdminButton } from '../admin/AdminButton';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -42,14 +42,17 @@ import { ProductService } from '../../services/productService';
 
 // 🔧 Configuration backend centralisée (basée sur per.md) - Compatible tous environnements
 const getBackendUrl = () => {
+  // 🔧 PRIORITÉ LOCALHOST pour le développement
+  const LOCAL_BACKEND = 'http://localhost:3004';
+
   try {
     // Essai Vite
     if (typeof import.meta !== 'undefined' && import.meta.env) {
-      return import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL;
+      return import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || LOCAL_BACKEND;
     }
     // Essai Create React App (si applicable)
     if (typeof process !== 'undefined' && process.env) {
-      return process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL;
+      return process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL || LOCAL_BACKEND;
     }
     // Essai window global (si défini manuellement)
     if (typeof window !== 'undefined' && (window as any).BACKEND_URL) {
@@ -58,8 +61,9 @@ const getBackendUrl = () => {
   } catch (e) {
     console.log('⚠️ Erreur récupération variable environnement:', e);
   }
-  // Fallback par défaut
-  return 'https://printalma-back-dep.onrender.com';
+  // Fallback par défaut : LOCALHOST pour le développement
+  return LOCAL_BACKEND;
+  // return 'https://printalma-back-dep.onrender.com'; // Production
 };
 
 const BACKEND_URL = getBackendUrl();
@@ -264,21 +268,11 @@ const BasicInfoStep: React.FC<{
   onUpdate: (field: any, value: any) => void;
 }> = ({ formData, errors, onUpdate }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Informations de base
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ProductFormFields
-          formData={formData}
-          errors={errors}
-          onUpdate={onUpdate}
-        />
-      </CardContent>
-    </Card>
+    <ProductFormFields
+      formData={formData}
+      errors={errors}
+      onUpdate={onUpdate}
+    />
   );
 };
 
@@ -291,69 +285,72 @@ const ColorVariationsStep: React.FC<{
   onUpdateImage: (colorId: string, imageId: string, updates: Partial<any>) => void;
   onReplaceImage: (colorId: string, imageId: string, file: File) => Promise<void>;
   onSuggestedPriceChange: (price: number) => void;
-}> = ({ 
-  colorVariations, 
-  onAddColorVariation, 
-  onUpdateColorVariation, 
-  onRemoveColorVariation, 
-  onAddImageToColor, 
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU';
+  suggestedPrice?: number;
+}> = ({
+  colorVariations,
+  onAddColorVariation,
+  onUpdateColorVariation,
+  onRemoveColorVariation,
+  onAddImageToColor,
   onUpdateImage,
   onReplaceImage,
-  onSuggestedPriceChange
+  onSuggestedPriceChange,
+  genre,
+  suggestedPrice
 }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Palette className="h-5 w-5" />
-          Variations de couleur
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ColorVariationsPanel
-          colorVariations={colorVariations}
-          onAddColorVariation={onAddColorVariation}
-          onUpdateColorVariation={onUpdateColorVariation}
-          onRemoveColorVariation={onRemoveColorVariation}
-          onAddImageToColor={onAddImageToColor}
-          onUpdateImage={onUpdateImage}
-          onReplaceImage={onReplaceImage}
-          onSuggestedPriceChange={onSuggestedPriceChange}
-        />
-      </CardContent>
-    </Card>
+    <ColorVariationsPanel
+      colorVariations={colorVariations}
+      onAddColorVariation={onAddColorVariation}
+      onUpdateColorVariation={onUpdateColorVariation}
+      onRemoveColorVariation={onRemoveColorVariation}
+      onAddImageToColor={onAddImageToColor}
+      onUpdateImage={onUpdateImage}
+      onReplaceImage={onReplaceImage}
+      onSuggestedPriceChange={onSuggestedPriceChange}
+      genre={genre}
+      suggestedPrice={suggestedPrice}
+    />
   );
 };
 
 const CategoriesStep: React.FC<{
   sizes: string[];
   categories: string[];
+  sizePricing?: any[];
+  useGlobalPricing?: boolean;
+  globalCostPrice?: number;
+  globalSuggestedPrice?: number;
   onCategoriesUpdate: (categories: string[]) => void;
   onSizesUpdate: (sizes: string[]) => void;
+  onSizePricingUpdate?: (pricing: any[]) => void;
+  onUseGlobalPricingChange?: (value: boolean) => void;
 }> = ({
   sizes,
   categories,
+  sizePricing,
+  useGlobalPricing,
+  globalCostPrice,
+  globalSuggestedPrice,
   onCategoriesUpdate,
-  onSizesUpdate
+  onSizesUpdate,
+  onSizePricingUpdate,
+  onUseGlobalPricingChange
 }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Tag className="h-5 w-5" />
-          Catégorie et tailles
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* ✅ Gestion des catégories ET tailles - Système à 3 niveaux simplifié */}
-        <CategoriesAndSizesPanel
-          categories={categories || []} // ✅ Format: ["Category > SubCategory > Variation"]
-          sizes={sizes}
-          onCategoriesUpdate={onCategoriesUpdate}
-          onSizesUpdate={onSizesUpdate}
-        />
-      </CardContent>
-    </Card>
+    <CategoriesAndSizesPanel
+      categories={categories || []}
+      sizes={sizes}
+      sizePricing={sizePricing}
+      useGlobalPricing={useGlobalPricing}
+      globalCostPrice={globalCostPrice}
+      globalSuggestedPrice={globalSuggestedPrice}
+      onCategoriesUpdate={onCategoriesUpdate}
+      onSizesUpdate={onSizesUpdate}
+      onSizePricingUpdate={onSizePricingUpdate}
+      onUseGlobalPricingChange={onUseGlobalPricingChange}
+    />
   );
 };
 
@@ -363,21 +360,11 @@ const StockStep: React.FC<{
   onStockChange: (colorIndex: number, stock: { [size: string]: number }) => void;
 }> = ({ sizes, colorVariations, onStockChange }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <PackageOpen className="h-5 w-5" />
-          Gestion du stock par variation
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <StockManagementPanel
-          sizes={sizes}
-          colorVariations={colorVariations}
-          onStockChange={onStockChange}
-        />
-      </CardContent>
-    </Card>
+    <StockManagementPanel
+      sizes={sizes}
+      colorVariations={colorVariations}
+      onStockChange={onStockChange}
+    />
   );
 };
 
@@ -391,6 +378,7 @@ const DelimitationsStep: React.FC<{
   onDesignRemove: (imageId: string) => void;
   onOpenDuplicator: (image: ProductImage, colorName: string) => void;
   onExportFinalImage: (imageId: string) => void;
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU';
 }> = ({ 
   colorVariations, 
   designsByImageId, 
@@ -398,27 +386,80 @@ const DelimitationsStep: React.FC<{
   onDelimitationUpdate, 
   onDesignUpload, 
   onDesignReplace, 
-  onDesignRemove, 
-  onOpenDuplicator, 
-  onExportFinalImage
+  onDesignRemove,
+  onOpenDuplicator,
+  onExportFinalImage,
+  genre
 }) => {
   const getDesignForImage = (imageId: string) => designsByImageId[imageId] || null;
 
+  // Fonction pour créer une délimitation pleine image (pour autocollants)
+  const createFullImageDelimitation = (imageId: string, colorId: string) => {
+    const canvasHandle = canvasRefs.current[imageId];
+    if (!canvasHandle) {
+      toast.error('Canvas non disponible');
+      return;
+    }
+
+    const result = canvasHandle.createFullImageDelimitation();
+    if (result.success) {
+      toast.success('Délimitation pleine image créée');
+
+      // Mettre à jour les variations de couleur avec la nouvelle délimitation
+      const updatedColorVariations = colorVariations.map(color => {
+        if (color.id === colorId) {
+          return {
+            ...color,
+            images: color.images.map((img: ProductImage) => {
+              if (img.id === imageId) {
+                return {
+                  ...img,
+                  delimitations: result.delimitations
+                };
+              }
+              return img;
+            })
+          };
+        }
+        return color;
+      });
+
+      onDelimitationUpdate(updatedColorVariations);
+    } else {
+      toast.error(result.error || 'Erreur lors de la création de la délimitation');
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="border-gray-200">
+      <CardHeader className="border-b border-gray-200 bg-gray-50">
+        <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
           <Layers className="h-5 w-5" />
           Images et zones de personnalisation
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 pt-6">
+        {(genre === 'AUTOCOLLANT' || genre === 'TABLEAU') && (
+          <div className="p-4 bg-[rgb(20,104,154)]/5 border border-[rgb(20,104,154)]/30 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-[rgb(20,104,154)] mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-[rgb(16,83,123)] mb-1">
+                  Mode Autocollant
+                </h4>
+                <p className="text-sm text-[rgb(20,104,154)]">
+                  Pour les autocollants, utilisez le bouton <strong>"Délimitation pleine image"</strong> pour créer automatiquement une zone de personnalisation qui couvre toute l'image. Les vendeurs pourront ensuite placer leurs designs dans cette zone.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {colorVariations.length > 0 ? (
           colorVariations.map((color) => (
-            <div key={color.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div key={color.id} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center gap-3 mb-4">
-                <div 
-                  className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-gray-600"
+                <div
+                  className="w-4 h-4 rounded-full border-2 border-gray-300"
                   style={{ backgroundColor: color.colorCode }}
                 />
                 <h4 className="font-semibold">{color.name}</h4>
@@ -446,17 +487,28 @@ const DelimitationsStep: React.FC<{
                           </div>
                           
                           {hasDelimitations && (
-                            <Button
+                            <AdminButton
                               size="sm"
                               variant="outline"
                               onClick={() => onOpenDuplicator(image, color.name)}
                             >
-                              <Copy className="h-3 w-3 mr-1" />
-                              Dupliquer
-                            </Button>
+                              <Copy className="h-3 w-3" />
+                              <span>Dupliquer</span>
+                            </AdminButton>
                           )}
                         </div>
-                        
+
+                        {(genre === 'AUTOCOLLANT' || genre === 'TABLEAU') && (
+                          <AdminButton
+                            onClick={() => createFullImageDelimitation(image.id, color.id)}
+                            variant="outline"
+                            className="w-full bg-[rgb(20,104,154)]/5 hover:bg-[rgb(20,104,154)]/10 text-[rgb(20,104,154)] border-[rgb(20,104,154)]/50"
+                          >
+                            <Layers className="h-4 w-4" />
+                            <span>Délimitation pleine image</span>
+                          </AdminButton>
+                        )}
+
                         <DelimitationCanvas
                           ref={(el) => {
                             canvasRefs.current[image.id] = el;
@@ -478,7 +530,7 @@ const DelimitationsStep: React.FC<{
                             toast.success('Zone sauvegardée automatiquement');
                           }}
                           onCancel={() => {}}
-                          className="min-h-[400px] border border-gray-200 dark:border-gray-700 rounded-lg"
+                          className="min-h-[400px] border border-gray-200 rounded-lg"
                           integrated={true}
                         />
 
@@ -524,58 +576,57 @@ const ValidationStep: React.FC<{
   loading: boolean;
 }> = ({ formData, formStats, onSubmit, onPreview, loading }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="border-gray-200">
+      <CardHeader className="border-b border-gray-200 bg-gray-50">
+        <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
           <CheckCircle className="h-5 w-5" />
           Validation finale
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 pt-6">
         {/* Résumé du produit */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900">
               {formStats.completionPercentage}%
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Progression</div>
+            <div className="text-sm text-gray-600">Progression</div>
           </div>
-          
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900">
               {formStats.totalColors}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Couleurs</div>
+            <div className="text-sm text-gray-600">Couleurs</div>
           </div>
-          
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900">
               {formStats.totalImages}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Images</div>
+            <div className="text-sm text-gray-600">Images</div>
           </div>
-          
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900">
               {formStats.totalDelimitations}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Zones</div>
+            <div className="text-sm text-gray-600">Zones</div>
           </div>
         </div>
 
 
         {/* Message d'aide */}
         {!formStats.isComplete && (
-          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
               <div>
-                <p className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                <p className="font-medium text-yellow-800 mb-2">
                   Éléments manquants :
                 </p>
-                <ul className="space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
+                <ul className="space-y-1 text-sm text-yellow-700">
                   {!formData.name && <li>• Nom du produit</li>}
-                  {formData.price <= 0 && <li>• Prix valide</li>}
                   {!formData.description && <li>• Description</li>}
                   {formData.colorVariations.length === 0 && <li>• Au moins une couleur</li>}
                   {formStats.totalImages === 0 && <li>• Au moins une image</li>}
@@ -786,7 +837,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   }, [(formData as any)?.subCategoryId]);
   
   // Étapes du processus
-  const steps = [
+  const allSteps = [
     { id: 1, title: 'Informations de base', icon: Package },
     { id: 2, title: 'Variations de couleur', icon: Palette },
     { id: 3, title: 'Catégories et tailles', icon: Tag },
@@ -794,6 +845,11 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     { id: 5, title: 'Images et délimitations', icon: Layers },
     { id: 6, title: 'Validation', icon: CheckCircle }
   ];
+
+  // Filtrer l'étape "Gestion du stock" si le produit ne nécessite pas de stock
+  const steps = formData.requiresStock === false
+    ? allSteps.filter(step => step.id !== 4)
+    : allSteps;
 
   // Ordre des couleurs: toujours commencer par le blanc
   const isWhiteColor = (color: any) => {
@@ -949,11 +1005,11 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     );
     
     // 🧠 Validation complète incluant les délimitations obligatoires
-    const hasBasicInfo = formData.name && formData.price > 0 && formData.description;
+    const hasBasicInfo = formData.name && formData.description; // Prix retiré - défini par taille
     const hasColors = formData.colorVariations.length > 0;
     const hasImages = totalImages > 0;
     const hasDelimitations = totalDelimitations > 0; // Délimitations obligatoires
-    
+
     const isComplete = hasBasicInfo && hasColors && hasImages && hasDelimitations;
 
     return {
@@ -962,25 +1018,24 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       totalDelimitations,
       isComplete,
       completionPercentage: Math.round(
-        ((formData.name ? 1 : 0) + 
-         (formData.price > 0 ? 1 : 0) + 
-         (formData.description ? 1 : 0) + 
-         (formData.colorVariations.length > 0 ? 1 : 0) + 
+        ((formData.name ? 1 : 0) +
+         (formData.description ? 1 : 0) +
+         (formData.colorVariations.length > 0 ? 1 : 0) +
          (totalImages > 0 ? 1 : 0) +
-         (totalDelimitations > 0 ? 1 : 0)) * 16.67 // 6 éléments = 100% / 6
+         (totalDelimitations > 0 ? 1 : 0)) * 20 // 5 éléments = 100% / 5
       )
     };
   }, [formData]);
 
   // Validation des étapes
-  const validateStep = (step: number): string[] => {
+  const validateStep = (step: number, skipDelimitationCheck: boolean = false): string[] => {
     const errors: string[] = [];
 
     switch (step) {
       case 1:
         if (!formData.name.trim()) errors.push('Nom du produit requis');
         if (!formData.description.trim()) errors.push('Description requise');
-        if (formData.price <= 0) errors.push('Prix invalide');
+        // Prix retiré - validation déplacée à l'étape 3 (Catégories et tailles)
         if (formData.stock < 0) errors.push('Stock invalide');
         break;
       
@@ -1036,22 +1091,26 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
       case 5:
         if (formStats.totalImages === 0) errors.push('Au moins une image requise');
 
-        // 🧠 Validation obligatoire des délimitations pour les produits mockup admin
-        const totalDelimitations = formData.colorVariations.reduce((total, color) =>
-          total + color.images.reduce((imageTotal, image) => imageTotal + (image.delimitations?.length || 0), 0), 0
-        );
+        // 🔧 CORRECTION: Si on vient de sauvegarder (skipDelimitationCheck), ne pas valider les délimitations
+        // car le state React n'est pas encore mis à jour (mise à jour asynchrone)
+        if (!skipDelimitationCheck) {
+          // 🧠 Validation obligatoire des délimitations pour les produits mockup admin
+          const totalDelimitations = formData.colorVariations.reduce((total, color) =>
+            total + color.images.reduce((imageTotal, image) => imageTotal + (image.delimitations?.length || 0), 0), 0
+          );
 
-        if (totalDelimitations === 0) {
-          errors.push('⚠️ Délimitation obligatoire : Au moins une zone de personnalisation doit être définie pour ce produit mockup admin');
-        }
-        
-        // Vérifier que chaque image a au moins une délimitation
-        const imagesWithoutDelimitations = formData.colorVariations.flatMap(color => 
-          color.images.filter(image => !image.delimitations || image.delimitations.length === 0)
-        );
-        
-        if (imagesWithoutDelimitations.length > 0) {
-          errors.push(`⚠️ ${imagesWithoutDelimitations.length} image(s) sans délimitation. Chaque image doit avoir au moins une zone de personnalisation.`);
+          if (totalDelimitations === 0) {
+            errors.push('⚠️ Délimitation obligatoire : Au moins une zone de personnalisation doit être définie pour ce produit mockup admin');
+          }
+
+          // Vérifier que chaque image a au moins une délimitation
+          const imagesWithoutDelimitations = formData.colorVariations.flatMap(color =>
+            color.images.filter(image => !image.delimitations || image.delimitations.length === 0)
+          );
+
+          if (imagesWithoutDelimitations.length > 0) {
+            errors.push(`⚠️ ${imagesWithoutDelimitations.length} image(s) sans délimitation. Chaque image doit avoir au moins une zone de personnalisation.`);
+          }
         }
         break;
     }
@@ -1061,20 +1120,64 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
 
   // Navigation entre les étapes
   const nextStep = () => {
-    const errors = validateStep(currentStep);
+    // 🔧 CORRECTION: Sauvegarder AVANT de valider pour que la validation voit les données sauvegardées
+    // Si on est à l'étape 5 (Images et délimitations), sauvegarder automatiquement toutes les délimitations
+    let skipDelimitationCheck = false;
+
+    if (currentStep === 5) {
+      console.log('💾 Auto-sauvegarde des délimitations avant validation...');
+      let savedCount = 0;
+
+      // Parcourir toutes les images et sauvegarder les délimitations si elles existent
+      Object.entries(canvasRefs.current).forEach(([imageId, canvasHandle]) => {
+        if (canvasHandle && typeof canvasHandle.saveChanges === 'function') {
+          try {
+            canvasHandle.saveChanges();
+            savedCount++;
+            console.log(`✅ Délimitations sauvegardées pour l'image ${imageId}`);
+          } catch (error) {
+            console.error(`❌ Erreur lors de la sauvegarde pour l'image ${imageId}:`, error);
+          }
+        }
+      });
+
+      if (savedCount > 0) {
+        console.log(`✅ ${savedCount} délimitation(s) sauvegardée(s) automatiquement`);
+        // Toast discret pour informer l'utilisateur
+        toast.success(`${savedCount} zone(s) de personnalisation sauvegardée(s)`, {
+          duration: 2000
+        });
+        // ✅ Si on a sauvegardé, ignorer la validation des délimitations (state pas encore à jour)
+        skipDelimitationCheck = true;
+      }
+    }
+
+    // ✅ Validation APRÈS la sauvegarde (avec flag pour ignorer les délimitations si on vient de sauvegarder)
+    const errors = validateStep(currentStep, skipDelimitationCheck);
     if (errors.length > 0) {
       errors.forEach(error => toast.error(error));
       return;
     }
-    
-    if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
+
+    let nextStepNumber = currentStep + 1;
+    // Si on est à l'étape 3 et que le produit ne nécessite pas de stock, sauter l'étape 4
+    if (currentStep === 3 && formData.requiresStock === false) {
+      nextStepNumber = 5;
+    }
+
+    if (nextStepNumber <= 6) {
+      setCurrentStep(nextStepNumber);
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      let prevStepNumber = currentStep - 1;
+      // Si on est à l'étape 5 et que le produit ne nécessite pas de stock, revenir à l'étape 3
+      if (currentStep === 5 && formData.requiresStock === false) {
+        prevStepNumber = 3;
+      }
+      setCurrentStep(prevStepNumber);
     }
   };
 
@@ -1121,7 +1224,7 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
   // Envoie tous les champs attendus, pas juste les modifiés
   const allowedFields = [
     'name', 'description', 'price', 'suggestedPrice', 'stock', 'status',
-    'categoryId', 'subCategoryId', 'variationId', 'categories', 'sizes', 'genre', 'colorVariations'
+    'categoryId', 'subCategoryId', 'variationId', 'categories', 'sizes', 'genre', 'colorVariations', 'requiresStock'
   ];
   const payload: any = {};
   for (const key of allowedFields) {
@@ -1256,6 +1359,20 @@ export const ProductFormMain: React.FC<ProductFormMainProps> = ({ initialData, m
     }
   }
   
+  // ✅ BACKEND ADAPTÉ: On garde requiresStock et price dans colorVariations
+  // Ces champs sont maintenant supportés par le backend (voir BACKEND_ADAPTATION_AUTOCOLLANT.md)
+  if (payload.requiresStock !== undefined) {
+    console.log('✅ [BACKEND ADAPTÉ] requiresStock envoyé au backend:', payload.requiresStock);
+  }
+
+  if (payload.colorVariations && Array.isArray(payload.colorVariations)) {
+    payload.colorVariations.forEach((cv: any) => {
+      if (cv.price !== undefined) {
+        console.log(`✅ [BACKEND ADAPTÉ] Prix ${cv.price} envoyé pour variation "${cv.name}"`);
+      }
+    });
+  }
+
   console.log('🔧 Payload final keys:', Object.keys(payload));
   return payload;
 };
@@ -1295,11 +1412,26 @@ const normalizeProductDataForCreation = (formData: any) => {
   }
 
   // Étape 1: Construire les données de base normalisées
+  // 🆕 Calculer suggestedPrice par défaut à partir des prix par taille
+  let calculatedSuggestedPrice = formData.suggestedPrice || 0;
+
+  // Si useGlobalPricing est activé, utiliser globalSuggestedPrice
+  if (formData.useGlobalPricing && formData.globalSuggestedPrice > 0) {
+    calculatedSuggestedPrice = formData.globalSuggestedPrice;
+  }
+  // Sinon, prendre le premier prix de taille disponible
+  else if (formData.sizePricing && formData.sizePricing.length > 0) {
+    const firstValidPricing = formData.sizePricing.find(p => p.suggestedPrice > 0);
+    if (firstValidPricing) {
+      calculatedSuggestedPrice = firstValidPricing.suggestedPrice;
+    }
+  }
+
   const normalizedData: any = {
     name: formData.name,
     description: formData.description,
-    price: formData.price,
-    suggestedPrice: formData.suggestedPrice,
+    price: formData.price || 0, // Gardé pour compatibilité backend
+    suggestedPrice: calculatedSuggestedPrice, // 🆕 Prix calculé > 0
     stock: formData.stock,
     status: formData.status || 'DRAFT',
     genre: formData.genre || 'UNISEXE',
@@ -1308,7 +1440,12 @@ const normalizeProductDataForCreation = (formData: any) => {
     // ✅ REQUIS: categories (array de strings)
     categories: formData.categories && Array.isArray(formData.categories) && formData.categories.length > 0
       ? formData.categories
-      : ["Produit"] // Valeur par défaut si pas de catégories
+      : ["Produit"], // Valeur par défaut si pas de catégories
+    // 🆕 Prix par taille
+    useGlobalPricing: formData.useGlobalPricing || false,
+    globalCostPrice: formData.globalCostPrice || 0,
+    globalSuggestedPrice: formData.globalSuggestedPrice || 0,
+    sizePricing: formData.sizePricing || []
   };
 
   // Étape 2: Ajouter les IDs de catégories avec les bons noms de champs
@@ -1357,9 +1494,14 @@ const normalizeProductDataForCreation = (formData: any) => {
         variation.price = colorVar.price;
       }
 
-      // Calculer le stock total pour cette variation
-      if (colorVar.stock && typeof colorVar.stock === 'object') {
-        variation.stock = Object.values(colorVar.stock).reduce((sum: number, stock: any) => sum + (stock || 0), 0);
+      // 🔧 CORRECTION : Pour AUTOCOLLANT ou TABLEAU, pas de gestion de stock
+      if (formData.genre === 'AUTOCOLLANT' || formData.genre === 'TABLEAU') {
+        variation.stock = null; // Pas de stock pour ces produits
+      } else {
+        // Calculer le stock total pour cette variation
+        if (colorVar.stock && typeof colorVar.stock === 'object') {
+          variation.stock = Object.values(colorVar.stock).reduce((sum: number, stock: any) => sum + (stock || 0), 0);
+        }
       }
 
       return variation;
@@ -1737,17 +1879,36 @@ const normalizeProductDataForCreation = (formData: any) => {
         console.log('🔄 [SUBMIT] Mise à jour directe des données...');
 
         // Mettre à jour le formData local avec les bons IDs
+        // 🆕 Calculer suggestedPrice à partir des prix par taille
+        let calculatedSuggestedPrice = formData.suggestedPrice || 0;
+
+        // Si useGlobalPricing est activé, utiliser globalSuggestedPrice
+        if (formData.useGlobalPricing && formData.globalSuggestedPrice > 0) {
+          calculatedSuggestedPrice = formData.globalSuggestedPrice;
+        }
+        // Sinon, prendre le premier prix par taille valide
+        else if (formData.sizePricing && formData.sizePricing.length > 0) {
+          const firstValidPricing = formData.sizePricing.find(p => p.suggestedPrice > 0);
+          if (firstValidPricing) {
+            calculatedSuggestedPrice = firstValidPricing.suggestedPrice;
+          }
+        }
+
         const finalFormData = {
           ...formData,
           categoryId: categoryId,
           subCategoryId: subCategoryId,
-          variationId: variationId
+          variationId: variationId,
+          suggestedPrice: calculatedSuggestedPrice // 🆕 Prix calculé depuis sizePricing
         };
 
         console.log('✅ [SUBMIT] FormData final préparé:', {
           categoryId: finalFormData.categoryId,
           subCategoryId: finalFormData.subCategoryId,
-          variationId: finalFormData.variationId
+          variationId: finalFormData.variationId,
+          sizes: finalFormData.sizes,
+          sizePricing: finalFormData.sizePricing,
+          useGlobalPricing: finalFormData.useGlobalPricing
         });
 
         // Mettre à jour le state pour la cohérence (mais ne pas attendre)
@@ -1757,12 +1918,43 @@ const normalizeProductDataForCreation = (formData: any) => {
         console.log('🎯 [SUBMIT] Appel direct du service avec les données normalisées...');
 
         // Construire le payload final selon la documentation
+        // 🔧 PRODUITS SANS STOCK : AUTOCOLLANT ou TABLEAU
+        const isAutocollant = finalFormData.genre === 'AUTOCOLLANT' || finalFormData.genre === 'TABLEAU';
+
+        // 🔧 CORRECTION : Extraire les fichiers AVANT de construire le payload
+        const extractedFiles: File[] = [];
+        console.log('🔍 [SUBMIT] Extraction des fichiers depuis formData.colorVariations...');
+
+        finalFormData.colorVariations.forEach((color: any, colorIndex: number) => {
+          console.log(`🎨 [SUBMIT] Couleur ${colorIndex}: ${color.name}, images: ${color.images?.length}`);
+
+          if (color.images && Array.isArray(color.images)) {
+            color.images.forEach((image: any, imageIndex: number) => {
+              // 🔧 CORRECTION : Extraire le fichier depuis l'image
+              if (image.file && image.file instanceof File) {
+                extractedFiles.push(image.file);
+                console.log(`📎 [SUBMIT] Fichier extrait (via .file): ${image.file.name} (${image.file.size} bytes)`);
+              } else if (image.isTemp && image.file instanceof File) {
+                extractedFiles.push(image.file);
+                console.log(`📎 [SUBMIT] Fichier temporaire extrait: ${image.file.name}`);
+              } else if (image.url && image.url.startsWith('blob:')) {
+                console.warn(`⚠️ [SUBMIT] Image blob sans fichier attaché: ${image.url.substring(0, 50)}...`);
+                // Les images blob sans fichier ne peuvent pas être envoyées
+              } else {
+                console.warn(`⚠️ [SUBMIT] Image sans fichier: index=${imageIndex}, couleur=${color.name}`);
+              }
+            });
+          }
+        });
+
+        console.log(`✅ [SUBMIT] Total fichiers extraits: ${extractedFiles.length}`);
+
         const finalPayload = {
           name: finalFormData.name,
           description: finalFormData.description,
           price: finalFormData.price,
           suggestedPrice: finalFormData.suggestedPrice,
-          stock: finalFormData.stock,
+          stock: isAutocollant ? undefined : finalFormData.stock,
           status: finalFormData.status,
 
           // ✅ FORMAT CORRECT : Utiliser le camelCase correct pour le backend NestJS + types number
@@ -1779,10 +1971,14 @@ const normalizeProductDataForCreation = (formData: any) => {
             // ❌ SUPPRIMÉ: variationId ne doit PAS être dans les variations de couleur
             value: color.name,        // Nom de la couleur (ex: "Rouge", "Noir")
             colorCode: color.colorCode, // Code hex (ex: "#FF0000")
-            price: finalFormData.price,
-            stock: color.stock && typeof color.stock === 'object'
-              ? Object.values(color.stock).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0)
-              : 0,
+            // Pour AUTOCOLLANT, utiliser le prix de la variation, sinon le prix global du produit
+            price: isAutocollant ? (color.price || finalFormData.suggestedPrice) : finalFormData.price,
+            // 🔧 CORRECTION : Pour AUTOCOLLANT, pas de stock
+            stock: isAutocollant ? null : (
+              color.stock && typeof color.stock === 'object'
+                ? Object.values(color.stock).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0)
+                : 0
+            ),
             images: color.images.map((image: any) => ({
               fileId: image.id,
               view: image.view,
@@ -1800,53 +1996,31 @@ const normalizeProductDataForCreation = (formData: any) => {
           // Autres champs
           sizes: finalFormData.sizes || [],
           genre: finalFormData.genre || 'UNISEXE',
-          isReadyProduct: false
+          isReadyProduct: false,
+          // ✅ IMPORTANT: requiresStock doit être false pour les AUTOCOLLANT
+          requiresStock: isAutocollant ? false : (finalFormData.requiresStock ?? true),
+          // 🆕 Prix par taille
+          useGlobalPricing: finalFormData.useGlobalPricing || false,
+          globalCostPrice: finalFormData.globalCostPrice || 0,
+          globalSuggestedPrice: finalFormData.globalSuggestedPrice || 0,
+          sizePricing: finalFormData.sizePricing || []
         };
 
         // Importer directement le service pour contourner le state
         const { ProductService } = await import('../../services/productService');
 
-        // 🔧 CORRECTION : Extraire correctement les fichiers depuis les variations
-        const files: File[] = [];
-        console.log('🔍 [SUBMIT] Extraction des fichiers depuis les variations...');
-
-        if (finalPayload.variations && Array.isArray(finalPayload.variations)) {
-          finalPayload.variations.forEach((variation: any, variationIndex: number) => {
-            console.log(`🎨 [SUBMIT] Variation ${variationIndex}: ${variation.value}, images: ${variation.images?.length}`);
-
-            if (variation.images && Array.isArray(variation.images)) {
-              variation.images.forEach((image: any, imageIndex: number) => {
-                // Chercher le fichier dans le formData original
-                const originalColor = finalFormData.colorVariations.find((c: any) => c.name === variation.value);
-                if (originalColor && originalColor.images && originalColor.images[imageIndex]) {
-                  const originalImage = originalColor.images[imageIndex];
-                  if (originalImage.file && originalImage.file instanceof File) {
-                    files.push(originalImage.file);
-                    console.log(`📎 [SUBMIT] Fichier trouvé: ${originalImage.file.name} (${originalImage.file.size} bytes)`);
-                  } else {
-                    console.warn(`⚠️ [SUBMIT] Pas de fichier pour image ${imageIndex} de variation ${variationIndex}`);
-                  }
-                } else {
-                  console.warn(`⚠️ [SUBMIT] Variation originale non trouvée pour ${variation.value}`);
-                }
-              });
-            }
-          });
-        } else {
-          console.warn('⚠️ [SUBMIT] Aucune variation trouvée dans finalPayload');
-        }
-
-        console.log(`✅ [SUBMIT] Total fichiers extraits: ${files.length}`);
-
         console.log('🎯 [SUBMIT] Payload final pour API:', {
           name: finalPayload.name,
           categoryId: finalPayload.categoryId,
           subCategoryId: finalPayload.subCategoryId,
-          hasVariations: finalPayload.variations?.length > 0
+          hasVariations: finalPayload.variations?.length > 0,
+          filesCount: extractedFiles.length,
+          sizes: finalPayload.sizes,
+          sizePricing: finalPayload.sizePricing
         });
 
-        // Appeler l'API directement
-        const result = await ProductService.createProduct(finalPayload, files);
+        // Appeler l'API directement avec les fichiers extraits
+        const result = await ProductService.createProduct(finalPayload, extractedFiles);
 
         if (result.success) {
           console.log('✅ [SUBMIT] Produit créé avec succès !');
@@ -2153,14 +2327,18 @@ const normalizeProductDataForCreation = (formData: any) => {
 
   // Fonctions de rendu pour la prévisualisation
   const renderDelimitationOverlay = (image: ProductImage, containerRef?: string) => {
-    // 🧠 Utiliser les délimitations centralisées du produit au lieu des délimitations individuelles
-    const centralizedDelimitations = getCentralizedDelimitations();
-    
-    if (!centralizedDelimitations || centralizedDelimitations.length === 0) return null;
+    // 🔧 Pour les autocollants et tableaux, utiliser les délimitations spécifiques à l'image
+    // Pour les autres produits, utiliser les délimitations centralisées
+    const isSticker = formData.genre === 'AUTOCOLLANT' || formData.genre === 'TABLEAU';
+    const delimitationsToShow = isSticker
+      ? (image.delimitations || [])
+      : getCentralizedDelimitations();
+
+    if (!delimitationsToShow || delimitationsToShow.length === 0) return null;
 
     return (
       <div className="absolute inset-0">
-        {centralizedDelimitations.map((delim, index) => {
+        {delimitationsToShow.map((delim, index) => {
           let percentageCoords;
           
           if (delim._debug?.realImageSize) {
@@ -2256,7 +2434,7 @@ const normalizeProductDataForCreation = (formData: any) => {
       
       case 2:
         return (
-          <ColorVariationsStep 
+          <ColorVariationsStep
             colorVariations={colorVariationsWhiteFirst}
             onAddColorVariation={addColorVariation}
             onUpdateColorVariation={updateColorVariation}
@@ -2265,6 +2443,8 @@ const normalizeProductDataForCreation = (formData: any) => {
             onUpdateImage={updateImage}
             onReplaceImage={handleReplaceImage}
             onSuggestedPriceChange={(price) => updateFormData('price', price)}
+            genre={formData.genre}
+            suggestedPrice={formData.suggestedPrice}
           />
         );
       
@@ -2273,16 +2453,29 @@ const normalizeProductDataForCreation = (formData: any) => {
           <CategoriesStep
             sizes={formData.sizes}
             categories={formData.categories || []}
+            sizePricing={formData.sizePricing}
+            useGlobalPricing={formData.useGlobalPricing}
+            globalCostPrice={formData.globalCostPrice}
+            globalSuggestedPrice={formData.globalSuggestedPrice}
             onCategoriesUpdate={(categories: string[]) => {
               console.log('🔍 [DEBUG ProductFormMain] onCategoriesUpdate called with:', categories);
               updateFormData('categories', categories);
               console.log('🔍 [DEBUG ProductFormMain] formData.categories after update:', formData.categories);
             }}
             onSizesUpdate={(sizes: string[]) => updateFormData('sizes', sizes)}
+            onSizePricingUpdate={(pricing: any[]) => updateFormData('sizePricing', pricing)}
+            onUseGlobalPricingChange={(value: boolean) => {
+              console.log('🔍 [DEBUG ProductFormMain] onUseGlobalPricingChange called with:', value);
+              updateFormData('useGlobalPricing', value);
+            }}
           />
         );
 
       case 4:
+        // Si le produit ne nécessite pas de stock, cette étape est ignorée
+        if (formData.requiresStock === false) {
+          return null;
+        }
         return (
           <StockStep
             sizes={formData.sizes}
@@ -2311,6 +2504,7 @@ const normalizeProductDataForCreation = (formData: any) => {
             onDesignRemove={handleDesignRemove}
             onOpenDuplicator={handleOpenDuplicator}
             onExportFinalImage={handleExportFinalImage}
+            genre={formData.genre}
           />
         );
 
@@ -2342,72 +2536,52 @@ const normalizeProductDataForCreation = (formData: any) => {
   }, [designsByImageId]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-6">
+      <div className="w-full px-6 lg:px-8">
         {/* En-tête moderne */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-4"
         >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="display-title text-shimmer mb-2">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
                 🎨 Ajouter un produit
               </h1>
             </div>
           </div>
         </motion.div>
 
-        {/* Indicateur d'étapes */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <div className="flex items-center justify-between">
+        {/* Indicateur d'étapes simplifié */}
+        <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-2 overflow-x-auto">
             {steps.map((step, index) => {
-              const Icon = step.icon;
               const isActive = currentStep === step.id;
               const isCompleted = currentStep > step.id;
-                            
-                            return (
-                <div key={step.id} className="flex items-center">
+
+              return (
+                <React.Fragment key={step.id}>
                   <div className={`
-                    flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all
-                    ${isActive 
-                      ? 'border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900' 
-                      : isCompleted 
-                        ? 'border-green-500 bg-green-500 text-white'
-                        : 'border-gray-300 bg-white text-gray-400 dark:border-gray-600 dark:bg-gray-800'
+                    flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all
+                    ${isActive
+                      ? 'bg-[rgb(20,104,154)] text-white'
+                      : isCompleted
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-600'
                     }
                   `}>
-                    {isCompleted ? (
-                      <CheckCircle className="h-5 w-5" />
-                    ) : (
-                      <Icon className="h-5 w-5" />
-                                    )}
-                                  </div>
-                                  
-                  <div className="ml-3 hidden sm:block">
-                    <p className={`text-sm font-medium ${
-                      isActive ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {step.title}
-                    </p>
-                                </div>
-                                
+                    <span className="font-semibold">{index + 1}.</span>
+                    <span className="text-sm font-medium">{step.title}</span>
+                  </div>
                   {index < steps.length - 1 && (
-                    <div className={`w-8 h-0.5 mx-4 ${
-                      isCompleted ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-                    }`} />
+                    <div className="text-gray-300">→</div>
                   )}
-                              </div>
-                            );
-                          })}
-                        </div>
-              </motion.div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Contenu de l'étape */}
         <motion.div
@@ -2415,7 +2589,7 @@ const normalizeProductDataForCreation = (formData: any) => {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className="mb-8"
+          className="mb-6"
         >
           {renderStepContent()}
         </motion.div>
@@ -2427,54 +2601,53 @@ const normalizeProductDataForCreation = (formData: any) => {
           transition={{ delay: 0.2 }}
           className="flex items-center justify-between"
         >
-                <Button
+                <AdminButton
                   variant="outline"
             onClick={prevStep}
             disabled={currentStep === 1 || loading}
-            className="border-gray-300 dark:border-gray-600"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Précédent
-                </Button>
+            <ArrowLeft className="h-4 w-4" />
+            <span>Précédent</span>
+                </AdminButton>
 
-          {currentStep < steps.length ? (
-                <Button
+          {currentStep < 6 ? (
+                <AdminButton
               onClick={nextStep}
                   disabled={loading}
-              className="bg-gray-900 hover:bg-gray-800 text-white dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900"
+              variant="primary"
             >
-              Suivant
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
+              <span>Suivant</span>
+              <ArrowRight className="h-4 w-4" />
+            </AdminButton>
           ) : (
             <div className="flex items-center gap-3">
-              <Button
+              <AdminButton
                 variant="outline"
                 onClick={handlePreview}
                 disabled={!formStats.isComplete}
-                className="border-gray-300 dark:border-gray-600"
               >
-                <Eye className="h-4 w-4 mr-2" />
-                Prévisualiser
-                </Button>
+                <Eye className="h-4 w-4" />
+                <span>Prévisualiser</span>
+                </AdminButton>
 
-                <Button
+                <AdminButton
                   onClick={handleSubmit}
                   disabled={loading || !formStats.isComplete}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                variant="primary"
+                className="!bg-green-600 hover:!bg-green-700"
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Validation...
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Validation...</span>
                   </>
                 ) : (
                   <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Valider le produit
+                    <Save className="h-4 w-4" />
+                    <span>Valider le produit</span>
                   </>
                 )}
-                </Button>
+                </AdminButton>
               </div>
           )}
         </motion.div>
@@ -2491,7 +2664,7 @@ const normalizeProductDataForCreation = (formData: any) => {
           </DialogHeader>
           
           <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-gray-50 rounded-xl border border-gray-200">
               <div>
                 <h4 className="product-title mb-2">Nom</h4>
                 <p className="product-description">{formData.name || 'Non défini'}</p>
@@ -2516,10 +2689,10 @@ const normalizeProductDataForCreation = (formData: any) => {
                 </h3>
                 
                 {colorVariationsWhiteFirst.map((color) => (
-                  <div key={color.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-gray-800">
+                  <div key={color.id} className="border border-gray-200 rounded-xl p-6 bg-white">
                     <div className="flex items-center gap-3 mb-6">
                       <div 
-                        className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600"
+                        className="w-6 h-6 rounded-full border-2 border-gray-300"
                         style={{ backgroundColor: color.colorCode }}
                       />
                       <h4 className="product-title">{color.name}</h4>
@@ -2532,17 +2705,22 @@ const normalizeProductDataForCreation = (formData: any) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {color.images.map((image, imageIndex) => {
                           const imageId = `preview-${color.id}-${image.id}`;
-                          
+                          const isSticker = formData.genre === 'AUTOCOLLANT' || formData.genre === 'TABLEAU';
+
                           return (
                           <div key={image.id} className="relative group">
-                              <div 
+                              <div
                                 id={imageId}
-                                className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm"
+                                className={`relative rounded-xl overflow-hidden border border-gray-200 shadow-sm ${
+                                  isSticker ? 'max-h-96' : 'aspect-square'
+                                }`}
                               >
                               <img
                                 src={image.url}
                                 alt={`${color.name} - Image ${imageIndex + 1}`}
-                                className="w-full h-full object-cover"
+                                className={`w-full ${
+                                  isSticker ? 'h-auto object-contain' : 'h-full object-cover'
+                                }`}
                                   onLoad={(e) => {
                                     handlePreviewImageLoad(imageId);
                                     // Simple re-render pour s'assurer que les délimitations sont visibles
@@ -2569,12 +2747,16 @@ const normalizeProductDataForCreation = (formData: any) => {
                             
                               {/* Informations sur les délimitations */}
                               {(() => {
-                                const centralizedDelimitations = getCentralizedDelimitations();
-                                return centralizedDelimitations && centralizedDelimitations.length > 0 ? (
+                                const isSticker = formData.genre === 'AUTOCOLLANT' || formData.genre === 'TABLEAU';
+                                const delimitationsCount = isSticker
+                                  ? (image.delimitations?.length || 0)
+                                  : (getCentralizedDelimitations()?.length || 0);
+
+                                return delimitationsCount > 0 ? (
                                   <div className="mt-2 text-center">
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-full text-sm">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
                                       <Layers className="h-3 w-3" />
-                                      {centralizedDelimitations.length} zone{centralizedDelimitations.length > 1 ? 's' : ''}
+                                      {delimitationsCount} zone{delimitationsCount > 1 ? 's' : ''}
                                     </div>
                                   </div>
                                 ) : null;
@@ -2593,7 +2775,7 @@ const normalizeProductDataForCreation = (formData: any) => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
                 <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="subsection-title mb-2">Aucune variation de couleur</h3>
                 <p className="product-description">Aucune variation de couleur définie pour ce produit</p>

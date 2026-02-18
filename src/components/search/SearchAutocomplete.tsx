@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, Clock, TrendingUp, Package, Palette } from 'lucide-react';
+import { Search, X, Clock, TrendingUp, Package, Palette, User } from 'lucide-react';
 import { searchService, SearchResult } from '../../services/searchService';
 import { debounce } from '../../utils/debounce';
 
@@ -15,13 +15,13 @@ interface SearchAutocompleteProps {
  *
  * Caractéristiques:
  * - Recherche en temps réel avec debounce
- * - Affichage des suggestions (produits, designs, articles)
+ * - Affichage des suggestions (produits, designs, vendeurs)
  * - Historique des recherches récentes
  * - Navigation au clavier
  * - Recherche directe sur Entrée
  */
 export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
-  placeholder = 'Recherche de designs/produits',
+  placeholder = 'Recherche de produits, designs, vendeurs...',
   className = '',
   onSearch
 }) => {
@@ -188,6 +188,8 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
         return <Palette className="w-4 h-4 text-purple-500" />;
       case 'article':
         return <TrendingUp className="w-4 h-4 text-green-500" />;
+      case 'vendor':
+        return <User className="w-4 h-4 text-orange-500" />;
       default:
         return <Search className="w-4 h-4 text-gray-400" />;
     }
@@ -317,6 +319,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                           <div className="flex items-center gap-2 mt-1">
                             {result.category && (
                               <span className="text-xs text-gray-500">{result.category}</span>
+                            )}
+                            {result.shopName && (
+                              <span className="text-xs text-gray-500 italic">• {result.shopName}</span>
                             )}
                             {result.price && (
                               <span className="text-xs font-semibold text-blue-600">

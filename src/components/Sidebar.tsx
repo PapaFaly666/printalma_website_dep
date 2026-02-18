@@ -25,8 +25,6 @@ import {
     Users,
     ShoppingCart,
     Home,
-    Moon,
-    Sun,
     Menu,
     X,
     User,
@@ -44,7 +42,9 @@ import {
     PackageSearch,
     Star,
     Truck,
-    Sticker
+    Sticker,
+    Image,
+    Landmark
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
@@ -78,6 +78,7 @@ type AdminUser = {
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
+    // Mode clair uniquement - désactivation du mode sombre
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -188,6 +189,8 @@ export default function Sidebar() {
             setActiveItem('payment-requests');
         } else if (location.pathname.includes('/admin/payment-history')) {
             setActiveItem('payment-history');
+        } else if (location.pathname.includes('/admin/payment-methods')) {
+            setActiveItem('payment-methods');
         } else if (location.pathname.includes('/admin/settings')) {
             setActiveItem('settings');
         } else if (location.pathname.includes('/admin/trash')) {
@@ -273,12 +276,12 @@ export default function Sidebar() {
         <div className={cn("flex h-screen overflow-hidden", appClasses)}>
             {/* Mobile header bar */}
             {isMobile && (
-                <div className="fixed top-0 left-0 right-0 h-14 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 z-20 flex items-center px-3">
+                <div className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-20 flex items-center px-3">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={toggleSidebar}
-                        className="mr-3 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="mr-3 text-black hover:bg-gray-100"
                     >
                         {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                     </Button>
@@ -288,7 +291,7 @@ export default function Sidebar() {
                             alt="Printalma Logo"
                             className="h-7 w-7 object-contain"
                         />
-                        <h2 className="text-lg font-semibold text-black dark:text-white">
+                        <h2 className="text-lg font-semibold text-black">
                             {isVendeur() ? 'Espace Vendeur' : 'Printalma'}
                         </h2>
                     </div>
@@ -296,14 +299,14 @@ export default function Sidebar() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="rounded-full w-8 h-8 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                            className="rounded-full w-8 h-8 text-black hover:bg-gray-100"
                         >
                             <Bell size={18} />
                         </Button>
-                        
+
                         <Avatar className="h-8 w-8 ml-1">
                             <AvatarImage src={adminUser.avatarUrl} alt={adminUser.name} />
-                            <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs">
+                            <AvatarFallback className="bg-gray-100 text-gray-700 text-xs">
                                 {adminUser.name.split(' ').map(n => n[0]).join('')}
                             </AvatarFallback>
                         </Avatar>
@@ -315,7 +318,7 @@ export default function Sidebar() {
             <aside
                 ref={sidebarRef}
                 className={cn(
-                    "bg-white dark:bg-black h-full border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300 ease-in-out z-30",
+                    "bg-white h-full border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out z-30",
                     collapsed && !isMobile ? "w-16" : "w-64",
                     isMobile && "fixed left-0 top-0 bottom-0 shadow-xl",
                     isMobile && !isMenuOpen && "transform -translate-x-full"
@@ -348,7 +351,7 @@ export default function Sidebar() {
                             variant="ghost"
                             size="sm"
                             onClick={toggleSidebar}
-                            className={cn("hover:bg-gray-100 dark:hover:bg-gray-800 p-1", collapsed && "ml-auto")}
+                            className={cn("hover:bg-gray-100 p-1", collapsed && "ml-auto")}
                         >
                             {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                         </Button>
@@ -359,15 +362,15 @@ export default function Sidebar() {
                 {(!collapsed || isMobile) && (
                     <div className="px-4 py-4 mb-1">
                         <div className="flex items-center space-x-3">
-                            <Avatar className="h-12 w-12 border-2 border-gray-200 dark:border-gray-700">
+                            <Avatar className="h-12 w-12 border-2 border-gray-200">
                                 <AvatarImage src={adminUser.avatarUrl} alt={adminUser.name} />
-                                <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                <AvatarFallback className="bg-gray-100 text-gray-700">
                                     {adminUser.name.split(' ').map(n => n[0]).join('')}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                                <span className="font-medium text-sm text-black dark:text-white">{adminUser.name}</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">{adminUser.role}</span>
+                                <span className="font-medium text-sm text-black">{adminUser.name}</span>
+                                <span className="text-xs text-gray-500">{adminUser.role}</span>
                             </div>
                         </div>
                     </div>
@@ -379,9 +382,9 @@ export default function Sidebar() {
                         <TooltipProvider>
                             <Tooltip delayDuration={100}>
                                 <TooltipTrigger asChild>
-                                    <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
+                                    <Avatar className="h-10 w-10 border-2 border-gray-200">
                                         <AvatarImage src={adminUser.avatarUrl} alt={adminUser.name} />
-                                        <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                        <AvatarFallback className="bg-gray-100 text-gray-700">
                                             {adminUser.name.split(' ').map(n => n[0]).join('')}
                                         </AvatarFallback>
                                     </Avatar>
@@ -395,11 +398,11 @@ export default function Sidebar() {
                 )}
 
                 <div className="px-3 py-2">
-                    <Separator className="dark:bg-gray-800" />
+                    <Separator />
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
+                <nav className="flex-1 py-4 px-3 overflow-y-auto">
                     {/* Admin Navigation */}
                     {(isAdmin() || isSuperAdmin()) && (
                         <>
@@ -584,6 +587,21 @@ export default function Sidebar() {
                     </NavGroup>
 
                     <NavGroup
+                        title="Contenu"
+                        collapsed={collapsed && !isMobile}
+                    >
+                        <NavItem
+                            icon={<Image size={18} />}
+                            label="Gestion du contenu"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'content-management' || activeItem === 'content-init'}
+                            onClick={() => handleNavigation('content-init')}
+                            badge=""
+                            textColor=""
+                        />
+                    </NavGroup>
+
+                    <NavGroup
                         title="Statistiques"
                         collapsed={collapsed && !isMobile}
                     >
@@ -611,6 +629,16 @@ export default function Sidebar() {
                             onClick={() => handleNavigation('payment-requests')}
                             badge="3"
                             badgeColor="red"
+                            textColor=""
+                        />
+
+                        <NavItem
+                            icon={<Landmark size={18} />}
+                            label="Moyens de paiement"
+                            collapsed={collapsed && !isMobile}
+                            active={activeItem === 'payment-methods'}
+                            onClick={() => handleNavigation('payment-methods')}
+                            badge=""
                             textColor=""
                         />
 
@@ -771,7 +799,7 @@ export default function Sidebar() {
                 </nav>
 
                 <div className="px-3 py-2">
-                    <Separator className="dark:bg-gray-800" />
+                    <Separator />
                 </div>
 
                 {/* Footer */}
@@ -784,7 +812,7 @@ export default function Sidebar() {
                         active={false}
                         onClick={() => navigate('/')}
                         badge=""
-                        textColor="text-[#049be5] dark:text-[#049be5]"
+                        textColor="text-[#049be5]"
                     />
 
                     {/* Paramètres - seulement pour les admins */}
@@ -807,19 +835,17 @@ export default function Sidebar() {
                                 <TooltipProvider>
                                     <Tooltip delayDuration={100}>
                                         <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
+                                            <button
                                                 onClick={handleCleanupTokens}
                                                 disabled={cleanupLoading}
-                                                className="w-full justify-center hover:bg-gray-100 dark:hover:bg-gray-800 my-1 py-2 text-gray-600 dark:text-gray-400"
+                                                className="w-full flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 text-gray-600 hover:bg-[rgb(20,104,154)] hover:text-white disabled:opacity-50"
                                             >
                                                 {cleanupLoading ? (
                                                     <LoadingSpinner size="sm" />
                                                 ) : (
                                                     <Trash2 size={18} />
                                                 )}
-                                            </Button>
+                                            </button>
                                         </TooltipTrigger>
                                         <TooltipContent side="right" className="font-medium py-1 px-3 text-sm">
                                             {cleanupLoading ? 'Nettoyage en cours...' : 'Nettoyer les tokens expirés'}
@@ -827,34 +853,34 @@ export default function Sidebar() {
                                     </Tooltip>
                                 </TooltipProvider>
                             ) : (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
+                                <button
                                     onClick={handleCleanupTokens}
                                     disabled={cleanupLoading}
-                                    className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 my-1 py-2 text-gray-600 dark:text-gray-400"
+                                    className="w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 text-gray-600 hover:bg-[rgb(20,104,154)] hover:text-white disabled:opacity-50"
                                 >
-                                    {cleanupLoading ? (
-                                        <LoadingSpinner size="sm" />
-                                    ) : (
-                                        <Trash2 size={18} />
-                                    )}
+                                    <span className="flex items-center justify-center w-5 h-5">
+                                        {cleanupLoading ? (
+                                            <LoadingSpinner size="sm" />
+                                        ) : (
+                                            <Trash2 size={18} />
+                                        )}
+                                    </span>
                                     <span className="ml-3 text-sm">
                                         {cleanupLoading ? 'Nettoyage...' : 'Nettoyer tokens'}
                                     </span>
-                                </Button>
+                                </button>
                             )}
                         </>
                     )}
 
-                    
+
 
                     <NavItem
-                        icon={<LogOut size={18} className="text-gray-500 dark:text-gray-400" />}
+                        icon={<LogOut size={18} className="text-gray-500" />}
                         label="Déconnexion"
                         collapsed={collapsed && !isMobile}
                         onClick={handleLogoutClick}
-                        textColor="text-gray-500 dark:text-gray-400"
+                        textColor="text-gray-500"
                         badge=""
                     />
                 </div>
@@ -870,7 +896,7 @@ export default function Sidebar() {
 
             {/* Main Content */}
             <div className={cn(
-                "flex-1 bg-gray-50 dark:bg-black flex flex-col overflow-y-auto",
+                "flex-1 bg-gray-50 flex flex-col overflow-y-auto",
                 isMobile && "pt-14"
             )}>
                 <Outlet context={{ isDarkMode }} />
@@ -878,24 +904,24 @@ export default function Sidebar() {
 
             {/* Modal de confirmation de déconnexion */}
             <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
-                <AlertDialogContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <AlertDialogContent className="bg-white border border-gray-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+                        <AlertDialogTitle className="text-gray-900 flex items-center gap-2">
                             <LogOut className="h-5 w-5 text-red-600" />
                             Confirmer la déconnexion
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                        <AlertDialogDescription className="text-gray-600">
                             Êtes-vous sûr de vouloir vous déconnecter ? Vous devrez vous reconnecter pour accéder à nouveau au tableau de bord.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel 
+                        <AlertDialogCancel
                             onClick={handleLogoutCancel}
-                            className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            className="border-gray-300 text-gray-700 hover:bg-gray-50"
                         >
                             Annuler
                         </AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                             onClick={handleLogoutConfirm}
                             className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
                         >
@@ -912,16 +938,14 @@ export default function Sidebar() {
 // NavGroup Component
 const NavGroup = ({ title, children, collapsed }: NavGroupProps) => {
     if (collapsed) {
-        return <div className="mt-4">{children}</div>;
+        return <div className="mt-3">{children}</div>;
     }
 
     return (
-        <div className="mt-2">
-            {!collapsed && (
-                <h3 className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
-                    {title}
-                </h3>
-            )}
+        <div className="mt-6 first:mt-0">
+            <h3 className="px-3 mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                {title}
+            </h3>
             <div className="space-y-1">
                 {children}
             </div>
@@ -940,46 +964,42 @@ const NavItem = ({
     onClick,
     textColor = ""
 }: NavItemProps) => {
-    const iconColor = active ? "text-[#049BE5]" : textColor || "text-gray-600 dark:text-gray-400 group-hover:text-[#049BE5]";
-
     const navButton = (
-        <Button
-            variant="ghost"
-            className={cn(
-                "w-full justify-start gap-3 px-3 py-2 h-auto group",
-                active && "bg-[#049BE5]/10",
-                collapsed ? "px-3" : "pl-3 pr-2",
-                "hover:bg-[#049BE5]/20"
-            )}
+        <button
             onClick={onClick}
+            className={cn(
+                "w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                active
+                    ? "bg-[rgb(20,104,154)] text-white"
+                    : "text-gray-700 hover:bg-[rgb(20,104,154)] hover:text-white",
+                collapsed && "justify-center"
+            )}
         >
-            <span className={cn(iconColor)}>
+            <span className={cn("flex items-center justify-center w-5 h-5", collapsed && "w-auto")}>
                 {icon}
             </span>
 
             {!collapsed && (
-                <span className={cn(
-                    "flex-1 text-left text-sm font-medium",
-                    active ? "text-[#049BE5]" : textColor || "text-gray-700 dark:text-gray-300 group-hover:text-[#049BE5]"
-                )}>
-                    {label}
-                </span>
-            )}
-
-            {!collapsed && badge && (
-                <Badge
-                    variant="outline"
-                    className={cn(
-                        "ml-auto text-xs h-5 min-w-5 flex items-center justify-center px-1.5",
-                        badgeColor === "red"
-                            ? "bg-gray-100 text-gray-600 border-gray-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/30"
-                            : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-800"
+                <>
+                    <span className="ml-3 text-sm font-medium flex-1 text-left">
+                        {label}
+                    </span>
+                    {badge && (
+                        <Badge
+                            variant="outline"
+                            className={cn(
+                                "text-xs h-5 min-w-5 px-1.5",
+                                active
+                                    ? "bg-white/20 text-white border-white/30"
+                                    : "bg-gray-100 text-gray-600 border-gray-200 group-hover:bg-white/20 group-hover:text-white group-hover:border-white/30"
+                            )}
+                        >
+                            {badge}
+                        </Badge>
                     )}
-                >
-                    {badge}
-                </Badge>
+                </>
             )}
-        </Button>
+        </button>
     );
 
     return (
@@ -993,8 +1013,8 @@ const NavItem = ({
                                 {badge && (
                                     <span className={cn(
                                         "absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-xs font-medium",
-                                        badgeColor === "red" ? "bg-red-500" : "bg-black dark:bg-white",
-                                        badgeColor === "red" ? "text-white" : "text-white dark:text-black"
+                                        badgeColor === "red" ? "bg-red-500" : "bg-black",
+                                        badgeColor === "red" ? "text-white" : "text-white"
                                     )}>
                                         {badge}
                                     </span>

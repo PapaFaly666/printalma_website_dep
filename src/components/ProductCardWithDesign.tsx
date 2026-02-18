@@ -105,7 +105,12 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
         });
 
         if (colorVariation?.images?.length > 0) {
-          // Retourner la première image de la variation trouvée
+          // ✅ PRIORITÉ: Utiliser finalUrlImage (image finale générée avec design) si disponible
+          if ((colorVariation as any)?.finalUrlImage) {
+            console.log(`🖼️ [ProductCardWithDesign] ✅ Utilisation de finalUrlImage pour ${selectedColor}:`, (colorVariation as any).finalUrlImage.substring(0, 60) + '...');
+            return (colorVariation as any).finalUrlImage;
+          }
+          // Fallback sur l'image mockup admin
           console.log(`🎨 [ProductCardWithDesign] Couleur trouvée pour produit ${product.id}: ${selectedColor} -> ${colorVariation.name}`);
           return colorVariation.images[0].url;
         }
@@ -121,6 +126,11 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
       );
 
       if (defaultColorVariation?.images?.length > 0) {
+        // ✅ PRIORITÉ: Utiliser finalUrlImage (image finale générée avec design) si disponible
+        if ((defaultColorVariation as any)?.finalUrlImage) {
+          console.log(`🖼️ [ProductCardWithDesign] ✅ Utilisation de finalUrlImage pour couleur par défaut:`, (defaultColorVariation as any).finalUrlImage.substring(0, 60) + '...');
+          return (defaultColorVariation as any).finalUrlImage;
+        }
         console.log(`🎨 [ProductCardWithDesign] ✅ Couleur par défaut trouvée: ${defaultColorVariation.name} (ID: ${defaultColorId})`);
         return defaultColorVariation.images[0].url;
       } else {
@@ -128,13 +138,90 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
       }
     }
 
-    // Fallback vers l'image par défaut
+    // ✅ Fallback: Essayer finalUrlImage de la première colorVariation avant d'utiliser le mockup
+    if (product.adminProduct?.colorVariations && product.adminProduct.colorVariations.length > 0) {
+      const firstColorVariation = product.adminProduct.colorVariations[0];
+      if ((firstColorVariation as any)?.finalUrlImage) {
+        console.log(`🖼️ [ProductCardWithDesign] ✅ Utilisation de finalUrlImage (première variation):`, (firstColorVariation as any).finalUrlImage.substring(0, 60) + '...');
+        return (firstColorVariation as any).finalUrlImage;
+      }
+    }
+
+    // Dernier fallback vers l'image par défaut (mockup)
     console.log(`🎨 [ProductCardWithDesign] Fallback vers primaryImageUrl pour produit ${product.id}`);
     return product.images?.primaryImageUrl ||
            product.images?.adminReferences?.[0]?.adminImageUrl;
   };
 
   const primaryImage = getImageForColor();
+
+  // ✅ Détecter si on utilise finalUrlImage (image finale avec design déjà appliqué)
+  const isUsingFinalUrlImage = (() => {
+    const colorsToCheck = selectedColors || (selectedColor ? [selectedColor] : []);
+
+    if (colorsToCheck.length > 0 && product.adminProduct?.colorVariations) {
+      const colorMapping: { [key: string]: string[] } = {
+        'black': ['black', 'noir'],
+        'white': ['white', 'blanc'],
+        'red': ['red', 'rouge'],
+        'blue': ['blue', 'bleu'],
+        'green': ['green', 'vert'],
+        'yellow': ['yellow', 'jaune'],
+        'pink': ['pink', 'rose'],
+        'purple': ['purple', 'violet'],
+        'gray': ['gray', 'grey', 'gris'],
+        'orange': ['orange']
+      };
+
+      const normalizeColorName = (colorName: string): string => {
+        return colorName.toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim();
+      };
+
+      for (const selectedColor of colorsToCheck) {
+        const selectedColorNormalized = normalizeColorName(selectedColor);
+        const possibleNames = colorMapping[selectedColorNormalized] || [selectedColorNormalized];
+
+        const colorVariation = product.adminProduct.colorVariations.find((variation: any) => {
+          const variationName = normalizeColorName(variation.name);
+          const match = possibleNames.some(name => {
+            const normalizedPossible = normalizeColorName(name);
+            return variationName === normalizedPossible ||
+                   variationName.includes(normalizedPossible) ||
+                   normalizedPossible.includes(variationName);
+          });
+          const colorCodeMatch = variation.colorCode.toLowerCase().includes(selectedColorNormalized);
+          return match || colorCodeMatch;
+        });
+
+        if (colorVariation && (colorVariation as any)?.finalUrlImage) {
+          return true;
+        }
+      }
+    }
+
+    const defaultColorId = (product as any).defaultColorId;
+    if (defaultColorId && product.adminProduct?.colorVariations) {
+      const defaultColorVariation = product.adminProduct.colorVariations.find(
+        (variation: any) => variation.id === defaultColorId
+      );
+      if (defaultColorVariation && (defaultColorVariation as any)?.finalUrlImage) {
+        return true;
+      }
+    }
+
+    // ✅ Fallback: Vérifier finalUrlImage de la première colorVariation
+    if (product.adminProduct?.colorVariations && product.adminProduct.colorVariations.length > 0) {
+      const firstColorVariation = product.adminProduct.colorVariations[0];
+      if ((firstColorVariation as any)?.finalUrlImage) {
+        return true;
+      }
+    }
+
+    return false;
+  })();
 
   const getDelimitations = (): DelimitationData[] => {
     if (!product.adminProduct?.colorVariations) return [];
@@ -492,21 +579,21 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
           isSticker ? 'bg-white' : 'bg-gray-100'
         }`}
       >
-        {/* Image du produit - cachée au hover s'il y a un design */}
-        {(!hasDesign || !isHovered) && (
+        {/* Image du produit - cachée au hover s'il y a un design (sauf si finalUrlImage est utilisé) */}
+        {(!hasDesign || !isHovered || isUsingFinalUrlImage) && (
           <img
             ref={imgRef}
             src={primaryImage}
             alt={product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
             className={`w-full h-full transition-all duration-300 ${
               isSticker ? 'object-contain' : 'object-cover'
-            } ${hasDesign && isHovered ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}
+            } ${hasDesign && isHovered && !isUsingFinalUrlImage ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}
             onLoad={() => setImageLoaded(true)}
           />
         )}
 
-        {/* Design superposé - Affichage normal OU affichage plein écran au hover */}
-        {hasDesign && (
+        {/* Design superposé - Affichage normal OU affichage plein écran au hover (SAUF si finalUrlImage est utilisé) */}
+        {hasDesign && !isUsingFinalUrlImage && (
           <>
             {/* Affichage normal (pas de hover) */}
             {!isHovered && imageMetrics && delimitations.length > 0 && (
@@ -656,16 +743,16 @@ export const ProductCardWithDesign: React.FC<ProductCardWithDesignProps> = ({
       {/* Informations du produit - cachées au hover si design */}
       {(!hasDesign || !isHovered) && (
         <div className="p-3 transition-opacity duration-300">
-          <h3 className="font-bold italic text-base mb-0.5 truncate">
+          <h3 className="font-bold italic text-lg mb-1 truncate">
             {product.vendorName || product.adminProduct?.name || 'Produit sans nom'}
           </h3>
-          <p className="text-sm font-bold mb-1">
+          <p className="text-base font-bold mb-1">
             {formatPrice(product.price)}
           </p>
 
           {/* Description du produit */}
           {product.adminProduct?.description && (
-            <p className="text-xs text-gray-600 line-clamp-2">
+            <p className="text-sm text-gray-600 line-clamp-2">
               {product.adminProduct.description}
             </p>
           )}

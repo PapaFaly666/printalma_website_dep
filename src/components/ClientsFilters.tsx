@@ -3,7 +3,7 @@ import Button from './ui/Button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Search, Filter, RotateCcw } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { 
   ListClientsQuery, 
   VendeurType, 
@@ -193,19 +193,6 @@ export const ClientsFilters: React.FC<ClientsFiltersProps> = ({
               </SelectContent>
             </Select>
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end mt-4">
-          <Button
-            variant="outline"
-            onClick={onReset}
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Réinitialiser
-          </Button>
         </div>
       </CardContent>
     </Card>

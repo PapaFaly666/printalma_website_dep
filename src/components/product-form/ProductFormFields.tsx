@@ -27,13 +27,13 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      <Card className="border-gray-200">
+        <CardHeader className="border-b border-gray-200 bg-gray-50">
+          <CardTitle className="text-base font-semibold text-gray-900">
             Informations principales
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-6">
           {/* Nom du produit */}
           <div className="space-y-2">
             <Label htmlFor="name" className="text-sm font-medium">
@@ -51,55 +51,6 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             )}
           </div>
 
-          {/* Prix de revient */}
-          <div className="space-y-2">
-            <Label htmlFor="price" className="text-sm font-medium">
-              💰 Prix de revient (FCFA) *
-            </Label>
-            <Input
-              id="price"
-              type="number"
-              value={formData.price}
-              onChange={(e) => onUpdate('price', parseFloat(e.target.value) || 0)}
-              placeholder="Prix de revient du produit"
-              min="0"
-              step="100"
-              className={`font-semibold ${errors.price ? 'border-red-500' : ''}`}
-            />
-            {errors.price && (
-              <p className="text-sm text-red-500">{errors.price}</p>
-            )}
-          </div>
-
-          {/* Produit de vente suggéré */}
-          <div className="space-y-2">
-            <Label htmlFor="suggested-price" className="text-sm font-medium">
-              💡 Produit de vente suggéré *
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="suggested-price"
-                type="number"
-                value={formData.suggestedPrice || ''}
-                onChange={(e) => {
-                  const value = e.target.value === '' ? undefined : Number(e.target.value);
-                  onUpdate('suggestedPrice', value);
-                }}
-                placeholder="Prix du produit de vente suggéré"
-                min="0"
-                step="100"
-                className={`flex-1 ${errors.suggestedPrice ? 'border-red-500' : ''}`}
-              />
-            </div>
-            {errors.suggestedPrice && (
-              <p className="text-sm text-red-500">{errors.suggestedPrice}</p>
-            )}
-            <p className="text-xs text-gray-500">
-              💾 Ce prix du produit de vente suggéré est obligatoire
-            </p>
-          </div>
-          
-  
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium">
@@ -118,14 +69,85 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
             )}
           </div>
 
-          {/* Genre */}
+          {/* Prix globaux - optionnel pour toutes les tailles */}
+          <div className="space-y-3 p-4 bg-[rgb(20,104,154)]/5 rounded-lg border border-[rgb(20,104,154)]/30">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="useGlobalPricing"
+                checked={formData.useGlobalPricing ?? false}
+                onCheckedChange={(checked) => onUpdate('useGlobalPricing', checked)}
+              />
+              <Label htmlFor="useGlobalPricing" className="text-sm font-semibold cursor-pointer">
+                🏷️ Mêmes prix pour toutes les tailles
+              </Label>
+            </div>
+            <p className="text-xs text-gray-600 ml-6">
+              Cochez cette case si toutes les tailles ont les mêmes prix de revient et de vente suggéré
+            </p>
+
+            {formData.useGlobalPricing && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 ml-6"
+              >
+                {/* Prix de revient global */}
+                <div className="space-y-2">
+                  <Label htmlFor="globalCostPrice" className="text-sm font-medium">
+                    💰 Prix de revient global (FCFA)
+                  </Label>
+                  <Input
+                    id="globalCostPrice"
+                    type="number"
+                    value={formData.globalCostPrice || ''}
+                    onChange={(e) => onUpdate('globalCostPrice', parseFloat(e.target.value) || 0)}
+                    placeholder="Coût de production"
+                    min="0"
+                    step="100"
+                    className="font-semibold"
+                  />
+                </div>
+
+                {/* Prix de vente suggéré global */}
+                <div className="space-y-2">
+                  <Label htmlFor="globalSuggestedPrice" className="text-sm font-medium">
+                    💡 Prix de vente suggéré global (FCFA)
+                  </Label>
+                  <Input
+                    id="globalSuggestedPrice"
+                    type="number"
+                    value={formData.globalSuggestedPrice || ''}
+                    onChange={(e) => onUpdate('globalSuggestedPrice', parseFloat(e.target.value) || 0)}
+                    placeholder="Prix recommandé"
+                    min="0"
+                    step="100"
+                    className="font-semibold border-green-500"
+                    required
+                  />
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section Autre */}
+      <Card className="border-gray-200">
+        <CardHeader className="border-b border-gray-200 bg-gray-50">
+          <CardTitle className="text-base font-semibold text-gray-900">
+            Autres informations
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          {/* Genre cible */}
           <div className="space-y-2">
             <Label htmlFor="genre" className="text-sm font-medium">
               Genre cible
             </Label>
             <Select
               value={formData.genre || ''}
-              onValueChange={(value) => onUpdate('genre', value as 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE')}
+              onValueChange={(value) => onUpdate('genre', value as 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU')}
             >
               <SelectTrigger className={errors.genre ? 'border-red-500' : ''}>
                 <SelectValue placeholder="Sélectionnez le genre cible" />
@@ -135,12 +157,28 @@ export const ProductFormFields: React.FC<ProductFormFieldsProps> = ({
                 <SelectItem value="FEMME">Femme</SelectItem>
                 <SelectItem value="BEBE">Bébé</SelectItem>
                 <SelectItem value="UNISEXE">Unisexe</SelectItem>
+                <SelectItem value="AUTOCOLLANT">Autocollant</SelectItem>
+                <SelectItem value="TABLEAU">Tableau</SelectItem>
               </SelectContent>
             </Select>
             {errors.genre && (
               <p className="text-sm text-red-500">{errors.genre}</p>
             )}
           </div>
+
+          {/* Gestion du stock - masqué si AUTOCOLLANT ou TABLEAU */}
+          {formData.genre !== 'AUTOCOLLANT' && formData.genre !== 'TABLEAU' && (
+            <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+              <Switch
+                id="requiresStock"
+                checked={formData.requiresStock ?? true}
+                onCheckedChange={(checked) => onUpdate('requiresStock', checked)}
+              />
+              <Label htmlFor="requiresStock" className="text-sm font-medium cursor-pointer">
+                Ce produit nécessite une gestion de stock
+              </Label>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>

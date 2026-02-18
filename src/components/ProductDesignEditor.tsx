@@ -60,6 +60,9 @@ interface ImageElement extends BaseElement {
   vendorName?: string;
   vendorShopName?: string;
   vendorCommissionRate?: number; // Taux de commission du vendeur
+  // 📤 Informations d'upload pour les images client
+  cloudinaryPublicId?: string; // Public ID Cloudinary pour pouvoir supprimer l'image si nécessaire
+  isClientUpload?: boolean; // Flag pour distinguer les uploads client des designs vendeur
 }
 
 type DesignElement = TextElement | ImageElement;
@@ -119,6 +122,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const productImageRef = useRef<HTMLImageElement>(null);
   const [elements, setElements] = useState<DesignElement[]>([]);
   const elementsRef = useRef<DesignElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -133,6 +137,110 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   // Forcer le re-render quand nécessaire
   const [forceUpdateKey, setForceUpdateKey] = useState(0);
   const forceUpdate = useCallback(() => setForceUpdateKey(prev => prev + 1), []);
+
+  // 🔧 Fonction utilitaire pour calculer la position en pixels de la délimitation (similaire à SellDesignPage)
+  const computeDelimitationPosition = useCallback(() => {
+    if (!canvasRef.current || !delimitation) {
+      return {
+        left: 0,
+        top: 0,
+        width: 0,
+        height: 0,
+        scaleX: 1,
+        scaleY: 1
+      };
+    }
+
+    const rect = canvasRef.current.getBoundingClientRect();
+
+    // Dimensions de l'image de référence (mockup)
+    const imgW = delimitation.referenceWidth || 800;
+    const imgH = delimitation.referenceHeight || 800;
+
+    // Dimensions du conteneur
+    const contW = rect.width;
+    const contH = rect.height;
+
+    if (contW === 0 || contH === 0) {
+      return {
+        left: 0,
+        top: 0,
+        width: 0,
+        height: 0,
+        scaleX: 1,
+        scaleY: 1
+      };
+    }
+
+    // Calculer les dimensions d'affichage de l'image avec object-contain
+    const imgRatio = imgW / imgH;
+    const contRatio = contW / contH;
+
+    let dispW: number, dispH: number, offsetX: number, offsetY: number;
+
+    if (imgRatio > contRatio) {
+      // L'image est plus large que le conteneur : elle est limitée par la largeur
+      dispW = contW;
+      dispH = contW / imgRatio;
+      offsetX = 0;
+      offsetY = (contH - dispH) / 2;
+    } else {
+      // L'image est plus haute que le conteneur : elle est limitée par la hauteur
+      dispH = contH;
+      dispW = contH * imgRatio;
+      offsetX = (contW - dispW) / 2;
+      offsetY = 0;
+    }
+
+    // La délimitation est en coordonnées relatives (0-100 ou pixels)
+    // On suppose qu'elle est en pixels (coordonnées absolues par rapport à l'image)
+    const isPixel = delimitation.x > 100 || delimitation.y > 100;
+
+    const delimX = isPixel ? delimitation.x : (delimitation.x / 100) * imgW;
+    const delimY = isPixel ? delimitation.y : (delimitation.y / 100) * imgH;
+    const delimW = isPixel ? delimitation.width : (delimitation.width / 100) * imgW;
+    const delimH = isPixel ? delimitation.height : (delimitation.height / 100) * imgH;
+
+    // Calculer les facteurs de scale
+    const scaleX = dispW / imgW;
+    const scaleY = dispH / imgH;
+
+    return {
+      left: offsetX + delimX * scaleX,
+      top: offsetY + delimY * scaleY,
+      width: delimW * scaleX,
+      height: delimH * scaleY,
+      scaleX,
+      scaleY,
+      offsetX,
+      offsetY
+    };
+  }, [delimitation]);
+
+  // 🔧 Fonction utilitaire pour obtenir les paramètres de scaling (scaleX, scaleY, offsetX, offsetY)
+  const getScalingParams = useCallback(() => {
+    const delimPos = computeDelimitationPosition();
+
+    if (!canvasRef.current || !delimitation) {
+      return {
+        scaleX: 1,
+        scaleY: 1,
+        offsetX: 0,
+        offsetY: 0,
+        canvasRect: { width: 800, height: 800 }
+      };
+    }
+
+    const rect = canvasRef.current.getBoundingClientRect();
+
+    return {
+      scaleX: delimPos.scaleX,
+      scaleY: delimPos.scaleY,
+      offsetX: delimPos.offsetX,
+      offsetY: delimPos.offsetY,
+      canvasRect: rect
+    };
+  }, [delimitation, computeDelimitationPosition]);
 
   // Garder la référence à jour
   useEffect(() => {
@@ -258,20 +366,12 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const addText = () => {
     if (!canvasRef.current || !delimitation) return;
 
+    const delimPos = computeDelimitationPosition();
     const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = rect.width / delimitation.referenceWidth;
-    const scaleY = rect.height / delimitation.referenceHeight;
 
     // Position centrée dans la délimitation
-    const delimBounds = {
-      x: delimitation.x * scaleX,
-      y: delimitation.y * scaleY,
-      width: delimitation.width * scaleX,
-      height: delimitation.height * scaleY
-    };
-
-    const centerX = (delimBounds.x + delimBounds.width / 2) / rect.width;
-    const centerY = (delimBounds.y + delimBounds.height / 2) / rect.height;
+    const centerX = (delimPos.left + delimPos.width / 2) / rect.width;
+    const centerY = (delimPos.top + delimPos.height / 2) / rect.height;
 
     const newText: TextElement = {
       id: generateId(),
@@ -309,24 +409,17 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     naturalHeight: number,
     designId?: number,
     designPrice?: number,
-    designName?: string
+    designName?: string,
+    cloudinaryPublicId?: string // 🆕 Public ID pour les images uploadées
   ) => {
     if (!canvasRef.current || !delimitation) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = rect.width / delimitation.referenceWidth;
-    const scaleY = rect.height / delimitation.referenceHeight;
+    const delimPos = computeDelimitationPosition();
+    const { scaleX, scaleY, canvasRect: rect } = getScalingParams();
 
     // Calculer la taille optimale pour l'image
-    const delimBounds = {
-      x: delimitation.x * scaleX,
-      y: delimitation.y * scaleY,
-      width: delimitation.width * scaleX,
-      height: delimitation.height * scaleY
-    };
-
-    const maxWidth = delimBounds.width * 0.95;  // Augmenté à 0.95 (95% de la délimitation)
-    const maxHeight = delimBounds.height * 0.95; // Augmenté à 0.95
+    const maxWidth = delimPos.width * 0.95;  // Augmenté à 0.95 (95% de la délimitation)
+    const maxHeight = delimPos.height * 0.95; // Augmenté à 0.95
     const aspectRatio = naturalWidth / naturalHeight;
 
     let imageWidth = maxWidth;
@@ -338,7 +431,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     }
 
     console.log('📐 [ProductDesignEditor] Calcul taille image:', {
-      delimBounds,
+      delimPos,
       maxWidth,
       maxHeight,
       naturalWidth,
@@ -346,12 +439,12 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       aspectRatio,
       calculatedImageWidth: imageWidth,
       calculatedImageHeight: imageHeight,
-      pourcentageWidth: (imageWidth / delimBounds.width * 100).toFixed(1) + '%',
-      pourcentageHeight: (imageHeight / delimBounds.height * 100).toFixed(1) + '%'
+      pourcentageWidth: (imageWidth / delimPos.width * 100).toFixed(1) + '%',
+      pourcentageHeight: (imageHeight / delimPos.height * 100).toFixed(1) + '%'
     });
 
-    const centerX = (delimBounds.x + delimBounds.width / 2) / rect.width;
-    const centerY = (delimBounds.y + delimBounds.height / 2) / rect.height;
+    const centerX = (delimPos.left + delimPos.width / 2) / rect.width;
+    const centerY = (delimPos.top + delimPos.height / 2) / rect.height;
 
     // IMPORTANT: Normaliser les dimensions (diviser par scaleX/scaleY car elles seront re-multipliées au rendu)
     const normalizedWidth = imageWidth / scaleX;
@@ -381,13 +474,18 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
       // 💰 Ajouter les informations du design pour le calcul du prix
       designId,
       designPrice,
-      designName
+      designName,
+      // 📤 Ajouter les informations d'upload client
+      cloudinaryPublicId,
+      isClientUpload: !!cloudinaryPublicId // Flag automatique si publicId présent
     };
 
-    console.log('🎨 [ProductDesignEditor] Ajout image avec prix:', {
+    console.log('🎨 [ProductDesignEditor] Ajout image:', {
       designId,
       designPrice,
-      designName
+      designName,
+      isClientUpload: newImage.isClientUpload,
+      cloudinaryPublicId
     });
 
     setElements([...elements, newImage]);
@@ -437,15 +535,14 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const constrainToBounds = (element: DesignElement, newX: number, newY: number): { x: number; y: number } => {
     if (!canvasRef.current || !delimitation) return { x: newX, y: newY };
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = rect.width / delimitation.referenceWidth;
-    const scaleY = rect.height / delimitation.referenceHeight;
+    const delimPos = computeDelimitationPosition();
+    const { scaleX, scaleY, canvasRect: rect } = getScalingParams();
 
     // Limites de la délimitation en pixels
-    const boundsX = delimitation.x * scaleX;
-    const boundsY = delimitation.y * scaleY;
-    const boundsWidth = delimitation.width * scaleX;
-    const boundsHeight = delimitation.height * scaleY;
+    const boundsX = delimPos.left;
+    const boundsY = delimPos.top;
+    const boundsWidth = delimPos.width;
+    const boundsHeight = delimPos.height;
     const boundsRight = boundsX + boundsWidth;
     const boundsBottom = boundsY + boundsHeight;
 
@@ -578,9 +675,8 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const constrainCurveToBounds = (element: TextElement, newCurve: number): number => {
     if (!canvasRef.current || !delimitation) return newCurve;
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = rect.width / delimitation.referenceWidth;
-    const scaleY = rect.height / delimitation.referenceHeight;
+    const delimPos = computeDelimitationPosition();
+    const { scaleX, scaleY, canvasRect: rect } = getScalingParams();
 
     // Position du centre de l'élément en pixels
     const centerX = element.x * rect.width;
@@ -592,10 +688,10 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     const responsiveFontSize = element.fontSize * scaleX;
 
     // Limites de la délimitation
-    const boundsX = delimitation.x * scaleX;
-    const boundsY = delimitation.y * scaleY;
-    const boundsWidth = delimitation.width * scaleX;
-    const boundsHeight = delimitation.height * scaleY;
+    const boundsX = delimPos.left;
+    const boundsY = delimPos.top;
+    const boundsWidth = delimPos.width;
+    const boundsHeight = delimPos.height;
 
     // Rotation de l'élément en radians
     const rotationRad = (element.rotation * Math.PI) / 180;
@@ -687,19 +783,18 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const constrainResizeToBounds = (element: DesignElement, newWidth: number, newHeight: number): { width: number; height: number; isAtBoundary: boolean } => {
     if (!canvasRef.current || !delimitation) return { width: newWidth, height: newHeight, isAtBoundary: false };
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = rect.width / delimitation.referenceWidth;
-    const scaleY = rect.height / delimitation.referenceHeight;
+    const delimPos = computeDelimitationPosition();
+    const { scaleX, scaleY, canvasRect: rect } = getScalingParams();
 
     // Position du centre de l'élément en pixels écran
     const elementCenterPixelX = element.x * rect.width;
     const elementCenterPixelY = element.y * rect.height;
 
     // Limites de la délimitation en pixels écran
-    const boundsX = delimitation.x * scaleX;
-    const boundsY = delimitation.y * scaleY;
-    const boundsWidth = delimitation.width * scaleX;
-    const boundsHeight = delimitation.height * scaleY;
+    const boundsX = delimPos.left;
+    const boundsY = delimPos.top;
+    const boundsWidth = delimPos.width;
+    const boundsHeight = delimPos.height;
 
     // Nouvelles dimensions en pixels écran (responsive)
     const newWidthResponsive = newWidth * scaleX;
@@ -759,9 +854,8 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const checkRotatedElementBounds = (element: DesignElement): boolean => {
     if (!canvasRef.current || !delimitation) return false;
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = rect.width / delimitation.referenceWidth;
-    const scaleY = rect.height / delimitation.referenceHeight;
+    const delimPos = computeDelimitationPosition();
+    const { scaleX, scaleY, canvasRect: rect } = getScalingParams();
 
     // Position du centre de l'élément en pixels
     const centerX = element.x * rect.width;
@@ -792,9 +886,9 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     }));
 
     // Limites de la délimitation en pixels
-    const boundsX = delimitation.x * scaleX;
-    const boundsY = delimitation.y * scaleY;
-    const boundsWidth = delimitation.width * scaleX;
+    const boundsX = delimPos.left;
+    const boundsY = delimPos.top;
+    const boundsWidth = delimPos.width;
     const boundsHeight = delimitation.height * scaleY;
 
     // Vérifier si un des coins sort de la délimitation
@@ -1200,19 +1294,18 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
   const getMaxAvailableDimensions = (element: DesignElement) => {
     if (!canvasRef.current || !delimitation) return { width: 300, height: 200 };
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = rect.width / delimitation.referenceWidth;
-    const scaleY = rect.height / delimitation.referenceHeight;
+    const delimPos = computeDelimitationPosition();
+    const { scaleX, scaleY, canvasRect: rect } = getScalingParams();
 
     // Position du centre de l'élément
     const elementCenterPixelX = element.x * rect.width;
     const elementCenterPixelY = element.y * rect.height;
 
     // Limites de la délimitation en pixels
-    const boundsX = delimitation.x * scaleX;
-    const boundsY = delimitation.y * scaleY;
-    const boundsWidth = delimitation.width * scaleX;
-    const boundsHeight = delimitation.height * scaleY;
+    const boundsX = delimPos.left;
+    const boundsY = delimPos.top;
+    const boundsWidth = delimPos.width;
+    const boundsHeight = delimPos.height;
 
     // Calculer l'espace disponible depuis le centre
     const spaceLeft = elementCenterPixelX - boundsX;
@@ -1374,6 +1467,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
         >
           {/* Image du produit */}
           <img
+            ref={productImageRef}
             src={productImageUrl}
             alt="Produit"
             className="w-full h-full object-contain pointer-events-none"
@@ -1382,14 +1476,7 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
 
           {/* Masque de flou pour les zones hors délimitation - UNIQUEMENT en mode édition */}
           {isEditMode && delimitation && canvasRef.current && (() => {
-            const rect = canvasRef.current.getBoundingClientRect();
-            const scaleX = rect.width / delimitation.referenceWidth;
-            const scaleY = rect.height / delimitation.referenceHeight;
-
-            const delimX = delimitation.x * scaleX;
-            const delimY = delimitation.y * scaleY;
-            const delimWidth = delimitation.width * scaleX;
-            const delimHeight = delimitation.height * scaleY;
+            const delimPos = computeDelimitationPosition();
 
             return (
               <svg
@@ -1407,10 +1494,10 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                     <rect x="0" y="0" width="100%" height="100%" fill="white" />
                     {/* Zone de délimitation en noir = nette */}
                     <rect
-                      x={delimX}
-                      y={delimY}
-                      width={delimWidth}
-                      height={delimHeight}
+                      x={delimPos.left}
+                      y={delimPos.top}
+                      width={delimPos.width}
+                      height={delimPos.height}
                       fill="black"
                     />
                   </mask>
@@ -1430,44 +1517,51 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
           })()}
 
 
-          {/* Délimitation visible UNIQUEMENT en mode édition */}
-          {isEditMode && delimitation && canvasRef.current && (() => {
+          {/* Délimitation visible - DÉSACTIVÉE */}
+          {/* {delimitation && canvasRef.current && (() => {
             const rect = canvasRef.current.getBoundingClientRect();
-            const scaleX = rect.width / delimitation.referenceWidth;
-            const scaleY = rect.height / delimitation.referenceHeight;
+            const delimPos = computeDelimitationPosition();
 
-            const leftPercent = (delimitation.x * scaleX / rect.width) * 100;
-            const topPercent = (delimitation.y * scaleY / rect.height) * 100;
-            const widthPercent = (delimitation.width * scaleX / rect.width) * 100;
-            const heightPercent = (delimitation.height * scaleY / rect.height) * 100;
+            const leftPercent = (delimPos.left / rect.width) * 100;
+            const topPercent = (delimPos.top / rect.height) * 100;
+            const widthPercent = (delimPos.width / rect.width) * 100;
+            const heightPercent = (delimPos.height / rect.height) * 100;
 
             return (
               <div
-                className={`absolute border-2 border-dashed pointer-events-none transition-all duration-300 ${
-                  isAtBoundary ? 'border-red-500' : 'border-blue-400'
-                }`}
+                className={`absolute pointer-events-none transition-all duration-300 ${
+                  isEditMode
+                    ? `border-2 border-dashed ${isAtBoundary ? 'border-red-500' : 'border-blue-400'}`
+                    : 'border-2 border-gray-300/60'
+                } ${isEditMode ? 'rounded-lg' : 'rounded-md'}`}
                 style={{
                   left: `${leftPercent}%`,
                   top: `${topPercent}%`,
                   width: `${widthPercent}%`,
                   height: `${heightPercent}%`,
-                  backgroundColor: isAtBoundary ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.05)'
+                  backgroundColor: isEditMode
+                    ? (isAtBoundary ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.05)')
+                    : 'rgba(209, 213, 219, 0.1)',
+                  backdropFilter: isEditMode ? 'blur(2px)' : undefined,
+                  boxShadow: isEditMode
+                    ? (isAtBoundary ? '0 0 20px rgba(239, 68, 68, 0.2)' : '0 0 20px rgba(59, 130, 246, 0.2)')
+                    : '0 0 10px rgba(0, 0, 0, 0.05)'
                 }}
               />
             );
-          })()}
+          })()} */}
 
           {/* Éléments de design */}
           {elements.map(element => {
             if (!canvasRef.current) return null;
-            const rect = canvasRef.current.getBoundingClientRect();
+            const { scaleX, scaleY, canvasRect: rect } = getScalingParams();
 
             const pixelX = element.x * rect.width;
             const pixelY = element.y * rect.height;
 
             // Calculer les dimensions responsive
-            const responsiveWidth = element.width * (rect.width / delimitation?.referenceWidth || 1);
-            const responsiveHeight = element.height * (rect.height / delimitation?.referenceHeight || 1);
+            const responsiveWidth = element.width * scaleX;
+            const responsiveHeight = element.height * scaleY;
 
             // Logs pour déboguer le positionnement
             if (element.id === selectedElementId || !selectedElementId) {
@@ -1480,15 +1574,15 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
                 responsiveSize: { w: responsiveWidth.toFixed(0), h: responsiveHeight.toFixed(0) },
                 canvasSize: { w: rect.width.toFixed(0), h: rect.height.toFixed(0) },
                 scaleFactors: {
-                  x: (rect.width / delimitation?.referenceWidth || 1).toFixed(2),
-                  y: (rect.height / delimitation?.referenceHeight || 1).toFixed(2)
+                  x: scaleX.toFixed(2),
+                  y: scaleY.toFixed(2)
                 }
               });
             }
 
             // Pour le texte, ajuster aussi la taille de police
             const responsiveFontSize = element.type === 'text'
-              ? element.fontSize * (rect.width / delimitation?.referenceWidth || 1)
+              ? element.fontSize * scaleX
               : undefined;
 
             const isSelected = element.id === selectedElementId;
@@ -1758,57 +1852,100 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
             if (!file) return;
 
             try {
-              // Afficher un toast de chargement
-              toast({
-                title: 'Ajout de l\'image...',
-                description: 'Traitement en cours',
-                duration: 1000
-              });
-
-              // Créer une URL pour l'image
-              const imageUrl = URL.createObjectURL(file);
-
-              // Charger l'image
-              const img = new Image();
-              img.onload = () => {
-                // Ajouter l'image sans compression
-                addImage(
-                  imageUrl,
-                  img.naturalWidth,
-                  img.naturalHeight,
-                  undefined, // Pas de designId pour les uploads
-                  undefined, // Pas de designPrice
-                  file.name  // Nom du fichier original comme designName
-                );
-
-                // Afficher un toast de succès
+              // Vérifier la taille du fichier (limite: 10MB)
+              const maxSize = 10 * 1024 * 1024; // 10MB en bytes
+              if (file.size > maxSize) {
                 toast({
-                  title: '✅ Image ajoutée',
-                  description: `${file.name} a été ajouté avec succès`,
-                  duration: 3000
-                });
-              };
-              img.onerror = () => {
-                toast({
-                  title: 'Erreur',
-                  description: 'Impossible de charger l\'image',
+                  title: 'Fichier trop volumineux',
+                  description: 'La taille maximale est de 10 MB',
                   variant: 'destructive'
                 });
-                URL.revokeObjectURL(imageUrl); // Nettoyer l'URL en cas d'erreur
-              };
-              img.src = imageUrl;
+                e.target.value = '';
+                return;
+              }
 
-            } catch (error) {
-              console.error('Erreur lors du traitement de l\'image:', error);
+              // Afficher un toast de chargement
               toast({
-                title: 'Erreur de traitement',
-                description: 'Impossible de traiter cette image',
-                variant: 'destructive'
+                title: '📤 Upload en cours...',
+                description: 'Envoi de votre image vers le serveur',
+                duration: 2000
               });
-            }
 
-            // Réinitialiser l'input pour permettre de sélectionner le même fichier à nouveau
-            e.target.value = '';
+              console.log('📤 [ProductDesignEditor] Upload image client:', {
+                fileName: file.name,
+                fileSize: (file.size / 1024).toFixed(2) + ' KB',
+                fileType: file.type
+              });
+
+              // 🆕 Uploader l'image vers le backend via customizationService
+              const customizationService = (await import('../services/customizationService')).default;
+              const uploadResult = await customizationService.uploadImage(file);
+
+              console.log('✅ [ProductDesignEditor] Image uploadée avec succès:', {
+                url: uploadResult.url,
+                publicId: uploadResult.publicId,
+                dimensions: { width: uploadResult.width, height: uploadResult.height }
+              });
+
+              // Ajouter l'image avec l'URL permanente du backend
+              addImage(
+                uploadResult.url,              // URL Cloudinary permanente
+                uploadResult.width,            // Largeur réelle
+                uploadResult.height,           // Hauteur réelle
+                undefined,                     // Pas de designId pour les uploads client
+                undefined,                     // Pas de designPrice pour les uploads client
+                file.name,                     // Nom du fichier original
+                uploadResult.publicId          // 🆕 Stocker le publicId pour pouvoir supprimer si nécessaire
+              );
+
+              // Afficher un toast de succès
+              toast({
+                title: '✅ Image ajoutée',
+                description: `${file.name} a été uploadée et ajoutée au design`,
+                duration: 3000
+              });
+
+            } catch (error: any) {
+              console.error('❌ [ProductDesignEditor] Erreur upload image:', error);
+
+              // Extraire le message d'erreur avec plus de détails
+              let errorMessage = 'Impossible d\'uploader cette image';
+              let errorTitle = 'Erreur d\'upload';
+
+              if (error.response?.data) {
+                const data = error.response.data;
+                errorMessage = data.message || data.error || errorMessage;
+
+                // Messages personnalisés selon le type d'erreur
+                if (errorMessage.includes('File size') || errorMessage.includes('trop volumineux')) {
+                  errorTitle = 'Fichier trop volumineux';
+                  errorMessage = 'La taille maximale est de 10 MB. Compressez votre image et réessayez.';
+                } else if (errorMessage.includes('Invalid file type') || errorMessage.includes('Type de fichier')) {
+                  errorTitle = 'Format non supporté';
+                  errorMessage = 'Formats acceptés: JPEG, PNG, GIF, WebP';
+                } else if (errorMessage.includes('No file')) {
+                  errorTitle = 'Aucun fichier';
+                  errorMessage = 'Veuillez sélectionner une image';
+                }
+              } else if (error.message) {
+                errorMessage = error.message;
+              }
+
+              // Afficher le status code pour le debug
+              if (error.response?.status) {
+                console.error('Status:', error.response.status, error.response.statusText);
+              }
+
+              toast({
+                title: errorTitle,
+                description: errorMessage,
+                variant: 'destructive',
+                duration: 5000
+              });
+            } finally {
+              // Réinitialiser l'input pour permettre de sélectionner le même fichier à nouveau
+              e.target.value = '';
+            }
           }}
         />
       </div>

@@ -23,7 +23,7 @@ html {
 
 /* Glassmorphism effects */
 .glass-effect {
-  @apply backdrop-blur-xl bg-white/80 dark:bg-gray-900/80;
+  @apply backdrop-blur-xl bg-white/80;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
@@ -38,11 +38,11 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-200 dark:bg-gray-700 rounded-full;
+  @apply bg-gray-200 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-300 dark:bg-gray-600;
+  @apply bg-gray-300;
 }
 
 /* Input autofill styles */
@@ -56,10 +56,10 @@ input:-webkit-autofill:focus {
 
 /* Modern selection style */
 ::selection {
-  @apply bg-indigo-500/20 text-indigo-900 dark:text-indigo-100;
+  @apply bg-indigo-500/20 text-indigo-900;
 }
 
-/* Smooth transitions for dark mode */
+/* Smooth transitions */
 * {
   transition-property: background-color, border-color, color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);

@@ -58,11 +58,13 @@ export interface VendorProduct {
     name: string;
     description: string;
     price: number;
+    genre?: string;
     colorVariations: Array<{
       id: number;
       name: string;
       colorCode: string;
       productId: number;
+      finalUrlImage?: string; // ✅ Image finale avec design appliqué pour cette couleur
       images: Array<{
         id: number;
         url: string;
@@ -118,13 +120,32 @@ export interface VendorProduct {
   selectedSizes: Array<{
     id: number;
     sizeName: string;
+    isActive?: boolean;
   }>;
   selectedColors: Array<{
     id: number;
     name: string;
     colorCode: string;
+    isActive?: boolean;
   }>;
   designId: number | null; // ✅ Changé à "number | null" pour compatibilité avec SimpleProductPreview
+  // 🆕 Prix par taille
+  sizePricing?: Array<{
+    size: string;
+    costPrice: number;
+    suggestedPrice: number;
+    salePrice: number;
+  }>;
+  sizesWithPrices?: Array<{
+    id: number;
+    sizeName: string;
+    costPrice: number;
+    suggestedPrice: number;
+    salePrice: number;
+  }>;
+  useGlobalPricing?: boolean;
+  globalCostPrice?: number;
+  globalSuggestedPrice?: number;
   // ✅ Images finales avec design appliqué (mockup + design inclus)
   finalImages?: Array<{
     id: number;
@@ -149,7 +170,7 @@ export interface VendorProductsResponse {
   };
 }
 
-export type ProductGenre = 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE';
+export type ProductGenre = 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU';
 
 export interface SearchParams {
   search?: string;
@@ -261,6 +282,54 @@ class VendorProductsService {
       offset,
       allProducts: true
     });
+  }
+
+  /**
+   * Récupérer les produits avec le même design
+   * GET /public/vendor-products/:id/same-design
+   */
+  async getProductsWithSameDesign(productId: number): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      designId: number;
+      designName: string;
+      products: VendorProduct[];
+      total: number;
+    };
+  }> {
+    try {
+      const url = `${API_BASE}/public/vendor-products/${productId}/same-design`;
+      console.log('🔍 [VendorProducts] Récupération produits même design:', url);
+
+      const response = await axios.get(url, {
+        timeout: 10000,
+        headers: {
+          'accept': 'application/json'
+        }
+      });
+
+      console.log('✅ [VendorProducts] Produits même design récupérés:', {
+        designId: response.data.data?.designId,
+        designName: response.data.data?.designName,
+        total: response.data.data?.total || 0
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('❌ [VendorProducts] Erreur récupération produits même design:', error);
+
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Erreur lors de la récupération',
+        data: {
+          designId: 0,
+          designName: '',
+          products: [],
+          total: 0
+        }
+      };
+    }
   }
 
   /**

@@ -180,7 +180,7 @@ export const getElementWebStyle = (
     transformOrigin: 'center center',
     width: `${transform.width}px`,
     height: `${transform.height}px`,
-    overflow: 'hidden',
+    overflow: element.type === 'text' ? 'visible' : 'hidden', // ✅ Permet au texte de dépasser si nécessaire
     position: 'relative',
   };
 
@@ -197,21 +197,20 @@ export const getTextWebStyle = (
 ): React.CSSProperties => {
   const transform = getElementCanvasTransform(element, containerDimensions, delimitation);
 
+  // ✅ Style identique à ProductDesignEditor (ligne 1670-1683)
   return {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: element.textAlign || 'center',
-    fontSize: `${transform.fontSize}px`,
     fontFamily: element.fontFamily || 'Arial',
+    fontSize: `${transform.fontSize}px`,
     color: element.color || '#000000',
     fontWeight: element.fontWeight || 'normal',
     fontStyle: element.fontStyle || 'normal',
     textDecoration: element.textDecoration || 'none',
     textAlign: element.textAlign || 'center',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    lineHeight: 1,
+    lineHeight: '1.2',
+    whiteSpace: 'normal', // ✅ Identique à l'éditeur (gestion des \n avec <br />)
+    overflow: 'visible', // ✅ Permet au texte de dépasser
+    wordWrap: 'break-word', // ✅ Identique à l'éditeur
+    userSelect: 'none',
+    pointerEvents: 'none',
   };
 };

@@ -67,7 +67,7 @@ interface CartContextType {
     customizationIds?: Record<string, number>; // 🆕 Plusieurs IDs de personnalisation
     designElements?: any[]; // @deprecated
     designElementsByView?: Record<string, any[]>; // 🆕 Organisé par vue
-  }) => void;
+  }, options?: { openCartAfterAdd?: boolean }) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   openCart: () => void;
@@ -110,6 +110,53 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // 🆕 Fonction pour nettoyer les éléments avant sauvegarde localStorage
+  const cleanItemsForStorage = (items: CartItem[]): CartItem[] => {
+    return items.map(item => {
+      // Nettoyer designElementsByView pour supprimer les Data URLs
+      let cleanedDesignElementsByView = item.designElementsByView;
+
+      if (cleanedDesignElementsByView) {
+        const cleaned: Record<string, any[]> = {};
+        Object.entries(cleanedDesignElementsByView).forEach(([viewKey, elements]) => {
+          cleaned[viewKey] = elements.map(element => {
+            // Si c'est une image avec une Data URL, la supprimer (trop volumineuse)
+            if (element.type === 'image' && element.imageUrl?.startsWith('data:')) {
+              return {
+                ...element,
+                imageUrl: undefined, // Supprimer la Data URL
+                _hasDataUrl: true, // Marquer qu'elle avait une Data URL
+              };
+            }
+            return element;
+          });
+        });
+        cleanedDesignElementsByView = cleaned;
+      }
+
+      // Nettoyer designElements (déprécié mais encore utilisé)
+      let cleanedDesignElements = item.designElements;
+      if (cleanedDesignElements) {
+        cleanedDesignElements = cleanedDesignElements.map(element => {
+          if (element.type === 'image' && element.imageUrl?.startsWith('data:')) {
+            return {
+              ...element,
+              imageUrl: undefined,
+              _hasDataUrl: true,
+            };
+          }
+          return element;
+        });
+      }
+
+      return {
+        ...item,
+        designElementsByView: cleanedDesignElementsByView,
+        designElements: cleanedDesignElements,
+      };
+    });
+  };
+
   // Sauvegarder le panier dans le localStorage à chaque modification
   useEffect(() => {
     if (items.length > 0) {
@@ -118,7 +165,22 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         itemsWithCustomization: items.filter(i => i.customizationId).length,
         itemsWithElements: items.filter(i => i.designElements && i.designElements.length > 0).length
       });
-      localStorage.setItem('cart', JSON.stringify(items));
+
+      // 🆕 Nettoyer les items avant sauvegarde
+      const cleanedItems = cleanItemsForStorage(items);
+
+      try {
+        localStorage.setItem('cart', JSON.stringify(cleanedItems));
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+          console.error('❌ [CartContext] Quota localStorage dépassé, nettoyage du panier...');
+          // En dernier recours, vider le panier
+          localStorage.removeItem('cart');
+          console.warn('⚠️ [CartContext] Panier vidé du localStorage pour libérer de l\'espace');
+        } else {
+          console.error('❌ [CartContext] Erreur sauvegarde panier:', error);
+        }
+      }
     } else {
       localStorage.removeItem('cart');
     }
@@ -179,7 +241,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     // ✅ Support stickers
     productType?: 'STICKER' | 'PRODUCT';
     stickerId?: number;
-  }) => {
+  }, options?: { openCartAfterAdd?: boolean }) => {
     console.log('🛒 [CartContext] Ajout au panier:', product);
     // Utiliser la vraie taille si disponible, sinon la taille de base
     const sizeValue = product.selectedSize?.sizeName || product.sizeName || product.size;
@@ -318,9 +380,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       }
     });
 
-    // Ouvrir le panier après ajout
-    console.log('🛒 [CartContext] Ouverture du panier');
-    setIsOpen(true);
+    // Ouvrir le panier après ajout (seulement si demandé, par défaut true)
+    const shouldOpenCart = options?.openCartAfterAdd !== false;
+    if (shouldOpenCart) {
+      console.log('🛒 [CartContext] Ouverture du panier');
+      setIsOpen(true);
+    } else {
+      console.log('🛒 [CartContext] Produit ajouté sans ouvrir le panier');
+    }
   };
 
   const removeFromCart = (id: string) => {

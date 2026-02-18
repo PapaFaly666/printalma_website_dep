@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Backend - Autocollant</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #4CAF50; }
+        h2 { color: #2196F3; margin-top: 30px; }
+        .section {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196F3; }
+        pre {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+        input, select, textarea {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        label { display: block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Diagnostic Backend - Création Produit Autocollant</h1>
+
+        <div class="section">
+            <h2>1. Configuration</h2>
+            <label>
+                URL Backend:
+                <input type="text" id="backendUrl" value="https://printalma-back-dep.onrender.com/products">
+            </label>
+            <label>
+                Image de test:
+                <input type="file" id="testImage" accept="image/*">
+            </label>
+        </div>
+
+        <div class="section">
+            <h2>2. Tests</h2>
+            <button onclick="testBackendHealth()">🏥 Test Santé Backend</button>
+            <button onclick="testCreateAutocollant()">🎨 Test Création Autocollant</button>
+            <button onclick="testMinimalPayload()">📦 Test Payload Minimal</button>
+            <button onclick="testWithRealImage()">🖼️ Test avec Image Réelle</button>
+            <button onclick="clearLogs()">🗑️ Effacer Logs</button>
+        </div>
+
+        <div class="section">
+            <h2>3. Logs</h2>
+            <div id="logs"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. Dernière Réponse</h2>
+            <pre id="lastResponse">Pas de réponse</pre>
+        </div>
+    </div>
+
+    <script>
+        const logs = document.getElementById('logs');
+        const lastResponse = document.getElementById('lastResponse');
+        const API_URL = document.getElementById('backendUrl').value;
+
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(entry);
+            console.log(message);
+        }
+
+        function clearLogs() {
+            logs.innerHTML = '';
+            lastResponse.textContent = 'Pas de réponse';
+        }
+
+        async function testBackendHealth() {
+            log('🏥 Test de santé du backend...', 'info');
+            try {
+                const response = await fetch('https://printalma-back-dep.onrender.com/products/1');
+                const data = await response.json();
+
+                if (response.ok) {
+                    log(`✅ Backend accessible - Produit test reçu: ${data.name || 'N/A'}`, 'success');
+                } else {
+                    log(`⚠️ Backend répond mais avec status: ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                log(`❌ Erreur connexion backend: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreateAutocollant() {
+            log('🎨 Test création AUTOCOLLANT...', 'info');
+
+            // Payload complet
+            const payload = {
+                name: "Test Autocollant Diagnostic",
+                description: "Test depuis outil de diagnostic",
+                price: 500,
+                suggestedPrice: 1200,
+                stock: 0,
+                status: "PUBLISHED",
+                categoryId: 2,
+                subCategoryId: 3,
+                categories: JSON.stringify(["Accessoires", "Sticker"]),
+                genre: "AUTOCOLLANT",
+                sizes: JSON.stringify(["5cm*5cm", "10cm*10cm"]),
+                variations: JSON.stringify([{
+                    value: "Blanc",
+                    colorCode: "#FFFFFF",
+                    price: 500,
+                    stock: 0,
+                    images: [{
+                        fileId: "img_test_0",
+                        view: "Front",
+                        delimitations: [{
+                            x: 100,
+                            y: 100,
+                            width: 800,
+                            height: 800,
+                            rotation: 0,
+                            name: "Zone test"
+                        }]
+                    }]
+                }]),
+                colorVariations: JSON.stringify([{
+                    name: "Blanc",
+                    colorCode: "#FFFFFF",
+                    price: 500,
+                    stock: 0,
+                    images: [{
+                        fileId: "img_test_0",
+                        view: "Front",
+                        delimitations: [{
+                            x: 100,
+                            y: 100,
+                            width: 800,
+                            height: 800,
+                            rotation: 0,
+                            name: "Zone test"
+                        }]
+                    }]
+                }])
+            };
+
+            await sendRequest(payload);
+        }
+
+        async function testMinimalPayload() {
+            log('📦 Test avec payload MINIMAL...', 'info');
+
+            const payload = {
+                name: "Test Minimal",
+                description: "Test minimal",
+                price: 500,
+                categoryId: 2,
+                categories: JSON.stringify(["Test"]),
+                genre: "AUTOCOLLANT",
+                sizes: JSON.stringify(["5cm*5cm"]),
+                variations: JSON.stringify([]),
+                colorVariations: JSON.stringify([])
+            };
+
+            await sendRequest(payload);
+        }
+
+        async function testWithRealImage() {
+            const imageInput = document.getElementById('testImage');
+            if (!imageInput.files || imageInput.files.length === 0) {
+                log('⚠️ Veuillez sélectionner une image d\'abord', 'warning');
+                return;
+            }
+
+            log('🖼️ Test avec image réelle...', 'info');
+            log(`Fichier: ${imageInput.files[0].name} (${imageInput.files[0].size} bytes)`, 'info');
+
+            const formData = new FormData();
+
+            const payload = {
+                name: "Test avec Image",
+                description: "Test avec image uploadée",
+                price: 500,
+                stock: 0,
+                status: "PUBLISHED",
+                categoryId: 2,
+                categories: JSON.stringify(["Test"]),
+                genre: "AUTOCOLLANT",
+                sizes: JSON.stringify(["5cm*5cm"]),
+                variations: JSON.stringify([{
+                    value: "Test",
+                    colorCode: "#FFFFFF",
+                    price: 500,
+                    stock: 0,
+                    images: [{
+                        fileId: "img_test_real_0",
+                        view: "Front",
+                        delimitations: []
+                    }]
+                }]),
+                colorVariations: JSON.stringify([{
+                    name: "Test",
+                    colorCode: "#FFFFFF",
+                    price: 500,
+                    stock: 0,
+                    images: [{
+                        fileId: "img_test_real_0",
+                        view: "Front",
+                        delimitations: []
+                    }]
+                }])
+            };
+
+            formData.append('productData', JSON.stringify(payload));
+            formData.append('file_img_test_real_0', imageInput.files[0]);
+
+            log('FormData créé - envoi en cours...', 'info');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+                displayResponse(response, data);
+
+                if (response.ok) {
+                    log('✅ Produit créé avec succès!', 'success');
+                    log(`ID: ${data.data?.id || 'N/A'}`, 'success');
+                } else {
+                    log(`❌ Erreur ${response.status}: ${data.message || response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendRequest(payload) {
+            log('Préparation du payload...', 'info');
+
+            // Envoyer comme application/json (pas de FormData)
+            log('Envoi en tant que application/json...', 'info');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                displayResponse(response, data);
+
+                if (response.ok) {
+                    log('✅ Succès!', 'success');
+                } else {
+                    log(`❌ Erreur ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function displayResponse(response, data) {
+            lastResponse.textContent = `Status: ${response.status} ${response.statusText}\n\n` +
+                `Headers:\n${formatHeaders(response.headers)}\n\n` +
+                `Body:\n${JSON.stringify(data, null, 2)}`;
+        }
+
+        function formatHeaders(headers) {
+            let result = '';
+            for (const [key, value] of headers.entries()) {
+                result += `  ${key}: ${value}\n`;
+            }
+            return result || 'Pas de headers';
+        }
+
+        // Test automatique au chargement
+        window.onload = () => {
+            log('🚀 Outil de diagnostic prêt', 'success');
+            log('URL Backend: ' + API_URL, 'info');
+        };
+    </script>
+</body>
+</html>

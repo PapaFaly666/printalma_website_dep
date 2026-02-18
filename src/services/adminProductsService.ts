@@ -3,6 +3,19 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3004';
 
+export interface AdminProductSizePrice {
+  size: string;
+  costPrice: number;
+  suggestedPrice: number;
+  salePrice: number;
+}
+
+export interface AdminProductSize {
+  id: number;
+  productId: number;
+  sizeName: string;
+}
+
 export interface AdminProduct {
   id: number;
   name: string;
@@ -35,6 +48,18 @@ export interface AdminProduct {
     }>;
   }>;
   sizes?: string[];
+  // Size pricing data
+  sizePrices?: AdminProductSizePrice[];
+  sizesWithPrices?: Array<{
+    id: number;
+    sizeName: string;
+    costPrice: number;
+    suggestedPrice: number;
+    salePrice: number;
+  }>;
+  useGlobalPricing?: boolean;
+  globalCostPrice?: number;
+  globalSuggestedPrice?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -9,7 +9,7 @@ import { normalizeSizes, validateSizes } from '../utils/productNormalization';
 const initialFormData: ProductFormData = {
   name: '',
   price: 0,
-  suggestedPrice: undefined,
+  suggestedPrice: 0, // 🆕 Valeur par défaut obligatoire pour le backend
   stock: 0,
   status: 'published',
   description: '',
@@ -20,7 +20,11 @@ const initialFormData: ProductFormData = {
   sizes: [], // Added missing sizes field
   colors: [], // Couleurs disponibles (ex: Noir, Blanc)
   stockBySizeColor: {}, // Stock par taille et couleur
-  genre: 'UNISEXE' // ← NOUVEAU: Ajout du champ genre
+  genre: 'UNISEXE', // ← NOUVEAU: Ajout du champ genre
+  sizePricing: [], // Prix par taille (suggéré, revient)
+  useGlobalPricing: false, // Utiliser les mêmes prix pour toutes les tailles
+  globalCostPrice: 0, // Prix de revient global
+  globalSuggestedPrice: 0 // Prix de vente suggéré global
 };
 
 export const useProductForm = () => {
@@ -45,6 +49,12 @@ export const useProductForm = () => {
         ...prev,
         [field]: value
       };
+
+      // 🔧 Si le genre devient AUTOCOLLANT ou TABLEAU, désactiver automatiquement la gestion de stock
+      if (field === 'genre' && (value === 'AUTOCOLLANT' || value === 'TABLEAU')) {
+        updated.requiresStock = false;
+        console.log(`📦 [AUTO] Genre ${value} détecté → requiresStock défini à false (pas de gestion de stock)`);
+      }
 
       // Debug pour categories
       if (field === 'categories') {
@@ -148,9 +158,7 @@ export const useProductForm = () => {
       newErrors.description = 'La description est requise';
     }
 
-    if (formData.price <= 0) {
-      newErrors.price = 'Le prix doit être supérieur à 0';
-    }
+    // Prix retiré - validation déplacée vers sizePricing (géré dans CategoriesAndSizesPanel)
 
   
     // ✅ Accepter soit categoryId (ancien système) soit categories (nouveau système)

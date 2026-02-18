@@ -44,6 +44,7 @@ import { useCart } from '../contexts/CartContext';
 import Footer from '../components/Footer';
 import AIImageGenerator from '../components/ai-image-generator/AIImageGenerator';
 import SynchronizedStickerPreview from '../components/SynchronizedStickerPreview';
+import ImageUploadModal from '../components/ImageUploadModal';
 
 // Fonction debounce pour l'auto-sauvegarde
 function debounce<T extends (...args: any[]) => any>(
@@ -95,6 +96,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
   const [designSearch, setDesignSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false);
 
   // 📝 État pour l'élément sélectionné (pour l'édition de texte)
   const [selectedElement, setSelectedElement] = useState<any>(null);
@@ -331,11 +333,40 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     return totalDesignsPrice;
   };
 
-  // Calculer le prix total (produit + designs)
-  const getTotalPrice = () => {
-    const basePrice = product?.suggestedPrice || product?.price || 0;
+  // Obtenir le prix du produit pour une taille spécifique
+  const getPriceForSize = (sizeName: string): number => {
+    if (!product) return 0;
+
+    // Vérifier sizePricing d'abord
+    if (product.sizePrices && product.sizePrices.length > 0) {
+      const sizePrice = product.sizePrices.find(sp => sp.size === sizeName);
+      if (sizePrice) {
+        return sizePrice.salePrice || sizePrice.suggestedPrice;
+      }
+    }
+
+    // Vérifier sizesWithPrices
+    if (product.sizesWithPrices && product.sizesWithPrices.length > 0) {
+      const sizePrice = product.sizesWithPrices.find(sp => sp.sizeName === sizeName);
+      if (sizePrice) {
+        return sizePrice.salePrice || sizePrice.suggestedPrice;
+      }
+    }
+
+    // Fallback au prix de base
+    return product.suggestedPrice || product.price || 0;
+  };
+
+  // Calculer le prix total (produit + designs) pour une taille spécifique
+  const getTotalPriceForSize = (sizeName?: string) => {
+    const basePrice = sizeName ? getPriceForSize(sizeName) : (product?.suggestedPrice || product?.price || 0);
     const designsPrice = getTotalDesignsPrice();
     return basePrice + designsPrice;
+  };
+
+  // Calculer le prix total (produit + designs) - utilise le prix de base par défaut
+  const getTotalPrice = () => {
+    return getTotalPriceForSize();
   };
 
   // Réinitialiser les flags de restauration quand l'ID du produit change
@@ -545,6 +576,21 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
       }
     }
 
+    // 🔧 Nettoyer les Data URLs avant envoi en BDD (trop volumineuses)
+    const cleanedElements = currentElements.map(element => {
+      if (element.type === 'image' && element.imageUrl?.startsWith('data:')) {
+        console.warn('⚠️ [Customization] Data URL détectée, conversion nécessaire pour:', element.id);
+        // Pour les images uploadées, on garde un placeholder
+        // Le backend devra gérer l'upload séparé de l'image
+        return {
+          ...element,
+          imageUrl: element.imageUrl.substring(0, 100) + '...', // Tronquer pour éviter l'erreur
+          _isDataUrl: true, // Marquer pour traitement spécial
+        };
+      }
+      return element;
+    });
+
     try {
       setIsSyncing(true);
       setSyncError(null);
@@ -553,25 +599,26 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
         productId: product.id,
         colorVariationId: selectedColorVariation.id,
         viewId: selectedView.id,
-        designElements: currentElements,
+        designElements: cleanedElements,
         sessionId: customizationService.getOrCreateSessionId(),
       };
 
       // 🔍 DEBUG: Vérifier la structure avant envoi
       console.log('☁️ [Customization] Auto-sauvegarde BDD:', {
         viewKey,
-        elementsCount: currentElements.length,
-        isArray: Array.isArray(currentElements),
-        firstIsArray: currentElements.length > 0 ? Array.isArray(currentElements[0]) : false,
-        elements: currentElements.map(el => ({
+        elementsCount: cleanedElements.length,
+        isArray: Array.isArray(cleanedElements),
+        firstIsArray: cleanedElements.length > 0 ? Array.isArray(cleanedElements[0]) : false,
+        elements: cleanedElements.map(el => ({
           id: el?.id,
           type: el?.type,
-          isArray: Array.isArray(el)
+          isArray: Array.isArray(el),
+          hasDataUrl: el?._isDataUrl || false
         }))
       });
 
       // 🚨 Bloquer si double wrapping détecté
-      if (currentElements.length > 0 && Array.isArray(currentElements[0])) {
+      if (cleanedElements.length > 0 && Array.isArray(cleanedElements[0])) {
         console.error('🚨 BUG BLOQUÉ: Tentative d\'envoi de données corrompues (array imbriqué)');
         setIsSyncing(false);
         return;
@@ -638,6 +685,27 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     }));
   }, [selectedColorVariation, selectedView]);
 
+  // 🔧 Fonction pour nettoyer les Data URLs des éléments avant sauvegarde localStorage
+  const cleanElementsForStorage = (elementsByView: Record<string, any[]>) => {
+    const cleaned: Record<string, any[]> = {};
+
+    Object.entries(elementsByView).forEach(([viewKey, elements]) => {
+      cleaned[viewKey] = elements.map(element => {
+        // Si c'est une image avec une Data URL, ne pas la stocker (trop volumineuse)
+        if (element.type === 'image' && element.imageUrl?.startsWith('data:')) {
+          return {
+            ...element,
+            imageUrl: undefined, // Supprimer la Data URL
+            _hasDataUrl: true, // Marquer qu'il y avait une Data URL
+          };
+        }
+        return element;
+      });
+    });
+
+    return cleaned;
+  };
+
   // Sauvegarder automatiquement dans localStorage à chaque modification
   useEffect(() => {
     if (!id) return;
@@ -662,19 +730,42 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
       return;
     }
 
-    // Sauvegarder tous les éléments par vue
+    // 🔧 Nettoyer les Data URLs avant sauvegarde pour éviter QuotaExceededError
+    const cleanedElements = cleanElementsForStorage(designElementsByView);
+
+    // Sauvegarder tous les éléments par vue (sans les Data URLs)
     const storageKey = `design-data-product-${id}`;
     const dataToSave = {
-      elementsByView: designElementsByView,
+      elementsByView: cleanedElements,
       colorVariationId: selectedColorVariation?.id,
       viewId: selectedView?.id,
       timestamp: Date.now()
     };
 
-    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-
-    // Log pour debug (à supprimer en production)
-    console.log('💾 Auto-sauvegarde localStorage:', dataToSave);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+      console.log('💾 Auto-sauvegarde localStorage réussie (Data URLs exclues)');
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.error('❌ Quota localStorage dépassé, nettoyage et réessai...');
+        // Nettoyer les anciennes sauvegardes si quota dépassé
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('design-data-product-') && key !== storageKey) {
+            localStorage.removeItem(key);
+            console.log('🧹 Supprimé:', key);
+          }
+        });
+        // Réessayer
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+          console.log('✅ Sauvegarde réussie après nettoyage');
+        } catch (retryError) {
+          console.error('❌ Impossible de sauvegarder même après nettoyage:', retryError);
+        }
+      } else {
+        console.error('❌ Erreur sauvegarde localStorage:', error);
+      }
+    }
 
     // Déclencher aussi la sauvegarde en base de données (debounced)
     // La fonction utilise designElementsByViewRef pour avoir les données à jour
@@ -956,6 +1047,53 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     }
   };
 
+  // Gérer l'image uploadée par l'utilisateur
+  const handleImageUpload = async (file: File, imageUrl: string) => {
+    console.log('📤 [Customization] Image uploadée:', file.name);
+
+    try {
+      // 🆕 Upload immédiatement au serveur pour conservation
+      toast({
+        title: '⏳ Upload en cours...',
+        description: `Upload de ${file.name} vers le serveur`,
+        duration: 2000
+      });
+
+      const uploadResult = await customizationService.uploadImage(file);
+      console.log('✅ [Customization] Image uploadée au serveur:', uploadResult.url);
+
+      // Ajouter l'image uploadée à l'éditeur avec l'URL du serveur
+      if (editorRef.current) {
+        const uploadedDesign = {
+          id: `upload-${Date.now()}`,
+          name: file.name,
+          imageUrl: uploadResult.url, // ✅ Utiliser l'URL du serveur
+          price: 0, // Gratuit car uploadé par l'utilisateur
+          isUpload: true,
+          description: `Image uploadée: ${file.name}`,
+          cloudinaryPublicId: uploadResult.publicId // Pour suppression éventuelle
+        };
+
+        // Utiliser la méthode addVendorDesign pour ajouter l'image uploadée
+        editorRef.current.addVendorDesign(uploadedDesign);
+
+        toast({
+          title: '✅ Image ajoutée',
+          description: `${file.name} a été ajoutée au design`,
+          duration: 3000
+        });
+      }
+    } catch (error) {
+      console.error('❌ [Customization] Erreur upload image:', error);
+      toast({
+        title: '❌ Erreur',
+        description: 'Impossible d\'uploader l\'image. Veuillez réessayer.',
+        variant: 'destructive',
+        duration: 5000
+      });
+    }
+  };
+
   // Gérer le changement de produit avec conservation et adaptation des personnalisations
   const handleProductChange = (newProduct: AdminProduct) => {
     console.log('🔄 [ProductChange] Changement de produit:', {
@@ -1164,7 +1302,63 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
     setShowSizeModal(true);
   };
 
-  // Ajouter au panier avec les sélections
+  // 🆕 Fonction pour uploader une image Data URL vers le serveur
+  const uploadDataUrlImage = async (dataUrl: string, filename: string): Promise<string> => {
+    try {
+      console.log('📤 [Upload] Conversion Data URL vers serveur:', { filename });
+
+      // Convertir Data URL en Blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
+      // Créer un fichier à partir du Blob
+      const file = new File([blob], filename, { type: blob.type });
+
+      // Upload vers le serveur en utilisant le service
+      const uploadResult = await customizationService.uploadImage(file);
+
+      console.log('✅ [Upload] Image uploadée avec succès:', uploadResult.url);
+      return uploadResult.url;
+    } catch (error) {
+      console.error('❌ [Upload] Erreur upload image:', error);
+      // En cas d'erreur, on retourne la Data URL (fallback)
+      console.warn('⚠️ [Upload] Utilisation de la Data URL comme fallback');
+      return dataUrl;
+    }
+  };
+
+  // 🆕 Fonction pour traiter les éléments et uploader les images Data URL (fallback)
+  // Note: Normalement les images sont déjà uploadées dans handleImageUpload,
+  // mais cette fonction gère les cas où une Data URL persisterait
+  const processElementsForUpload = async (elements: any[]): Promise<any[]> => {
+    const processedElements = [];
+
+    for (const element of elements) {
+      if (element.type === 'image' && element.imageUrl?.startsWith('data:')) {
+        // Cet élément contient encore une Data URL (cas rare), on doit l'uploader
+        const filename = element.designName || `upload-${Date.now()}.png`;
+        console.warn('⚠️ [Upload] Data URL détectée (devrait être déjà uploadée):', filename);
+
+        try {
+          const serverUrl = await uploadDataUrlImage(element.imageUrl, filename);
+          processedElements.push({
+            ...element,
+            imageUrl: serverUrl,
+            _wasDataUrl: true // Marquer que c'était une Data URL
+          });
+        } catch (error) {
+          console.error('❌ [Upload] Échec upload, conservation Data URL:', error);
+          processedElements.push(element);
+        }
+      } else {
+        // Élément normal, pas de traitement
+        processedElements.push(element);
+      }
+    }
+
+    return processedElements;
+  };
+
   const handleAddToCart = async (selections: Array<{ size: string; sizeId?: number; quantity: number }>) => {
     if (!id || !product) return;
 
@@ -1221,11 +1415,14 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
           elementsCount: elements.length
         });
 
+        // 🆕 Traiter les éléments pour uploader les images Data URL
+        const processedElements = await processElementsForUpload(elements);
+
         const customizationData = {
           productId: product.id,
           colorVariationId: colorId,
           viewId: viewId,
-          designElements: elements,
+          designElements: processedElements, // Utiliser les éléments traités
           sizeSelections: selections,
           sessionId: customizationService.getOrCreateSessionId(),
         };
@@ -1234,8 +1431,8 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
           const result = await customizationService.saveCustomization(customizationData);
           customizationIds[viewKey] = result.id;
 
-          // 🆕 Stocker les éléments organisés par vue
-          designElementsByViewKey[viewKey] = elements;
+          // 🆕 Stocker les éléments traités organisés par vue
+          designElementsByViewKey[viewKey] = processedElements;
 
           console.log(`✅ [Customization] Vue ${viewKey} sauvegardée avec ID:`, result.id);
         } catch (error) {
@@ -1286,12 +1483,15 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
         // Créer un article pour chaque taille sélectionnée
         for (const sizeSelection of validSelections) {
+          // Utiliser le prix spécifique à cette taille (produit + designs)
+          const sizeTotalPrice = getTotalPriceForSize(sizeSelection.size);
+
           const cartItem = {
             id: `${product.id}-${selectedColorVariation?.name || 'default'}-${sizeSelection.size}`,
             productId: product.id,
             name: product.name,
-            price: getTotalPrice(),  // Utiliser le prix total (produit + designs)
-            suggestedPrice: getTotalPrice(),  // Utiliser le prix total (produit + designs)
+            price: sizeTotalPrice,  // Utiliser le prix total pour cette taille (produit + designs)
+            suggestedPrice: sizeTotalPrice,  // Utiliser le prix total pour cette taille (produit + designs)
             color: selectedColorVariation?.name || 'Défaut',
             colorCode: selectedColorVariation?.colorCode || '#000000',
             colorVariationId: selectedColorVariation?.id, // 🆕 ID de la couleur sélectionnée
@@ -1312,6 +1512,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
           console.log(`🛒 [Customization] Ajout article taille ${sizeSelection.size}:`, {
             size: sizeSelection.size,
             quantity: sizeSelection.quantity,
+            price: sizeTotalPrice,
             customizationIds: customizationIds,
             designElementsByView: Object.keys(designElementsByViewKey),
             totalDelimitations: allDelimitations.length
@@ -1551,7 +1752,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
             <button
               onClick={() => {
                 setActiveTab('upload');
-                editorRef.current?.triggerImageUpload();
+                setShowImageUploadModal(true);
               }}
               className={`flex flex-col items-center gap-0.5 px-2 sm:px-3 py-2 lg:py-2.5 rounded-lg transition-all ${
                 activeTab === 'upload'
@@ -2487,17 +2688,27 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
                     <div className="border-t pt-4 sm:pt-6 lg:pt-8 mb-4 sm:mb-6 lg:mb-8">
                       <div className="space-y-2 lg:space-y-3">
-                        {/* Prix du produit */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs sm:text-sm lg:text-base text-gray-600">Produit</span>
-                          <span className="text-base sm:text-lg lg:text-xl font-medium text-gray-900">
-                            {formatPrice(product.suggestedPrice || product.price)}
-                          </span>
+                        {/* Prix par taille */}
+                        <div className="mb-3">
+                          <span className="text-xs sm:text-sm lg:text-base font-medium text-gray-700 block mb-2">Prix par taille :</span>
+                          <div className="space-y-1.5">
+                            {(product.sizePrices || product.sizesWithPrices || []).map((sizePrice: any, idx: number) => {
+                              const sizeName = sizePrice.size || sizePrice.sizeName || `Taille ${idx + 1}`;
+                              const price = sizePrice.salePrice || sizePrice.suggestedPrice || sizePrice.price;
+                              const totalPriceWithDesigns = price + getTotalDesignsPrice();
+                              return (
+                                <div key={idx} className="flex items-center justify-between text-xs sm:text-sm">
+                                  <span className="text-gray-600">{sizeName}</span>
+                                  <span className="font-medium text-gray-900">{formatPrice(totalPriceWithDesigns)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
 
                         {/* Prix des designs (si applicable) */}
                         {getTotalDesignsPrice() > 0 && (
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between pt-2 border-t border-dashed">
                             <span className="text-xs sm:text-sm lg:text-base text-gray-600">
                               Design{getTotalDesignsPrice() > (product.suggestedPrice || product.price) ? 's' : ''}
                             </span>
@@ -2507,7 +2718,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Prix total */}
+                        {/* Prix total (avec prix de base) */}
                         <div className="flex items-center justify-between pt-2 lg:pt-3 border-t">
                           <span className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900">Total</span>
                           <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
@@ -2799,6 +3010,7 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
           productPrice={getTotalPrice()}  // Utiliser le prix total (produit + designs)
           productName={product.name}
           productSizes={product.sizes || []}
+          sizePricing={product.sizePrices}
           onAddToCart={handleAddToCart}
         />
 
@@ -3154,6 +3366,13 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
       {/* Footer - Outside main wrapper */}
       <Footer />
+
+      {/* Image Upload Modal */}
+      <ImageUploadModal
+        isOpen={showImageUploadModal}
+        onClose={() => setShowImageUploadModal(false)}
+        onImageSelect={handleImageUpload}
+      />
     </>
   );
 };

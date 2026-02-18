@@ -58,6 +58,15 @@ interface ReadyProduct {
   stock: number;
   status: 'DRAFT' | 'PUBLISHED';
   description: string;
+  // 🆕 Prix par taille
+  useGlobalPricing?: boolean;
+  globalCostPrice?: number;
+  globalSuggestedPrice?: number;
+  sizePrices?: Array<{
+    size: string;
+    costPrice: number;
+    suggestedPrice: number;
+  }>;
   createdAt: string;
   updatedAt: string;
   isValidated: boolean;
@@ -129,7 +138,12 @@ const EditReadyProductPage: React.FC = () => {
     variationId: null as number | null,
     categories: [] as string[], // ✅ AJOUTÉ: Champ obligatoire pour ProductFormData
     sizes: [] as string[],
-    colorVariations: [] as any[]
+    colorVariations: [] as any[],
+    // 🆕 Prix par taille
+    useGlobalPricing: false,
+    globalCostPrice: 0,
+    globalSuggestedPrice: 0,
+    sizePricing: [] as any[]
   });
 
   // Étapes du formulaire (sans délimitations)
@@ -195,7 +209,16 @@ const EditReadyProductPage: React.FC = () => {
               colorVariationId: img.colorVariationId,
               delimitations: []
             }))
-          }))
+          })),
+          // 🆕 Prix par taille
+          useGlobalPricing: product.useGlobalPricing || false,
+          globalCostPrice: product.globalCostPrice || 0,
+          globalSuggestedPrice: product.globalSuggestedPrice || 0,
+          sizePricing: product.sizePrices?.map((sp: any) => ({
+            size: sp.size,
+            costPrice: sp.costPrice,
+            suggestedPrice: sp.suggestedPrice
+          })) || []
         });
 
       } catch (error: any) {
@@ -220,7 +243,7 @@ const EditReadyProductPage: React.FC = () => {
 
     if (!formData.name.trim()) errors.push('Nom du produit requis');
     if (!formData.description.trim()) errors.push('Description requise');
-    if (formData.price <= 0) errors.push('Prix doit être supérieur à 0');
+    // Prix retiré - validation déplacée vers sizePricing (géré dans CategoriesAndSizesPanel)
     // ✅ NEW: Validate FK-based category
     if (!formData.categoryId) errors.push('Au moins une catégorie requise');
     if (formData.colorVariations.length === 0) errors.push('Au moins une variation de couleur requise');
@@ -376,7 +399,7 @@ const EditReadyProductPage: React.FC = () => {
       case 1:
         if (!formData.name.trim()) stepErrors.push('Nom du produit requis');
         if (!formData.description.trim()) stepErrors.push('Description requise');
-        if (formData.price <= 0) stepErrors.push('Prix doit être supérieur à 0');
+        // Prix retiré - validation déplacée vers sizePricing (géré dans CategoriesAndSizesPanel)
         break;
       
       case 2:
@@ -440,6 +463,11 @@ const EditReadyProductPage: React.FC = () => {
         variationId: formData.variationId,
         sizes: formData.sizes,
         isReadyProduct: true, // Toujours true pour les produits prêts
+        // 🆕 Prix par taille
+        useGlobalPricing: formData.useGlobalPricing || false,
+        globalCostPrice: formData.globalCostPrice || 0,
+        globalSuggestedPrice: formData.globalSuggestedPrice || 0,
+        sizePricing: formData.sizePricing || [],
         colorVariations: formData.colorVariations.map(variation => ({
           name: variation.name,
           colorCode: variation.colorCode,
@@ -540,7 +568,16 @@ const EditReadyProductPage: React.FC = () => {
             colorVariationId: img.colorVariationId,
             delimitations: []
           }))
-        }))
+        })),
+        // 🆕 Prix par taille
+        useGlobalPricing: originalProduct.useGlobalPricing || false,
+        globalCostPrice: originalProduct.globalCostPrice || 0,
+        globalSuggestedPrice: originalProduct.globalSuggestedPrice || 0,
+        sizePricing: originalProduct.sizePrices?.map((sp: any) => ({
+          size: sp.size,
+          costPrice: sp.costPrice,
+          suggestedPrice: sp.suggestedPrice
+        })) || []
       });
       setCurrentStep(1);
       setErrors({});
@@ -639,8 +676,13 @@ const EditReadyProductPage: React.FC = () => {
               <CategoriesAndSizesPanel
                 categories={formData.categories}
                 sizes={formData.sizes}
+                sizePricing={formData.sizePricing}
+                useGlobalPricing={formData.useGlobalPricing}
+                globalCostPrice={formData.globalCostPrice}
+                globalSuggestedPrice={formData.globalSuggestedPrice}
                 onCategoriesUpdate={(categories: string[]) => updateFormData('categories', categories)}
                 onSizesUpdate={(sizes: string[]) => updateFormData('sizes', sizes)}
+                onSizePricingUpdate={(pricing) => updateFormData('sizePricing', pricing)}
               />
             </CardContent>
           </Card>

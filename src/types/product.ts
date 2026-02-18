@@ -1,7 +1,9 @@
+import { SizePricing } from '../components/product-form/CategoriesAndSizesPanel';
+
 export interface ProductFormData {
   id?: number;
   name: string;
-  price: number;
+  price?: number; // Prix de revient global (déprécié, utiliser sizePricing)
   suggestedPrice?: number;
   stock?: number;
   status: 'published' | 'draft';
@@ -14,9 +16,19 @@ export interface ProductFormData {
   colorVariations: ColorVariation[];
   hasDesign?: boolean; // Calculé automatiquement par le backend
   designCount?: number; // Nombre total de designs sur le produit
-  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Genre cible du produit
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU'; // Genre cible du produit
   stockBySizeColor?: StockBySizeColor; // Stock par taille et couleur
+  requiresStock?: boolean; // Indique si le produit nécessite une gestion de stock
+  sizePricing?: SizePricing[]; // Prix par taille (suggéré, revient)
+  useGlobalPricing?: boolean; // Utiliser les mêmes prix pour toutes les tailles
+  globalCostPrice?: number; // Prix de revient global
+  globalSuggestedPrice?: number; // Prix de vente suggéré global
 }
+
+// 🔧 Fonction utilitaire pour vérifier si un produit n'a pas besoin de stock (AUTOCOLLANT ou TABLEAU)
+export const isProductWithoutStock = (genre?: string): boolean => {
+  return genre === 'AUTOCOLLANT' || genre === 'TABLEAU';
+};
 
 // Structure de stock par taille et couleur
 export interface StockBySizeColor {
@@ -30,6 +42,7 @@ export interface ColorVariation {
   name: string;
   colorCode: string;
   stock?: { [size: string]: number }; // Stock par taille pour cette couleur
+  price?: number; // Prix spécifique pour cette variation (utilisé pour les autocollants)
   images: ProductImage[];
 }
 

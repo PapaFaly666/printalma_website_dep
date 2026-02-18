@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useClientsWithCommissions } from '../hooks/useClientsWithCommissions';
 import { useClientStats } from '../hooks/useClientStats';
@@ -8,11 +9,11 @@ import { ClientsTable } from '../components/ClientsTable';
 import { Pagination } from '../components/Pagination';
 import { ClientDetailsSheet } from '../components/admin/ClientDetailsSheet';
 import { VendorTypesManagementModal } from '../components/admin/VendorTypesManagementModal';
-import Button from '../components/ui/Button';
+import { AdminButton } from '../components/admin/AdminButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
-import { UserPlus, Users, UserCheck, UserX, Activity, RefreshCw, Info, Shield, AlertTriangle, Clock, Tag } from 'lucide-react';
+import { UserPlus, Users, UserCheck, UserX, Activity, RefreshCw, Tag } from 'lucide-react';
 
 import { RequireAuth } from '../components/auth/RequireAuth';
 
@@ -145,177 +146,121 @@ const ClientManagement: React.FC = () => {
   if (showCreateForm) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="w-full px-8 py-6">
-          <div className="mb-6">
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateForm(false)}
-              className="mb-4 border-gray-300 hover:bg-gray-50"
-            >
-              ← Retour à la gestion des vendeurs
-            </Button>
-          </div>
-          <div className="max-w-2xl">
-            <CreateClientForm
-              onSuccess={handleCreateSuccess}
-              onCancel={handleCreateCancel}
-            />
-          </div>
-        </div>
+        <CreateClientForm
+          onSuccess={handleCreateSuccess}
+          onCancel={handleCreateCancel}
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="w-full">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="w-full px-8 py-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  Gestion des Vendeurs
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Créez et gérez les comptes vendeurs de la plateforme
-                </p>
-              </div>
-              
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={handleRefreshAll}
-                  disabled={loading || statsLoading}
-                  className="border-gray-300 hover:bg-gray-50"
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${(loading || statsLoading) ? 'animate-spin' : ''}`} />
-                  Actualiser
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() => setShowVendorTypeModal(true)}
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                >
-                  <Tag className="w-4 h-4 mr-2" />
-                  Créer Type Vendeur
-                </Button>
-
-                <Button
-                  onClick={() => setShowCreateForm(true)}
-                  className="bg-black hover:bg-gray-800 text-white"
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Créer un nouveau vendeur
-                </Button>
-              </div>
+    <>
+      <div className="w-full min-h-screen bg-gray-50">
+        {/* En-tête simplifié */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white border-b border-gray-200 px-4 sm:px-6 py-6"
+        >
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Gestion des vendeurs
+            </h1>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-gray-600">
+                <span className="font-semibold text-gray-900">{pagination ? pagination.total : '...'}</span> vendeur{(pagination && pagination.total > 1) ? 's' : ''}
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-green-600">{displayedClients.filter(c => c.status).length}</span> actif{(displayedClients.filter(c => c.status).length > 1) ? 's' : ''}
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-red-600">{displayedClients.filter(c => !c.status).length}</span> inactif{(displayedClients.filter(c => !c.status).length > 1) ? 's' : ''}
+              </span>
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <AdminButton
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshAll}
+              disabled={loading || statsLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${(loading || statsLoading) ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser</span>
+            </AdminButton>
+
+            <AdminButton
+              variant="outline"
+              size="sm"
+              onClick={() => setShowVendorTypeModal(true)}
+            >
+              <Tag className="h-4 w-4" />
+              <span className="hidden sm:inline">Type vendeur</span>
+            </AdminButton>
+
+            <AdminButton
+              variant="primary"
+              size="sm"
+              onClick={() => setShowCreateForm(true)}
+            >
+              <UserPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">Nouveau vendeur</span>
+            </AdminButton>
+          </div>
         </div>
+      </motion.div>
 
         {/* Contenu principal */}
-        <div className="w-full px-8 py-8">
+        <div className="px-4 sm:px-6 py-8">
           {/* Erreurs */}
           {(error || statsError) && (
-            <Alert className="mb-8 border-red-200 bg-red-50">
-              <AlertDescription className="text-red-800">
-                {error || statsError}
-                <Button
-                  variant="ghost"
-                  size="sm"
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-red-800">{error || statsError}</span>
+                <button
                   onClick={() => {
                     clearError();
                   }}
-                  className="ml-2 h-auto p-1 text-red-600 hover:bg-red-100"
+                  className="text-red-600 hover:bg-red-100 rounded p-1"
                 >
                   ✕
-                </Button>
-              </AlertDescription>
-            </Alert>
+                </button>
+              </div>
+            </div>
           )}
 
-          {/* Statistiques simplifiées */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Vendeurs</CardTitle>
-                <Users className="h-4 w-4 text-gray-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {pagination ? pagination.total : '...'}
-                </div>
-                <p className="text-xs text-gray-600">Nombre total de vendeurs</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Vendeurs de ce mois</CardTitle>
-                <UserCheck className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {displayedClients.length}
-                </div>
-                <p className="text-xs text-gray-600">Vendeurs affichés</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Actifs</CardTitle>
-                <Activity className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {displayedClients.filter(c => c.status).length}
-                </div>
-                <p className="text-xs text-gray-600">Comptes actifs</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inactifs</CardTitle>
-                <UserX className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  {displayedClients.filter(c => !c.status).length}
-                </div>
-                <p className="text-xs text-gray-600">Comptes désactivés</p>
-              </CardContent>
-            </Card>
+          {/* Filtres */}
+          <div className="mb-6">
+            <ClientsFilters
+              filters={{
+                ...filters,
+                status: mapFrontendStatusToBool(frontendStatus)
+              } as any}
+              onFiltersChange={handleFiltersChange}
+              onReset={handleReset}
+              loading={loading}
+            />
           </div>
 
-          {/* Filtres */}
-          <ClientsFilters
-            filters={{
-              ...filters,
-              status: mapFrontendStatusToBool(frontendStatus)
-            } as any}
-            onFiltersChange={handleFiltersChange}
-            onReset={handleReset}
-            loading={loading}
-          />
-
           {/* Tableau des vendeurs */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Liste des Vendeurs</span>
+          <Card className="shadow-sm border-gray-200">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Liste des vendeurs
+                </h3>
                 {pagination && (
-                  <span className="text-sm font-normal text-gray-600">
-                    {pagination.total} vendeur{pagination.total > 1 ? 's' : ''} au total
-                  </span>
+                  <Badge variant="outline" className="bg-gray-50">
+                    {pagination.total} vendeur{pagination.total > 1 ? 's' : ''}
+                  </Badge>
                 )}
-              </CardTitle>
-              <CardDescription>
-                Gérez les comptes vendeurs et leurs statuts
-              </CardDescription>
-            </CardHeader>
+              </div>
+            </div>
             <CardContent className="p-0">
               <ClientsTable
                 clients={displayedClients}
@@ -327,14 +272,16 @@ const ClientManagement: React.FC = () => {
                 onViewDetails={handleViewDetails}
                 onSoftDelete={handleSoftDeleteVendor}
               />
-              
+
               {/* Pagination */}
               {pagination && pagination.totalPages > 1 && (
-                <Pagination
-                  pagination={pagination}
-                  onPageChange={goToPage}
-                  loading={loading}
-                />
+                <div className="border-t border-gray-200 p-4">
+                  <Pagination
+                    pagination={pagination}
+                    onPageChange={goToPage}
+                    loading={loading}
+                  />
+                </div>
               )}
             </CardContent>
           </Card>
@@ -357,7 +304,7 @@ const ClientManagement: React.FC = () => {
           console.log('Type de vendeur géré avec succès');
         }}
       />
-    </div>
+    </>
   );
 };
 

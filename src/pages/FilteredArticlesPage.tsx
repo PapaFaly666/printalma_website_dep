@@ -705,12 +705,12 @@ const FilteredArticlesPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header avec catégorie sélectionnée */}
       {categoryParam && (
-        <div className="bg-white border-b border-gray-200 py-4">
+        <div className="bg-white border-b border-gray-200 py-6">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-5xl font-bold text-gray-900">
               {selectedCategory?.name || categoryParam}
             </h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-xl text-gray-600 mt-2">
               Découvrez nos produits personnalisables
             </p>
           </div>
@@ -743,72 +743,72 @@ const FilteredArticlesPage: React.FC = () => {
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     </svg>
-                    <h2 className="font-bold text-xl">Boutique</h2>
+                    <h2 className="font-bold text-2xl">Boutique</h2>
                   </div>
 
                   {/* Catégories */}
                   <div className="mb-6">
-                    <button className="flex items-center justify-between w-full py-2 text-sm font-medium mb-3">
+                    <button className="flex items-center justify-between w-full py-2 text-base font-medium mb-3">
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                         <span className="font-semibold">Catégories</span>
                       </div>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-5 h-5" />
                     </button>
                     <div className="pl-6 space-y-2">
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Hommes</label>
+                        <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Hommes</label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Femmes</label>
+                        <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Femmes</label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
-                        <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Enfants</label>
+                        <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Enfants</label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                        <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Bébés</label>
+                        <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Bébés</label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
-                        <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Accessoires</label>
+                        <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Accessoires</label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
-                        <label className="text-sm cursor-pointer text-gray-700 hover:text-gray-900">Stickers</label>
+                        <label className="text-base cursor-pointer text-gray-700 hover:text-gray-900">Stickers</label>
                       </div>
                     </div>
                   </div>
 
                   {/* Produits */}
                   <div>
-                    <button className="flex items-center justify-between w-full py-2 text-sm font-medium mb-3">
+                    <button className="flex items-center justify-between w-full py-2 text-base font-medium mb-3">
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
                         <span className="font-semibold">Produits</span>
                       </div>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-5 h-5" />
                     </button>
-                    <div className="pl-6 space-y-2 text-sm text-gray-700">
+                    <div className="pl-6 space-y-2 text-base text-gray-700">
                       {loadingCategories ? (
                         <div className="flex items-center gap-2 py-1">
                           <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
@@ -846,7 +846,7 @@ const FilteredArticlesPage: React.FC = () => {
             {/* Filter Bar */}
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
               <div className="flex flex-wrap items-center gap-2">
-                <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg text-base hover:bg-gray-50 transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                   </svg>
@@ -861,7 +861,7 @@ const FilteredArticlesPage: React.FC = () => {
     }
     setShowColorSelector(!showColorSelector);
   }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-base font-medium transition-all border-2 ${
                       selectedColors.length > 0
                         ? 'border-primary bg-primary/5 text-primary'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700'
@@ -1008,7 +1008,7 @@ const FilteredArticlesPage: React.FC = () => {
                       }
                       setShowSizeSelector(!showSizeSelector);
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-base font-medium transition-all border-2 ${
                       selectedSizes.length > 0
                         ? 'border-primary bg-primary/5 text-primary'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700'
@@ -1128,7 +1128,7 @@ const FilteredArticlesPage: React.FC = () => {
                       }
                       setShowPriceSelector(!showPriceSelector);
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-base font-medium transition-all border-2 ${
                       hasPriceFilter
                         ? 'border-primary bg-primary/5 text-primary'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700'
@@ -1160,7 +1160,7 @@ const FilteredArticlesPage: React.FC = () => {
                     <div className="absolute z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg w-80">
                       <div className="p-4">
                         <div className="mb-3">
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">
+                          <label className="text-base font-medium text-gray-700 mb-2 block">
                             Filtrer par prix (FCFA)
                           </label>
                           <div className="grid grid-cols-2 gap-3">
@@ -1173,7 +1173,7 @@ const FilteredArticlesPage: React.FC = () => {
                                 placeholder="Min"
                                 value={tempMinPrice === '' ? '' : tempMinPrice}
                                 onChange={(e) => setTempMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded text-base focus:outline-none focus:border-purple-500"
                               />
                             </div>
                             <div>
@@ -1185,7 +1185,7 @@ const FilteredArticlesPage: React.FC = () => {
                                 placeholder="Max"
                                 value={tempMaxPrice === '' ? '' : tempMaxPrice}
                                 onChange={(e) => setTempMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded text-base focus:outline-none focus:border-purple-500"
                               />
                             </div>
                           </div>
@@ -1245,7 +1245,7 @@ const FilteredArticlesPage: React.FC = () => {
                   )}
                 </div>
 
-                <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-base hover:bg-gray-50 transition-colors">
                   <span>Matières</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343" />
@@ -1265,7 +1265,7 @@ const FilteredArticlesPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-primary">
+                            <span className="text-base font-medium text-primary">
                               Couleurs:
                             </span>
                             <div className="flex gap-1 flex-wrap">
@@ -1274,7 +1274,7 @@ const FilteredArticlesPage: React.FC = () => {
                                 return color ? (
                                   <div
                                     key={colorValue}
-                                    className="flex items-center gap-1 px-2 py-1 bg-white rounded-full text-sm font-semibold text-primary border border-primary/30"
+                                    className="flex items-center gap-1 px-2 py-1 bg-white rounded-full text-base font-semibold text-primary border border-primary/30"
                                   >
                                     <div
                                       className="w-3 h-3 rounded-full border border-gray-300"
@@ -1289,7 +1289,7 @@ const FilteredArticlesPage: React.FC = () => {
                         </div>
                         <button
                           onClick={clearColors}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded-lg border border-primary/30 transition-all"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-base font-medium text-primary rounded-lg border border-primary/30 transition-all"
                         >
                           ×
                         </button>
@@ -1303,14 +1303,14 @@ const FilteredArticlesPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-primary">
+                            <span className="text-base font-medium text-primary">
                               Tailles:
                             </span>
                             <div className="flex gap-1 flex-wrap">
                               {selectedSizes.map((size) => (
                                 <div
                                   key={size}
-                                  className="px-2 py-1 bg-white rounded-full text-sm font-semibold text-primary border border-primary/30"
+                                  className="px-2 py-1 bg-white rounded-full text-base font-semibold text-primary border border-primary/30"
                                 >
                                   {size}
                                 </div>
@@ -1320,7 +1320,7 @@ const FilteredArticlesPage: React.FC = () => {
                         </div>
                         <button
                           onClick={clearSizes}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded-lg border border-primary/30 transition-all"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-base font-medium text-primary rounded-lg border border-primary/30 transition-all"
                         >
                           ×
                         </button>
@@ -1334,10 +1334,10 @@ const FilteredArticlesPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-primary">
+                            <span className="text-base font-medium text-primary">
                               Prix:
                             </span>
-                            <div className="px-3 py-1 bg-white rounded-full text-sm font-semibold text-primary border border-primary/30">
+                            <div className="px-3 py-1 bg-white rounded-full text-base font-semibold text-primary border border-primary/30">
                               {minPrice !== '' && maxPrice !== ''
                                 ? `${formatPriceInFCFA(Number(minPrice))} - ${formatPriceInFCFA(Number(maxPrice))}`
                                 : minPrice !== ''
@@ -1349,7 +1349,7 @@ const FilteredArticlesPage: React.FC = () => {
                         </div>
                         <button
                           onClick={clearPriceFilter}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-sm font-medium text-primary rounded-lg border border-primary/30 transition-all"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-primary/10 text-base font-medium text-primary rounded-lg border border-primary/30 transition-all"
                         >
                           ×
                         </button>
@@ -1367,17 +1367,17 @@ const FilteredArticlesPage: React.FC = () => {
                     placeholder="Rechercher..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full sm:w-80 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-sm"
+                    className="w-full sm:w-80 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-base"
                   />
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 </div>
 
                 {/* Affichage buttons */}
                 <div className="flex items-center gap-3">
-                  <label className="text-sm text-gray-700">Affichage:</label>
+                  <label className="text-base text-gray-700">Affichage:</label>
                   <button
                     onClick={() => setViewMode('product')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-base font-semibold transition-colors ${
                       viewMode === 'product'
                         ? 'bg-yellow-400 text-black'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1391,7 +1391,7 @@ const FilteredArticlesPage: React.FC = () => {
                   <span className="text-gray-300">|</span>
                   <button
                     onClick={() => setViewMode('design')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-base font-semibold transition-colors ${
                       viewMode === 'design'
                         ? 'bg-yellow-400 text-black'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1420,7 +1420,7 @@ const FilteredArticlesPage: React.FC = () => {
               {error && !loading && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
                   <p className="font-medium">Erreur</p>
-                  <p className="text-sm">{error}</p>
+                  <p className="text-base">{error}</p>
                 </div>
               )}
 
@@ -1429,7 +1429,7 @@ const FilteredArticlesPage: React.FC = () => {
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
                   <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600 font-medium">Aucun produit trouvé</p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-base text-gray-500 mt-1">
                     {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter)
                       ? `Aucun produit disponible avec les filtres sélectionnés`
                       : categoryParam
@@ -1441,7 +1441,7 @@ const FilteredArticlesPage: React.FC = () => {
                       {selectedColors.length > 0 && (
                         <button
                           onClick={clearColors}
-                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="text-base text-primary hover:text-primary/80 font-medium transition-colors"
                         >
                           Effacer les couleurs
                         </button>
@@ -1449,7 +1449,7 @@ const FilteredArticlesPage: React.FC = () => {
                       {selectedSizes.length > 0 && (
                         <button
                           onClick={clearSizes}
-                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="text-base text-primary hover:text-primary/80 font-medium transition-colors"
                         >
                           Effacer les tailles
                         </button>
@@ -1457,7 +1457,7 @@ const FilteredArticlesPage: React.FC = () => {
                       {hasPriceFilter && (
                         <button
                           onClick={clearPriceFilter}
-                          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="text-base text-primary hover:text-primary/80 font-medium transition-colors"
                         >
                           Effacer le prix
                         </button>
@@ -1470,7 +1470,7 @@ const FilteredArticlesPage: React.FC = () => {
               {/* Products */}
               {!loading && !error && products.length > 0 && (
                 <>
-                  <div className="mb-4 text-sm text-gray-600">
+                  <div className="mb-4 text-base text-gray-600">
                     {pagination.total} résultat{pagination.total > 1 ? 's' : ''} trouvé{pagination.total > 1 ? 's' : ''}
                     {categoryParam && ` pour "${selectedCategory?.name || categoryParam}"`}
                     {(selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) && (
@@ -1493,23 +1493,64 @@ const FilteredArticlesPage: React.FC = () => {
                     )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {products.map((product) => (
-                      <ProductCardWithDesign
-                        key={product.id}
-                        product={product}
-                        selectedColors={selectedColors}
-                        onClick={() => {
-                          // Ajouter à l'historique avant de naviguer
-                          addToHistory(product);
-                          // Navigation vers la page détail du produit (ou sticker)
-                          if ((product as any).isSticker) {
-                            navigate(`/public-sticker/${product.id}`);
-                          } else {
-                            navigate(`/vendor-product-detail/${product.id}`);
-                          }
-                        }}
-                      />
-                    ))}
+                    {viewMode === 'product' ? (
+                      // MODE PRODUIT: Afficher les produits complets
+                      products.map((product) => (
+                        <ProductCardWithDesign
+                          key={product.id}
+                          product={product}
+                          selectedColors={selectedColors}
+                          onClick={() => {
+                            // Ajouter à l'historique avant de naviguer
+                            addToHistory(product);
+                            // Navigation vers la page détail du produit (ou sticker)
+                            if ((product as any).isSticker) {
+                              navigate(`/public-sticker/${product.id}`);
+                            } else {
+                              navigate(`/vendor-product-detail/${product.id}`);
+                            }
+                          }}
+                        />
+                      ))
+                    ) : (
+                      // MODE DESIGN: Afficher uniquement les designs
+                      products.map((product) => {
+                        const designUrl = product.designApplication?.designUrl;
+                        if (!designUrl) return null;
+
+                        return (
+                          <div
+                            key={product.id}
+                            className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-200"
+                            onClick={() => {
+                              addToHistory(product);
+                              if ((product as any).isSticker) {
+                                navigate(`/public-sticker/${product.id}`);
+                              } else {
+                                navigate(`/vendor-product-detail/${product.id}`);
+                              }
+                            }}
+                          >
+                            <div className="relative aspect-square flex items-center justify-center bg-gray-100 p-8">
+                              <img
+                                src={designUrl}
+                                alt="Design"
+                                className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-110"
+                                draggable={false}
+                              />
+                            </div>
+                            <div className="p-3">
+                              <h3 className="font-bold text-base mb-1 truncate">
+                                {product.vendorName || product.adminProduct?.name || 'Design'}
+                              </h3>
+                              <p className="text-base font-bold mb-1">
+                                {formatPrice(product.price)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </>
               )}
@@ -1539,7 +1580,7 @@ const FilteredArticlesPage: React.FC = () => {
                         <button
                           key={i}
                           onClick={() => handlePageChange(i)}
-                          className={`w-8 h-8 rounded font-medium text-sm transition-colors ${
+                          className={`w-8 h-8 rounded font-medium text-base transition-colors ${
                             currentPage === i
                               ? 'bg-black text-white'
                               : 'hover:bg-gray-100'
@@ -1581,7 +1622,7 @@ const FilteredArticlesPage: React.FC = () => {
                         <button
                           key={i}
                           onClick={() => handlePageChange(i)}
-                          className={`w-8 h-8 rounded font-medium text-sm transition-colors ${
+                          className={`w-8 h-8 rounded font-medium text-base transition-colors ${
                             currentPage === i
                               ? 'bg-black text-white'
                               : 'hover:bg-gray-100'
@@ -1631,12 +1672,12 @@ const FilteredArticlesPage: React.FC = () => {
 
             {/* Tags Section */}
             <div className="mb-8">
-              <p className="text-base font-medium text-gray-900 mb-4">Les clients ont également recherché :</p>
+              <p className="text-lg font-medium text-gray-900 mb-4">Les clients ont également recherché :</p>
               <div className="flex flex-wrap gap-2">
                 {themes.map((theme) => (
                   <button
                     key={theme}
-                    className="px-4 py-2 border border-gray-400 rounded-md text-sm hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 border border-gray-400 rounded-md text-base hover:bg-gray-50 transition-colors"
                   >
                     {theme}
                   </button>
@@ -1652,7 +1693,7 @@ const FilteredArticlesPage: React.FC = () => {
                     Historique
                   </h2>
                   <div className="w-8 h-8 sm:w-10 sm:h-10 bg-cyan-400 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm sm:text-base font-semibold">
+                    <span className="text-white text-base sm:text-lg font-semibold">
                       {historyProducts.length}
                     </span>
                   </div>
@@ -1677,8 +1718,8 @@ const FilteredArticlesPage: React.FC = () => {
                   <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-gray-600 text-lg mb-2">Aucun produit dans l'historique</p>
-                  <p className="text-gray-500 text-sm">Les produits que vous consultez apparaîtront ici</p>
+                  <p className="text-gray-600 text-xl mb-2">Aucun produit dans l'historique</p>
+                  <p className="text-gray-500 text-base">Les produits que vous consultez apparaîtront ici</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1716,10 +1757,10 @@ const FilteredArticlesPage: React.FC = () => {
 
                       {/* Info produit */}
                       <div className="mt-3">
-                        <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
+                        <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-1 line-clamp-2">
                           {historyProduct.vendorName || historyProduct.adminProduct?.name}
                         </h3>
-                        <p className="text-xs sm:text-sm text-gray-600">
+                        <p className="text-sm sm:text-base text-gray-600">
                           <span className="font-bold">{formatPrice(historyProduct.price)}</span>
                         </p>
                       </div>

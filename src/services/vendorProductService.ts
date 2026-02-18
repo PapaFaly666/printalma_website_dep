@@ -74,6 +74,7 @@ export interface VendorProduct {
     name: string;
     description?: string;
     price: number;
+    genre?: string;
     colorVariations: Array<{
       id: number;
       name: string;

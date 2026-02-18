@@ -1,18 +1,47 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Button from '../components/ui/Button';
+import { contentService, ContentItem } from '../services/contentService';
 
 export default function DesignersSection() {
   const navigate = useNavigate();
+  const [designers, setDesigners] = useState<ContentItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Designers statiques
-  const displayDesigners = [
-    { id: 1, name: 'Pap Musa', avatarUrl: '/x_pap_musa.svg' },
-    { id: 2, name: 'Ceeneer', avatarUrl: '/x_ceeneer.svg' },
-    { id: 3, name: 'K & C', avatarUrl: '/x_kethiakh.svg' },
-    { id: 4, name: 'Breadwinner', avatarUrl: '/x_breadwinner.svg' },
-    { id: 5, name: 'Meissa Biguey', avatarUrl: '/x_maisssa_biguey.svg' },
-    { id: 6, name: 'DAD', avatarUrl: '/x_dad.svg' }
-  ];
+  useEffect(() => {
+    loadContent();
+  }, []);
+
+  const loadContent = async () => {
+    try {
+      setLoading(true);
+      const data = await contentService.getPublicContent();
+      setDesigners(data.designs || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des designers:', error);
+      // Fallback avec données par défaut si erreur
+      setDesigners([
+        { id: '1', name: 'Pap Musa', imageUrl: '/x_pap_musa.svg' },
+        { id: '2', name: 'Ceeneer', imageUrl: '/x_ceeneer.svg' },
+        { id: '3', name: 'K & C', imageUrl: '/x_kethiakh.svg' },
+        { id: '4', name: 'Breadwinner', imageUrl: '/x_breadwinner.svg' },
+        { id: '5', name: 'Meissa Biguey', imageUrl: '/x_maisssa_biguey.svg' },
+        { id: '6', name: 'DAD', imageUrl: '/x_dad.svg' }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10 lg:pt-12">
+        <div className="w-full px-3 xs:px-4 sm:px-6">
+          <div className="rounded-2xl overflow-hidden animate-pulse bg-gray-200 min-h-[20rem] xs:min-h-[24rem] sm:min-h-[28rem] lg:h-[36rem]"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full py-0 sm:py-1 md:py-2 pt-4 xs:pt-6 sm:pt-8 md:pt-10 lg:pt-12">
@@ -47,16 +76,16 @@ export default function DesignersSection() {
               </Button>
             </div>
 
-            {/* Colonne droite - Grille designers statique */}
+            {/* Colonne droite - Grille designers dynamique */}
             <div className="relative" style={{ backgroundColor: '#f1d12d' }}>
               <div className="grid grid-cols-3 gap-0.5 xs:gap-1 sm:gap-1 md:gap-2 p-2 xs:p-2.5 sm:p-3 md:p-4 h-full auto-rows-fr">
-                {displayDesigners.map((designer, index) => (
+                {designers.map((designer, index) => (
                   <div
                     key={designer.id}
                     className={`${index === 3 ? "row-span-3" : index === 0 || index === 2 || index === 4 || index === 5 ? "row-span-2" : ""} bg-black rounded-2xl overflow-hidden relative group flex flex-col items-center justify-center text-white`}
                   >
                     <img
-                      src={designer.avatarUrl}
+                      src={designer.imageUrl || designer.name}
                       alt={designer.name}
                       className={`${index === 3 ? "w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 mb-1 xs:mb-1.5 sm:mb-2" : index === 0 || index === 2 || index === 4 || index === 5 ? "w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 md:w-14 lg:w-16 lg:h-16 mb-1 xs:mb-1.5 sm:mb-2" : "w-5 h-5 xs:w-7 xs:h-7 sm:w-9 sm:h-9 md:w-10 md:w-12 lg:w-12 lg:h-12 mb-0.5 xs:mb-1 sm:mb-1"} group-hover:scale-110 transition-transform duration-300 object-contain`}
                     />

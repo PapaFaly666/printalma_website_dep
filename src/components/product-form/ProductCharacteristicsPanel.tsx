@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Tag, Layers } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
-import Button from '../ui/Button';
+import { AdminButton } from '../admin/AdminButton';
 import { Badge } from '../ui/badge';
 
 interface ProductCharacteristicsPanelProps {
@@ -44,16 +44,16 @@ export const ProductCharacteristicsPanel: React.FC<ProductCharacteristicsPanelPr
     >
       <Card className="shadow-lg border-none">
         <CardHeader>
-          <CardTitle className="flex items-center text-xl font-bold text-gray-800 dark:text-gray-100">
-            <Tag className="mr-3 text-purple-500" />
+          <CardTitle className="flex items-center text-xl font-bold text-gray-800">
+            <Tag className="mr-3 text-[rgb(20,104,154)]" />
             Caractéristiques du Produit
           </CardTitle>
         </CardHeader>
         <CardContent>
           {/* Characteristics Section */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 flex items-center">
-              <Layers className="mr-2 text-indigo-500" />
+            <h3 className="text-lg font-semibold text-gray-700 flex items-center">
+              <Layers className="mr-2 text-[rgb(20,104,154)]" />
               Caractéristiques
             </h3>
             <div className="flex gap-2">
@@ -64,14 +64,14 @@ export const ProductCharacteristicsPanel: React.FC<ProductCharacteristicsPanelPr
                 onKeyPress={(e) => e.key === 'Enter' && handleAddCharacteristic()}
                 className="flex-1"
               />
-              <Button 
+              <AdminButton 
                 onClick={handleAddCharacteristic}
                 size="sm"
                 className="px-3"
                 disabled={!newCharacteristic.trim()}
               >
                 <Plus className="h-4 w-4" />
-              </Button>
+              </AdminButton>
             </div>
             <AnimatePresence>
               {characteristics.length > 0 && (
@@ -81,7 +81,7 @@ export const ProductCharacteristicsPanel: React.FC<ProductCharacteristicsPanelPr
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-2"
                 >
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <p className="text-sm font-medium text-gray-700">
                     Caractéristiques sélectionnées :
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -95,7 +95,7 @@ export const ProductCharacteristicsPanel: React.FC<ProductCharacteristicsPanelPr
                       >
                         <Badge 
                           variant="secondary" 
-                          className="flex items-center gap-1 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+                          className="flex items-center gap-1 cursor-pointer hover:bg-red-100 transition-colors"
                           onClick={() => handleRemoveCharacteristic(index)}
                         >
                           {characteristic}
@@ -108,7 +108,7 @@ export const ProductCharacteristicsPanel: React.FC<ProductCharacteristicsPanelPr
               )}
             </AnimatePresence>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <p className="text-sm font-medium text-gray-700">
                 Suggestions :
               </p>
               <div className="flex flex-wrap gap-2">
@@ -118,7 +118,7 @@ export const ProductCharacteristicsPanel: React.FC<ProductCharacteristicsPanelPr
                     <Badge 
                       key={characteristic}
                       variant="outline" 
-                      className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors"
+                      className="cursor-pointer hover:bg-[rgb(20,104,154)]/5 transition-colors"
                       onClick={() => {
                         const updated = [...characteristics, characteristic];
                         onCharacteristicsUpdate(updated);

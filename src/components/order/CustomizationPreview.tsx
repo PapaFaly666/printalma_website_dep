@@ -174,13 +174,12 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
         onLoad={() => setImageLoaded(true)}
       />
 
-      {/* Éléments de design superposés - Conteneur avec clipping strict */}
+      {/* Éléments de design superposés - Conteneur permettant le débordement pour le texte */}
       {imageLoaded && designElements.length > 0 && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            overflow: 'hidden',
-            clipPath: 'inset(0)',
+            overflow: 'visible', // ✅ Permet au texte de dépasser si nécessaire
           }}
         >
           {designElements.map((element) => {
@@ -190,7 +189,13 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
                 <div style={childStyle}>
                   {element.type === 'text' ? (
                     <div style={getTextStyle(element)}>
-                      {element.text}
+                      {/* ✅ Afficher le texte avec support des sauts de ligne */}
+                      {element.text?.split('\n').map((line, index) => (
+                        <React.Fragment key={index}>
+                          {line}
+                          {index < (element.text?.split('\n').length || 0) - 1 && <br />}
+                        </React.Fragment>
+                      ))}
                     </div>
                   ) : element.type === 'image' && element.imageUrl ? (
                     <img

@@ -36,14 +36,37 @@ import { vendorProductValidationService } from '../../services/vendorProductVali
 import { vendorAccountService } from '../../services/vendorAccountService';
 import { API_CONFIG } from '../../config/api';
 
-// 🆕 Interface basée sur la structure de /public/best-sellers et compatible avec SimpleProductPreview
+// 🆕 Interface pour les prix par taille
+interface VendorSizePrice {
+  size: string;
+  costPrice: number;
+  suggestedPrice: number;
+  salePrice?: number;
+}
+
+interface PriceRange {
+  min: number;
+  max: number;
+  display: string;
+  hasMultiplePrices: boolean;
+}
+
+// 🆕 Interface basée sur la structure de /vendor/products et compatible avec SimpleProductPreview
 interface VendorProductFromAPI {
   id: number;
   vendorName: string; // ✅ Nom du produit vendeur
   originalAdminName?: string; // ✅ Nom du produit admin de base
+  description: string; // ✅ Description du produit vendeur
   price: number;
   status: string;
-  
+
+  // 🆕 Prix par taille
+  priceRange?: PriceRange;
+  useGlobalPricing?: boolean;
+  globalCostPrice?: number;
+  globalSuggestedPrice?: number;
+  sizePrices?: VendorSizePrice[];
+
   bestSeller: {
     isBestSeller: boolean;
     salesCount: number;
@@ -205,6 +228,7 @@ export const VendorProductsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'products' | 'stickers'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [mockupFilter, setMockupFilter] = useState<string>('all'); // 🆕 Filtre par nom de mockup
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -439,6 +463,7 @@ export const VendorProductsPage: React.FC = () => {
         return {
           id: product.id,
           vendorName: product.vendorName || product.name || 'Produit Vendeur',
+          description: product.description || '',
           price: product.vendorPrice || product.price || 0,
           status: product.status || 'DRAFT',
           
@@ -497,7 +522,14 @@ export const VendorProductsPage: React.FC = () => {
               }
             }
           }],
-          
+
+          // 🆕 Prix par taille
+          priceRange: product.priceRange,
+          useGlobalPricing: product.useGlobalPricing,
+          globalCostPrice: product.globalCostPrice,
+          globalSuggestedPrice: product.globalSuggestedPrice,
+          sizePrices: product.sizePrices,
+
           vendor: {
             id: product.vendor?.id || 0,
             fullName: product.vendor?.fullName || 'Vendeur',
@@ -564,28 +596,39 @@ export const VendorProductsPage: React.FC = () => {
   // Filtrer les produits
   useEffect(() => {
     let filtered = [...products];
-    
+
     // Filtrer par recherche
     if (searchTerm) {
-      filtered = filtered.filter(product => 
+      filtered = filtered.filter(product =>
         product.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.adminProduct.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     // Filtrer par statut
     if (statusFilter !== 'all') {
       filtered = filtered.filter(product => product.status === statusFilter);
     }
-    
+
+    // 🆕 Filtrer par nom de mockup (adminProduct.name)
+    if (mockupFilter !== 'all') {
+      filtered = filtered.filter(product => product.adminProduct.name === mockupFilter);
+    }
+
     setFilteredProducts(filtered);
-  }, [products, searchTerm, statusFilter]);
+  }, [products, searchTerm, statusFilter, mockupFilter]);
 
   // Filtrage des produits non supprimés depuis la liste filtrée
   const visibleProducts = filteredProducts.filter(p => !p.isDelete);
 
   // Calculer les statistiques
   const nonDeletedProducts = products.filter(p => !p.isDelete);
+
+  // 🆕 Extraire les noms uniques de mockup pour le filtre
+  const uniqueMockupNames = React.useMemo(() => {
+    const names = nonDeletedProducts.map(p => p.adminProduct.name);
+    return Array.from(new Set(names)).sort();
+  }, [nonDeletedProducts]);
 
   const stats = {
     total: nonDeletedProducts.length,
@@ -1071,8 +1114,8 @@ export const VendorProductsPage: React.FC = () => {
         <Card className="mb-6">
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="flex gap-4 items-center flex-1">
-                <div className="relative flex-1 max-w-sm">
+              <div className="flex gap-4 items-center flex-1 flex-wrap">
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Rechercher un produit..."
@@ -1081,7 +1124,7 @@ export const VendorProductsPage: React.FC = () => {
                     className="pl-10"
                   />
                 </div>
-                
+
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
@@ -1092,6 +1135,20 @@ export const VendorProductsPage: React.FC = () => {
                   <option value="PENDING">En attente</option>
                   <option value="DRAFT">Brouillon</option>
                   <option value="REJECTED">Rejeté</option>
+                </select>
+
+                {/* 🆕 Filtre par nom de produit mockup */}
+                <select
+                  value={mockupFilter}
+                  onChange={(e) => setMockupFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md bg-white"
+                >
+                  <option value="all">Tous les mockups</option>
+                  {uniqueMockupNames.map((mockupName) => (
+                    <option key={mockupName} value={mockupName}>
+                      {mockupName}
+                    </option>
+                  ))}
                 </select>
               </div>
               
@@ -1183,6 +1240,12 @@ export const VendorProductsPage: React.FC = () => {
                         <h3 className="font-semibold text-lg text-gray-900 mb-2 line-clamp-1">
                           {product.vendorName}
                         </h3>
+                        {/* Description du produit */}
+                        {product.description && (
+                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                            {product.description}
+                          </p>
+                        )}
                         <div className="space-y-1 mb-3">
                           <p className="text-sm text-gray-500 font-medium">
                             Catégorie: {(() => {
@@ -1265,7 +1328,23 @@ export const VendorProductsPage: React.FC = () => {
                           })()}
                         </div>
                       </div>
-                      
+
+                      {/* 🆕 Liste des tailles et prix */}
+                      {product.sizePrices && product.sizePrices.length > 0 && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+                          <p className="text-xs font-medium text-gray-700 mb-2">Prix par taille :</p>
+                          <div className="flex flex-wrap gap-2">
+                            {product.sizePrices.map((sp, idx) => (
+                              <div key={idx} className="flex items-center gap-1 px-2 py-1 bg-white rounded border text-sm">
+                                <span className="font-semibold text-gray-800">{sp.size}</span>
+                                <span className="text-gray-400">:</span>
+                                <span className="font-medium text-gray-900">{(sp.salePrice || sp.suggestedPrice).toLocaleString()} FCFA</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Boutons d'action selon le nouveau système pub.md */}
                       <div className="flex items-center gap-2 pt-4 border-t border-gray-100">
                         {/* Actions spécifiques selon le statut */}
@@ -1697,6 +1776,12 @@ export const VendorProductsPage: React.FC = () => {
                       {selectedProductForDetails.originalAdminName && (
                         <p className="text-gray-600 text-sm mt-1">
                           Basé sur: {selectedProductForDetails.originalAdminName}
+                        </p>
+                      )}
+                      {/* Description du produit */}
+                      {selectedProductForDetails.description && (
+                        <p className="text-gray-700 text-sm mt-2 leading-relaxed">
+                          {selectedProductForDetails.description}
                         </p>
                       )}
                       <div className="flex items-center gap-4 mt-2">

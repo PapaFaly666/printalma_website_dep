@@ -40,6 +40,7 @@ interface VendorProductFromAPI {
       id: number;
       name: string;
       colorCode: string;
+      finalUrlImage?: string; // ✅ Image finale générée avec le design appliqué
       images: Array<{
         id: number;
         url: string;
@@ -209,11 +210,18 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       const colorVariation = product.adminProduct.colorVariations.find(
         cv => cv.id === currentColor?.id
       );
-      console.log('🖼️ [getCardImage] colorVariation trouvée:', colorVariation ? { id: colorVariation.id, name: colorVariation.name, imagesCount: colorVariation.images.length } : 'NON TROUVÉE');
+      console.log('🖼️ [getCardImage] colorVariation trouvée:', colorVariation ? { id: colorVariation.id, name: colorVariation.name, imagesCount: colorVariation.images.length, hasFinalUrlImage: !!(colorVariation as any).finalUrlImage } : 'NON TROUVÉE');
 
+      // ✅ PRIORITÉ: Utiliser finalUrlImage (image finale générée avec design) si disponible
+      if ((colorVariation as any)?.finalUrlImage) {
+        console.log('🖼️ [getCardImage] ✅ Utilisation de finalUrlImage:', (colorVariation as any).finalUrlImage.substring(0, 60) + '...');
+        return (colorVariation as any).finalUrlImage;
+      }
+
+      // Fallback sur l'image mockup admin
       const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front')
         || colorVariation?.images[0];
-      console.log('🖼️ [getCardImage] mockupImage sélectionnée:', mockupImage ? { url: mockupImage.url.substring(0, 50) + '...', viewType: mockupImage.viewType } : 'AUCUNE IMAGE');
+      console.log('🖼️ [getCardImage] mockupImage sélectionnée (fallback):', mockupImage ? { url: mockupImage.url.substring(0, 50) + '...', viewType: mockupImage.viewType } : 'AUCUNE IMAGE');
 
       return mockupImage?.url;
     } else if (product.images) {
@@ -311,25 +319,35 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       cv => cv.id === currentColor?.id
     );
 
-    console.log('🖼️ [RENDER] ColorVariation trouvée:', colorVariation ? { id: colorVariation.id, name: colorVariation.name, imagesCount: colorVariation.images.length } : 'NON TROUVÉE');
+    console.log('🖼️ [RENDER] ColorVariation trouvée:', colorVariation ? { id: colorVariation.id, name: colorVariation.name, imagesCount: colorVariation.images.length, hasFinalUrlImage: !!(colorVariation as any).finalUrlImage } : 'NON TROUVÉE');
 
-    const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front')
-      || colorVariation?.images[0];
+    // ✅ PRIORITÉ: Utiliser finalUrlImage (image finale générée avec design) si disponible
+    const finalUrlImage = (colorVariation as any)?.finalUrlImage;
+    if (finalUrlImage) {
+      console.log('🖼️ [RENDER] ✅ Utilisation de finalUrlImage (image finale):', finalUrlImage.substring(0, 60) + '...');
+      currentImageUrl = finalUrlImage;
+      // Pour finalUrlImage, les délimitations ne sont pas nécessaires car le design est déjà appliqué
+      delimitations = [];
+    } else {
+      // Fallback sur l'image mockup admin avec délimitations
+      const mockupImage = colorVariation?.images.find(img => img.viewType === 'Front')
+        || colorVariation?.images[0];
 
-    console.log('🖼️ [RENDER] Image mockup sélectionnée:', {
-      productId: product.id,
-      currentColorId: currentColorId,
-      currentColorName: currentColor?.name,
-      colorVariationId: colorVariation?.id,
-      colorVariationName: colorVariation?.name,
-      mockupImageUrl: mockupImage?.url?.substring(0, 80) + '...',
-      viewType: mockupImage?.viewType,
-      hasDelimitations: !!mockupImage?.delimitations && mockupImage.delimitations.length > 0,
-      delimitationsCount: mockupImage?.delimitations?.length || 0
-    });
+      console.log('🖼️ [RENDER] Image mockup sélectionnée (fallback):', {
+        productId: product.id,
+        currentColorId: currentColorId,
+        currentColorName: currentColor?.name,
+        colorVariationId: colorVariation?.id,
+        colorVariationName: colorVariation?.name,
+        mockupImageUrl: mockupImage?.url?.substring(0, 80) + '...',
+        viewType: mockupImage?.viewType,
+        hasDelimitations: !!mockupImage?.delimitations && mockupImage.delimitations.length > 0,
+        delimitationsCount: mockupImage?.delimitations?.length || 0
+      });
 
-    currentImageUrl = mockupImage?.url || null;
-    delimitations = mockupImage?.delimitations || [];
+      currentImageUrl = mockupImage?.url || null;
+      delimitations = mockupImage?.delimitations || [];
+    }
   }
 
   // 🆕 État pour suivre si la synchronisation a déjà été effectuée
@@ -993,12 +1011,6 @@ export const SimpleProductPreview: React.FC<SimpleProductPreviewProps> = ({
       {!hideValidationBadges && isTraditionalProduct && !product.designApplication.hasDesign && (
         <div className="absolute top-10 left-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs">
           Pas de design
-        </div>
-      )}
-
-      {!hideValidationBadges && isTraditionalProduct && product.designApplication.hasDesign && delimitations.length === 0 && (
-        <div className="absolute top-10 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs">
-          Pas de délimitations
         </div>
       )}
 

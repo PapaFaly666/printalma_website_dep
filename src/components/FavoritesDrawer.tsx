@@ -1,11 +1,14 @@
 import React from 'react';
-import { X, Heart, Trash2 } from 'lucide-react';
+import { X, Heart, Trash2, ShoppingCart } from 'lucide-react';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { useCart } from '../contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { SimpleProductPreview } from './vendor/SimpleProductPreview';
+import { toast } from 'sonner';
 
 const FavoritesDrawer: React.FC = () => {
   const { favorites, favoritesCount, isFavoritesOpen, closeFavorites, removeFromFavorites, clearFavorites } = useFavorites();
+  const { addToCart, removeFromCart, items: cartItems } = useCart();
   const navigate = useNavigate();
 
   const formatPrice = (price: number): string => {
@@ -17,6 +20,110 @@ const FavoritesDrawer: React.FC = () => {
   const handleProductClick = (productId: number) => {
     closeFavorites();
     navigate(`/vendor-product-detail/${productId}`);
+  };
+
+  // Vérifier si un produit est dans le panier
+  const isProductInCart = (productId: number): boolean => {
+    return cartItems.some(item =>
+      item.productId === productId ||
+      item.vendorProductId === productId
+    );
+  };
+
+  // Trouver l'ID du produit dans le panier
+  const getCartItemId = (productId: number): string | null => {
+    const item = cartItems.find(item =>
+      item.productId === productId ||
+      item.vendorProductId === productId
+    );
+    return item?.id?.toString() || null;
+  };
+
+  const handleAddToCart = (favorite: any) => {
+    try {
+      // Vérifier si le produit est déjà dans le panier
+      if (isProductInCart(favorite.id)) {
+        // Retirer du panier
+        const cartItemId = getCartItemId(favorite.id);
+        if (cartItemId) {
+          removeFromCart(cartItemId);
+          toast.success('Produit retiré du panier', {
+            duration: 2000
+          });
+        }
+        return;
+      }
+
+      console.log('🛒 [FavoritesDrawer] Ajout au panier - Données favorite:', favorite);
+
+      // Récupérer la première couleur disponible
+      const firstColor = favorite.selectedColors?.[0] || favorite.adminProduct?.colorVariations?.[0];
+
+      if (!firstColor) {
+        toast.error('Aucune couleur disponible pour ce produit');
+        return;
+      }
+
+      // Récupérer la première taille disponible
+      const firstSize = favorite.selectedSizes?.[0] || favorite.adminProduct?.sizes?.[0] || 'Taille unique';
+
+      // 🔧 CORRECTION : Récupérer le mockupUrl comme dans PublicVendorProductDetailPage
+      let mockupUrl = favorite.images?.primaryImageUrl || '';
+
+      // Chercher l'image de la variation de couleur (comme dans PublicVendorProductDetailPage)
+      if (favorite.adminProduct && favorite.adminProduct.colorVariations) {
+        const colorVariation = favorite.adminProduct.colorVariations.find(cv => cv.id === firstColor.id);
+        if (colorVariation && colorVariation.images && colorVariation.images.length > 0) {
+          const mockupImage = colorVariation.images.find(img => img.viewType === 'FRONT') || colorVariation.images[0];
+          if (mockupImage) {
+            mockupUrl = mockupImage.url || mockupImage.imageUrl || mockupUrl;
+          }
+        }
+      }
+
+      // Fallback si pas de mockupUrl
+      if (!mockupUrl) {
+        mockupUrl = firstColor.images?.[0]?.url ||
+                    firstColor.images?.[0]?.imageUrl ||
+                    favorite.images?.[0]?.url ||
+                    favorite.images?.[0]?.imageUrl ||
+                    '';
+      }
+
+      console.log('🖼️ [FavoritesDrawer] MockupUrl sélectionné:', mockupUrl);
+
+      // Construire productData comme dans PublicVendorProductDetailPage
+      const productData: any = {
+        id: favorite.id,
+        productId: favorite.id,
+        vendorProductId: favorite.id, // ✅ Pour les produits normaux
+        name: favorite.vendorName,
+        price: favorite.price,
+        suggestedPrice: favorite.price,
+        imageUrl: mockupUrl, // ✅ Utiliser le mockupUrl
+        color: firstColor.name || firstColor.value || 'Couleur',
+        colorCode: firstColor.colorCode || '#000000',
+        colorVariationId: firstColor.id,
+        size: typeof firstSize === 'string' ? firstSize : (firstSize?.name || 'Taille unique'),
+        quantity: 1,
+        vendorName: favorite.vendor?.shop_name || favorite.vendor?.fullName,
+        adminProductId: favorite.adminProduct?.id,
+        mockupUrl: mockupUrl, // ✅ Ajouter mockupUrl aussi
+      };
+
+      console.log('✅ [FavoritesDrawer] Produit préparé pour le panier:', productData);
+
+      // Ajouter au panier sans ouvrir le panier (pour éviter la superposition des drawers)
+      addToCart(productData, { openCartAfterAdd: false });
+
+      toast.success('Produit ajouté au panier !', {
+        description: `${favorite.vendorName} - ${firstColor.name || 'Couleur'} - ${typeof firstSize === 'string' ? firstSize : firstSize?.name}`,
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('❌ [FavoritesDrawer] Erreur lors de l\'ajout au panier:', error);
+      toast.error('Erreur lors de l\'ajout au panier');
+    }
   };
 
   if (!isFavoritesOpen) return null;
@@ -127,6 +234,17 @@ const FavoritesDrawer: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                           Visiter le produit
+                        </button>
+                        <button
+                          onClick={() => handleAddToCart(favorite)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            isProductInCart(favorite.id)
+                              ? 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                              : 'bg-green-50 text-green-600 hover:bg-green-100'
+                          }`}
+                          title={isProductInCart(favorite.id) ? 'Retirer du panier' : 'Ajouter au panier'}
+                        >
+                          <ShoppingCart className={`w-5 h-5 ${isProductInCart(favorite.id) ? 'fill-current' : ''}`} />
                         </button>
                         <button
                           onClick={() => removeFromFavorites(favorite.id)}

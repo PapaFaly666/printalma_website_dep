@@ -30,29 +30,37 @@ export interface StickerProduct {
   name: string;
   description?: string;
   price: number;
-  stock: number;
+  stockQuantity: number;
   status: 'PUBLISHED' | 'DRAFT' | 'PENDING';
 
-  // Informations du sticker
-  stickerType: StickerType;
-  stickerSurface: StickerSurface;
-  stickerBorderColor: string;
-  stickerSize: string; // Format: "83 mm x 100 mm"
+  // Configuration du sticker
+  size: {
+    id: string;
+    name: string;
+    width: number;
+    height: number;
+  };
+  finish: string;
+  shape: 'SQUARE' | 'CIRCLE' | 'RECTANGLE' | 'DIE_CUT';
 
-  // Image générée avec bordures par le backend
+  // Image générée avec bordures par le backend (Sharp)
   imageUrl?: string;
   cloudinaryPublicId?: string;
 
   // Design associé
   designId: number;
-  designName: string;
-  designImageUrl: string;
-  designThumbnailUrl?: string;
-  designPrice: number;
+  design?: {
+    id: number;
+    name: string;
+    imageUrl: string;
+    price: number;
+  };
 
   // Métadonnées
+  sku?: string;
+  finalPrice: number;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   vendorId: number;
 
   // Informations vendeur
@@ -68,21 +76,30 @@ export interface CreateStickerProductPayload {
   // Design source
   designId: number;
 
-  // Configuration du sticker
-  stickerType: StickerType;
-  stickerSurface: StickerSurface;
-  stickerBorderColor: string;
-  stickerSize: string;
-
   // Informations produit
   name: string;
   description?: string;
-  price: number;
-  stock?: number;
 
-  // Options de publication
-  status?: 'PUBLISHED' | 'DRAFT';
-  autoPublish?: boolean;
+  // Taille du sticker
+  size: {
+    id?: string;
+    width: number;  // en cm
+    height: number; // en cm
+  };
+
+  // Finition
+  finish: string; // matte, glossy, transparent, holographic, metallic
+
+  // Forme
+  shape: 'SQUARE' | 'CIRCLE' | 'RECTANGLE' | 'DIE_CUT';
+
+  // Prix et stock
+  price: number;
+  stockQuantity: number;
+
+  // Configuration de génération (optionnel)
+  stickerType?: StickerType; // autocollant | pare-chocs
+  borderColor?: string; // white, glossy-white, matte-white, transparent
 }
 
 export interface StickerProductsResponse {
@@ -102,7 +119,7 @@ export interface CreateStickerProductResponse {
   success: boolean;
   message: string;
   productId: number;
-  product: StickerProduct;
+  data: StickerProduct;
 }
 
 // Headers pour authentification par cookies

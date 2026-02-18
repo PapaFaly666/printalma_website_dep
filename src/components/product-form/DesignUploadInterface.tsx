@@ -12,7 +12,7 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
-import Button from '../ui/Button';
+import { AdminButton } from '../admin/AdminButton';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
@@ -111,9 +111,9 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className={`
         relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300
-        ${isDragging 
-          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-          : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10'
+        ${isDragging
+          ? 'border-[rgb(20,104,154)] bg-[rgb(20,104,154)]/5'
+          : 'border-gray-300 hover:border-[rgb(20,104,154)]/70 hover:bg-[rgb(20,104,154)]/5/50'
         }
         ${!hasDelimitation ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}
       `}
@@ -134,9 +134,9 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
         <div className="flex justify-center">
           <div className={`
             relative p-4 rounded-full transition-all duration-300
-            ${isDragging 
-              ? 'bg-blue-500 text-white scale-110' 
-              : 'bg-gradient-to-br from-blue-500 to-purple-600 text-white hover:scale-105'
+            ${isDragging
+              ? 'bg-[rgb(20,104,154)]/50 text-white scale-110'
+              : 'bg-[rgb(20,104,154)] text-white hover:scale-105'
             }
           `}>
             <Upload className="h-8 w-8" />
@@ -144,7 +144,7 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="absolute -inset-2 border-2 border-blue-400 rounded-full"
+                className="absolute -inset-2 border-2 border-[rgb(20,104,154)]/70 rounded-full"
               />
             )}
           </div>
@@ -153,14 +153,14 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
         
 
         {hasDelimitation && (
-          <Button 
+          <AdminButton
             onClick={openFileDialog}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+            variant="primary"
             disabled={isProcessing}
           >
             <Plus className="h-4 w-4 mr-2" />
             {isProcessing ? 'Traitement...' : 'Choisir un fichier'}
-          </Button>
+          </AdminButton>
         )}
       </div>
     </motion.div>
@@ -173,8 +173,8 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
       animate={{ opacity: 1, scale: 1 }}
       className="relative"
     >
-      <Card className="overflow-hidden border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-        <div className="aspect-video relative overflow-hidden bg-gray-100 dark:bg-gray-800">
+      <Card className="overflow-hidden border-2 border-[rgb(20,104,154)]/30 bg-[rgb(20,104,154)]/5">
+        <div className="aspect-video relative overflow-hidden bg-gray-100">
           <img 
             src={currentDesignUrl} 
             alt="Design prévisualisé"
@@ -192,30 +192,30 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
           {/* Action buttons overlay */}
           <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all duration-300 group">
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
-              <Button
+              <AdminButton
                 size="sm"
                 variant="secondary"
                 onClick={onExport}
                 className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 shadow-lg"
               >
                 <Download className="h-4 w-4" />
-              </Button>
-              <Button
+              </AdminButton>
+              <AdminButton
                 size="sm"
                 variant="secondary"
                 onClick={openFileDialog}
                 className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 shadow-lg"
               >
                 <RotateCw className="h-4 w-4" />
-              </Button>
-              <Button
+              </AdminButton>
+              <AdminButton
                 size="sm"
                 variant="destructive"
                 onClick={handleRemoveDesign}
                 className="bg-red-500/90 backdrop-blur-sm hover:bg-red-600 shadow-lg"
               >
                 <Trash2 className="h-4 w-4" />
-              </Button>
+              </AdminButton>
             </div>
           </div>
         </div>
@@ -224,16 +224,16 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
           
 
           <div className="flex gap-2">
-            <Button
+            <AdminButton
               onClick={onExport}
               size="sm"
-              variant="default"
-              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+              variant="primary"
+              className="flex-1"
             >
               <Download className="h-4 w-4 mr-2" />
               Exporter
-            </Button>
-            <Button
+            </AdminButton>
+            <AdminButton
               onClick={openFileDialog}
               size="sm"
               variant="outline"
@@ -241,7 +241,7 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
             >
               <RotateCw className="h-4 w-4 mr-2" />
               Remplacer
-            </Button>
+            </AdminButton>
           </div>
         </div>
       </Card>
@@ -255,7 +255,7 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
         
         
         {currentDesignUrl && (
-          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+          <Badge variant="secondary" className="bg-green-100 text-green-800">
             1 design actif
           </Badge>
         )}
@@ -266,12 +266,12 @@ export const DesignUploadInterface: React.FC<DesignUploadInterfaceProps> = ({
 
       {/* Help Text for locked state */}
       {currentDesignUrl && (
-        <div className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800 mt-4">
+        <div className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3 border border-amber-200 mt-4">
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <div>
               <p className="font-semibold">Zone de personnalisation verrouillée</p>
-              <p className="text-amber-700 dark:text-amber-300">Pour la modifier, veuillez d'abord supprimer le design actif en utilisant le bouton ci-dessus.</p>
+              <p className="text-amber-700">Pour la modifier, veuillez d'abord supprimer le design actif en utilisant le bouton ci-dessus.</p>
             </div>
           </div>
         </div>

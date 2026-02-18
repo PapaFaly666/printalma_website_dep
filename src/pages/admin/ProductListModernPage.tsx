@@ -48,38 +48,32 @@ export const ProductListModernPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-center">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Erreur de chargement
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-            <button
-              onClick={refetch}
-              className="px-6 py-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors font-medium"
-            >
-              Réessayer
-            </button>
-          </div>
+      <div className="min-h-screen p-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            Erreur de chargement
+          </h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={refetch}
+            className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+          >
+            Réessayer
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        <ProductListModern
-          products={products}
-          loading={loading}
-          onEditProduct={handleEditProduct}
-          onViewProduct={handleViewProduct}
-          onDeleteProduct={handleDeleteProduct}
-          onRefresh={handleRefresh}
-          onAddProduct={handleAddProduct}
-        />
-      </div>
-    </div>
+    <ProductListModern
+      products={products}
+      loading={loading}
+      onEditProduct={handleEditProduct}
+      onViewProduct={handleViewProduct}
+      onDeleteProduct={handleDeleteProduct}
+      onRefresh={handleRefresh}
+      onAddProduct={handleAddProduct}
+    />
   );
 }; 

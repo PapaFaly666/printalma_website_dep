@@ -339,7 +339,8 @@ const ProductWithDesign: React.FC<{
   return (
     <div className="relative flex flex-col gap-1">
       {/* 🆕 Utilisation de CustomizationPreview pour un rendu cohérent */}
-      <div className="relative w-32 h-32 bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="relative w-32 h-32 bg-white rounded-lg border border-gray-200">
+        {/* ✅ Retiré overflow-hidden pour permettre au texte de grande taille d'être visible */}
         <CustomizationPreview
           productImageUrl={currentImageUrl}
           designElements={currentViewElements}

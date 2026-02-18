@@ -38,8 +38,7 @@ const VendorStickerSimplePage: React.FC = () => {
   // États pour la modale de configuration
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-  const [minQuantity, setMinQuantity] = useState<number>(1);
-  const [maxQuantity, setMaxQuantity] = useState<number>(100);
+  const [stockQuantity, setStockQuantity] = useState<number>(100);
   const [customPrice, setCustomPrice] = useState<number>(1500);
   const [priceMode, setPriceMode] = useState<'auto' | 'custom'>('auto');
 
@@ -114,8 +113,7 @@ const VendorStickerSimplePage: React.FC = () => {
     const suggestedPrice = basePrice + designPrice;
 
     setCustomPrice(suggestedPrice);
-    setMinQuantity(1);
-    setMaxQuantity(100);
+    setStockQuantity(100);
     setPriceMode('auto');
     setIsConfigModalOpen(true);
   };
@@ -152,33 +150,33 @@ const VendorStickerSimplePage: React.FC = () => {
         basePrice: 1500,
         designPrice: selectedDesign.price || 0,
         finalPrice,
-        minQuantity,
-        maxQuantity
+        stockQuantity
       });
 
-      // Configuration au format simplifié attendu par le backend
+      // Configuration au format backend DTO
       const stickerPayload = {
         designId: selectedDesign.id,
         name: `Autocollant - ${selectedDesign.name}`,
         description: selectedDesign.description || `Autocollant personnalisé avec le design ${selectedDesign.name}`,
 
-        // Taille simplifiée (seulement width et height)
+        // Taille avec ID
         size: {
+          id: 'medium',
           width: stickerWidth,
           height: stickerHeight
         },
 
-        // Prix défini par le vendeur
-        price: finalPrice,
+        // Finition (obligatoire)
+        finish: 'glossy',
 
         // Forme
-        shape: 'DIE_CUT',
+        shape: 'DIE_CUT' as const,
 
-        // Quantités minimale et maximale
-        minQuantity: minQuantity,
-        maxQuantity: maxQuantity,
+        // Prix et stock
+        price: finalPrice,
+        stockQuantity: stockQuantity,
 
-        // Configuration de génération d'image
+        // Configuration de génération d'image (optionnel)
         stickerType: 'autocollant' as const,
         borderColor: 'glossy-white'
       };
@@ -216,7 +214,7 @@ const VendorStickerSimplePage: React.FC = () => {
 
       toast.dismiss('creating-sticker');
       toast.success(`✅ Autocollant créé: ${stickerPayload.name}`, {
-        description: `Prix: ${finalPrice.toLocaleString()} FCFA | Qté min: ${minQuantity}, max: ${maxQuantity}`,
+        description: `Prix: ${finalPrice.toLocaleString()} FCFA | Stock: ${stockQuantity} unités`,
         duration: 4000
       });
 
@@ -386,7 +384,7 @@ const VendorStickerSimplePage: React.FC = () => {
               {filteredDesigns.length} design{filteredDesigns.length > 1 ? 's' : ''} disponible{filteredDesigns.length > 1 ? 's' : ''} pour créer des autocollants
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              Définissez les quantités minimale (≥1) et maximale par commande. Pas de stock à gérer.
+              Le backend génère automatiquement les images avec bordures via Sharp (2-8 secondes)
             </p>
           </div>
         )}
@@ -480,11 +478,34 @@ const VendorStickerSimplePage: React.FC = () => {
                 )}
               </div>
 
+              {/* Stock */}
+              <div className="space-y-2">
+                <Label htmlFor="stockQuantity" className="text-sm font-medium text-gray-700">
+                  Stock initial
+                </Label>
+                <Input
+                  id="stockQuantity"
+                  type="number"
+                  min="1"
+                  step="10"
+                  value={stockQuantity}
+                  onChange={(e) => setStockQuantity(Number(e.target.value))}
+                  placeholder="Ex: 100"
+                />
+                <p className="text-xs text-gray-500">
+                  Nombre d'unités disponibles à la vente
+                </p>
+              </div>
+
               {/* Résumé */}
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-gray-600">Taille</span>
                   <span className="font-medium text-gray-900">10 cm x 10 cm</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Finition</span>
+                  <span className="font-medium text-gray-900">Brillant</span>
                 </div>
               </div>
             </div>

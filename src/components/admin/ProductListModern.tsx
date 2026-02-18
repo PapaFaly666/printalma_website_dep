@@ -23,7 +23,7 @@ import {
   Target
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import Button from '../ui/Button';
+import { AdminButton } from './AdminButton';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
 import { toast } from 'sonner';
@@ -132,12 +132,26 @@ interface Product {
   isValidated?: boolean;
   submittedForValidationAt?: string | null;
   isDelete?: boolean; // Added for soft delete
-  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Added for genre
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU'; // Added for genre
   // Relations pour sous-catégories et variations (backend fournit les objets complets via Prisma)
   subCategoryId?: number | null;
   variationId?: number | null;
   subCategory?: SubCategory | null;
   variation?: Variation | null;
+
+  // 🆕 Prix par taille (structure API backend)
+  useGlobalPricing?: boolean;
+  globalCostPrice?: number;
+  globalSuggestedPrice?: number;
+  sizePrices?: Array<{
+    id: number;
+    productId: number;
+    size: string;
+    costPrice: number;
+    suggestedPrice: number;
+    createdAt: string;
+    updatedAt: string;
+  }>;
 }
 
 // Composant pour gérer l'affichage d'une image avec fallback
@@ -164,13 +178,13 @@ const ProductImageDisplay: React.FC<{
   return (
     <div className={`relative ${className}`}>
       {loading && (
-        <div className="absolute inset-0 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 dark:border-gray-600 dark:border-t-gray-100"></div>
+        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-[rgb(20,104,154)]"></div>
         </div>
       )}
-      
+
       {error ? (
-        <div className="absolute inset-0 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center text-gray-400">
+        <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center text-gray-400">
           <AlertCircle className="h-6 w-6 mb-1" />
           <span className="text-xs">Image indisponible</span>
         </div>
@@ -316,17 +330,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const pendingAutoPublish = product.status === 'PENDING'; // En attente de validation -> auto-publication
   // 🆕 Afficher bouton seulement si brouillon déjà validé
   const showPublishButton = onPublish && readyToPublish;
-  
+
   // 🆕 Messages contextuels selon le workflow
   const getStatusMessage = () => {
     if (product.status === 'PUBLISHED') {
       return 'Produit publié et disponible à la vente';
     }
-    
+
     if (product.status === 'PENDING') {
       return 'En attente de validation admin. Sera automatiquement publié après validation.';
     }
-    
+
     if (product.status === 'DRAFT') {
       if (isDesignValidated) {
         return 'Produit validé et prêt à être publié manuellement.';
@@ -334,35 +348,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
         return 'Brouillon en attente de validation. Restera en brouillon après validation.';
       }
     }
-    
+
     return 'Statut inconnu';
   };
-  
-  // 🐛 Debug info - à supprimer en production
-  console.log('Product debug:', {
-    id: product.id,
-    name: product.name,
-    price: product.price,
-    suggestedPrice: product.suggestedPrice,
-    priceAligned: product.suggestedPrice === product.price,
-    status: product.status,
-    isValidated: isDesignValidated,
-    readyToPublish,
-    pendingAutoPublish,
-    showPublishButton,
-    workflow: product.status === 'PENDING' ? 'AUTO-PUBLISH' : 'MANUAL-PUBLISH',
-    // 🆕 Debug pour design et délimitations
-    hasDesignApplication: !!(product as any).designApplication?.designUrl,
-    designUrl: (product as any).designApplication?.designUrl,
-    colorVariationsCount: product.colorVariations?.length || 0,
-    currentImageDelimitations: currentImage?.delimitations?.length || 0,
-    currentImageData: currentImage ? {
-      id: currentImage.id,
-      url: currentImage.url,
-      view: currentImage.view,
-      delimitations: currentImage.delimitations
-    } : null
-  });
 
   // Vue grille simplifiée
   return (
@@ -372,10 +360,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
       exit={{ opacity: 0, y: -20 }}
       className="group"
     >
-      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-900 border-[#049BE5]/20 hover:border-[#049BE5]/40">
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 bg-white border border-gray-200 hover:border-[rgb(20,104,154)]/50">
         <div className="relative">
           {/* Image principale */}
-          <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-[#049BE5]/5 dark:from-gray-800 dark:to-[#049BE5]/10 overflow-hidden">
+          <div className="relative aspect-square bg-gray-100 overflow-hidden">
             {currentImage ? (
               (() => {
                 // Vérifier si on a un design et des délimitations
@@ -429,13 +417,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
             {/* Navigation des images */}
             {currentColor?.images.length > 1 && (
-              <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[#049BE5] text-[#049BE5] hover:text-white" onClick={prevImage}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[#049BE5] text-[#049BE5] hover:text-white" onClick={nextImage}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+              <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <AdminButton size="sm" className="h-7 w-7 p-0 rounded-full bg-white/95 hover:bg-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:text-white shadow-md" onClick={prevImage}>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </AdminButton>
+                <AdminButton size="sm" className="h-7 w-7 p-0 rounded-full bg-white/95 hover:bg-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:text-white shadow-md" onClick={nextImage}>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </AdminButton>
               </div>
             )}
 
@@ -468,19 +456,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
             {/* Menu d'actions */}
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
               <div className="relative">
-                <Button size="sm" variant="secondary" className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[#049BE5] text-[#049BE5] hover:text-white" onClick={() => setShowActions(!showActions)}>
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
+                <AdminButton size="sm" className="h-7 w-7 p-0 rounded-full bg-white/95 hover:bg-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:text-white shadow-md" onClick={() => setShowActions(!showActions)}>
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </AdminButton>
                 
                 {showActions && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-10 min-w-[120px]"
+                    className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10 min-w-[120px]"
                   >
                     {onView && (
                       <button
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-[rgb(20,104,154)] hover:text-white transition-colors flex items-center gap-2 text-gray-700"
                         onClick={() => {
                           onView(product);
                           setShowActions(false);
@@ -490,10 +478,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         Voir
                       </button>
                     )}
-                    
+
                     {/* Bouton Modifier toujours visible dans le menu contextuel */}
                       <button
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-[rgb(20,104,154)] hover:text-white transition-colors flex items-center gap-2 text-gray-700"
                         onClick={() => {
                           handleEditClick();
                           setShowActions(false);
@@ -502,9 +490,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         <Edit3 className="h-4 w-4" />
                         Modifier
                       </button>
-                    
+
                     <button
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 text-red-600"
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-red-600 hover:text-white transition-colors flex items-center gap-2 text-red-600"
                       onClick={() => {
                         setShowDeleteConfirm(true);
                         setShowActions(false);
@@ -516,7 +504,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                     {onPublish && showPublishButton && (
                       <button
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 text-gray-900 font-medium"
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-[rgb(20,104,154)] hover:text-white transition-colors flex items-center gap-2 text-gray-900"
                         onClick={() => {
                           onPublish(product.id);
                           setShowActions(false);
@@ -533,27 +521,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
             {/* Bouton rapide de publication */}
             {onPublish && showPublishButton && (
-              <Button
+              <AdminButton
                 size="sm"
                 className="absolute bottom-3 right-3 h-8 w-8 p-0 rounded-full bg-gray-900 hover:bg-gray-800 text-white"
                 onClick={() => onPublish(product.id)}
                 title={readyToPublish ? 'Publier maintenant' : 'Test: Publier ce produit'}
               >
                 <Check className="h-4 w-4" />
-              </Button>
+              </AdminButton>
             )}
 
             {/* Bouton rapide Modifier (grid) */}
             {!product.isValidated && (
-              <Button
+              <AdminButton
                 size="sm"
-                variant="secondary"
-                className="absolute bottom-3 right-12 h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[#049BE5] text-[#049BE5] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-3 right-12 h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={handleEditClick}
                 title="Modifier"
               >
                 <Edit3 className="h-4 w-4" />
-              </Button>
+              </AdminButton>
             )}
           </div>
 
@@ -561,18 +548,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
           {product.colorVariations.length > 1 && (
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#049BE5]/80 to-transparent p-4">
               <div className="flex items-center justify-center gap-3">
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-[#049BE5]/80 rounded-full" onClick={prevColor}>
+                <AdminButton size="sm" className="h-6 w-6 p-0 text-white hover:bg-[rgb(20,104,154)]/80 rounded-full" onClick={prevColor}>
                   <ChevronLeft className="h-3 w-3" />
-                </Button>
-                
+                </AdminButton>
+
                 <div className="flex items-center gap-2">
                   {product.colorVariations.map((color, index) => (
                     <button
                       key={`color-grid-${color.id}`}
                       onClick={() => setSelectedColorIndex(index)}
                       className={`w-6 h-6 rounded-full border-2 transition-all ${
-                        index === selectedColorIndex 
-                          ? 'border-white scale-110' 
+                        index === selectedColorIndex
+                          ? 'border-white scale-110'
                           : 'border-white/50 hover:border-white/80'
                       }`}
                       style={{ backgroundColor: color.colorCode }}
@@ -580,171 +567,192 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     />
                   ))}
                 </div>
-                
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-[#049BE5]/80 rounded-full" onClick={nextColor}>
+
+                <AdminButton size="sm" className="h-6 w-6 p-0 text-white hover:bg-[rgb(20,104,154)]/80 rounded-full" onClick={nextColor}>
                   <ChevronRight className="h-3 w-3" />
-                </Button>
+                </AdminButton>
               </div>
             </div>
           )}
         </div>
 
         {/* Contenu de la carte */}
-        <CardContent className="p-4">
-          <div className="mb-3">
-            <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1 mb-1">
-              {product.name}
-            </h3>
-            {/* Description masquée selon la demande */}
-            {/* <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-              {product.description}
-            </p> */}
+        <CardContent className="p-4 space-y-3">
+          {/* Titre du produit */}
+          <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-tight">
+            {product.name}
+          </h3>
+
+          {/* Section prix et stock */}
+          <div className="space-y-2.5">
+              {/* 💰 Prix par taille - Design moderne */}
+              {product.useGlobalPricing ? (
+                // Prix global - affichage compact
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5 font-medium">
+                        Prix
+                      </div>
+                      <div className="font-bold text-base text-[rgb(20,104,154)] leading-none truncate">
+                        {(product.globalSuggestedPrice || product.suggestedPrice || product.price).toLocaleString()} <span className="text-xs">F</span>
+                      </div>
+                    </div>
+                    {product.globalCostPrice > 0 && (
+                      <div className="text-right bg-white rounded px-2 py-1.5 border border-blue-100">
+                        <div className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">
+                          Coût
+                        </div>
+                        <div className="font-semibold text-xs text-gray-700 leading-none">
+                          {product.globalCostPrice.toLocaleString()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : product.sizePrices && product.sizePrices.length > 0 ? (
+                // Prix par taille - grille moderne avec badges
+                <>
+                  {product.sizePrices.slice(0, 2).map((sizePrice, idx) => (
+                    <div
+                      key={sizePrice.id}
+                      className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200"
+                    >
+                      {/* Nom de la taille */}
+                      <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0.5 bg-white border-gray-300">
+                        {sizePrice.size}
+                      </Badge>
+
+                      {/* Prix */}
+                      <div className="flex items-center gap-1.5">
+                        {sizePrice.costPrice > 0 && (
+                          <>
+                            <div className="text-right">
+                              <div className="text-[8px] text-gray-500 uppercase">Coût</div>
+                              <div className="text-[11px] font-semibold text-gray-700 leading-none">
+                                {sizePrice.costPrice.toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="h-3 w-px bg-gray-300"></div>
+                          </>
+                        )}
+                        <div className="text-right">
+                          <div className="text-[8px] text-[rgb(20,104,154)] uppercase">Prix</div>
+                          <div className="text-xs font-bold text-[rgb(20,104,154)] leading-none">
+                            {sizePrice.suggestedPrice.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {product.sizePrices.length > 2 && (
+                    <div className="text-center py-1 px-2 bg-gray-100 rounded border border-gray-200">
+                      <span className="text-[10px] text-gray-600 font-medium">
+                        +{product.sizePrices.length - 2} autre{product.sizePrices.length - 2 > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // Pas de prix par taille - fallback
+                <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+                  <div className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">
+                    Prix
+                  </div>
+                  <div className="font-bold text-gray-900 text-sm leading-none">
+                    {(product.suggestedPrice || product.price).toLocaleString()} <span className="text-xs">F</span>
+                  </div>
+                </div>
+              )}
           </div>
 
-          <div className="flex items-center justify-between mb-3">
-            <div className="space-y-1">
-              {/* Prix de base */}
-              <div className="font-bold text-gray-900 dark:text-white">
-                {product.price.toLocaleString()} FCFA
-              </div>
-
-              {/* Prix suggéré si différent du prix de base - pourcentage supprimé */}
-              {product.suggestedPrice && product.suggestedPrice !== product.price && (
-                <div className="text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">Prix suggéré: </span>
-                  <span className="font-semibold text-[#049BE5] dark:text-[#049BE5]/80">
-                    {product.suggestedPrice.toLocaleString()} FCFA
-                  </span>
-                </div>
-              )}
-
-              {/* Affichage spécial si prix suggéré identique */}
-              {product.suggestedPrice && product.suggestedPrice === product.price && (
-                <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                  <Target className="h-3 w-3" />
-                  Prix aligné
-                </div>
-              )}
-            </div>
-            {/* Bouton pour voir le stock */}
-            <div className="flex flex-col items-end gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white text-xs px-2 py-1 h-auto"
-                onClick={() => window.open(`/admin/stock?productId=${product.id}`, '_blank')}
-              >
-                <Package className="h-3 w-3 mr-1" />
-                Voir stock
-              </Button>
-              {/* Indicateur de stock par couleur - sans les chiffres */}
-              <div className="flex flex-wrap gap-1 justify-end">
+          {/* Section stock */}
+          <div className="space-y-2">
+            {/* Indicateurs de stock */}
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50 rounded-md border border-gray-200">
+              <span className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Stock</span>
+              <div className="flex items-center gap-1">
                 {product.colorVariations.slice(0, 3).map((color: any) => {
-                  // Calcul du stock pour cette couleur (somme de tous les stocks par taille)
                   const colorStock = color.sizes ?
                     Object.values(color.sizes).reduce((sum: number, stock: any) => sum + (typeof stock === 'number' ? stock : 0), 0) :
                     (color.stock || 0);
 
                   let indicatorColor = 'bg-green-500';
-
-                  if (colorStock === 0) {
-                    indicatorColor = 'bg-red-500';
-                  } else if (colorStock < 10) {
-                    indicatorColor = 'bg-yellow-500';
-                  }
+                  if (colorStock === 0) indicatorColor = 'bg-red-500';
+                  else if (colorStock < 10) indicatorColor = 'bg-yellow-500';
 
                   return (
                     <div
                       key={color.id}
-                      className="flex items-center gap-1"
-                    >
-                      <div
-                        className={`w-2 h-2 rounded-full ${indicatorColor}`}
-                        style={{ backgroundColor: color.colorCode }}
-                        title={color.name}
-                      />
-                    </div>
+                      className={`w-2 h-2 rounded-full ${indicatorColor} ring-1 ring-white shadow-sm`}
+                      title={`${color.name}: ${colorStock}`}
+                    />
                   );
                 })}
                 {product.colorVariations.length > 3 && (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-gray-300 text-gray-500 text-xs">
+                  <span className="text-[9px] text-gray-500 ml-0.5">
                     +{product.colorVariations.length - 3}
-                  </div>
+                  </span>
                 )}
               </div>
             </div>
+
+            {/* Bouton gérer stock */}
+            <AdminButton
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`/admin/stock?productId=${product.id}`, '_blank')}
+              className="w-full text-xs"
+            >
+              <Package className="h-3.5 w-3.5" />
+              Gérer stock
+            </AdminButton>
           </div>
 
           {/* Couleur actuelle */}
           {currentColor && (
-            <div className="flex items-center gap-2 mb-3">
-              <div 
-                className="w-3 h-3 rounded-full border border-gray-300"
+            <div className="flex items-center gap-2 bg-gray-50 rounded-md px-2.5 py-2 border border-gray-200">
+              <div
+                className="w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm ring-1 ring-gray-300 flex-shrink-0"
                 style={{ backgroundColor: currentColor.colorCode }}
               />
-              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+              <span className="text-xs text-gray-700 font-medium truncate">
                 {currentColor.name}
               </span>
             </div>
           )}
 
-          {/* Métadonnées */}
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-1">
-              {(product.categories || []).slice(0, 2).map(category => (
-                <Badge key={category.id} variant="secondary" className="text-xs">
-                  {category.name}
-                </Badge>
-              ))}
-              {product.categories && product.categories.length > 2 && (
-                <Badge variant="outline" className="text-xs">
-                  +{(product.categories || []).length - 2}
-                </Badge>
-              )}
-            </div>
-
-            {/* Sous-catégorie (relations Prisma) */}
+          {/* Métadonnées - Badges compacts */}
+          <div className="flex flex-wrap gap-1">
+            {/* Sous-catégorie */}
             {product.subCategory && (
-              <div className="flex items-center gap-1">
-                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                  {product.subCategory.name}
-                </Badge>
-              </div>
-            )}
-
-            {/* Variation (relations Prisma) */}
-            {product.variation && (
-              <div className="flex items-center gap-1">
-                <Badge variant="outline" className="text-xs border-orange-400 text-orange-700 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-600">
-                  {product.variation.name}
-                </Badge>
-              </div>
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 border-green-200">
+                {product.subCategory.name}
+              </Badge>
             )}
 
             {/* Genre */}
             {product.genre && (
-              <div className="flex items-center gap-1">
-                <GenreBadge genre={product.genre} className="text-xs" />
-              </div>
+              <GenreBadge genre={product.genre} className="text-[9px] px-1.5 py-0.5" />
             )}
 
             {/* Tailles */}
-            <div className="flex items-center gap-1">
-              {(product.sizes || []).slice(0, 2).map(size => (
-                <Badge key={size.id} variant="outline" className="text-xs">
-                  {size.sizeName}
-                </Badge>
-              ))}
-              {product.sizes && product.sizes.length > 2 && (
-                <Badge variant="outline" className="text-xs">
-                  +{(product.sizes || []).length - 2}
-                </Badge>
-              )}
-            </div>
+            {(product.sizes || []).slice(0, 2).map(size => (
+              <Badge key={size.id} variant="outline" className="text-[9px] px-1.5 py-0.5 bg-white border-gray-300">
+                {size.sizeName}
+              </Badge>
+            ))}
+            {product.sizes && product.sizes.length > 2 && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0.5 bg-white border-gray-300">
+                +{product.sizes.length - 2}
+              </Badge>
+            )}
           </div>
 
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 pt-3 border-t border-[#049BE5]/10">
-            Créé le {new Date(product.createdAt).toLocaleDateString('fr-FR')}
+          {/* Date */}
+          <div className="text-[9px] text-gray-500 pt-2.5 border-t border-gray-200 flex items-center gap-1">
+            <Clock className="w-3 h-3 flex-shrink-0" />
+            <span>{new Date(product.createdAt).toLocaleDateString('fr-FR')}</span>
           </div>
         </CardContent>
       </Card>
@@ -811,19 +819,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4"
+            className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-gray-200"
           >
-            <h4 className="text-lg font-semibold mb-2">Confirmer la suppression</h4>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+            <h4 className="text-lg font-semibold mb-2 text-gray-900">Confirmer la suppression</h4>
+            <p className="text-gray-600 mb-6">
               Êtes-vous sûr de vouloir supprimer <span className="font-medium">"{product.name}"</span> ? Cette action est irréversible.
             </p>
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white" onClick={() => setShowDeleteConfirm(false)}>
+              <AdminButton variant="outline" onClick={() => setShowDeleteConfirm(false)}>
                 Annuler
-              </Button>
-              <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              </AdminButton>
+              <AdminButton variant="destructive" onClick={handleDelete} disabled={deleting}>
                 Supprimer
-              </Button>
+              </AdminButton>
             </div>
           </motion.div>
         </div>
@@ -842,7 +850,7 @@ const DeletedProductCard: React.FC<{ prod: any }> = ({ prod }) => {
   return (
     <div className="flex items-center gap-4 py-4 border-b border-[#049BE5]/10 hover:bg-[#049BE5]/5 transition-colors duration-200">
       {/* Image principale */}
-      <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-gray-50 to-[#049BE5]/5 dark:from-gray-800 dark:to-[#049BE5]/10">
+      <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
         {currentImage ? (
           <img
             src={currentImage.url}
@@ -874,13 +882,44 @@ const DeletedProductCard: React.FC<{ prod: any }> = ({ prod }) => {
       </div>
       {/* Infos produit */}
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-gray-900 dark:text-white">{prod.name}</div>
-        <div className="text-sm text-gray-500 mb-1">
-          {prod.price.toLocaleString()} FCFA
-          {prod.suggestedPrice && prod.suggestedPrice !== prod.price && (
-            <span className="ml-2 text-[#049BE5] font-medium">
-              (suggéré: {prod.suggestedPrice.toLocaleString()})
-            </span>
+        <div className="font-semibold text-gray-900">{prod.name}</div>
+
+        {/* Prix par taille - version compacte pour la corbeille */}
+        <div className="mt-1.5 space-y-1">
+          {prod.useGlobalPricing ? (
+            // Prix global
+            <div className="flex items-center gap-2">
+              {prod.globalCostPrice > 0 && (
+                <span className="text-xs text-gray-600">
+                  Coût: {prod.globalCostPrice.toLocaleString()} FCFA
+                </span>
+              )}
+              <span className="text-sm font-semibold text-[rgb(20,104,154)]">
+                {(prod.globalSuggestedPrice || prod.suggestedPrice || prod.price).toLocaleString()} FCFA
+              </span>
+            </div>
+          ) : prod.sizePrices && Array.isArray(prod.sizePrices) && prod.sizePrices.length > 0 ? (
+            // Prix par taille - affichage compact
+            prod.sizePrices.slice(0, 2).map((sp: any) => (
+              <div key={sp.id} className="flex items-center gap-2 text-xs">
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-white border-gray-300">
+                  {sp.size}
+                </Badge>
+                {sp.costPrice > 0 && (
+                  <span className="text-gray-600">
+                    {sp.costPrice.toLocaleString()}
+                  </span>
+                )}
+                <span className="font-semibold text-[rgb(20,104,154)]">
+                  {sp.suggestedPrice.toLocaleString()} FCFA
+                </span>
+              </div>
+            ))
+          ) : (
+            // Fallback
+            <div className="text-sm font-semibold text-[#049BE5]">
+              {(prod.suggestedPrice || prod.price).toLocaleString()} FCFA
+            </div>
           )}
         </div>
         {/* Navigation couleurs */}
@@ -1028,61 +1067,48 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="w-full min-h-screen space-y-6 bg-gradient-to-br from-gray-50/50 to-[#049BE5]/5 dark:from-gray-900 dark:to-[#049BE5]/10">
+    <div className="w-full min-h-screen">
       {/* En-tête simplifié */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 px-4 sm:px-6"
+        className="bg-white border-b border-gray-200 px-4 sm:px-6 py-6"
       >
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            {title || "Gestion des produits"}
-          </h1>
-          <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
-            <span className="font-medium">
-              {stats.total} produit{stats.total > 1 ? 's' : ''}
-            </span>
-            <span className="text-gray-900 dark:text-white font-medium">
-              {stats.published} publié{stats.published > 1 ? 's' : ''}
-            </span>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {title || "Gestion des produits"}
+            </h1>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-gray-600">
+                <span className="font-semibold text-gray-900">{stats.total}</span> produit{stats.total > 1 ? 's' : ''}
+              </span>
+              <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-green-600">{stats.published}</span> publié{stats.published > 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {showAddButton && (
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white" onClick={onRefresh} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Actualiser
-            </Button>
-            {/* Bouton Corbeille */}
-            <Button variant="outline" size="sm" className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white" onClick={() => navigate('/admin/trash')}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Corbeille
-            </Button>
-            <Button size="sm" className="bg-[#049BE5] hover:bg-[#0378B1] text-white" onClick={onAddProduct}>
-              <Plus className="h-4 w-4 mr-2" />
-              {addButtonText}
-            </Button>
-          </div>
-        )}
+          {showAddButton && (
+            <div className="flex items-center gap-2">
+              <AdminButton variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Actualiser</span>
+              </AdminButton>
+              <AdminButton variant="outline" size="sm" onClick={() => navigate('/admin/trash')}>
+                <Trash2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Corbeille</span>
+              </AdminButton>
+              <AdminButton variant="primary" size="sm" onClick={onAddProduct}>
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">{addButtonText}</span>
+              </AdminButton>
+            </div>
+          )}
+        </div>
       </motion.div>
 
-      {/* Cartes de statistiques */}
-      <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 px-4 sm:px-6">
-        <Card className="border-[#049BE5]/20 hover:border-[#049BE5]/40 transition-all duration-300 hover:shadow-lg">
-          <CardContent className="pt-4 bg-gradient-to-br from-white to-[#049BE5]/5 dark:from-gray-900 dark:to-[#049BE5]/10">
-            <div className="text-sm text-[#049BE5] font-medium">Produits</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-green-200 hover:border-green-400 transition-all duration-300 hover:shadow-lg">
-          <CardContent className="pt-4 bg-gradient-to-br from-white to-green-50 dark:from-gray-900 dark:to-green-900/20">
-            <div className="text-sm text-green-600 dark:text-green-400 font-medium">Publiés</div>
-            <div className="text-2xl font-bold text-green-700 dark:text-green-300">{stats.published}</div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Modal Corbeille */}
       <Dialog open={showTrashModal} onOpenChange={setShowTrashModal}>
@@ -1100,7 +1126,7 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
           ) : deletedProducts.length === 0 ? (
             <div className="py-8 text-center text-gray-400">Aucun produit supprimé.</div>
           ) : (
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            <div className="divide-y divide-gray-200">
               {deletedProducts.map((prod: any) => (
                 <DeletedProductCard key={prod.id} prod={prod} />
               ))}
@@ -1108,46 +1134,47 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
           )}
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white">Fermer</Button>
+              <AdminButton variant="outline">Fermer</AdminButton>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Barre de contrôles simplifiée */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-4 bg-white dark:bg-gray-900 p-4 rounded-lg border border-[#049BE5]/20 hover:border-[#049BE5]/30 transition-all duration-300 hover:shadow-lg mx-4 sm:mx-6"
-      >
-        {/* Recherche */}
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Rechercher un produit..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-[#049BE5]/30 focus:border-[#049BE5] focus:ring-[#049BE5]/20"
-            />
+      {/* Barre de recherche et filtres */}
+      <div className="px-4 sm:px-6 py-4 space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
+        >
+          {/* Recherche */}
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Rechercher un produit..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-10 border-gray-300 focus:border-[rgb(20,104,154)] focus:ring-[rgb(20,104,154)]/20"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Filtres */}
-        <div className="flex items-center gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-2 border border-[#049BE5]/30 rounded-md bg-white dark:bg-gray-900 text-sm focus:border-[#049BE5] focus:ring-[#049BE5]/20 transition-colors"
-          >
-            <option value="ALL">Tous les produits</option>
-            <option value="PUBLISHED">Publiés</option>
-          </select>
-
-          {/* Mode d'affichage supprimé: grid uniquement */}
-        </div>
-      </motion.div>
+          {/* Filtres */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-gray-400 hidden sm:block" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="px-3 py-2 h-10 border border-gray-300 rounded-md bg-white text-sm focus:border-[rgb(20,104,154)] focus:ring-[rgb(20,104,154)]/20 transition-colors"
+            >
+              <option value="ALL">Tous</option>
+              <option value="PUBLISHED">Publiés</option>
+            </select>
+          </div>
+        </motion.div>
+      </div>
 
       {/* Liste des produits */}
       {loading ? (
@@ -1155,11 +1182,11 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center justify-center py-16"
+            className="flex items-center justify-center py-20"
           >
             <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-400">Chargement des produits...</p>
+              <div className="h-10 w-10 animate-spin rounded-full border-3 border-gray-200 border-t-[rgb(20,104,154)] mx-auto mb-3"></div>
+              <p className="text-sm text-gray-600">Chargement...</p>
             </div>
           </motion.div>
         </div>
@@ -1169,42 +1196,46 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-center py-16 bg-white dark:bg-gray-900 rounded-lg border border-[#049BE5]/20 hover:border-[#049BE5]/30 transition-all duration-300 hover:shadow-lg"
+            className="text-center py-16 bg-white rounded-lg border border-gray-200 mx-4 sm:mx-6"
           >
-            <div className="max-w-md mx-auto">
+            <div className="max-w-md mx-auto px-4">
               {searchTerm || statusFilter !== 'ALL' ? (
                 <>
-                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    Aucun résultat trouvé
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                    <Search className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
+                    Aucun résultat
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Essayez de modifier vos filtres ou votre terme de recherche.
+                  <p className="text-sm text-gray-600 mb-6">
+                    Aucun produit ne correspond à votre recherche.
                   </p>
-                  <Button
+                  <AdminButton
                     variant="outline"
-                    className="border-[#049BE5] text-[#049BE5] hover:bg-[#049BE5] hover:text-white"
+                    size="sm"
                     onClick={() => {
                       setSearchTerm('');
                       setStatusFilter('ALL');
                     }}
                   >
-                    Réinitialiser les filtres
-                  </Button>
+                    Réinitialiser
+                  </AdminButton>
                 </>
               ) : (
                 <>
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-50 flex items-center justify-center">
+                    <Package className="h-8 w-8 text-[rgb(20,104,154)]" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     {emptyStateTitle}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  <p className="text-sm text-gray-600 mb-6">
                     {emptyStateDescription}
                   </p>
-                  <Button className="bg-[#049BE5] hover:bg-[#0378B1] text-white" onClick={onAddProduct}>
-                    <Plus className="h-4 w-4 mr-2" />
+                  <AdminButton variant="primary" onClick={onAddProduct}>
+                    <Plus className="h-4 w-4" />
                     {emptyStateButtonText}
-                  </Button>
+                  </AdminButton>
                 </>
               )}
             </div>
@@ -1215,7 +1246,7 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className={'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-4 sm:px-6'}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 px-4 sm:px-6"
         >
           <AnimatePresence>
             {filteredProducts.map((product, index) => (

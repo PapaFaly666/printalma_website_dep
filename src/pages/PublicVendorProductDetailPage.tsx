@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Loader2, Check } from 'lucide-react';
+import { ShoppingCart, Loader2, Check, Heart } from 'lucide-react';
 import vendorProductsService, { VendorProduct, ProductGenre } from '../services/vendorProductsService';
 import designService from '../services/designService';
 import { SimpleProductPreview } from '../components/vendor/SimpleProductPreview';
 import { useCart } from '../contexts/CartContext';
+import { useFavorites } from '../contexts/FavoritesContext';
 import { formatPrice } from '../utils/priceUtils';
 import ServiceFeatures from './ServiceFeatures ';
-import Footer from '../components/Footer';
+import Footer from '../components/Footer';  
 import { publicStickerService, PublicSticker } from '../services/publicStickerService';
 
 const PublicVendorProductDetailPage: React.FC = () => {
@@ -78,7 +79,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
 
   // États pour les produits avec le même design
   const [sameDesignProducts, setSameDesignProducts] = useState<VendorProduct[]>([]);
-  const [selectedGenre, setSelectedGenre] = useState<ProductGenre>('HOMME');
+  const [selectedGenre, setSelectedGenre] = useState<ProductGenre | null>(null);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [errorSimilar, setErrorSimilar] = useState<string | null>(null);
 
@@ -94,7 +95,12 @@ const PublicVendorProductDetailPage: React.FC = () => {
   const [isZooming, setIsZooming] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 50, y: 50 });
 
+  // 🆕 États pour les notifications favoris
+  const [showFavoriteNotification, setShowFavoriteNotification] = useState(false);
+  const [favoriteNotificationMessage, setFavoriteNotificationMessage] = useState('');
+
   const { addToCart, openCart } = useCart();
+  const { toggleFavorite, isFavorite: checkIsFavorite } = useFavorites();
 
   // 🆕 Gestionnaire de zoom interactif
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -110,6 +116,58 @@ const PublicVendorProductDetailPage: React.FC = () => {
 
   const handleMouseLeave = () => {
     setIsZooming(false);
+  };
+
+  // 🆕 Fonction pour récupérer le prix de la taille sélectionnée
+  const getPriceForSelectedSize = (): number => {
+    if (!product || !selectedSize) {
+      return product?.price || 0;
+    }
+
+    // Chercher le prix dans sizePricing d'abord
+    if (product.sizePricing && product.sizePricing.length > 0) {
+      const sizePrice = product.sizePricing.find(sp => sp.size === selectedSize.sizeName);
+      if (sizePrice) {
+        return sizePrice.salePrice;
+      }
+    }
+
+    // Chercher dans sizesWithPrices ensuite
+    if (product.sizesWithPrices && product.sizesWithPrices.length > 0) {
+      const sizePrice = product.sizesWithPrices.find(sp => sp.sizeName === selectedSize.sizeName);
+      if (sizePrice) {
+        return sizePrice.salePrice;
+      }
+    }
+
+    // Fallback: utiliser le prix de base du produit
+    return product.price;
+  };
+
+  // ============ GESTION DES FAVORIS ============
+  // Basculer le statut favori avec notification
+  const handleToggleFavorite = () => {
+    if (!product) return;
+
+    const wasAlreadyFavorite = checkIsFavorite(product.id);
+
+    // Appeler la fonction du contexte
+    toggleFavorite(product);
+
+    // Mettre à jour le message de notification
+    if (wasAlreadyFavorite) {
+      setFavoriteNotificationMessage('💔 Produit retiré des favoris');
+    } else {
+      setFavoriteNotificationMessage('❤️ Produit ajouté aux favoris');
+    }
+
+    // Afficher la notification
+    setShowFavoriteNotification(true);
+
+    // Masquer la notification après 3 secondes
+    setTimeout(() => {
+      setShowFavoriteNotification(false);
+    }, 3000);
   };
 
   // ============ GESTION DE L'HISTORIQUE ============
@@ -360,14 +418,21 @@ const PublicVendorProductDetailPage: React.FC = () => {
           });
         });
       }
-    }
-  }, [product]);
 
-  // Charger les produits avec le même design via l'API /public/designs, filtrés par genre
+      // 🎯 Définir le genre par défaut en fonction du produit actuel
+      if (!selectedGenre && product.adminProduct?.genre) {
+        const productGenre = product.adminProduct.genre as ProductGenre;
+        setSelectedGenre(productGenre);
+        console.log('🎯 [PublicVendorProductDetailPage] Genre par défaut défini:', productGenre);
+      }
+    }
+  }, [product, selectedGenre]);
+
+  // Charger les produits avec le même design via l'API /public/vendor-products/{id}/same-design, filtrés par genre
   useEffect(() => {
     const loadSameDesignProducts = async () => {
-      if (!product?.designId || !selectedGenre) {
-        console.log('⏭️ [PublicVendorProductDetailPage] Pas de designId ou genre, skip chargement');
+      if (!actualProductId || !selectedGenre) {
+        console.log('⏭️ [PublicVendorProductDetailPage] Pas de productId ou genre, skip chargement');
         setSameDesignProducts([]);
         return;
       }
@@ -376,189 +441,41 @@ const PublicVendorProductDetailPage: React.FC = () => {
       setErrorSimilar(null);
 
       try {
-        console.log('🔍 [PublicVendorProductDetailPage] Chargement produits via /public/designs:', {
-          designId: product.designId,
+        console.log('🔍 [PublicVendorProductDetailPage] Chargement produits même design:', {
+          productId: actualProductId,
           genre: selectedGenre
         });
 
-        // Récupérer tous les designs publics (ils incluent vendorProducts)
-        const response = await designService.getPublicDesigns({
-          limit: 100 // Récupérer beaucoup de designs pour trouver celui qui nous intéresse
-        });
+        // ✅ Utiliser le nouvel endpoint dédié
+        const response = await vendorProductsService.getProductsWithSameDesign(Number(actualProductId));
 
-        console.log('📡 [PublicVendorProductDetailPage] Réponse /public/designs:', {
-          totalDesigns: response.designs?.length || 0
-        });
-
-        // Trouver le design correspondant au produit actuel
-        const currentDesign = response.designs.find((d: any) => d.id === product.designId);
-
-        if (!currentDesign) {
-          console.warn('⚠️ [PublicVendorProductDetailPage] Design non trouvé dans les designs publics');
+        if (!response.success || !response.data) {
+          console.warn('⚠️ [PublicVendorProductDetailPage] Aucun produit avec le même design');
           setSameDesignProducts([]);
           setLoadingSimilar(false);
           return;
         }
 
-        console.log('🎨 [PublicVendorProductDetailPage] Design trouvé:', {
-          designId: currentDesign.id,
-          name: currentDesign.name,
-          vendorProductsCount: currentDesign.vendorProducts?.length || 0
+        console.log('🎨 [PublicVendorProductDetailPage] Produits même design récupérés:', {
+          designId: response.data.designId,
+          designName: response.data.designName,
+          totalProducts: response.data.total
         });
 
-        // Extraire les vendorProducts de ce design
-        const allVendorProducts: any[] = currentDesign.vendorProducts || [];
-
-        // Filtrer par genre et exclure le produit actuel
-        const filtered = allVendorProducts.filter((vp: any) =>
-          vp.id !== product.id &&
-          vp.baseProduct?.genre === selectedGenre
-        );
-
-        // Mapper vers le format VendorProduct attendu par le composant
-        const mappedProducts: VendorProduct[] = filtered.map((vp: any) => {
-          console.log('🔍 Mapping vendorProduct:', {
-            id: vp.id,
-            name: vp.name,
-            imagesCount: vp.images?.length,
-            baseProductId: vp.baseProduct?.id
-          });
-
-          // Reconstruire les colorVariations à partir des images disponibles
-          const colorVariationsMap = new Map<string, any>();
-
-          vp.images?.forEach((img: any) => {
-            const colorKey = img.colorCode || '#000000';
-            if (!colorVariationsMap.has(colorKey)) {
-              colorVariationsMap.set(colorKey, {
-                id: colorVariationsMap.size + 1,
-                name: img.colorName || 'Couleur',
-                colorCode: img.colorCode || '#000000',
-                images: []
-              });
-            }
-
-            // 🎨 IMPORTANT: Utiliser les MÊMES délimitations que le produit principal
-            // Puisque tous les produits utilisent le même baseProduct (Tshirt ID=1),
-            // ils partagent les mêmes délimitations
-
-            // Chercher la variation de couleur correspondante dans le produit principal
-            let delimitations: any[] = [];
-
-            if (product?.adminProduct?.colorVariations) {
-              // Essayer de trouver par colorCode
-              let colorVariationFromMainProduct = product.adminProduct.colorVariations.find(
-                cv => cv.colorCode?.toLowerCase() === img.colorCode?.toLowerCase()
-              );
-
-              // Si pas trouvé par colorCode, essayer par nom de couleur
-              if (!colorVariationFromMainProduct) {
-                colorVariationFromMainProduct = product.adminProduct.colorVariations.find(
-                  cv => cv.name?.toLowerCase() === img.colorName?.toLowerCase()
-                );
-              }
-
-              // Si toujours pas trouvé, utiliser la première variation disponible
-              if (!colorVariationFromMainProduct && product.adminProduct.colorVariations.length > 0) {
-                colorVariationFromMainProduct = product.adminProduct.colorVariations[0];
-              }
-
-              if (colorVariationFromMainProduct?.images) {
-                const mainProductImage = colorVariationFromMainProduct.images.find(
-                  mainImg => mainImg.viewType === 'Front'
-                ) || colorVariationFromMainProduct.images[0];
-
-                delimitations = mainProductImage?.delimitations || [];
-
-                console.log(`🎨 Délimitations pour couleur ${img.colorName}:`, {
-                  found: delimitations.length > 0,
-                  count: delimitations.length,
-                  delimitations
-                });
-              }
-            }
-
-            colorVariationsMap.get(colorKey).images.push({
-              id: img.id || Date.now(),
-              url: img.url,
-              viewType: img.imageType === 'admin_reference' ? 'Front' : 'Front',
-              // ✅ Copier les délimitations trouvées
-              delimitations: delimitations
-            });
-          });
-
-          const colorVariations = Array.from(colorVariationsMap.values());
-
-          console.log('✅ ColorVariations créées:', {
-            count: colorVariations.length,
-            hasDelimitations: colorVariations.some(cv =>
-              cv.images.some((img: any) => img.delimitations?.length > 0)
-            )
-          });
-
-          return {
-            id: vp.id,
-            vendorName: vp.name,
-            price: vp.price,
-            status: vp.status || 'PUBLISHED',
-            bestSeller: vp.isBestSeller || false,
-            adminProduct: {
-              id: vp.baseProduct?.id || vp.id,
-              name: vp.baseProduct?.name || vp.name,
-              description: vp.description || '',
-              price: vp.price || 0,
-              genre: vp.baseProduct?.genre || 'HOMME',
-              colorVariations: colorVariations,
-              sizes: vp.baseProduct?.sizes || []
-            },
-            selectedColors: colorVariations.map(cv => ({
-              id: cv.id,
-              name: cv.name,
-              colorCode: cv.colorCode
-            })),
-            selectedSizes: [],
-            images: {
-              primaryImageUrl: vp.images?.[0]?.url || '',
-              additionalImages: vp.images?.map((img: any) => img.url) || [],
-              adminReferences: vp.images?.map((img: any) => ({
-                colorName: img.colorName || '',
-                colorCode: img.colorCode || '#000000',
-                adminImageUrl: img.url || '',
-                imageType: img.imageType || 'base' as const
-              })) || [],
-              total: vp.images?.length || 0
-            },
-            designApplication: {
-              hasDesign: true,
-              designUrl: currentDesign.imageUrl,
-              positioning: product.designApplication?.positioning || 'CENTERED',
-              // ✅ Copier l'échelle du produit principal
-              scale: product.designApplication?.scale || 1.0,
-              mode: product.designApplication?.mode || 'SINGLE'
-            },
-            vendor: currentDesign.creator,
-            design: {
-              id: currentDesign.id,
-              name: currentDesign.name,
-              description: currentDesign.description || '',
-              imageUrl: currentDesign.imageUrl || '',
-              tags: currentDesign.tags || [],
-              isValidated: currentDesign.isValidated || false
-            },
-            designId: currentDesign.id,
-            // ✅ Copier les positions du design du produit principal
-            designPositions: product.designPositions || [],
-            // ✅ Copier les transformations du design du produit principal
-            designTransforms: product.designTransforms || null,
-            designDelimitations: product.designDelimitations || []
-          };
+        // Filtrer par genre sélectionné et exclure le produit actuel
+        const filteredProducts = response.data.products.filter(p => {
+          const productGenre = p.adminProduct?.genre as ProductGenre;
+          return productGenre === selectedGenre && p.id !== Number(actualProductId);
         });
 
-        setSameDesignProducts(mappedProducts.slice(0, 4));
+        // Limiter à 4 produits
+        const displayedProducts = filteredProducts.slice(0, 4);
 
-        console.log('✅ [PublicVendorProductDetailPage] Produits même design chargés:', {
-          total: mappedProducts.length,
-          displayed: Math.min(mappedProducts.length, 4),
+        setSameDesignProducts(displayedProducts);
+
+        console.log('✅ [PublicVendorProductDetailPage] Produits filtrés et affichés:', {
+          total: filteredProducts.length,
+          displayed: displayedProducts.length,
           genre: selectedGenre
         });
       } catch (err) {
@@ -570,7 +487,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
     };
 
     loadSameDesignProducts();
-  }, [selectedGenre, product?.id, product?.designId]);
+  }, [selectedGenre, actualProductId]);
 
   // Charger les designs du vendeur
   useEffect(() => {
@@ -780,7 +697,7 @@ const PublicVendorProductDetailPage: React.FC = () => {
         id: product.id,
         productId: product.id, // ✅ Ajouter productId explicitement
         name: product.vendorName || product.adminProduct?.name || 'Produit sans nom',
-        price: isSticker && sticker ? sticker.price : product.price,
+        price: isSticker && sticker ? sticker.price : getPriceForSelectedSize(),
         imageUrl: isSticker && sticker ? sticker.imageUrl : mockupUrl, // ✅ Utiliser l'image du sticker
         vendorName: product.vendor?.shop_name || product.vendor?.fullName,
         quantity: quantity, // ✅ Quantité sélectionnée
@@ -870,6 +787,47 @@ const PublicVendorProductDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Notification Favoris - Position fixe en haut */}
+      {showFavoriteNotification && (
+        <div
+          className="fixed top-4 right-4 z-50 transition-all duration-300 ease-out"
+          style={{
+            animation: 'slideInRight 0.3s ease-out'
+          }}
+        >
+          <style>{`
+            @keyframes slideInRight {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `}</style>
+          <div className="bg-white border-2 border-gray-900 rounded-lg shadow-2xl px-6 py-4 flex items-center gap-3 min-w-[280px]">
+            <div className="flex-shrink-0">
+              <Heart className={`w-6 h-6 ${product && checkIsFavorite(product.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-900">
+                {favoriteNotificationMessage}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowFavoriteNotification(false)}
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Breadcrumb */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b border-gray-200">
         <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -1083,8 +1041,13 @@ const PublicVendorProductDetailPage: React.FC = () => {
             <div className="pb-6">
               <div className="mb-2">
                 <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900" style={{ fontStyle: 'italic' }}>
-                  {formatPrice(isSticker && sticker ? sticker.price : product.price)}
+                  {formatPrice(isSticker && sticker ? sticker.price : getPriceForSelectedSize())}
                 </p>
+                {selectedSize && product?.sizePricing && product.sizePricing.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1" style={{ fontStyle: 'italic' }}>
+                    Prix pour la taille {selectedSize.sizeName}
+                  </p>
+                )}
               </div>
               <p className="text-xs text-gray-500" style={{ fontStyle: 'italic' }}>
                 {isSticker ? 'Prix unitaire' : 'Prix de base, hors personnalisation'}
@@ -1233,8 +1196,9 @@ const PublicVendorProductDetailPage: React.FC = () => {
               </div>
             )}
 
-            {/* Bouton commander */}
-            <div className="pt-4">
+            {/* Boutons commander et favoris */}
+            <div className="pt-4 space-y-3">
+              {/* Bouton Ajouter au panier */}
               <button
                 onClick={handleAddToCart}
                 disabled={
@@ -1272,6 +1236,29 @@ const PublicVendorProductDetailPage: React.FC = () => {
                 )}
               </button>
 
+              {/* Bouton Ajouter aux Favoris */}
+              <button
+                onClick={handleToggleFavorite}
+                className={`w-full flex items-center justify-center gap-2 sm:gap-3 py-3 sm:py-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 ${
+                  product && checkIsFavorite(product.id)
+                    ? 'bg-red-500 text-white hover:bg-red-600 shadow-md hover:shadow-lg'
+                    : 'bg-white text-gray-900 border-2 border-gray-900 hover:bg-gray-50 shadow-md hover:shadow-lg'
+                }`}
+              >
+                <Heart
+                  className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 transition-all ${
+                    product && checkIsFavorite(product.id) ? 'fill-white' : 'fill-none'
+                  }`}
+                />
+                <span className="hidden sm:inline">
+                  {product && checkIsFavorite(product.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                </span>
+                <span className="sm:hidden">
+                  {product && checkIsFavorite(product.id) ? 'Favoris ✓' : 'Favoris'}
+                </span>
+              </button>
+
+              {/* Messages d'erreur */}
               {!isSticker && !selectedColorId && (
                 <p className="text-red-500 text-xs sm:text-sm mt-2">
                   Veuillez sélectionner une couleur
@@ -1379,6 +1366,28 @@ const PublicVendorProductDetailPage: React.FC = () => {
                 <span className="hidden sm:inline">Unisexe</span>
                 <span className="sm:hidden">U</span>
               </button>
+              <button
+                onClick={() => setSelectedGenre('AUTOCOLLANT')}
+                className={`px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                  selectedGenre === 'AUTOCOLLANT'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="hidden sm:inline">Autocollants</span>
+                <span className="sm:hidden">A</span>
+              </button>
+              <button
+                onClick={() => setSelectedGenre('TABLEAU')}
+                className={`px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                  selectedGenre === 'TABLEAU'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="hidden sm:inline">Tableaux</span>
+                <span className="sm:hidden">T</span>
+              </button>
             </div>
 
             {/* Grille de produits */}
@@ -1405,25 +1414,45 @@ const PublicVendorProductDetailPage: React.FC = () => {
                     className="group cursor-pointer"
                     onClick={() => navigate(`/vendor-product-detail/${sameDesignProduct.id}`)}
                   >
-                    {/* ✅ Utiliser finalImage si disponible, sinon SimpleProductPreview */}
+                    {/* ✅ Utiliser finalUrlImage depuis colorVariations ou finalImages, sinon SimpleProductPreview */}
                     <div className="aspect-square bg-white rounded-xl sm:rounded-2xl mb-2 sm:mb-3 overflow-hidden relative border border-gray-200 hover:shadow-lg transition-shadow">
-                      {sameDesignProduct.finalImages && sameDesignProduct.finalImages.length > 0 ? (
-                        <img
-                          src={sameDesignProduct.finalImages[0]?.finalImageUrl}
-                          alt={`${sameDesignProduct.vendorName} - ${sameDesignProduct.finalImages[0]?.colorName}`}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <SimpleProductPreview
-                          product={sameDesignProduct}
-                          showColorSlider={false}
-                          showDelimitations={false}
-                          onProductClick={() => {}}
-                          hideValidationBadges={false}
-                          imageObjectFit="contain"
-                          initialColorId={(sameDesignProduct as any).defaultColorId ?? sameDesignProduct.selectedColors[0]?.id}
-                        />
-                      )}
+                      {(() => {
+                        // 1. Essayer finalImages d'abord
+                        if (sameDesignProduct.finalImages && sameDesignProduct.finalImages.length > 0) {
+                          return (
+                            <img
+                              src={sameDesignProduct.finalImages[0]?.finalImageUrl}
+                              alt={`${sameDesignProduct.vendorName} - ${sameDesignProduct.finalImages[0]?.colorName}`}
+                              className="w-full h-full object-contain"
+                            />
+                          );
+                        }
+
+                        // 2. Essayer finalUrlImage depuis la première colorVariation
+                        const firstColorVariation = sameDesignProduct.adminProduct?.colorVariations?.[0];
+                        if ((firstColorVariation as any)?.finalUrlImage) {
+                          return (
+                            <img
+                              src={(firstColorVariation as any).finalUrlImage}
+                              alt={`${sameDesignProduct.vendorName} - ${firstColorVariation.name}`}
+                              className="w-full h-full object-contain"
+                            />
+                          );
+                        }
+
+                        // 3. Fallback sur SimpleProductPreview
+                        return (
+                          <SimpleProductPreview
+                            product={sameDesignProduct}
+                            showColorSlider={false}
+                            showDelimitations={false}
+                            onProductClick={() => {}}
+                            hideValidationBadges={false}
+                            imageObjectFit="contain"
+                            initialColorId={(sameDesignProduct as any).defaultColorId ?? sameDesignProduct.selectedColors[0]?.id}
+                          />
+                        );
+                      })()}
                     </div>
                     <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2">
                       {sameDesignProduct.vendorName || sameDesignProduct.adminProduct?.name}

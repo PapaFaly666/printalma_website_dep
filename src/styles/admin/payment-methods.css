@@ -1,0 +1,198 @@
+/* ==========================================
+ * STYLES PAYMENT METHODS PAGE
+ * ========================================== */
+
+/* Variables CSS */
+:root {
+  --primary-blue: rgb(20, 104, 154);
+  --primary-blue-dark: rgb(16, 83, 123);
+  --primary-blue-darker: rgb(14, 72, 108);
+  --secondary-gray: #64748b;
+  --success-green: #10b981;
+  --warning-yellow: #f59e0b;
+  --error-red: #ef4444;
+  --background-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  --card-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  --card-shadow-hover: 0 8px 25px -5px rgba(0, 0, 0, 0.15);
+  --border-radius: 12px;
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .orders-management-container {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .orders-management-container {
+    padding: 0.75rem;
+  }
+
+  /* Grid en une colonne sur mobile */
+  .grid-cols-1.lg\\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Header responsive simple */
+  .bg-white.rounded-xl.p-6 {
+    padding: 1rem !important;
+  }
+
+  .bg-white.rounded-xl.p-6 h1 {
+    font-size: 1.5rem !important;
+  }
+
+  .bg-white.rounded-xl.p-6 .flex-wrap {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .bg-white.rounded-xl.p-6 button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .bg-white.rounded-xl.p-6 h1 {
+    font-size: 1.25rem !important;
+  }
+
+  .bg-white.rounded-xl.p-6 h1 svg {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+  }
+
+  /* Réduire les paddings sur très petit écran */
+  [data-slot="card-header"],
+  [data-slot="card-content"] {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Emoji plus petit sur mobile */
+  .text-3xl {
+    font-size: 1.75rem;
+  }
+
+  /* Boutons plus petits sur mobile */
+  .flex.items-center.gap-2.pt-4 {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .flex.items-center.gap-2.pt-4 button {
+    width: 100%;
+  }
+}
+
+/* Modal responsive */
+@media (max-width: 768px) {
+  .fixed.inset-0 > div {
+    max-width: 95% !important;
+    margin: 1rem;
+  }
+
+  .fixed.inset-0 > div > div:first-child {
+    padding: 1rem !important;
+  }
+
+  .fixed.inset-0 > div > div:nth-child(2) {
+    padding: 1rem !important;
+  }
+
+  .fixed.inset-0 > div > div:last-child {
+    flex-direction: column;
+    gap: 0.5rem !important;
+  }
+
+  .fixed.inset-0 > div > div:last-child button {
+    width: 100%;
+  }
+}
+
+/* Amélioration de la lisibilité sur mobile */
+@media (max-width: 640px) {
+  label.text-xs {
+    font-size: 0.7rem;
+  }
+
+  p.text-sm {
+    font-size: 0.825rem;
+  }
+
+  .font-mono {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Focus states améliorés */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* Transition smooth pour tous les boutons */
+button {
+  transition: var(--transition-smooth);
+}
+
+/* Amélioration du hover sur les cartes */
+[data-slot="card"]:hover {
+  transform: translateY(-2px);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .orders-management-container {
+    background: white !important;
+    padding: 0 !important;
+  }
+
+  button {
+    display: none !important;
+  }
+
+  [data-slot="card"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

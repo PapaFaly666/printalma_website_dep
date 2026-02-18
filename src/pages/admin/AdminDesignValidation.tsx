@@ -7,7 +7,7 @@ import { hybridAuthService } from '../../services/hybridAuthService';
 import { useTokenRefresh } from '../../hooks/useTokenRefresh';
 import { API_CONFIG, API_ENDPOINTS } from '../../config/api';
 import { Badge } from '../../components/ui/badge';
-import Button from '../../components/ui/Button';
+import { AdminButton } from '../../components/admin/AdminButton';
 import { Input } from '../../components/ui/input';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
@@ -26,6 +26,7 @@ import {
   TableRow,
 } from '../../components/ui/table';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 interface DesignWithValidation extends Design {
   vendor: {
@@ -297,94 +298,69 @@ const AdminDesignValidation: React.FC = () => {
 
   const getDesignActions = (design: DesignWithValidation) => {
     return (
-      <Button
+      <AdminButton
         size="sm"
         variant="outline"
         onClick={() => {
           setSelectedDesign(design);
         }}
-        className="rounded-lg border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900 transition-colors"
       >
-        <Eye className="h-3 w-3 mr-1" />
+        <Eye className="h-3 w-3" />
         Voir
-      </Button>
+      </AdminButton>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="w-full min-h-screen bg-gray-50">
+      {/* En-tête simplifié */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white border-b border-gray-200 px-4 sm:px-6 py-6"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-black">Validation des designs</h1>
-            <p className="text-gray-600 mt-1">Examiner et valider les designs créés par les vendeurs</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Validation des designs
+            </h1>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-gray-600">
+                <span className="font-semibold text-gray-900">{stats.total}</span> design{stats.total > 1 ? 's' : ''}
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-yellow-600">{stats.pending}</span> en attente
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-green-600">{stats.validated}</span> validé{stats.validated > 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={fetchDesigns}
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </Button>
-        </div>
 
-        {/* Stats Cards - Design professionnel */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">En attente</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.pending}</p>
-              </div>
-              <div className="bg-yellow-50 p-3 rounded-lg">
-                <AlertTriangle className="h-6 w-6 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Validés</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.validated}</p>
-              </div>
-              <div className="bg-green-50 p-3 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Rejetés</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.rejected}</p>
-              </div>
-              <div className="bg-red-50 p-3 rounded-lg">
-                <XCircle className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-              <div className="bg-purple-50 p-3 rounded-lg">
-                <Palette className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <AdminButton
+              variant="outline"
+              size="sm"
+              onClick={fetchDesigns}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser</span>
+            </AdminButton>
           </div>
         </div>
+      </motion.div>
 
-        {/* Filtres - Design épuré */}
-        <div className="mb-6 space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      {/* Contenu principal */}
+      <div className="px-4 sm:px-6 py-8">
+        {/* Filtres */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-semibold text-gray-700">Filtres</span>
+              <Filter className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-900">Filtres</span>
             </div>
 
             <div className="flex flex-wrap gap-4 flex-1">
@@ -393,7 +369,7 @@ const AdminDesignValidation: React.FC = () => {
                   value={filters.status}
                   onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as any }))}
                 >
-                  <SelectTrigger className="w-full rounded-lg border-gray-200 focus:border-gray-300">
+                  <SelectTrigger className="h-11">
                     <SelectValue placeholder="Statut" />
                   </SelectTrigger>
                   <SelectContent>
@@ -411,39 +387,26 @@ const AdminDesignValidation: React.FC = () => {
                   placeholder="Rechercher par vendeur..."
                   value={filters.vendor}
                   onChange={(e) => setFilters(prev => ({ ...prev, vendor: e.target.value }))}
-                  className="pl-10 rounded-lg border-gray-200 focus:border-gray-300"
+                  className="pl-10 h-11"
                 />
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              <span className="font-medium">
-                {designs?.length || 0} design{(designs?.length || 0) > 1 ? 's' : ''}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                <span className="font-medium">{designs?.length || 0}</span> design{(designs?.length || 0) > 1 ? 's' : ''}
               </span>
-              {filters.status !== 'ALL' && (
-                <span className="ml-2">
-                  • Statut: <span className="font-medium">{getStatusLabel(filters.status)}</span>
-                </span>
-              )}
-              {filters.vendor.trim() && (
-                <span className="ml-2">
-                  • Vendeur: <span className="font-medium">{filters.vendor}</span>
-                </span>
+
+              {(filters.status !== 'ALL' || filters.vendor.trim()) && (
+                <AdminButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilters({ status: 'ALL', vendor: '' })}
+                >
+                  Réinitialiser
+                </AdminButton>
               )}
             </div>
-
-            {(filters.status !== 'ALL' || filters.vendor.trim()) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilters({ status: 'ALL', vendor: '' })}
-                className="text-xs h-8 px-3 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              >
-                ✕ Réinitialiser les filtres
-              </Button>
-            )}
           </div>
         </div>
 
@@ -588,262 +551,259 @@ const AdminDesignValidation: React.FC = () => {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between mt-8">
-            <p className="text-sm text-gray-700">
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-sm text-gray-600">
               Page {pagination.currentPage} sur {pagination.totalPages} ({pagination.totalItems} designs)
             </p>
             <div className="flex gap-2">
-              <Button
+              <AdminButton
                 variant="outline"
                 size="sm"
                 disabled={!pagination.hasPrevious}
                 onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
               >
                 Précédent
-              </Button>
-              <Button
+              </AdminButton>
+              <AdminButton
                 variant="outline"
                 size="sm"
                 disabled={!pagination.hasNext}
                 onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
               >
                 Suivant
-              </Button>
+              </AdminButton>
             </div>
           </div>
         )}
+      </div>
 
-        {/* Modal de validation - Design professionnel */}
-        <Dialog open={!!selectedDesign} onOpenChange={handleCloseModal}>
-          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-50" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-            <DialogHeader className="pb-4 border-b border-gray-100 bg-white px-6 py-4">
-              <DialogTitle className="text-xl font-semibold text-gray-900">Détails du design</DialogTitle>
-              <DialogDescription className="text-gray-600 font-medium">
-                {selectedDesign?.name || 'Design sans nom'} • Créé par {selectedDesign?.vendor ? `${selectedDesign.vendor.firstName} ${selectedDesign.vendor.lastName}` : 'Vendeur inconnu'}
-              </DialogDescription>
-            </DialogHeader>
+      {/* Modal de validation - Design professionnel */}
+      <Dialog open={!!selectedDesign} onOpenChange={handleCloseModal}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-50" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+          <DialogHeader className="pb-4 border-b border-gray-100 bg-white px-6 py-4">
+            <DialogTitle className="text-xl font-semibold text-gray-900">Détails du design</DialogTitle>
+            <DialogDescription className="text-gray-600 font-medium">
+              {selectedDesign?.name || 'Design sans nom'} • Créé par {selectedDesign?.vendor ? `${selectedDesign.vendor.firstName} ${selectedDesign.vendor.lastName}` : 'Vendeur inconnu'}
+            </DialogDescription>
+          </DialogHeader>
 
-            {selectedDesign && (() => {
-              const status = getDesignStatus(selectedDesign);
+          {selectedDesign && (() => {
+            const status = getDesignStatus(selectedDesign);
 
-              return (
-                <div className="space-y-6 p-6">
-                  {/* Statut */}
-                  <div className="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm">
-                    <Badge className={`font-medium ${
-                      status === 'PENDING'
-                        ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                      status === 'VALIDATED'
-                        ? 'bg-green-100 text-green-700 border-green-200' :
-                      status === 'REJECTED'
-                        ? 'bg-red-100 text-red-700 border-red-200' :
-                      'bg-gray-100 text-gray-700 border-gray-200'
-                    }`}>
-                      {getStatusLabel(status)}
-                    </Badge>
-                    <span className="text-sm text-gray-600">
-                      {status === 'PENDING' ? 'En attente de validation' : status === 'VALIDATED' ? 'Design validé et publié' : 'Design rejeté'}
-                    </span>
-                  </div>
-
-                  {/* Design preview and info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Design image */}
-                    <div className="bg-white rounded-xl p-6 shadow-sm">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Aperçu du design</h3>
-                      <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
-                        {selectedDesign.imageUrl || selectedDesign.thumbnailUrl ? (
-                          <img
-                            src={selectedDesign.imageUrl || selectedDesign.thumbnailUrl}
-                            alt={selectedDesign.name || 'Design'}
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <Palette className="w-16 h-16" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Design information */}
-                    <div className="bg-white rounded-xl p-6 shadow-sm space-y-4">
-                      <h3 className="text-sm font-semibold text-gray-900">Informations du design</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nom du design</p>
-                          <p className="text-sm text-gray-900 font-medium mt-1">
-                            {selectedDesign.name || 'Nom non défini'}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Catégorie</p>
-                          <p className="text-sm text-gray-700 mt-1">
-                            {selectedDesign.category || 'Non spécifiée'}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Prix</p>
-                          <p className="text-lg font-bold text-gray-900 mt-1">
-                            {selectedDesign.price ? selectedDesign.price.toLocaleString() : '0'} FCFA
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Produits associés</p>
-                          <p className="text-sm text-gray-900 font-medium mt-1">
-                            {selectedDesign.associatedProducts || 0} produit(s)
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date de soumission</p>
-                          <p className="text-sm text-gray-700 mt-1">
-                            {formatDate(selectedDesign.submittedForValidationAt)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Vendor information */}
-                  {selectedDesign.vendor && (
-                    <div className="bg-white rounded-xl p-6 shadow-sm">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Informations vendeur</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nom du vendeur</p>
-                            <p className="text-sm text-gray-900 font-medium mt-1">
-                              {selectedDesign.vendor.firstName} {selectedDesign.vendor.lastName}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              {selectedDesign.vendor.email}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Boutique</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              {selectedDesign.vendor.shop_name || 'Non spécifiée'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Téléphone</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              {selectedDesign.vendor.phone || 'Non spécifié'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Champ de raison de rejet */}
-                  {validation.approved === false && (
-                    <div className="bg-white rounded-xl p-6 shadow-sm">
-                      <Label htmlFor="rejection-reason" className="text-sm font-semibold text-gray-900 block mb-2">
-                        Raison du rejet <span className="text-red-500">*</span>
-                      </Label>
-                      <Textarea
-                        id="rejection-reason"
-                        value={validation.reason}
-                        onChange={(e) => setValidation({...validation, reason: e.target.value})}
-                        placeholder="Expliquez en détail pourquoi ce design est rejeté..."
-                        className="min-h-[100px] resize-none border-gray-200 rounded-lg focus:border-red-300 focus:ring-red-100"
-                      />
-                    </div>
-                  )}
+            return (
+              <div className="space-y-6 p-6">
+                {/* Statut */}
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm">
+                  <Badge className={`font-medium ${
+                    status === 'PENDING'
+                      ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                    status === 'VALIDATED'
+                      ? 'bg-green-100 text-green-700 border-green-200' :
+                    status === 'REJECTED'
+                      ? 'bg-red-100 text-red-700 border-red-200' :
+                    'bg-gray-100 text-gray-700 border-gray-200'
+                  }`}>
+                    {getStatusLabel(status)}
+                  </Badge>
+                  <span className="text-sm text-gray-600">
+                    {status === 'PENDING' ? 'En attente de validation' : status === 'VALIDATED' ? 'Design validé et publié' : 'Design rejeté'}
+                  </span>
                 </div>
-              );
-            })()}
 
-            <DialogFooter className="flex gap-3 pt-4 border-t border-gray-100">
-              <Button
-                variant="outline"
-                onClick={handleCloseModal}
-                className="rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
-              >
-                Fermer
-              </Button>
+                {/* Design preview and info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Design image */}
+                  <div className="bg-white rounded-xl p-6 shadow-sm">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">Aperçu du design</h3>
+                    <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                      {selectedDesign.imageUrl || selectedDesign.thumbnailUrl ? (
+                        <img
+                          src={selectedDesign.imageUrl || selectedDesign.thumbnailUrl}
+                          alt={selectedDesign.name || 'Design'}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <Palette className="w-16 h-16" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Boutons de validation selon le statut */}
-              {selectedDesign && (() => {
-                const currentStatus = getDesignStatus(selectedDesign);
-                return (
-                  <>
-                    {currentStatus === 'PENDING' ? (
-                      <>
-                        <Button
-                          onClick={() => setValidation({ approved: true, reason: '' })}
-                          className="rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium shadow-sm"
-                          disabled={processing}
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          Valider
-                        </Button>
-                        <Button
-                          onClick={() => setValidation({ approved: false, reason: '' })}
-                          className="rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium shadow-sm"
-                          disabled={processing}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Rejeter
-                        </Button>
-                      </>
-                    ) : currentStatus === 'REJECTED' ? (
-                      <Button
+                  {/* Design information */}
+                  <div className="bg-white rounded-xl p-6 shadow-sm space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900">Informations du design</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nom du design</p>
+                        <p className="text-sm text-gray-900 font-medium mt-1">
+                          {selectedDesign.name || 'Nom non défini'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Catégorie</p>
+                        <p className="text-sm text-gray-700 mt-1">
+                          {selectedDesign.category || 'Non spécifiée'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Prix</p>
+                        <p className="text-lg font-bold text-gray-900 mt-1">
+                          {selectedDesign.price ? selectedDesign.price.toLocaleString() : '0'} FCFA
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Produits associés</p>
+                        <p className="text-sm text-gray-900 font-medium mt-1">
+                          {selectedDesign.associatedProducts || 0} produit(s)
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date de soumission</p>
+                        <p className="text-sm text-gray-700 mt-1">
+                          {formatDate(selectedDesign.submittedForValidationAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vendor information */}
+                {selectedDesign.vendor && (
+                  <div className="bg-white rounded-xl p-6 shadow-sm">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">Informations vendeur</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nom du vendeur</p>
+                          <p className="text-sm text-gray-900 font-medium mt-1">
+                            {selectedDesign.vendor.firstName} {selectedDesign.vendor.lastName}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</p>
+                          <p className="text-sm text-gray-700 mt-1">
+                            {selectedDesign.vendor.email}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Boutique</p>
+                          <p className="text-sm text-gray-700 mt-1">
+                            {selectedDesign.vendor.shop_name || 'Non spécifiée'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Téléphone</p>
+                          <p className="text-sm text-gray-700 mt-1">
+                            {selectedDesign.vendor.phone || 'Non spécifié'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Champ de raison de rejet */}
+                {validation.approved === false && (
+                  <div className="bg-white rounded-xl p-6 shadow-sm">
+                    <Label htmlFor="rejection-reason" className="text-sm font-semibold text-gray-900 block mb-2">
+                      Raison du rejet <span className="text-red-500">*</span>
+                    </Label>
+                    <Textarea
+                      id="rejection-reason"
+                      value={validation.reason}
+                      onChange={(e) => setValidation({...validation, reason: e.target.value})}
+                      placeholder="Expliquez en détail pourquoi ce design est rejeté..."
+                      className="min-h-[100px] resize-none border-gray-200 rounded-lg focus:border-red-300 focus:ring-red-100"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          <DialogFooter className="flex gap-3 pt-4 border-t border-gray-100">
+            <AdminButton
+              variant="outline"
+              onClick={handleCloseModal}
+            >
+              Fermer
+            </AdminButton>
+
+            {/* Boutons de validation selon le statut */}
+            {selectedDesign && (() => {
+              const currentStatus = getDesignStatus(selectedDesign);
+              return (
+                <>
+                  {currentStatus === 'PENDING' ? (
+                    <>
+                      <AdminButton
+                        variant="outline"
                         onClick={() => setValidation({ approved: true, reason: '' })}
-                        className="rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium shadow-sm"
+                        className="border-green-600 text-green-600 hover:bg-green-50"
                         disabled={processing}
                       >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Réviser la validation
-                      </Button>
-                    ) : null}
-
-                    {/* Bouton de confirmation */}
-                    {validation.approved !== null && (
-                      <Button
-                        onClick={handleValidate}
-                        disabled={processing || (validation.approved === false && !validation.reason.trim())}
-                        className={`rounded-xl font-medium shadow-sm ${
-                          validation.approved
-                            ? 'bg-green-600 hover:bg-green-700 text-white'
-                            : 'bg-red-600 hover:bg-red-700 text-white'
-                        }`}
+                        <Check className="h-4 w-4" />
+                        Valider
+                      </AdminButton>
+                      <AdminButton
+                        variant="outline"
+                        onClick={() => setValidation({ approved: false, reason: '' })}
+                        className="border-red-600 text-red-600 hover:bg-red-50"
+                        disabled={processing}
                       >
-                        {processing ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            Traitement...
-                          </>
-                        ) : (
-                          validation.approved ? 'Confirmer la validation' : 'Confirmer le rejet'
-                        )}
-                      </Button>
-                    )}
-                  </>
-                );
-              })()}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+                        <X className="h-4 w-4" />
+                        Rejeter
+                      </AdminButton>
+                    </>
+                  ) : currentStatus === 'REJECTED' ? (
+                    <AdminButton
+                      variant="primary"
+                      onClick={() => setValidation({ approved: true, reason: '' })}
+                      disabled={processing}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Réviser
+                    </AdminButton>
+                  ) : null}
+
+                  {/* Bouton de confirmation */}
+                  {validation.approved !== null && (
+                    <AdminButton
+                      variant={validation.approved ? "primary" : "destructive"}
+                      onClick={handleValidate}
+                      disabled={processing || (validation.approved === false && !validation.reason.trim())}
+                    >
+                      {processing ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Traitement...
+                        </>
+                      ) : (
+                        validation.approved ? 'Confirmer' : 'Confirmer le rejet'
+                      )}
+                    </AdminButton>
+                  )}
+                </>
+              );
+            })()}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

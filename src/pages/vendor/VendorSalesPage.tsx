@@ -20,7 +20,7 @@ import {
   DollarSign,
   CreditCard
 } from 'lucide-react';
-import { ordersService, Order, OrderStatus, OrdersResponse, OrderStatistics } from '../../services/ordersService';
+import { ordersService, Order, OrderStatus, OrdersResponse, OrderStatistics, VendorFinances } from '../../services/ordersService';
 import { toast } from 'sonner';
 
 // ✅ Fonction de formatage de date native pour remplacer date-fns
@@ -52,6 +52,7 @@ const paymentStatusConfig = {
 
 export const VendorSalesPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [vendorFinances, setVendorFinances] = useState<VendorFinances | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'ALL'>('ALL');
@@ -69,6 +70,11 @@ export const VendorSalesPage: React.FC = () => {
 
       const response: OrdersResponse = await ordersService.getMyOrders(filters);
       setOrders(response.orders);
+
+      // 🆕 Récupérer les finances vendeur depuis l'API
+      if (response.vendorFinances) {
+        setVendorFinances(response.vendorFinances);
+      }
     } catch (error: any) {
       console.error('Erreur lors du chargement des commandes:', error);
       toast.error(error.message || 'Erreur lors du chargement des commandes');
@@ -124,6 +130,7 @@ export const VendorSalesPage: React.FC = () => {
     return sum;
   }, 0);
 
+  // Gains totaux (toutes commandes payées)
   const totalVendorEarnings = orders.reduce((sum, order) => {
     if (order.status !== 'CANCELLED' &&
         order.paymentStatus === 'PAID' &&
@@ -132,6 +139,19 @@ export const VendorSalesPage: React.FC = () => {
     }
     return sum;
   }, 0);
+
+  // 🆕 Gains des commandes livrées uniquement (disponibles pour retrait)
+  const deliveredVendorEarnings = orders.reduce((sum, order) => {
+    if (order.status === 'DELIVERED' &&
+        order.paymentStatus === 'PAID' &&
+        order.commission_info?.vendor_amount) {
+      return sum + order.commission_info.vendor_amount;
+    }
+    return sum;
+  }, 0);
+
+  // 🆕 Gains en attente de livraison (non disponibles pour retrait)
+  const pendingVendorEarnings = totalVendorEarnings - deliveredVendorEarnings;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -212,44 +232,118 @@ export const VendorSalesPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{orders.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {orders.filter(o => o.status === 'DELIVERED').length} livrées
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Revenus Totaux</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-1">
-              <DollarSign className="h-5 w-5" />
-              {(totalRevenue / 100).toLocaleString()} F
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Commissions (Gains plateforme)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-1 text-orange-600">
-              <DollarSign className="h-5 w-5" />
-              {(totalCommissionAmount / 100).toLocaleString()} F
-            </div>
-            <p className="text-xs text-muted-foreground">Total des commissions</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Mes Gains Nets</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Mes Gains Totaux</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-1 text-green-600">
               <DollarSign className="h-5 w-5" />
-              {(totalVendorEarnings / 100).toLocaleString()} F
+              {vendorFinances
+                ? (vendorFinances.totalVendorAmount / 100).toLocaleString()
+                : (totalVendorEarnings / 100).toLocaleString()
+              } F
             </div>
-            <p className="text-xs text-muted-foreground">Après commission déduite</p>
+            <p className="text-xs text-muted-foreground">Produits + Designs</p>
+          </CardContent>
+        </Card>
+        <Card className="border-2 border-blue-200 bg-blue-50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-900">Livrés (Disponibles)</CardTitle>
+            <CheckCircle className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-1 text-blue-900">
+              <DollarSign className="h-5 w-5" />
+              {vendorFinances
+                ? (vendorFinances.availableForWithdrawal / 100).toLocaleString()
+                : (deliveredVendorEarnings / 100).toLocaleString()
+              } F
+            </div>
+            <p className="text-xs text-blue-700">
+              {vendorFinances
+                ? `${vendorFinances.deliveredOrdersCount} commandes`
+                : 'Prêt pour retrait'
+              }
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-2 border-orange-200 bg-orange-50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-900">En attente</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-1 text-orange-900">
+              <DollarSign className="h-5 w-5" />
+              {vendorFinances
+                ? (vendorFinances.pendingWithdrawalAmount / 100).toLocaleString()
+                : (pendingVendorEarnings / 100).toLocaleString()
+              } F
+            </div>
+            <p className="text-xs text-orange-700">En attente de livraison</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* 🆕 Détails par source de revenus (si disponible) */}
+      {vendorFinances && vendorFinances.availableForWithdrawal > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Détails des Revenus Livrés
+            </CardTitle>
+            <CardDescription>
+              Répartition de vos gains
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-blue-600" />
+                  <span className="text-gray-700 font-medium">Total des montants vendeur</span>
+                </div>
+                <span className="font-bold text-lg text-blue-900">
+                  {(vendorFinances.totalVendorAmount / 100).toLocaleString()} F
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-purple-600" />
+                  <span className="text-gray-700 font-medium">Commissions déduites</span>
+                </div>
+                <span className="font-bold text-lg text-purple-900">
+                  {(vendorFinances.totalCommissionDeducted / 100).toLocaleString()} F
+                </span>
+              </div>
+              <hr className="my-2" />
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <span className="text-gray-900 font-semibold">Disponible pour retrait</span>
+                <span className="font-bold text-xl text-green-700">
+                  {(vendorFinances.availableForWithdrawal / 100).toLocaleString()} F
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 🆕 Message d'information sur les gains */}
+      {vendorFinances && vendorFinances.message && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-900">
+            {vendorFinances.message}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Filtres */}
       <Card>

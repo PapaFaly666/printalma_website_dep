@@ -69,6 +69,37 @@ const LoginForm = () => {
       });
 
       if (response.ok) {
+        // ✅ Vérifier si l'utilisateur doit changer son mot de passe (première connexion)
+        // Cas 1: user existe avec must_change_password
+        if (data.user && data.user.must_change_password) {
+          console.log('🔑 Utilisateur doit changer son mot de passe (première connexion)');
+          // Stocker l'ID temporaire pour le changement de mot de passe
+          localStorage.setItem('tempUserId', data.user.id.toString());
+          // Stocker les infos minimales pour la redirection
+          localStorage.setItem('user', JSON.stringify(data.user));
+          // Rediriger vers la page de changement de mot de passe
+          window.location.href = '/change-password';
+          return;
+        }
+
+        // Cas 2: user est undefined mais le message indique de changer le mot de passe
+        if (!data.user && data.message && data.message.toLowerCase().includes('changer votre mot de passe')) {
+          console.log('🔑 Utilisateur doit changer son mot de passe (message sans user object)');
+          // Stocker l'email pour récupérer l'ID plus tard
+          localStorage.setItem('tempUserEmail', formData.email);
+          // Rediriger vers la page de changement de mot de passe
+          window.location.href = '/change-password';
+          return;
+        }
+
+        // Si pas d'utilisateur, afficher le message d'erreur
+        if (!data.user) {
+          console.log('❌ Pas de données utilisateur dans la réponse');
+          setErrors({ submit: data.message || 'Email ou mot de passe incorrect' });
+          setIsLoading(false);
+          return;
+        }
+
         // Stocker les informations utilisateur dans localStorage avec le bon format
         const authData = {
           timestamp: Date.now(),

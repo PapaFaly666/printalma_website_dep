@@ -21,7 +21,6 @@ import {
   Globe,
   Search
 } from 'lucide-react';
-import { HiSparkles, HiShoppingBag, HiCreditCard, HiTruck, HiCheckCircle } from 'react-icons/hi2';
 import { BiSolidUser } from 'react-icons/bi';
 import { IoLocationSharp } from 'react-icons/io5';
 import { MdEmail, MdPhone } from 'react-icons/md';
@@ -1427,6 +1426,19 @@ const ModernOrderFormPage: React.FC = () => {
 
       // 5. CONSTRUCTION DE LA REQUÊTE
       console.log('5️⃣ Construction de la requête...');
+
+      // 🔍 DEBUG: Vérifier formData AVANT construction
+      console.log('📋 [DEBUG] formData AVANT construction:', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country,
+        countryCode: formData.countryCode
+      });
+
       const orderRequest: OrderRequest = {
         email: formData.email,
         shippingDetails: {
@@ -1446,6 +1458,14 @@ const ModernOrderFormPage: React.FC = () => {
         totalAmount: totalAmount, // Total calculé (produits + livraison)
         deliveryInfo: deliveryInfo // 🚚 AJOUTER LES INFOS DE LIVRAISON
       };
+
+      // 🔍 DEBUG: Vérifier orderRequest APRÈS construction
+      console.log('📤 [DEBUG] orderRequest APRÈS construction:', {
+        email: orderRequest.email,
+        shippingDetails: orderRequest.shippingDetails,
+        phoneNumber: orderRequest.phoneNumber,
+        notes: orderRequest.notes
+      });
 
       console.log('📦 Requête complète:', {
         email: orderRequest.email,
@@ -1723,6 +1743,19 @@ const ModernOrderFormPage: React.FC = () => {
 
         // 5. CONSTRUCTION DE LA REQUÊTE
         console.log('5️⃣ Construction de la requête...');
+
+        // 🔍 DEBUG: Vérifier formData AVANT construction
+        console.log('📋 [DEBUG] formData AVANT construction:', {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          country: formData.country,
+          countryCode: formData.countryCode
+        });
+
         const orderRequest: OrderRequest = {
           email: formData.email,
           shippingDetails: {
@@ -1742,6 +1775,14 @@ const ModernOrderFormPage: React.FC = () => {
           totalAmount: totalAmount, // Total calculé (produits + livraison)
           deliveryInfo: deliveryInfo // 🚚 AJOUTER LES INFOS DE LIVRAISON
         };
+
+        // 🔍 DEBUG: Vérifier orderRequest APRÈS construction
+        console.log('📤 [DEBUG] orderRequest APRÈS construction:', {
+          email: orderRequest.email,
+          shippingDetails: orderRequest.shippingDetails,
+          phoneNumber: orderRequest.phoneNumber,
+          notes: orderRequest.notes
+        });
 
         console.log('📦 Requête complète:', {
           email: orderRequest.email,
@@ -1949,21 +1990,21 @@ const ModernOrderFormPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/40 font-['Inter',_'system-ui',_sans-serif]">
-      {/* Header fixe avec progression - Design moderne */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-50 shadow-sm">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header fixe avec progression */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             <button
               onClick={() => navigate(-1)}
-              className="group p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl transition-all duration-200 flex-shrink-0 active:scale-95"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-all"
               aria-label="Retour"
             >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:text-slate-900 transition-colors" />
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
 
-            {/* Barre de progression moderne - optimisée mobile */}
-            <div className="flex-1 mx-2 sm:mx-4 lg:mx-8 max-w-3xl">
+            {/* Barre de progression simple */}
+            <div className="flex-1 mx-4 max-w-3xl">
               <div className="flex items-center justify-between">
                 {steps.map((step, index) => {
                   const Icon = step.icon;
@@ -1973,31 +2014,25 @@ const ModernOrderFormPage: React.FC = () => {
                   return (
                     <React.Fragment key={step.id}>
                       <div className="flex flex-col items-center">
-                        <motion.div
-                          animate={{
-                            scale: isActive ? 1.1 : 1,
-                            backgroundColor: isCompleted ? '#10b981' : isActive ? '#3b82f6' : '#e5e7eb'
-                          }}
-                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm ${
-                            isCompleted ? 'text-white shadow-green-200' : isActive ? 'text-white shadow-blue-200' : 'text-slate-400'
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                            isCompleted ? 'bg-[#14689a] border-[#14689a] text-white' : isActive ? 'border-[#14689a] text-[#14689a]' : 'border-gray-300 text-gray-400'
                           }`}
                         >
-                          {isCompleted ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> : <Icon className="w-4 h-4 sm:w-5 sm:h-5" />}
-                        </motion.div>
-                        <span className={`text-[10px] sm:text-xs mt-1 sm:mt-2 font-semibold tracking-wide hidden md:block ${
-                          isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-slate-400'
+                          {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                        </div>
+                        <span className={`text-xs mt-2 font-medium hidden md:block ${
+                          isActive || isCompleted ? 'text-[#14689a]' : 'text-gray-400'
                         }`}>
                           {step.label}
                         </span>
                       </div>
 
                       {index < steps.length - 1 && (
-                        <div className="flex-1 h-0.5 bg-gray-200 mx-1 sm:mx-2">
-                          <motion.div
-                            className="h-full bg-gradient-to-r from-blue-600 to-green-500"
-                            initial={{ width: '0%' }}
-                            animate={{ width: index < currentStepIndex ? '100%' : '0%' }}
-                            transition={{ duration: 0.5 }}
+                        <div className="flex-1 h-0.5 bg-gray-200 mx-2">
+                          <div
+                            className="h-full bg-[#14689a] transition-all duration-300"
+                            style={{ width: index < currentStepIndex ? '100%' : '0%' }}
                           />
                         </div>
                       )}
@@ -2032,21 +2067,15 @@ const ModernOrderFormPage: React.FC = () => {
               >
                 {/* Étape 1 : Informations client - Design moderne */}
                 {currentStep === 'customer-info' && (
-                  <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl shadow-slate-200/50 p-3 sm:p-8 space-y-4 sm:space-y-8 border border-slate-100">
-                    {/* Header avec icône moderne */}
-                    <div className="flex items-center gap-2 sm:gap-4 pb-3 sm:pb-6 border-b border-slate-100">
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl sm:rounded-2xl blur-md sm:blur-lg opacity-40 animate-pulse"></div>
-                        <div className="relative p-2 sm:p-3.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl shadow-blue-200/50 flex-shrink-0">
-                          <BiSolidUser className="w-4 h-4 sm:w-7 sm:h-7 text-white" />
-                        </div>
+                  <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 space-y-4 sm:space-y-6 border border-gray-200">
+                    {/* Header simple */}
+                    <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+                      <div className="p-2 bg-gray-100 rounded-lg">
+                        <BiSolidUser className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <h2 className="text-sm sm:text-2xl font-bold text-slate-900 tracking-tight">Vos informations</h2>
-                          <HiSparkles className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-amber-400" />
-                        </div>
-                        <p className="text-[10px] sm:text-base text-slate-500 mt-0.5 sm:mt-1">Pour la livraison et le suivi</p>
+                      <div>
+                        <h2 className="text-base sm:text-xl font-bold text-gray-900">Vos informations</h2>
+                        <p className="text-xs sm:text-sm text-gray-500">Pour la livraison et le suivi</p>
                       </div>
                     </div>
 
@@ -2054,14 +2083,10 @@ const ModernOrderFormPage: React.FC = () => {
                     <div className="space-y-4 sm:space-y-6">
                       {/* Section 1: Identité */}
                       <div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                          <BiSolidUser className="w-3 h-3 sm:w-4 sm:h-4 text-slate-400" />
-                          <h3 className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider">Identité</h3>
-                          <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent"></div>
-                        </div>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Identité</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                           <div className="group">
-                            <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
                               Prénom <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -2069,16 +2094,16 @@ const ModernOrderFormPage: React.FC = () => {
                               name="firstName"
                               value={formData.firstName}
                               onChange={handleInputChange}
-                              className={`w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-xs sm:text-base placeholder:text-slate-400 font-medium ${
-                                errors.firstName ? 'border-red-400 bg-red-50/50 focus:border-red-500 focus:ring-red-100' : 'border-slate-200 hover:border-slate-300 focus:border-blue-500'
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#14689a] focus:border-[#14689a] transition-all text-sm ${
+                                errors.firstName ? 'border-red-400 bg-red-50' : 'border-gray-300'
                               }`}
                               placeholder="Jean"
                             />
-                            {errors.firstName && <p className="text-xs text-red-600 mt-1 sm:mt-2 font-medium flex items-center gap-1"><span>⚠️</span>{errors.firstName}</p>}
+                            {errors.firstName && <p className="text-xs text-red-600 mt-1">{errors.firstName}</p>}
                           </div>
 
                           <div className="group">
-                            <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
                               Nom <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -2086,7 +2111,7 @@ const ModernOrderFormPage: React.FC = () => {
                               name="lastName"
                               value={formData.lastName}
                               onChange={handleInputChange}
-                              className="w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 border-slate-200 hover:border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-xs sm:text-base placeholder:text-slate-400 font-medium"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#14689a] focus:border-[#14689a] transition-all text-sm"
                               placeholder="Dupont"
                             />
                           </div>
@@ -2095,66 +2120,52 @@ const ModernOrderFormPage: React.FC = () => {
 
                       {/* Section 2: Contact */}
                       <div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                          <MdEmail className="w-3 h-3 sm:w-4 sm:h-4 text-slate-400" />
-                          <h3 className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider">Contact</h3>
-                          <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent"></div>
-                        </div>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                           <div className="group">
-                            <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
                               Email <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                              <MdEmail className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                              <input
-                                type="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleInputChange}
-                                className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 border-2 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-xs sm:text-base placeholder:text-slate-400 font-medium ${
-                                  errors.email ? 'border-red-400 bg-red-50/50 focus:border-red-500 focus:ring-red-100' : 'border-slate-200 hover:border-slate-300'
-                                }`}
-                                placeholder="jean.dupont@email.com"
-                              />
-                            </div>
-                            {errors.email && <p className="text-xs text-red-600 mt-1 sm:mt-2 font-medium flex items-center gap-1"><span>⚠️</span>{errors.email}</p>}
+                            <input
+                              type="email"
+                              name="email"
+                              value={formData.email}
+                              onChange={handleInputChange}
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#14689a] focus:border-[#14689a] transition-all text-sm ${
+                                errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                              }`}
+                              placeholder="jean.dupont@email.com"
+                            />
+                            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
                           </div>
 
                           <div className="group">
-                            <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
                               Téléphone <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                              <MdPhone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                              <input
-                                type="tel"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleInputChange}
-                                className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 border-2 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-xs sm:text-base placeholder:text-slate-400 font-medium ${
-                                  errors.phone ? 'border-red-400 bg-red-50/50 focus:border-red-500 focus:ring-red-100' : 'border-slate-200 hover:border-slate-300'
-                                }`}
-                                placeholder="77 123 45 67"
-                              />
-                            </div>
-                            {errors.phone && <p className="text-xs text-red-600 mt-1 sm:mt-2 font-medium flex items-center gap-1"><span>⚠️</span>{errors.phone}</p>}
+                            <input
+                              type="tel"
+                              name="phone"
+                              value={formData.phone}
+                              onChange={handleInputChange}
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#14689a] focus:border-[#14689a] transition-all text-sm ${
+                                errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                              }`}
+                              placeholder="77 123 45 67"
+                            />
+                            {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
                           </div>
                         </div>
                       </div>
 
                       {/* Section 3: Adresse de livraison */}
                       <div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                          <IoLocationSharp className="w-3 h-3 sm:w-4 sm:h-4 text-slate-400" />
-                          <h3 className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider">Adresse de livraison</h3>
-                          <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent"></div>
-                        </div>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Adresse de livraison</h3>
                         <div className="space-y-3 sm:space-y-4">
                           {/* Ligne 1: Pays et Ville */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className="group">
-                              <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Pays <span className="text-red-500">*</span>
                               </label>
                               <CountrySelector
@@ -2163,13 +2174,13 @@ const ModernOrderFormPage: React.FC = () => {
                                 placeholder="Sélectionner votre pays"
                                 showPopular={true}
                                 showRegion={true}
-                                className={`w-full ${errors.country ? 'animate-pulse' : ''}`}
+                                className="w-full"
                               />
-                              {errors.country && <p className="text-xs text-red-600 mt-1 sm:mt-2 font-medium flex items-center gap-1"><span>⚠️</span>{errors.country}</p>}
+                              {errors.country && <p className="text-xs text-red-600 mt-1">{errors.country}</p>}
                             </div>
 
                             <div className="group">
-                              <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Ville <span className="text-red-500">*</span>
                               </label>
                               <CityAutocomplete
@@ -2177,7 +2188,6 @@ const ModernOrderFormPage: React.FC = () => {
                                 value={formData.city}
                                 onChange={(cityName) => {
                                   setFormData(prev => ({ ...prev, city: cityName }));
-                                  // Effacer l'erreur si présente
                                   if (errors.city) {
                                     setErrors(prev => ({ ...prev, city: undefined }));
                                   }
@@ -2185,29 +2195,26 @@ const ModernOrderFormPage: React.FC = () => {
                                 placeholder="Rechercher une ville..."
                                 error={!!errors.city}
                               />
-                              {errors.city && <p className="text-xs text-red-600 mt-1 sm:mt-2 font-medium flex items-center gap-1"><span>⚠️</span>{errors.city}</p>}
+                              {errors.city && <p className="text-xs text-red-600 mt-1">{errors.city}</p>}
                             </div>
                           </div>
 
                           {/* Ligne 2: Adresse complète seule */}
                           <div className="group">
-                            <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
                               Adresse complète <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                              <IoLocationSharp className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                              <input
-                                type="text"
-                                name="address"
-                                value={formData.address}
-                                onChange={handleInputChange}
-                                className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 border-2 rounded-lg sm:rounded-xl focus:ring-2 sm:focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-xs sm:text-base placeholder:text-slate-400 font-medium ${
-                                  errors.address ? 'border-red-400 bg-red-50/50 focus:border-red-500 focus:ring-red-100' : 'border-slate-200 hover:border-slate-300'
-                                }`}
-                                placeholder="123 Rue de la République"
-                              />
-                            </div>
-                            {errors.address && <p className="text-xs text-red-600 mt-1 sm:mt-2 font-medium flex items-center gap-1"><span>⚠️</span>{errors.address}</p>}
+                            <input
+                              type="text"
+                              name="address"
+                              value={formData.address}
+                              onChange={handleInputChange}
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#14689a] focus:border-[#14689a] transition-all text-sm ${
+                                errors.address ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                              }`}
+                              placeholder="123 Rue de la République"
+                            />
+                            {errors.address && <p className="text-xs text-red-600 mt-1">{errors.address}</p>}
                           </div>
                         </div>
                       </div>
@@ -2395,21 +2402,20 @@ const ModernOrderFormPage: React.FC = () => {
 
                     <button
                       onClick={goToNextStep}
-                      disabled={showDeliveryInfo && !deliveryAvailable}
-                      className={`group w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold tracking-wide transition-all duration-300 shadow-lg sm:shadow-xl flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-lg relative overflow-hidden ${
-                        showDeliveryInfo && !deliveryAvailable
-                          ? 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
-                          : 'bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 active:scale-[0.97] shadow-blue-200/50 hover:shadow-2xl hover:shadow-blue-300/50'
+                      disabled={!formData.address || formData.address.length < 3 || (showDeliveryInfo && !deliveryAvailable)}
+                      className={`w-full py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 text-sm ${
+                        !formData.address || formData.address.length < 3 || (showDeliveryInfo && !deliveryAvailable)
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-[#14689a] text-white hover:bg-[#115a7f]'
                       }`}
                     >
-                      <span className="relative z-10">
-                        {showDeliveryInfo && !deliveryAvailable ? 'Livraison non disponible' : 'Continuer'}
-                      </span>
-                      {!(showDeliveryInfo && !deliveryAvailable) && (
-                        <>
-                          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform relative z-10" />
-                          <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-blue-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        </>
+                      {!formData.address || formData.address.length < 3
+                        ? 'Saisissez votre adresse'
+                        : (showDeliveryInfo && !deliveryAvailable)
+                        ? 'Livraison non disponible'
+                        : 'Continuer'}
+                      {formData.address && formData.address.length >= 3 && !(showDeliveryInfo && !deliveryAvailable) && (
+                        <ChevronRight className="w-4 h-4" />
                       )}
                     </button>
                   </div>
@@ -2417,80 +2423,72 @@ const ModernOrderFormPage: React.FC = () => {
 
                 {/* Étape 2 : Paiement */}
                 {currentStep === 'payment' && (
-                  <div className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
-                    <div className="flex items-center gap-3 pb-3 sm:pb-4 border-b border-gray-200">
-                      <div className="p-2 bg-purple-100 rounded-lg sm:rounded-xl flex-shrink-0">
-                        <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                  <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 space-y-4 sm:space-y-6 border border-gray-200">
+                    <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+                      <div className="p-2 bg-gray-100 rounded-lg">
+                        <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
                       </div>
-                      <div className="min-w-0">
+                      <div>
                         <h2 className="text-base sm:text-xl font-bold text-gray-900">Mode de paiement</h2>
-                        <p className="text-xs sm:text-sm text-gray-500 truncate">Sélectionnez votre méthode</p>
+                        <p className="text-xs sm:text-sm text-gray-500">Sélectionnez votre méthode</p>
                       </div>
                     </div>
 
-                    <div className="space-y-3 sm:space-y-4">
-                      <motion.label
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className={`block p-4 sm:p-5 border-2 rounded-xl sm:rounded-2xl cursor-pointer transition-all ${
+                    <div className="space-y-3">
+                      <label
+                        className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
                           selectedPayment === 'paydunya'
-                            ? 'border-blue-500 bg-blue-50 shadow-md sm:shadow-lg ring-1 sm:ring-2 ring-blue-200'
-                            : 'border-gray-200 hover:border-gray-300 active:bg-gray-50'
+                            ? 'border-[#14689a] bg-[#14689a]/5'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        <div className="flex items-start gap-3 sm:gap-4">
+                        <div className="flex items-start gap-3">
                           <input
                             type="radio"
                             name="payment"
                             value="paydunya"
                             checked={selectedPayment === 'paydunya'}
                             onChange={(e) => setSelectedPayment(e.target.value)}
-                            className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0"
+                            className="mt-1 w-4 h-4"
                           />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5 sm:mb-2 flex-wrap">
-                              <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                              <p className="font-bold text-gray-900 text-sm sm:text-lg">PayDunya</p>
-                              <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold rounded-full">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-bold text-gray-900 text-sm">PayDunya</p>
+                              <span className="px-2 py-0.5 bg-[#14689a]/10 text-[#14689a] text-xs font-medium rounded">
                                 Recommandé
                               </span>
                             </div>
-                            <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 leading-relaxed">
+                            <p className="text-xs text-gray-600">
                               Paiement sécurisé avec toutes les principales méthodes mobile et bancaire
                             </p>
                           </div>
                         </div>
-                      </motion.label>
+                      </label>
 
-                      <motion.label
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className={`block p-4 sm:p-5 border-2 rounded-xl sm:rounded-2xl cursor-pointer transition-all ${
+                      <label
+                        className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
                           selectedPayment === 'cash'
-                            ? 'border-blue-500 bg-blue-50 shadow-md sm:shadow-lg ring-1 sm:ring-2 ring-blue-200'
-                            : 'border-gray-200 hover:border-gray-300 active:bg-gray-50'
+                            ? 'border-[#14689a] bg-[#14689a]/5'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        <div className="flex items-start gap-3 sm:gap-4">
+                        <div className="flex items-start gap-3">
                           <input
                             type="radio"
                             name="payment"
                             value="cash"
                             checked={selectedPayment === 'cash'}
                             onChange={(e) => setSelectedPayment(e.target.value)}
-                            className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0"
+                            className="mt-1 w-4 h-4"
                           />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
-                              <span className="text-lg sm:text-2xl">💵</span>
-                              <p className="font-bold text-gray-900 text-sm sm:text-lg">Paiement à la livraison</p>
-                            </div>
-                            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                          <div className="flex-1">
+                            <p className="font-bold text-gray-900 text-sm mb-1">Paiement à la livraison</p>
+                            <p className="text-xs text-gray-600">
                               Payez en espèces lors de la réception de votre commande
                             </p>
                           </div>
                         </div>
-                      </motion.label>
+                      </label>
                     </div>
 
                     {errors.payment && (
@@ -2503,19 +2501,19 @@ const ModernOrderFormPage: React.FC = () => {
                       </motion.div>
                     )}
 
-                    <div className="flex gap-2 sm:gap-3 pt-2">
+                    <div className="flex gap-3 pt-2">
                       <button
                         onClick={goToPreviousStep}
-                        className="flex-1 bg-gray-100 text-gray-700 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 text-xs sm:text-base"
+                        className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-all text-sm"
                       >
                         Retour
                       </button>
                       <button
                         onClick={goToNextStep}
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold hover:from-blue-700 hover:to-blue-800 active:scale-[0.98] transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-xs sm:text-base"
+                        className="flex-1 bg-[#14689a] text-white py-3 rounded-lg font-semibold hover:bg-[#115a7f] transition-all flex items-center justify-center gap-2 text-sm"
                       >
                         Continuer
-                        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -2523,30 +2521,30 @@ const ModernOrderFormPage: React.FC = () => {
 
                 {/* Étape 3 : Confirmation */}
                 {currentStep === 'review' && (
-                  <div className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
-                    <div className="flex items-center gap-3 pb-3 sm:pb-4 border-b border-gray-200">
-                      <div className="p-2 bg-green-100 rounded-lg sm:rounded-xl flex-shrink-0">
-                        <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+                  <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 space-y-4 sm:space-y-6 border border-gray-200">
+                    <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+                      <div className="p-2 bg-gray-100 rounded-lg">
+                        <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
                       </div>
-                      <div className="min-w-0">
+                      <div>
                         <h2 className="text-base sm:text-xl font-bold text-gray-900">Vérification finale</h2>
-                        <p className="text-xs sm:text-sm text-gray-500 truncate">Confirmez votre commande</p>
+                        <p className="text-xs sm:text-sm text-gray-500">Confirmez votre commande</p>
                       </div>
                     </div>
 
-                    <div className="space-y-3 sm:space-y-4">
+                    <div className="space-y-3">
                       {/* Récap informations */}
-                      <div className="bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
-                        <div className="flex items-center justify-between mb-2 sm:mb-3">
-                          <h3 className="font-semibold text-gray-900 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-base">
-                            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+                            <User className="w-4 h-4" />
                             Informations
                           </h3>
                           <button
                             onClick={() => setCurrentStep('customer-info')}
-                            className="text-blue-600 hover:text-blue-700 active:text-blue-800 font-semibold text-xs sm:text-sm flex items-center gap-1 transition-colors"
+                            className="text-[#14689a] hover:text-[#115a7f] font-medium text-xs flex items-center gap-1"
                           >
-                            <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <Edit3 className="w-3 h-3" />
                             Modifier
                           </button>
                         </div>
@@ -2564,17 +2562,17 @@ const ModernOrderFormPage: React.FC = () => {
                       </div>
 
                       {/* Récap livraison */}
-                      <div className="bg-gradient-to-br from-gray-50 to-green-50/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
-                        <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                          <h3 className="font-semibold text-gray-900 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-base">
-                            <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+                            <Truck className="w-4 h-4" />
                             Livraison
                           </h3>
                           <button
                             onClick={() => setCurrentStep('customer-info')}
-                            className="text-blue-600 hover:text-blue-700 active:text-blue-800 font-semibold text-xs sm:text-sm flex items-center gap-1 transition-colors"
+                            className="text-[#14689a] hover:text-[#115a7f] font-medium text-xs flex items-center gap-1"
                           >
-                            <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <Edit3 className="w-3 h-3" />
                             Modifier
                           </button>
                         </div>
@@ -2596,17 +2594,17 @@ const ModernOrderFormPage: React.FC = () => {
                       </div>
 
                       {/* Récap paiement */}
-                      <div className="bg-gradient-to-br from-gray-50 to-purple-50/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
-                        <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                          <h3 className="font-semibold text-gray-900 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-base">
-                            <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+                            <CreditCard className="w-4 h-4" />
                             Paiement
                           </h3>
                           <button
                             onClick={() => setCurrentStep('payment')}
-                            className="text-blue-600 hover:text-blue-700 active:text-blue-800 font-semibold text-xs sm:text-sm flex items-center gap-1 transition-colors"
+                            className="text-[#14689a] hover:text-[#115a7f] font-medium text-xs flex items-center gap-1"
                           >
-                            <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <Edit3 className="w-3 h-3" />
                             Modifier
                           </button>
                         </div>
@@ -2616,42 +2614,40 @@ const ModernOrderFormPage: React.FC = () => {
                       </div>
 
                       {/* Sécurité */}
-                      <div className="p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg sm:rounded-xl">
-                        <div className="flex items-start gap-2 sm:gap-3">
-                          <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                          <div className="min-w-0">
-                            <h4 className="font-semibold text-green-900 mb-0.5 sm:mb-1 text-sm sm:text-base">Paiement 100% sécurisé</h4>
-                            <p className="text-xs sm:text-sm text-green-700 leading-relaxed">
-                              Vos données sont protégées et cryptées. Nous ne stockons aucune information bancaire.
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <Shield className="w-4 h-4 text-gray-600 mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-1 text-sm">Paiement sécurisé</h4>
+                            <p className="text-xs text-gray-600">
+                              Vos données sont protégées et cryptées.
                             </p>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex gap-2 sm:gap-3 pt-2">
+                    <div className="flex gap-3 pt-2">
                       <button
                         onClick={goToPreviousStep}
-                        className="flex-1 bg-gray-100 text-gray-700 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 text-xs sm:text-base"
+                        className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-all text-sm"
                       >
                         Retour
                       </button>
                       <button
                         onClick={handleFinalSubmit}
                         disabled={isSubmitting}
-                        className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold hover:from-green-700 hover:to-green-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-xs sm:text-base"
+                        className="flex-1 bg-[#14689a] text-white py-3 rounded-lg font-semibold hover:bg-[#115a7f] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm"
                       >
                         {isSubmitting ? (
                           <>
-                            <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                            <span className="hidden sm:inline">Traitement...</span>
-                            <span className="sm:hidden">...</span>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Traitement...</span>
                           </>
                         ) : (
                           <>
-                            <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
-                            <span className="hidden sm:inline">Confirmer ({formatPrice(total)})</span>
-                            <span className="sm:hidden">{formatPrice(total)}</span>
+                            <span>Confirmer</span>
+                            <span className="font-bold">({formatPrice(total)})</span>
                           </>
                         )}
                       </button>
@@ -2664,14 +2660,14 @@ const ModernOrderFormPage: React.FC = () => {
 
           {/* Colonne droite : Résumé sticky */}
           <div className="lg:col-span-5 order-1 lg:order-2">
-            <div className="lg:sticky lg:top-24 bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
-              <div className="flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-gray-200">
-                <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 flex-shrink-0" />
+            <div className="lg:sticky lg:top-24 bg-white rounded-lg shadow-md p-4 sm:p-6 space-y-4 border border-gray-200">
+              <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+                <ShoppingBag className="w-5 h-5 text-gray-700" />
                 <h3 className="text-base sm:text-lg font-bold text-gray-900">Résumé de la commande</h3>
               </div>
 
-              {/* 🆕 Liste regroupée des articles du panier par produit/couleur */}
-              <div className="space-y-3 sm:space-y-4 max-h-[60vh] sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              {/* Liste regroupée des articles du panier par produit/couleur */}
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 {(() => {
                   // Regrouper les articles par produit et couleur
                   const groupedItems = cartItems.reduce((acc, item) => {
@@ -2699,7 +2695,7 @@ const ModernOrderFormPage: React.FC = () => {
                       sum + ((item.suggestedPrice || item.price) * item.quantity), 0);
 
                     return (
-                      <div key={`${group.productId}-${group.color}`} className="p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-blue-50/20 rounded-lg sm:rounded-xl border border-gray-200">
+                      <div key={`${group.productId}-${group.color}`} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex gap-2 sm:gap-3 mb-2 sm:mb-3">
                           {/* Preview du produit */}
                           <div className="flex-shrink-0">
@@ -2783,31 +2779,31 @@ const ModernOrderFormPage: React.FC = () => {
                 </div>
                 <div className="border-t-2 border-gray-200 pt-3 sm:pt-4 flex justify-between items-center">
                   <span className="text-base sm:text-lg font-bold text-gray-900">Total</span>
-                  <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+                  <span className="text-xl sm:text-2xl font-bold text-[#14689a]">
                     {formatPrice(total)}
                   </span>
                 </div>
               </div>
 
               {/* Badges de confiance */}
-              <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-200">
-                <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-green-100 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />
+              <div className="space-y-2 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center">
+                    <Shield className="w-3 h-3 text-gray-600" />
                   </div>
-                  <span className="leading-tight">Paiement sécurisé</span>
+                  <span>Paiement sécurisé</span>
                 </div>
-                <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-100 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center">
+                    <Truck className="w-3 h-3 text-gray-600" />
                   </div>
-                  <span className="leading-tight">Livraison rapide et fiable</span>
+                  <span>Livraison rapide et fiable</span>
                 </div>
-                <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-100 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600" />
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center">
+                    <CheckCircle2 className="w-3 h-3 text-gray-600" />
                   </div>
-                  <span className="leading-tight">Garantie satisfaction</span>
+                  <span>Garantie satisfaction</span>
                 </div>
               </div>
             </div>

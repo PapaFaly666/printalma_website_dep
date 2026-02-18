@@ -318,6 +318,14 @@ export interface Order {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+
+  // 🆕 Guest customer info (for orders without user account)
+  email?: string;                  // Customer email (fallback if user.email not available)
+  shippingName?: string;           // Full customer name (firstName + lastName combined)
+  shippingStreet?: string;         // Street address
+  shippingCity?: string;           // City
+  shippingRegion?: string;         // Region/State
+  shippingCountry?: string;        // Country
   // Optional timeline fields used in vendor views
   processingAt?: string;
   trackingNumber?: string;

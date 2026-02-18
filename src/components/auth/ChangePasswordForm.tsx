@@ -8,16 +8,19 @@ import { ButtonLoading } from '../ui/loading';
 import { Eye, EyeOff, Lock, AlertTriangle, CheckCircle } from 'lucide-react';
 import authService from '../../services/auth.service';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_CONFIG } from '../../config/api';
 
 interface ChangePasswordFormProps {
   mustChangePassword?: boolean;
-  userId?: number;
+  userId?: number | null;
+  userEmail?: string; // 🆕 Email pour récupérer l'ID utilisateur si pas de userId
   onSuccess?: () => void;
 }
 
 export const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
-  mustChangePassword = false, 
+  mustChangePassword = false,
   userId,
+  userEmail,
   onSuccess
 }) => {
   const [formData, setFormData] = useState({
@@ -89,18 +92,55 @@ export const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
     setError('');
 
     try {
-      if (mustChangePassword && userId) {
-        // 🆕 Utiliser le nouvel endpoint pour changement obligatoire
+      if (mustChangePassword) {
+        // 🆕 Changement obligatoire du mot de passe (première connexion)
+        let targetUserId = userId;
+
+        // 🆕 Si pas d'ID utilisateur, le récupérer via l'email
+        if (!targetUserId && userEmail) {
+          console.log('📧 Récupération de l\'ID utilisateur pour l\'email:', userEmail);
+          try {
+            const idResponse = await fetch(`${API_CONFIG.BASE_URL}/auth/user-id-by-email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: userEmail }),
+              credentials: 'include'
+            });
+
+            if (idResponse.ok) {
+              const idData = await idResponse.json();
+              targetUserId = idData.userId;
+              console.log('✅ ID utilisateur récupéré:', targetUserId);
+              // Stocker l'ID pour les futures requêtes
+              localStorage.setItem('tempUserId', targetUserId.toString());
+            } else {
+              throw new Error('Impossible de récupérer votre identifiant. Veuillez réessayer de vous connecter.');
+            }
+          } catch (idErr) {
+            console.error('❌ Erreur récupération ID:', idErr);
+            throw new Error('Impossible de récupérer votre compte. Veuillez contacter le support.');
+          }
+        }
+
+        if (!targetUserId) {
+          throw new Error('Identifiant utilisateur manquant. Veuillez vous reconnecter.');
+        }
+
+        // Utiliser le nouvel endpoint pour changement obligatoire
         await authService.forceChangePassword(
-          userId,
+          targetUserId,
           formData.currentPassword,
           formData.newPassword,
           formData.confirmPassword
         );
-        
+
+        // Nettoyer le localStorage
+        localStorage.removeItem('tempUserId');
+        localStorage.removeItem('tempUserEmail');
+
         // Vérifier l'authentification après changement réussi
         await checkAuth();
-        
+
         if (onSuccess) {
           onSuccess();
         } else {
@@ -113,7 +153,7 @@ export const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
           newPassword: formData.newPassword,
           confirmPassword: formData.confirmPassword
         });
-        
+
         if (onSuccess) {
           onSuccess();
         } else {

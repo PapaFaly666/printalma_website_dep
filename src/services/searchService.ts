@@ -1,15 +1,19 @@
 // Service pour la recherche avec autocomplétion
+import { VendorServiceInstance, Vendor } from './vendorService';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com';
 
 export interface SearchResult {
   id: number | string;
   name: string;
-  type: 'product' | 'design' | 'article';
+  type: 'product' | 'design' | 'article' | 'vendor';
   imageUrl?: string;
   price?: number;
   category?: string;
   subCategory?: string;
   url: string;
+  vendorType?: 'ARTISTE' | 'DESIGNER' | 'INFLUENCEUR' | 'OTHER';
+  shopName?: string;
 }
 
 export interface SearchResponse {
@@ -196,7 +200,67 @@ class SearchService {
   }
 
   /**
-   * Recherche combinée (produits + designs)
+   * Rechercher des vendeurs
+   */
+  async searchVendors(query: string): Promise<SearchResult[]> {
+    if (!query.trim() || query.length < 2) {
+      return [];
+    }
+
+    try {
+      console.log('🔍 [searchService] Recherche de vendeurs pour:', query);
+      const allVendors = await VendorServiceInstance.getAllVendors();
+
+      // Filtrer les vendeurs par nom, prénom ou nom de boutique
+      const filteredVendors = allVendors.filter((vendor: Vendor) => {
+        const searchLower = query.toLowerCase();
+        const firstName = vendor.firstName?.toLowerCase() || '';
+        const lastName = vendor.lastName?.toLowerCase() || '';
+        const shopName = vendor.shop_name?.toLowerCase() || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+
+        return (
+          firstName.includes(searchLower) ||
+          lastName.includes(searchLower) ||
+          fullName.includes(searchLower) ||
+          shopName.includes(searchLower)
+        );
+      });
+
+      console.log('✅ [searchService] Vendeurs trouvés:', filteredVendors.length);
+
+      // Limiter à 4 résultats
+      return filteredVendors.slice(0, 4).map((vendor: Vendor) => ({
+        id: vendor.id,
+        name: `${vendor.firstName} ${vendor.lastName}`.trim(),
+        type: 'vendor' as const,
+        imageUrl: vendor.profile_photo_url || vendor.photo_profil || undefined,
+        category: this.getVendorTypeLabel(vendor.vendeur_type),
+        shopName: vendor.shop_name || undefined,
+        vendorType: vendor.vendeur_type,
+        url: `/profile/${vendor.vendeur_type.toLowerCase()}/${vendor.id}`,
+      }));
+    } catch (error) {
+      console.error('❌ [searchService] Erreur lors de la recherche de vendeurs:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtenir le label du type de vendeur
+   */
+  private getVendorTypeLabel(type: 'ARTISTE' | 'DESIGNER' | 'INFLUENCEUR' | 'OTHER'): string {
+    const labels = {
+      'ARTISTE': 'Artiste',
+      'DESIGNER': 'Designer',
+      'INFLUENCEUR': 'Influenceur',
+      'OTHER': 'Créateur'
+    };
+    return labels[type] || 'Vendeur';
+  }
+
+  /**
+   * Recherche combinée (produits + designs + vendeurs)
    */
   async combinedSearch(query: string): Promise<SearchResult[]> {
     if (!query.trim() || query.length < 2) {
@@ -204,13 +268,14 @@ class SearchService {
     }
 
     try {
-      const [products, designs] = await Promise.all([
+      const [products, designs, vendors] = await Promise.all([
         this.searchProducts(query),
         this.searchDesigns(query),
+        this.searchVendors(query),
       ]);
 
-      // Combiner et limiter les résultats
-      const combined = [...products, ...designs];
+      // Combiner les résultats avec priorité: produits, vendeurs, designs
+      const combined = [...products, ...vendors, ...designs];
       return combined.slice(0, 10);
     } catch (error) {
       console.error('Erreur lors de la recherche combinée:', error);

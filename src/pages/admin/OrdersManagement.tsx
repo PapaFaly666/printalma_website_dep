@@ -11,6 +11,8 @@ import {
   useRefreshOrders,
   useUpdateOrderInCache
 } from '../../hooks/useOrders';
+import { AdminButton } from '../../components/admin/AdminButton';
+import { motion } from 'framer-motion';
 
 // Types basés sur la structure RÉELLE de l'API
 interface PaymentInfo {
@@ -77,14 +79,11 @@ import {
   ShoppingCart,
   BarChart3
 } from 'lucide-react';
-import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { Separator } from '../../components/ui/separator';
-import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
@@ -260,20 +259,18 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order, onView, onChangeStatus }
         </span>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {onChangeStatus && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 onChangeStatus(order);
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="h-5 w-5 p-0 hover:bg-slate-100 rounded"
+              className="h-5 w-5 p-0 hover:bg-slate-100 rounded flex items-center justify-center"
               title="Changer le statut"
             >
               <Package className="h-3 w-3 text-slate-600" />
-            </Button>
+            </button>
           )}
         </div>
       </div>
@@ -784,283 +781,155 @@ const OrdersManagement = () => {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-        <div className="w-full px-6 py-8">
-          {/* Header Ultra-Moderne avec Gradient */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 flex items-center justify-center shadow-lg">
-                      <Package className="h-7 w-7 text-white" />
-                    </div>
-                    <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
-                      <Zap className="h-3 w-3 text-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 bg-clip-text text-transparent">
-                      Gestion des Commandes
-                    </h1>
-                    <p className="text-slate-500 text-base font-medium mt-1">
-                      Tableau de bord • {orders.length} commande{orders.length > 1 ? 's' : ''} • Page {currentPage}/{totalPages}
-                    </p>
-                  </div>
-                </div>
+      <div className="w-full min-h-screen bg-gray-50">
+        {/* En-tête simplifié */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white border-b border-gray-200 px-4 sm:px-6 py-6"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Gestion des commandes
+              </h1>
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-gray-600">
+                  <span className="font-semibold text-gray-900">{statistics?.totalOrders || 0}</span> commande{(statistics?.totalOrders || 0) > 1 ? 's' : ''}
+                </span>
+                <span className="text-gray-400">|</span>
+                <span className="text-gray-600">
+                  <span className="font-semibold text-yellow-600">{statistics?.ordersByStatus?.pending || 0}</span> en attente
+                </span>
+                <span className="text-gray-400">|</span>
+                <span className="text-gray-600">
+                  <span className="font-semibold text-green-600">{statistics?.ordersByStatus?.delivered || 0}</span> livrée{(statistics?.ordersByStatus?.delivered || 0) > 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Vue Switcher */}
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                <AdminButton
+                  variant={viewMode === 'table' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                >
+                  <LayoutList className="h-4 w-4" />
+                  <span className="hidden sm:inline">Table</span>
+                </AdminButton>
+                <AdminButton
+                  variant={viewMode === 'kanban' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('kanban')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden sm:inline">Kanban</span>
+                </AdminButton>
               </div>
 
-              <div className="flex items-center gap-3">
-                {/* Vue Switcher */}
-                <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
-                  <Button
-                    variant={viewMode === 'table' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('table')}
-                    className={`gap-2 ${viewMode === 'table' ? 'bg-slate-900 text-white' : ''}`}
-                  >
-                    <LayoutList className="h-4 w-4" />
-                    Table
-                  </Button>
-                  <Button
-                    variant={viewMode === 'kanban' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('kanban')}
-                    className={`gap-2 ${viewMode === 'kanban' ? 'bg-slate-900 text-white' : ''}`}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                    Kanban
-                  </Button>
-                </div>
+              <NotificationCenter />
 
-                <NotificationCenter />
+              <AdminButton
+                variant="outline"
+                size="sm"
+                onClick={debouncedRefresh}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Actualiser</span>
+              </AdminButton>
 
-                <Button onClick={debouncedRefresh} disabled={loading} variant="outline" className="gap-2 hover:bg-slate-50">
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Actualiser
-                </Button>
-
-                <div className="flex items-center gap-2">
-                  <Select value={exportPeriod} onValueChange={(v) => setExportPeriod(v as 'all' | '24h' | '7d' | '30d')}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Période export" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toutes périodes</SelectItem>
-                      <SelectItem value="24h">Dernières 24h</SelectItem>
-                      <SelectItem value="7d">7 derniers jours</SelectItem>
-                      <SelectItem value="30d">30 derniers jours</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button className="gap-2 bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 shadow-lg" disabled={exporting} onClick={handleExportCSV}>
-                    <Download className={`h-4 w-4 ${exporting ? 'animate-pulse' : ''}`} />
-                    {exporting ? 'Export...' : 'Exporter'}
-                  </Button>
-                </div>
+              <div className="flex items-center gap-2">
+                <Select value={exportPeriod} onValueChange={(v) => setExportPeriod(v as 'all' | '24h' | '7d' | '30d')}>
+                  <SelectTrigger className="w-36 h-9">
+                    <SelectValue placeholder="Période" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    <SelectItem value="24h">24h</SelectItem>
+                    <SelectItem value="7d">7 jours</SelectItem>
+                    <SelectItem value="30d">30 jours</SelectItem>
+                  </SelectContent>
+                </Select>
+                <AdminButton
+                  variant="primary"
+                  size="sm"
+                  disabled={exporting}
+                  onClick={handleExportCSV}
+                >
+                  <Download className={`h-4 w-4 ${exporting ? 'animate-pulse' : ''}`} />
+                  <span className="hidden sm:inline">{exporting ? 'Export...' : 'Exporter'}</span>
+                </AdminButton>
               </div>
             </div>
           </div>
+        </motion.div>
 
-          {/* Statistiques Améliorées avec Animations */}
-          {statistics && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-              {/* Total Commandes */}
-              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent opacity-50"></div>
-                <CardContent className="p-6 relative">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                        <ShoppingCart className="h-4 w-4" />
-                        Total Commandes
-                      </p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-4xl font-bold bg-gradient-to-br from-blue-600 to-blue-400 bg-clip-text text-transparent">
-                          {statistics.totalOrders}
-                        </p>
-                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
-                          +{statistics.ordersCount?.today || 0}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-slate-400">aujourd'hui</p>
-                    </div>
-                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                      <Package className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Revenus */}
-              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-emerald-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-transparent opacity-50"></div>
-                <CardContent className="p-6 relative">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Revenus
-                      </p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-3xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-400 bg-clip-text text-transparent">
-                          {formatCurrency(statistics.revenue?.total || 0)}
-                        </p>
-                        <div className="flex items-center gap-1 text-emerald-600">
-                          <TrendingUp className="h-3 w-3" />
-                          <span className="text-xs font-medium">+12%</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-400">{formatCurrency(statistics.revenue?.monthly || 0)} ce mois</p>
-                    </div>
-                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                      <BarChart3 className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* En attente */}
-              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-amber-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-transparent opacity-50"></div>
-                <CardContent className="p-6 relative">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        En attente
-                      </p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-4xl font-bold bg-gradient-to-br from-amber-600 to-amber-400 bg-clip-text text-transparent">
-                          {statistics.ordersByStatus?.pending || 0}
-                        </p>
-                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">
-                          Urgent
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-slate-400">à traiter</p>
-                    </div>
-                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                      <AlertCircle className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Payées */}
-              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-green-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-transparent opacity-50"></div>
-                <CardContent className="p-6 relative">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Payées
-                      </p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-4xl font-bold bg-gradient-to-br from-green-600 to-green-400 bg-clip-text text-transparent">
-                          {(statistics as any)?.paidOrders || 0}
-                        </p>
-                        <div className="flex items-center gap-1 text-green-600">
-                          <CheckCircle className="h-3 w-3" />
-                          <span className="text-xs font-medium">OK</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-400">paiement validé</p>
-                    </div>
-                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                      <CheckCircle className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Livrées */}
-              <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-indigo-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-transparent opacity-50"></div>
-                <CardContent className="p-6 relative">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                        <Truck className="h-4 w-4" />
-                        Livrées
-                      </p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-4xl font-bold bg-gradient-to-br from-indigo-600 to-indigo-400 bg-clip-text text-transparent">
-                          {statistics.ordersByStatus?.delivered || 0}
-                        </p>
-                        <div className="flex items-center gap-1 text-indigo-600">
-                          <Home className="h-3 w-3" />
-                          <span className="text-xs font-medium">OK</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-400">finalisées</p>
-                    </div>
-                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                      <Home className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Contenu principal */}
+        <div className="px-4 sm:px-6 py-8">
+          {/* Alertes */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-red-800 font-medium">Erreur de chargement</span>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
+                </div>
+                <AdminButton
+                  variant="outline"
+                  size="sm"
+                  onClick={debouncedRefresh}
+                >
+                  Réessayer
+                </AdminButton>
+              </div>
             </div>
           )}
 
-          {/* Alertes modernes */}
-          {error && (
-            <Alert className="mb-6 border-2 border-red-200 bg-gradient-to-r from-red-50 to-transparent">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <strong>Erreur de chargement</strong>
-                    <p className="text-sm mt-1">{error}</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={debouncedRefresh}>
-                    Réessayer
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Filtres améliorés */}
-          <Card className="mb-8 border-2 border-slate-100 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-                <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                      placeholder="Rechercher par numéro..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 w-full sm:w-80 border-slate-200 focus:border-slate-400"
-                    />
-                  </div>
-
-                  <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as OrderStatus | 'all')}>
-                    <SelectTrigger className="w-full sm:w-48 border-slate-200">
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous les statuts</SelectItem>
-                      <SelectItem value="PENDING">En attente</SelectItem>
-                      <SelectItem value="CONFIRMED">Confirmées</SelectItem>
-                      <SelectItem value="PROCESSING">En traitement</SelectItem>
-                      <SelectItem value="SHIPPED">Expédiées</SelectItem>
-                      <SelectItem value="DELIVERED">Livrées</SelectItem>
-                      <SelectItem value="CANCELLED">Annulées</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button onClick={debouncedRefresh} className="gap-2 bg-slate-900 hover:bg-slate-800">
-                  <Search className="h-4 w-4" />
-                  Rechercher
-                </Button>
+          {/* Filtres */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-semibold text-gray-900">Filtres</span>
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="flex flex-wrap gap-4 flex-1">
+                <div className="min-w-64 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Rechercher par numéro..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-11"
+                  />
+                </div>
+
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as OrderStatus | 'all')}>
+                  <SelectTrigger className="w-48 h-11">
+                    <SelectValue placeholder="Statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="PENDING">En attente</SelectItem>
+                    <SelectItem value="CONFIRMED">Confirmées</SelectItem>
+                    <SelectItem value="PROCESSING">En traitement</SelectItem>
+                    <SelectItem value="SHIPPED">Expédiées</SelectItem>
+                    <SelectItem value="DELIVERED">Livrées</SelectItem>
+                    <SelectItem value="CANCELLED">Annulées</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">
+                  <span className="font-medium">{orders.length}</span> commande{(orders.length || 0) > 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          </div>
 
           {/* Vue Table ou Kanban */}
           {viewMode === 'table' ? (
@@ -1216,23 +1085,21 @@ const OrdersManagement = () => {
                               <div className="flex items-center gap-2 justify-center">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
+                                    <button
                                       onClick={() => viewOrderDetails(order.id)}
-                                      className="h-9 w-9 p-0 hover:bg-slate-900 hover:text-white transition-colors"
+                                      className="h-9 w-9 p-0 hover:bg-slate-900 hover:text-white transition-colors rounded flex items-center justify-center"
                                     >
                                       <Eye className="h-4 w-4" />
-                                    </Button>
+                                    </button>
                                   </TooltipTrigger>
                                   <TooltipContent>Voir les détails</TooltipContent>
                                 </Tooltip>
 
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-slate-100">
+                                    <button className="h-9 w-9 p-0 hover:bg-slate-100 rounded flex items-center justify-center">
                                       <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
+                                    </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-56">
                                     <DropdownMenuLabel>Actions rapides</DropdownMenuLabel>
@@ -1367,49 +1234,44 @@ const OrdersManagement = () => {
             </DndContext>
           )}
 
-          {/* Pagination ultra-moderne */}
+          {/* Pagination */}
           {viewMode === 'table' && totalPages > 1 && (
-            <div className="flex items-center justify-between mt-8">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <span className="font-medium">Page {currentPage} sur {totalPages}</span>
-                <Separator orientation="vertical" className="h-4" />
-                <span>{orders.length} commandes affichées</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-gray-600">
+                Page {currentPage} sur {totalPages} ({orders.length} commandes affichées)
+              </p>
+              <div className="flex gap-2">
+                <AdminButton
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="hover:bg-slate-900 hover:text-white transition-colors"
                 >
                   Précédent
-                </Button>
+                </AdminButton>
 
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   const page = i + 1;
                   return (
-                    <Button
+                    <AdminButton
                       key={page}
-                      variant={currentPage === page ? "default" : "outline"}
+                      variant={currentPage === page ? "primary" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(page)}
-                      className={currentPage === page ? "bg-slate-900 hover:bg-slate-800" : "hover:bg-slate-100"}
                     >
                       {page}
-                    </Button>
+                    </AdminButton>
                   );
                 })}
 
-                <Button
+                <AdminButton
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="hover:bg-slate-900 hover:text-white transition-colors"
                 >
                   Suivant
-                </Button>
+                </AdminButton>
               </div>
             </div>
           )}

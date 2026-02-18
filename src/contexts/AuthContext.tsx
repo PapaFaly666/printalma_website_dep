@@ -50,6 +50,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // 🆕 NOUVEAU - État pour l'ID temporaire de l'utilisateur qui doit changer son mot de passe
   const [tempUserId, setTempUserId] = useState<number | null>(null);
 
+  // 🆕 NOUVEAU - État pour l'email temporaire (quand l'ID n'est pas disponible)
+  const [tempUserEmail, setTempUserEmail] = useState<string | null>(null);
+
   // Vérification de l'authentification au chargement de l'application
   useEffect(() => {
     checkAuthStatus();

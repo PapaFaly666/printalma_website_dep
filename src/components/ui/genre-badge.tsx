@@ -2,7 +2,7 @@ import React from 'react';
 import { Badge } from './badge';
 
 interface GenreBadgeProps {
-  genre: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE';
+  genre: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU';
   className?: string;
 }
 
@@ -28,6 +28,16 @@ export const GenreBadge: React.FC<GenreBadgeProps> = ({ genre, className = '' })
         return {
           label: 'Unisexe',
           className: 'bg-gray-500 hover:bg-gray-600 text-white'
+        };
+      case 'AUTOCOLLANT':
+        return {
+          label: 'Autocollant',
+          className: 'bg-purple-500 hover:bg-purple-600 text-white'
+        };
+      case 'TABLEAU':
+        return {
+          label: 'Tableau',
+          className: 'bg-green-500 hover:bg-green-600 text-white'
         };
       default:
         return {

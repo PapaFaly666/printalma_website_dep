@@ -9,12 +9,19 @@ interface SizeQuantity {
   quantity: number;
 }
 
+export interface SizePriceInfo {
+  size: string;
+  salePrice: number;
+  suggestedPrice: number;
+}
+
 interface SizeQuantityModalProps {
   isOpen: boolean;
   onClose: () => void;
   productPrice: number;
   productName: string;
   productSizes: (string | { id?: number; sizeName?: string; name?: string })[]; // Tailles venant de la base de données (strings ou objets)
+  sizePricing?: SizePriceInfo[]; // Prix par taille (optionnel)
   onAddToCart: (selections: SizeQuantity[]) => void;
 }
 
@@ -24,6 +31,7 @@ const SizeQuantityModal: React.FC<SizeQuantityModalProps> = ({
   productPrice,
   productName,
   productSizes,
+  sizePricing,
   onAddToCart
 }) => {
   // Fonction pour normaliser les tailles (strings ou objets)
@@ -35,6 +43,17 @@ const SizeQuantityModal: React.FC<SizeQuantityModalProps> = ({
       // Si c'est un objet, extraire le nom de taille
       return size.sizeName || size.name || 'Taille inconnue';
     });
+  };
+
+  // Fonction pour obtenir le prix d'une taille spécifique
+  const getPriceForSize = (sizeName: string): number => {
+    if (sizePricing && sizePricing.length > 0) {
+      const sizePrice = sizePricing.find(sp => sp.size === sizeName);
+      if (sizePrice) {
+        return sizePrice.salePrice || sizePrice.suggestedPrice;
+      }
+    }
+    return productPrice; // Fallback au prix de base
   };
 
   const normalizedSizes = React.useMemo(() => normalizeSizes(productSizes), [productSizes]);
@@ -50,16 +69,28 @@ const SizeQuantityModal: React.FC<SizeQuantityModalProps> = ({
     setQuantities(normalizedSizes.reduce((acc, size) => ({ ...acc, [size]: 0 }), {}));
   }, [normalizedSizes]);
 
-  // Calculer le total d'articles et le prix
-  const { totalItems, totalPrice } = useMemo(() => {
-    const items = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
-    const total = items * productPrice;
+  // Calculer le total d'articles et le prix avec prix par taille
+  const { totalItems, totalPrice, pricePerSize } = useMemo(() => {
+    let items = 0;
+    let total = 0;
+    const prices: Record<string, number> = {};
+
+    normalizedSizes.forEach(size => {
+      const qty = quantities[size] || 0;
+      if (qty > 0) {
+        const price = getPriceForSize(size);
+        items += qty;
+        total += qty * price;
+        prices[size] = price;
+      }
+    });
 
     return {
       totalItems: items,
-      totalPrice: total
+      totalPrice: total,
+      pricePerSize: prices
     };
-  }, [quantities, productPrice]);
+  }, [quantities, normalizedSizes, sizePricing, productPrice]);
 
   const handleQuantityChange = (size: string, delta: number) => {
     setQuantities(prev => ({
@@ -143,7 +174,15 @@ const SizeQuantityModal: React.FC<SizeQuantityModalProps> = ({
                 key={`${size}-${index}`}
                 className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <span className="text-sm font-medium text-gray-900 w-12">{size}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-900 w-12">{size}</span>
+                  {/* Afficher le prix spécifique à cette taille */}
+                  {sizePricing && sizePricing.length > 0 && getPriceForSize(size) !== productPrice && (
+                    <span className="text-xs text-gray-500">
+                      {formatPrice(getPriceForSize(size))}
+                    </span>
+                  )}
+                </div>
 
                 {/* Quantity Controls */}
                 <div className="flex items-center gap-3">
@@ -208,14 +247,19 @@ const SizeQuantityModal: React.FC<SizeQuantityModalProps> = ({
 
         {/* Footer Summary */}
         <div className="px-6 py-4 border-t bg-gray-50">
-          {/* Price Info */}
+          {/* Price Info - show base price if no size pricing, otherwise show "à partir de" */}
           <div className="mb-4 p-4 bg-white rounded-lg border">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Prix de l'article</span>
+              <span className="text-sm text-gray-600">
+                {sizePricing && sizePricing.length > 0 ? 'Prix à partir de' : 'Prix de l\'article'}
+              </span>
               <span className="text-base font-semibold text-gray-900">
                 {formatPrice(productPrice)}
               </span>
             </div>
+            {sizePricing && sizePricing.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">Le prix varie selon la taille sélectionnée</p>
+            )}
           </div>
 
           {/* Cart Summary */}

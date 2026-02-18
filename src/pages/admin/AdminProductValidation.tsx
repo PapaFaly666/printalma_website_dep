@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Check, X, Eye, Package, Calendar, Tag, DollarSign, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle, Filter
+  Check, X, Eye, Package, Calendar, Tag, DollarSign, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle, Filter, Palette
 } from 'lucide-react';
 import { adminValidationService } from '../../services/ProductValidationService';
 import { ProductWithValidation, PaginatedResponse } from '../../types/validation';
-import Button from '../../components/ui/Button';
+import { AdminButton } from '../../components/admin/AdminButton';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import {
@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '../../components/ui/table';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 interface StatsCardProps {
   title: string;
@@ -269,18 +270,17 @@ const AdminProductValidation: React.FC = () => {
 
   const getProductActions = (product: ProductWithValidation) => {
     return (
-      <Button
+      <AdminButton
         size="sm"
         variant="outline"
         onClick={() => {
           setSelectedProduct(product);
           setSelectedImageIndex(0); // Reset image selection
         }}
-        className="rounded-lg border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900 transition-colors"
       >
-        <Eye className="h-3 w-3 mr-1" />
+        <Eye className="h-3 w-3" />
         Voir
-      </Button>
+      </AdminButton>
     );
   };
 
@@ -353,79 +353,55 @@ const AdminProductValidation: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="w-full min-h-screen bg-gray-50">
+      {/* En-tête simplifié */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white border-b border-gray-200 px-4 sm:px-6 py-6"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-black">Validation des produits</h1>
-            <p className="text-gray-600 mt-1">Examiner et valider les produits créés par les vendeurs</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Validation des produits
+            </h1>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-gray-600">
+                <span className="font-semibold text-gray-900">{stats.total}</span> produit{stats.total > 1 ? 's' : ''}
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-yellow-600">{stats.pending}</span> en attente
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-green-600">{stats.validated}</span> validé{stats.validated > 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={fetchProducts}
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </Button>
-        </div>
 
-        {/* Stats Cards - Design professionnel */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">En attente</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.pending}</p>
-              </div>
-              <div className="bg-yellow-50 p-3 rounded-lg">
-                <AlertTriangle className="h-6 w-6 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Validés</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.validated}</p>
-              </div>
-              <div className="bg-green-50 p-3 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Rejetés</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.rejected}</p>
-              </div>
-              <div className="bg-red-50 p-3 rounded-lg">
-                <XCircle className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-              <div className="bg-purple-50 p-3 rounded-lg">
-                <Package className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <AdminButton
+              variant="outline"
+              size="sm"
+              onClick={fetchProducts}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser</span>
+            </AdminButton>
           </div>
         </div>
+      </motion.div>
 
-        {/* Filtres - Design épuré */}
-        <div className="mb-6 space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      {/* Contenu principal */}
+      <div className="px-4 sm:px-6 py-8">
+        {/* Filtres */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-semibold text-gray-700">Filtres</span>
+              <Filter className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-900">Filtres</span>
             </div>
 
             <div className="flex flex-wrap gap-4 flex-1">
@@ -434,7 +410,7 @@ const AdminProductValidation: React.FC = () => {
                   value={filters.status}
                   onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as any }))}
                 >
-                  <SelectTrigger className="w-full rounded-lg border-gray-200 focus:border-gray-300">
+                  <SelectTrigger className="h-11">
                     <SelectValue placeholder="Statut" />
                   </SelectTrigger>
                   <SelectContent>
@@ -452,39 +428,26 @@ const AdminProductValidation: React.FC = () => {
                   placeholder="Rechercher par vendeur..."
                   value={filters.vendor}
                   onChange={(e) => setFilters(prev => ({ ...prev, vendor: e.target.value }))}
-                  className="pl-10 rounded-lg border-gray-200 focus:border-gray-300"
+                  className="pl-10 h-11"
                 />
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              <span className="font-medium">
-                {products?.length || 0} produit{(products?.length || 0) > 1 ? 's' : ''} WIZARD sans design
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                <span className="font-medium">{products?.length || 0}</span> produit{(products?.length || 0) > 1 ? 's' : ''} WIZARD sans design
               </span>
-              {filters.status !== 'ALL' && (
-                <span className="ml-2">
-                  • Statut: <span className="font-medium">{getStatusLabel(filters.status)}</span>
-                </span>
-              )}
-              {filters.vendor.trim() && (
-                <span className="ml-2">
-                  • Vendeur: <span className="font-medium">{filters.vendor}</span>
-                </span>
+
+              {(filters.status !== 'ALL' || filters.vendor.trim()) && (
+                <AdminButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilters({ status: 'ALL', productType: 'ALL', vendor: '' })}
+                >
+                  Réinitialiser
+                </AdminButton>
               )}
             </div>
-
-            {(filters.status !== 'ALL' || filters.vendor.trim()) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilters({ status: 'ALL', productType: 'ALL', vendor: '' })}
-                className="text-xs h-8 px-3 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              >
-                ✕ Réinitialiser les filtres
-              </Button>
-            )}
           </div>
         </div>
 
@@ -648,33 +611,34 @@ const AdminProductValidation: React.FC = () => {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between mt-8">
-            <p className="text-sm text-gray-700">
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-sm text-gray-600">
               Page {pagination.currentPage} sur {pagination.totalPages} ({pagination.totalItems} produits WIZARD sans design)
             </p>
             <div className="flex gap-2">
-              <Button
+              <AdminButton
                 variant="outline"
                 size="sm"
                 disabled={!pagination.hasPrevious}
                 onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
               >
                 Précédent
-              </Button>
-              <Button
+              </AdminButton>
+              <AdminButton
                 variant="outline"
                 size="sm"
                 disabled={!pagination.hasNext}
                 onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
               >
                 Suivant
-              </Button>
+              </AdminButton>
             </div>
           </div>
         )}
+      </div>
 
-        {/* Modal de validation - Design professionnel avec galerie d'images */}
-        <Dialog open={!!selectedProduct} onOpenChange={handleCloseModal}>
+      {/* Modal de validation - Design professionnel avec galerie d'images */}
+      <Dialog open={!!selectedProduct} onOpenChange={handleCloseModal}>
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-50" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
             <DialogHeader className="pb-4 border-b border-gray-100 bg-white px-6 py-4">
               <DialogTitle className="text-xl font-semibold text-gray-900">Détails du produit WIZARD</DialogTitle>
@@ -924,13 +888,12 @@ const AdminProductValidation: React.FC = () => {
             })()}
 
             <DialogFooter className="flex gap-3 pt-4 border-t border-gray-100">
-              <Button
+              <AdminButton
                 variant="outline"
                 onClick={handleCloseModal}
-                className="rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
               >
                 Fermer
-              </Button>
+              </AdminButton>
 
               {/* Boutons de validation selon le statut */}
               {selectedProduct && (() => {
@@ -939,44 +902,42 @@ const AdminProductValidation: React.FC = () => {
                   <>
                     {currentFinalStatus === 'PENDING' || currentFinalStatus === 'pending_admin_validation' ? (
                       <>
-                        <Button
+                        <AdminButton
+                          variant="outline"
                           onClick={() => setValidation({ approved: true, reason: '' })}
-                          className="rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium shadow-sm"
+                          className="border-green-600 text-green-600 hover:bg-green-50"
                           disabled={processing}
                         >
-                          <Check className="h-4 w-4 mr-2" />
+                          <Check className="h-4 w-4" />
                           Valider
-                        </Button>
-                        <Button
+                        </AdminButton>
+                        <AdminButton
+                          variant="outline"
                           onClick={() => setValidation({ approved: false, reason: '' })}
-                          className="rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium shadow-sm"
+                          className="border-red-600 text-red-600 hover:bg-red-50"
                           disabled={processing}
                         >
-                          <X className="h-4 w-4 mr-2" />
+                          <X className="h-4 w-4" />
                           Rejeter
-                        </Button>
+                        </AdminButton>
                       </>
                     ) : currentFinalStatus === 'REJECTED' || currentFinalStatus === 'admin_rejected' ? (
-                      <Button
+                      <AdminButton
+                        variant="primary"
                         onClick={() => setValidation({ approved: true, reason: '' })}
-                        className="rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium shadow-sm"
                         disabled={processing}
                       >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Réviser la validation
-                      </Button>
+                        <RefreshCw className="h-4 w-4" />
+                        Réviser
+                      </AdminButton>
                     ) : null}
 
                     {/* Bouton de confirmation */}
                     {validation.approved !== null && (
-                      <Button
+                      <AdminButton
+                        variant={validation.approved ? "primary" : "destructive"}
                         onClick={handleValidate}
                         disabled={processing || (validation.approved === false && !validation.reason.trim())}
-                        className={`rounded-xl font-medium shadow-sm ${
-                          validation.approved
-                            ? 'bg-green-600 hover:bg-green-700 text-white'
-                            : 'bg-red-600 hover:bg-red-700 text-white'
-                        }`}
                       >
                         {processing ? (
                           <>
@@ -986,7 +947,7 @@ const AdminProductValidation: React.FC = () => {
                         ) : (
                           validation.approved ? 'Confirmer la validation' : 'Confirmer le rejet'
                         )}
-                      </Button>
+                      </AdminButton>
                     )}
                   </>
                 );
@@ -994,7 +955,6 @@ const AdminProductValidation: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
     </div>
   );
 };

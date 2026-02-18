@@ -130,18 +130,23 @@ const VendorStickerCreator: React.FC<VendorStickerCreatorProps> = ({
     try {
       setIsSubmitting(true);
 
+      // Parse size from string "100mm x 120mm" -> {width: 10, height: 12}
+      const sizeMatch = stickerSize.match(/(\d+)\s*mm\s*x\s*(\d+)\s*mm/);
+      const parsedSize = sizeMatch
+        ? { width: parseInt(sizeMatch[1]) / 10, height: parseInt(sizeMatch[2]) / 10 }
+        : { width: 10, height: 10 };
+
       const payload: CreateStickerProductPayload = {
         designId: design.id,
-        stickerType,
-        stickerSurface,
-        stickerBorderColor,
-        stickerSize,
         name: productName,
         description: productDescription || undefined,
+        size: parsedSize,
+        finish: stickerSurface, // Map stickerSurface to finish
+        shape: 'SQUARE', // Default shape
         price: calculatedPrice,
-        stock: productStock,
-        status: autoPublish ? 'PUBLISHED' : 'DRAFT',
-        autoPublish
+        stockQuantity: productStock,
+        stickerType,
+        borderColor: stickerBorderColor
       };
 
       console.log('📦 Création produit sticker:', payload);

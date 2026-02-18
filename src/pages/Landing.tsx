@@ -5,6 +5,7 @@ import { useProducts } from '@/hooks/useProducts';
 import CategoryTabs from '../components/CategoryTabs';
 import ArtistesSection from '../components/ArtisteSection';
 import DesignersSection from './DesignersSection';
+import InfluencersPartnersSection from './InfluencersPartnersSection';
 import InfluenceursSection from './InfluenceurSection';
 import ThemesTendances from './ThemesTendances';
 import ServiceFeatures from './ServiceFeatures ';

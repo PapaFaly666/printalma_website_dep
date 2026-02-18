@@ -409,29 +409,30 @@ export default function ProfilePage() {
   // Effet pour charger la galerie du vendeur
   useEffect(() => {
     const loadVendorGallery = async () => {
-      console.log('Effect loadVendorGallery déclenché:', { type, vendorData });
+      console.log('🖼️ [ProfilePage] Effect loadVendorGallery déclenché:', { type, vendorData });
 
       try {
         setLoadingGallery(true);
 
         // Pour les profils vendeur, on récupère la galerie du vendeur
         if (type === 'artiste' || type === 'influenceur' || type === 'designer') {
-          console.log('Type de profil détecté comme vendeur:', type);
+          console.log('✅ Type de profil détecté comme vendeur:', type);
 
           // Attendre que vendorData soit chargé pour avoir l'ID
           if (vendorData && vendorData.id) {
-            console.log(`Récupération de la galerie pour vendeur ID ${vendorData.id}`);
+            console.log(`🔍 Récupération de la galerie pour vendeur ID ${vendorData.id} (${vendorData.shop_name || vendorData.firstName})`);
+
             const vendorGallery = await galleryService.getPublicVendorGallery(vendorData.id);
 
             setGallery(vendorGallery);
-            console.log('Galerie récupérée:', vendorGallery);
-            console.log('Images dans la galerie:', vendorGallery?.images);
-            console.log('Nombre d images:', vendorGallery?.images?.length);
+            console.log('✅ Galerie récupérée:', vendorGallery);
+            console.log('📸 Images dans la galerie:', vendorGallery?.images);
+            console.log('🔢 Nombre d\'images:', vendorGallery?.images?.length);
 
             // Debug détaillé pour chaque image
-            if (vendorGallery && vendorGallery.images) {
+            if (vendorGallery && vendorGallery.images && vendorGallery.images.length > 0) {
               vendorGallery.images.forEach((img, idx) => {
-                console.log(`Image ${idx}:`, {
+                console.log(`📷 Image ${idx + 1}:`, {
                   id: img.id,
                   url: img.url,
                   imageUrl: (img as any).imageUrl,
@@ -439,15 +440,17 @@ export default function ProfilePage() {
                   order: img.order
                 });
               });
+            } else {
+              console.log('⚠️ Aucune image trouvée dans la galerie ou galerie vide');
             }
           } else {
-            console.log('vendorData pas encore chargé ou pas d\'ID:', vendorData);
+            console.log('⏳ vendorData pas encore chargé ou pas d\'ID:', vendorData);
           }
         } else {
-          console.log('Type de profil non vendeur:', type);
+          console.log('❌ Type de profil non vendeur:', type);
         }
       } catch (error) {
-        console.error('Erreur lors du chargement de la galerie:', error);
+        console.error('❌ Erreur lors du chargement de la galerie:', error);
         // En cas d'erreur, on laisse la galerie vide
         setGallery(null);
       } finally {
@@ -893,7 +896,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Section Galerie - Affichée seulement si la galerie existe et contient des images */}
-          {(loadingGallery || (gallery && gallery.images && gallery.images.length > 0)) && (
+          {loadingGallery || (gallery && gallery.images && gallery.images.length > 0) ? (
             <div className="mb-12">
               {/* Titre Galerie */}
               <div className="flex items-center gap-3 mb-6">
@@ -903,6 +906,11 @@ export default function ProfilePage() {
                 <svg className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-400 fill-current" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                 </svg>
+                {gallery && gallery.images && (
+                  <span className="text-sm sm:text-base text-gray-500 font-medium">
+                    ({gallery.images.length} image{gallery.images.length > 1 ? 's' : ''})
+                  </span>
+                )}
               </div>
 
               {/* Grille d'images - Galerie du vendeur */}
@@ -998,7 +1006,7 @@ export default function ProfilePage() {
               )}
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Section Produits avec Sidebar */}
           <div className="mb-12">

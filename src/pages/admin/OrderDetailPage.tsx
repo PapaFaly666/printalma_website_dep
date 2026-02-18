@@ -11,6 +11,31 @@ import { CustomizationPreview } from '../../components/order/CustomizationPrevie
 import { downloadDesignElementsAsPNG, exportAllViewsDesignElements } from '../../utils/printExport';
 import { SimpleProductPreview } from '../../components/vendor/SimpleProductPreview';
 
+/**
+ * Parse le shippingName pour extraire prénom et nom
+ * Format attendu: "Prénom Nom" ou "Prénom Deuxième Nom"
+ * @param shippingName - Nom complet du client
+ * @returns { firstName, lastName }
+ */
+const parseShippingName = (shippingName: string): { firstName: string; lastName: string } => {
+  if (!shippingName || shippingName.trim() === '') {
+    return { firstName: '', lastName: '' };
+  }
+
+  const parts = shippingName.trim().split(/\s+/);
+
+  if (parts.length === 1) {
+    // Un seul mot - considérer comme prénom
+    return { firstName: parts[0], lastName: '' };
+  }
+
+  // Premier mot = prénom, reste = nom
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(' ');
+
+  return { firstName, lastName };
+};
+
 // Fonction pour convertir un item de commande au format VendorProduct pour SimpleProductPreview
 const convertOrderItemToVendorProduct = (item: any, enriched: any): any => {
   console.log('🔄 Conversion item → VendorProduct:', { item, enriched });
@@ -559,7 +584,16 @@ if (loading) {
               </div>
               <div className="px-6 py-5">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Client</div>
-                <div className="text-base font-medium text-gray-900 truncate">{order.user.firstName} {order.user.lastName}</div>
+                <div className="text-base font-medium text-gray-900 truncate">
+                  {(() => {
+                    // Utiliser shippingName si disponible, sinon user
+                    if (order.shippingName) {
+                      const { firstName, lastName } = parseShippingName(order.shippingName);
+                      return `${firstName} ${lastName}`.trim() || order.shippingName;
+                    }
+                    return `${order.user.firstName} ${order.user.lastName}`;
+                  })()}
+                </div>
               </div>
               <div className="px-6 py-5">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Articles</div>
@@ -943,12 +977,30 @@ if (loading) {
                   <Avatar className="h-11 w-11 ring-2 ring-gray-100">
                     {order.user.photo_profil && <AvatarImage src={order.user.photo_profil} />}
                     <AvatarFallback className="bg-gray-900 text-white text-sm font-medium">
-                      {order.user.firstName?.[0]?.toUpperCase()}{order.user.lastName?.[0]?.toUpperCase()}
+                      {(() => {
+                        // Utiliser shippingName si disponible, sinon user
+                        if (order.shippingName) {
+                          const { firstName, lastName } = parseShippingName(order.shippingName);
+                          return `${firstName?.[0]?.toUpperCase() || ''}${lastName?.[0]?.toUpperCase() || ''}`;
+                        }
+                        return `${order.user.firstName?.[0]?.toUpperCase() || ''}${order.user.lastName?.[0]?.toUpperCase() || ''}`;
+                      })()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-gray-900 truncate">{order.user.firstName} {order.user.lastName}</div>
-                    <div className="text-sm text-gray-500 truncate">{order.user.email}</div>
+                    <div className="font-medium text-gray-900 truncate">
+                      {(() => {
+                        // Utiliser shippingName si disponible, sinon user
+                        if (order.shippingName) {
+                          const { firstName, lastName } = parseShippingName(order.shippingName);
+                          return `${firstName} ${lastName}`.trim() || order.shippingName;
+                        }
+                        return `${order.user.firstName} ${order.user.lastName}`;
+                      })()}
+                    </div>
+                    <div className="text-sm text-gray-500 truncate">
+                      {order.email || order.user.email}
+                    </div>
                   </div>
                 </div>
                 {order.phoneNumber && (
@@ -957,6 +1009,25 @@ if (loading) {
                       <Phone className="h-4 w-4" />
                     </div>
                     <span>{order.phoneNumber}</span>
+                  </div>
+                )}
+
+                {/* Additional shipping address info for guest orders */}
+                {(order.shippingStreet || order.shippingCity || order.shippingRegion || order.shippingCountry) && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 space-y-1.5">
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Adresse</div>
+                    {order.shippingStreet && (
+                      <div className="text-sm text-gray-700">{order.shippingStreet}</div>
+                    )}
+                    {order.shippingCity && (
+                      <div className="text-sm text-gray-700">{order.shippingCity}</div>
+                    )}
+                    {order.shippingRegion && (
+                      <div className="text-sm text-gray-700">{order.shippingRegion}</div>
+                    )}
+                    {order.shippingCountry && (
+                      <div className="text-sm font-medium text-gray-900">{order.shippingCountry}</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1402,12 +1473,13 @@ if (loading) {
                       <button
                         key={view.key}
                         onClick={() => setProductModal(prev => prev ? { ...prev, activeViewIndex: index } : null)}
-                        className={`relative rounded-lg overflow-hidden border-2 transition-all duration-150 ${
+                        className={`relative rounded-lg border-2 transition-all duration-150 ${
                           index === productModal.activeViewIndex
                             ? 'border-gray-900 shadow-md'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
+                        {/* ✅ Retiré overflow-hidden pour permettre au texte de grande taille d'être visible */}
                         <CustomizationPreview
                           productImageUrl={view.imageUrl}
                           designElements={view.elements}

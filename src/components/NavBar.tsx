@@ -128,16 +128,24 @@ const NavBar = () => {
           {/* Barre de recherche avec autocomplétion */}
           <div className="hidden md:flex flex-1 justify-center px-8">
             <SearchAutocomplete
-              placeholder="Recherche de designs/produits"
+              placeholder="Recherche de produits, designs, vendeurs..."
               className="relative w-full max-w-3xl ml-auto mr-28"
             />
           </div>
 
           {/* Actions droite */}
           <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
-            {/* Bouton Devenir Vendeur */}
+            {/* Bouton Devenir Vendeur / Espace Vendeur */}
             <Button
-              onClick={() => navigate('/devenir-vendeur')}
+              onClick={() => {
+                if (isVendeur()) {
+                  navigate('/vendeur/dashboard');
+                } else if (isAdmin() || isSuperAdmin()) {
+                  navigate('/admin/dashboard');
+                } else {
+                  navigate('/devenir-vendeur');
+                }
+              }}
               variant="primary"
               size="lg"
               className="hidden sm:flex"
@@ -149,7 +157,7 @@ const NavBar = () => {
                 />
               }
             >
-              Devenir Vendeur
+              {isVendeur() ? 'Espace Vendeur' : (isAdmin() || isSuperAdmin() ? 'Espace Admin' : 'Devenir Vendeur')}
             </Button>
 
 
@@ -475,7 +483,7 @@ const NavBar = () => {
               {/* Recherche mobile avec autocomplétion */}
               <div className="pb-4 border-b border-gray-200">
                 <SearchAutocomplete
-                  placeholder="Rechercher..."
+                  placeholder="Produits, designs, vendeurs..."
                   className="w-full"
                 />
               </div>
@@ -527,10 +535,16 @@ const NavBar = () => {
                 ))
               )}
 
-              {/* Devenir Vendeur button mobile */}
+              {/* Devenir Vendeur / Espace Vendeur button mobile */}
               <Button
                 onClick={() => {
-                  navigate('/devenir-vendeur');
+                  if (isVendeur()) {
+                    navigate('/vendeur/dashboard');
+                  } else if (isAdmin() || isSuperAdmin()) {
+                    navigate('/admin/dashboard');
+                  } else {
+                    navigate('/devenir-vendeur');
+                  }
                   setIsMobileMenuOpen(false);
                 }}
                 variant="primary"
@@ -545,7 +559,7 @@ const NavBar = () => {
                   />
                 }
               >
-                Devenir Vendeur
+                {isVendeur() ? 'Espace Vendeur' : (isAdmin() || isSuperAdmin() ? 'Espace Admin' : 'Devenir Vendeur')}
               </Button>
             </div>
           </div>

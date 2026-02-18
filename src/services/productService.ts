@@ -6,7 +6,7 @@ import { prepareProductPayload, cleanProductPayload } from '../utils/productNorm
 export interface Product extends Omit<SchemaProduct, 'colors' | 'sizes'> {
   id: number;
   suggestedPrice?: number;
-  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE';
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU';
   categoryId?: number;
   subCategoryId?: number; // ✅ camelCase correct
   category?: {
@@ -39,6 +39,20 @@ export interface Product extends Omit<SchemaProduct, 'colors' | 'sizes'> {
   sizes?: Array<{
     id: number;
     sizeName: string;
+  }>;
+
+  // 🆕 Prix par taille (structure API backend)
+  useGlobalPricing?: boolean;
+  globalCostPrice?: number;
+  globalSuggestedPrice?: number;
+  sizePrices?: Array<{
+    id: number;
+    productId: number;
+    size: string;
+    costPrice: number;
+    suggestedPrice: number;
+    createdAt: string;
+    updatedAt: string;
   }>;
 }
 
@@ -75,8 +89,19 @@ export interface CreateProductPayload {
     }>;
   }>;
   sizes?: string[]; // Array de noms de tailles
-  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'; // Genre du produit
+  genre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT' | 'TABLEAU'; // Genre du produit
   isReadyProduct?: boolean; // Indique si c'est un produit prêt (true) ou un mockup (false)
+  requiresStock?: boolean; // Indique si le produit nécessite une gestion de stock (false pour AUTOCOLLANT/TABLEAU)
+
+  // 🆕 Prix par taille
+  useGlobalPricing?: boolean; // Utiliser les mêmes prix pour toutes les tailles
+  globalCostPrice?: number; // Prix de revient global
+  globalSuggestedPrice?: number; // Prix de vente suggéré global
+  sizePricing?: Array<{
+    size: string; // Nom de la taille
+    suggestedPrice: number; // Prix de vente suggéré
+    costPrice: number; // Prix de revient
+  }>;
 }
 
 export interface ProductFile {
@@ -109,7 +134,9 @@ export interface DiagnosticResult {
 }
 
 // Configuration API selon la documentation backend
-const API_BASE = 'https://printalma-back-dep.onrender.com';
+// 🔧 UTILISER LOCALHOST pour le développement
+const API_BASE = 'http://localhost:3004';
+// const API_BASE = 'https://printalma-back-dep.onrender.com'; // Production
 
 // Fonction utilitaire pour les appels API sécurisés
 async function safeApiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
@@ -398,12 +425,16 @@ export class ProductService {
       }
 
       // ✅ ÉTAPE 1: Formater les données pour le backend
+      // 🔧 PRODUITS SANS STOCK : AUTOCOLLANT ou TABLEAU
+      const isAutocollant = productData.genre === 'AUTOCOLLANT' || productData.genre === 'TABLEAU';
+
       const backendProductData = {
         name: productData.name,
         description: productData.description,
         price: Number(productData.price),
         suggestedPrice: Number(productData.suggestedPrice),
-        stock: Number(productData.stock || 0),
+        // 🔧 CORRECTION : Pour AUTOCOLLANT, envoyer stock: null (pas de gestion de stock)
+        stock: isAutocollant ? null : Number(productData.stock || 0),
         status: productData.status || 'published',
 
         // ✅ CATÉGORIES CORRECTES (camelCase NestJS)
@@ -416,16 +447,36 @@ export class ProductService {
           : ["Produit"],
 
         // ✅ CONSTRUCTION DES colorVariations AVEC fileId UNIQUE
-        colorVariations: this.buildColorVariationsWithFileIds(productData.variations || [], imageFiles),
+        colorVariations: this.buildColorVariationsWithFileIds(productData.variations || [], imageFiles, true, isAutocollant),
 
         // ✅ AUTRES CHAMPS
         genre: productData.genre || 'UNISEXE',
-        isReadyProduct: productData.isReadyProduct || false,
-        sizes: productData.sizes || []
+        // 🔧 ATTENTION : Ces champs peuvent ne pas être supportés par le backend
+        // On les envoie seulement si le backend les supporte
+        // requiresStock: isAutocollant ? false : (productData.requiresStock ?? true),
+        // isReadyProduct: productData.isReadyProduct ?? false,
+        sizes: productData.sizes || [],
+
+        // 🆕 Prix par taille
+        useGlobalPricing: productData.useGlobalPricing || false,
+        globalCostPrice: Number(productData.globalCostPrice || 0),
+        globalSuggestedPrice: Number(productData.globalSuggestedPrice || 0),
+        sizePricing: productData.sizePricing || []
       };
 
+      // 🔧 DEBUG : Afficher le payload final avant envoi
+      console.log('🔧 [FINAL] Payload pour API (NETTOYÉ):', backendProductData);
+
       console.log('🔧 [FINAL] Payload pour API:', backendProductData);
-      console.log('🔧 [FINAL] colorVariations formatées:', backendProductData.colorVariations);
+      console.log('🔧 [FINAL] genre:', backendProductData.genre);
+      console.log('🔧 [FINAL] stock:', backendProductData.stock);
+      console.log('🔧 [FINAL] stock type:', typeof backendProductData.stock);
+      console.log('🔧 [FINAL] colorVariations count:', backendProductData.colorVariations.length);
+
+      // 🔧 DEBUG : Afficher le stock de chaque variation
+      backendProductData.colorVariations.forEach((cv: any, i: number) => {
+        console.log(`   🎨 Variation ${i}: ${cv.name}, stock = ${cv.stock} (type: ${typeof cv.stock})`);
+      });
 
       // ✅ ÉTAPE 2: Créer FormData et envoyer les FICHIERS RÉELS au backend
       // Le backend s'occupera de l'upload sur Cloudinary
@@ -434,20 +485,50 @@ export class ProductService {
       const formData = new FormData();
 
       // Ajouter les données du produit en JSON
-      formData.append('productData', JSON.stringify(backendProductData));
+      const productDataJson = JSON.stringify(backendProductData);
+      console.log('📤 [ProductService] JSON productData envoyé:', productDataJson);
+      console.log('📤 [ProductService] JSON length:', productDataJson.length);
+      formData.append('productData', productDataJson);
 
       // ✅ ÉTAPE 3: Ajouter les fichiers image réels au FormData
-      // Utiliser les fichiers originaux, le backend s'occupera de l'upload Cloudinary
-      imageFiles.forEach((file: File, index: number) => {
-        // Utiliser le fileId correspondant depuis colorVariations
-        const fileId = this.getFileIdForIndex(backendProductData.colorVariations, index);
-        if (fileId) {
-          formData.append(`file_${fileId}`, file);
-          console.log(`📎 [ProductService] Ajout du fichier: ${file.name} (fileId: ${fileId})`);
-        }
-      });
+      // 🔧 CORRECTION : Envoyer avec file_${fileId} pour correspondance avec le backend
+      let fileIndex = 0;
+      for (const colorVar of backendProductData.colorVariations) {
+        if (!colorVar.images) continue;
 
-      console.log('📦 [ProductService] FormData créé avec fichiers réels pour le backend');
+        for (const image of colorVar.images) {
+          const fileId = image.fileId;
+          if (!fileId) {
+            console.warn(`⚠️ [ProductService] Image sans fileId, index=${fileIndex}`);
+            fileIndex++;
+            continue;
+          }
+
+          const file = imageFiles[fileIndex];
+          if (!file) {
+            console.error(`❌ [ProductService] Fichier non trouvé pour fileId=${fileId}, index=${fileIndex}`);
+            fileIndex++;
+            continue;
+          }
+
+          // 🔧 IMPORTANT : Utiliser file_${fileId} pour que le backend puisse faire la correspondance
+          formData.append(`file_${fileId}`, file);
+          console.log(`📎 [ProductService] Ajout du fichier: ${file.name} (fileId: ${fileId}, index: ${fileIndex})`);
+          fileIndex++;
+        }
+      }
+
+      console.log(`📦 [ProductService] FormData créé avec ${fileIndex} fichiers pour le backend`);
+
+      // 🔧 DEBUG : Afficher les clés du FormData
+      console.log('🔍 [DEBUG] FormData keys:');
+      for (const [key, value] of (formData as any).entries()) {
+        if (key === 'productData') {
+          console.log(`   - ${key}: JSON (longueur: ${value.length} chars)`);
+        } else {
+          console.log(`   - ${key}: File`);
+        }
+      }
 
       const response = await fetch(`${API_BASE}/products`, {
         method: 'POST',
@@ -489,7 +570,7 @@ export class ProductService {
   }
 
   // ✅ FONCTION UTILITAIRE: Construire colorVariations avec fileId unique
-  private static buildColorVariationsWithFileIds(variations: any[], imageFiles: File[]): any[] {
+  private static buildColorVariationsWithFileIds(variations: any[], imageFiles: File[], preserveExistingFileIds: boolean = false, isAutocollant: boolean = false): any[] {
     if (!variations || variations.length === 0) return [];
 
     let fileIndex = 0;
@@ -500,22 +581,26 @@ export class ProductService {
       name: variation.value || variation.name,
       colorCode: variation.colorCode,
       price: Number(variation.price),
-      stock: Number(variation.stock),
-      images: variation.images?.map((img: any) => {
-        // Générer un fileId unique pour cette image avec la même timestamp
-        const fileId = `img_${productTimestamp}_${fileIndex}`;
+      // 🔧 CORRECTION : Pour AUTOCOLLANT, pas de stock dans les variations
+      stock: isAutocollant ? null : Number(variation.stock),
+      images: variation.images?.map((img: any, imgIndex: number) => {
+        // 🔧 CORRECTION : Conserver le fileId existant si présent et demandé
+        const existingFileId = preserveExistingFileIds ? (img.fileId || img.id) : null;
+        const fileId = existingFileId || `img_${productTimestamp}_${fileIndex}`;
 
         // Avancer l'index des fichiers
         const currentFileIndex = fileIndex;
         fileIndex++;
 
         return {
-          fileId: fileId,           // ✅ ID unique pour faire correspondre avec le fichier
+          fileId: fileId,           // ✅ ID unique pour faire correspondre avec le fichier (conservé ou généré)
           view: img.view || 'Front',
           delimitations: img.delimitations || [],
           // Garder une référence au fichier original pour debug
           _fileName: imageFiles[currentFileIndex]?.name || 'unknown',
-          _fileIndex: currentFileIndex
+          _fileIndex: currentFileIndex,
+          _originalFileId: img.fileId || img.id, // Pour debug
+          _preserved: !!existingFileId // Pour debug
         };
       }) || []
     }));

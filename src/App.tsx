@@ -99,10 +99,15 @@ import AppelDeFondsPage from './pages/AppelDeFondsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 
+// Page de gestion du contenu
+import { ContentManagementPage } from './pages/admin/ContentManagementPage';
+import { ContentInitializationPage } from './pages/admin/ContentInitializationPage';
+
 // Nouvelles pages de gestion des fonds vendeur
 import VendorFundsRequestPage from './pages/vendor/VendorFundsRequestPage';
 import VendorWithdrawalsPage from './pages/vendor/VendorWithdrawalsPage';
 import AdminPaymentRequestsPage from './pages/admin/AdminPaymentRequestsPage';
+import PaymentMethodsPage from './pages/admin/PaymentMethodsPage';
 
 // Page de gestion des mockups
 import ProductMockupsPage from './pages/admin/ProductMockupsPage';
@@ -377,7 +382,10 @@ function App() {
                   <Route path="analytics" element={<ProductAnalytics />} />
                   <Route path="users" element={<AdminUsersPage />} />
                   <Route path="users/create" element={<AdminUsersPage />} />
+                  <Route path="content-init" element={<ContentInitializationPage />} />
+                  <Route path="content-management" element={<ContentManagementPage />} />
                   <Route path='payment-requests' element={<AdminPaymentRequestsPage />} />
+                  <Route path='payment-methods' element={<PaymentMethodsPage />} />
                   <Route path='sales' element={<Sale />} />
                   <Route path='add-product' element={<AddProductPage />} />
                   <Route path='product-form' element={<AddProductPage />} />

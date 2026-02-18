@@ -32,12 +32,13 @@ import {
 } from 'lucide-react';
 import { fabric } from 'fabric';
 import Button from '../../components/ui/Button';
+import { AdminButton } from '../../components/admin/AdminButton';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { ProductFormFields } from '../../components/product-form/ProductFormFields';
 import { ColorVariationsPanel } from '../../components/product-form/ColorVariationsPanel';
-import { CategoriesAndSizesPanel } from '../../components/product-form/CategoriesAndSizesPanel';
+import { CategoriesAndSizesPanel, CategoryPricing } from '../../components/product-form/CategoriesAndSizesPanel';
 import { ProductImage } from '../../types/product';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -277,9 +278,14 @@ const ColorVariationsStep: React.FC<{
 const CategoriesStep: React.FC<{
   categories: string[];
   sizes: string[];
+  sizePricing?: any[];
+  useGlobalPricing?: boolean;
+  globalCostPrice?: number;
+  globalSuggestedPrice?: number;
   onCategoriesUpdate: (categories: string[]) => void;
   onSizesUpdate: (sizes: string[]) => void;
-}> = ({ categories, sizes, onCategoriesUpdate, onSizesUpdate }) => {
+  onSizePricingUpdate?: (pricing: any[]) => void;
+}> = ({ categories, sizes, sizePricing, useGlobalPricing, globalCostPrice, globalSuggestedPrice, onCategoriesUpdate, onSizesUpdate, onSizePricingUpdate }) => {
   return (
     <Card>
       <CardHeader>
@@ -292,8 +298,13 @@ const CategoriesStep: React.FC<{
         <CategoriesAndSizesPanel
           categories={categories}
           sizes={sizes}
+          sizePricing={sizePricing}
+          useGlobalPricing={useGlobalPricing}
+          globalCostPrice={globalCostPrice}
+          globalSuggestedPrice={globalSuggestedPrice}
           onCategoriesUpdate={onCategoriesUpdate}
           onSizesUpdate={onSizesUpdate}
+          onSizePricingUpdate={onSizePricingUpdate}
         />
       </CardContent>
     </Card>
@@ -459,7 +470,12 @@ const CreateReadyProductPage: React.FC = () => {
     categories: [] as string[],
     sizes: [] as string[],
     colorVariations: [] as any[],
-    genre: 'UNISEXE' as 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE'
+    genre: 'UNISEXE' as 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE',
+    // 🆕 Prix par taille
+    useGlobalPricing: false,
+    globalCostPrice: 0,
+    globalSuggestedPrice: 0,
+    sizePricing: [] as any[]
   });
 
   // Étapes du formulaire (sans délimitations)
@@ -480,7 +496,7 @@ const CreateReadyProductPage: React.FC = () => {
     
     if (!formData.name.trim()) errors.push('Nom du produit requis');
     if (!formData.description.trim()) errors.push('Description requise');
-    if (formData.price <= 0) errors.push('Prix doit être supérieur à 0');
+    // Prix retiré - validation déplacée vers sizePricing (géré dans CategoriesAndSizesPanel)
     if (formData.categories.length === 0) errors.push('Au moins une catégorie requise');
     if (formData.colorVariations.length === 0) errors.push('Au moins une variation de couleur requise');
     // Le genre a une valeur par défaut 'unisexe', donc pas besoin de validation stricte
@@ -614,7 +630,7 @@ const CreateReadyProductPage: React.FC = () => {
       case 1:
         if (!formData.name.trim()) stepErrors.push('Nom du produit requis');
         if (!formData.description.trim()) stepErrors.push('Description requise');
-        if (formData.price <= 0) stepErrors.push('Prix doit être supérieur à 0');
+        // Prix retiré - validation déplacée vers sizePricing (géré dans CategoriesAndSizesPanel)
         break;
       
       case 2:
@@ -694,6 +710,11 @@ const CreateReadyProductPage: React.FC = () => {
         sizes: formData.sizes,
         isReadyProduct: true, // ← Automatiquement défini à true pour les produits prêts
         genre: formData.genre || 'UNISEXE', // ← NOUVEAU: Ajout du champ genre
+        // 🆕 Prix par taille
+        useGlobalPricing: formData.useGlobalPricing || false,
+        globalCostPrice: formData.globalCostPrice || 0,
+        globalSuggestedPrice: formData.globalSuggestedPrice || 0,
+        sizePricing: formData.sizePricing || [],
         colorVariations: formData.colorVariations.map(variation => ({
           name: variation.name,
           colorCode: variation.colorCode,
@@ -777,7 +798,11 @@ const CreateReadyProductPage: React.FC = () => {
       categories: [],
       sizes: [],
       colorVariations: [],
-      genre: 'UNISEXE'
+      genre: 'UNISEXE',
+      useGlobalPricing: false,
+      globalCostPrice: 0,
+      globalSuggestedPrice: 0,
+      sizePricing: []
     });
     setCurrentStep(1);
     setErrors({});
@@ -1545,8 +1570,13 @@ const CreateReadyProductPage: React.FC = () => {
             <CategoriesStep
               categories={formData.categories}
               sizes={formData.sizes}
+              sizePricing={formData.sizePricing}
+              useGlobalPricing={formData.useGlobalPricing}
+              globalCostPrice={formData.globalCostPrice}
+              globalSuggestedPrice={formData.globalSuggestedPrice}
               onCategoriesUpdate={(categories) => updateFormData('categories', categories)}
               onSizesUpdate={(sizes) => updateFormData('sizes', sizes)}
+              onSizePricingUpdate={(pricing) => updateFormData('sizePricing', pricing)}
             />
           );
         case 4:

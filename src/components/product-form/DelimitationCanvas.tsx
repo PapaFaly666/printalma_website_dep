@@ -16,7 +16,7 @@ import {
   ImageIcon
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
-import Button from '../ui/Button';
+import { AdminButton } from '../admin/AdminButton';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { useFabricCanvas } from '../../hooks/useFabricCanvas';
@@ -41,6 +41,8 @@ interface DelimitationCanvasProps {
 
 export type DelimitationCanvasHandle = {
   exportFinalImage: () => Promise<string | null>;
+  createFullImageDelimitation: () => { success: boolean; delimitations?: Delimitation[]; error?: string };
+  saveChanges: () => void; // 🆕 Permet de sauvegarder les changements programmatiquement
 };
 
 export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, DelimitationCanvasProps>(({
@@ -318,11 +320,6 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
     }
   }, [existingDelimitations, canvas, hasLoadedDelimitations]); // Retiré addDelimitation des dépendances
 
-  // Exposer la fonction d'export via le ref
-  useImperativeHandle(ref, () => ({
-    exportFinalImage
-  }), [exportFinalImage]);
-
   // Supprimer l'auto-save et remplacer par un tracking des changements
   const handleDelimitationUpdate = useCallback(() => {
     setHasUnsavedChanges(true);
@@ -582,13 +579,57 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
       toast.error('Veuillez d\'abord définir une zone de délimitation.');
       return;
     }
-    
+
     // URL d'un design de test
     const testDesignUrl = 'https://picsum.photos/id/237/200/300'; // Un design rectangulaire
     loadDesignImage(testDesignUrl);
-    
+
     toast.success('Design de test appliqué. Modifiez la zone pour voir l\'adaptation.');
   };
+
+  // 🆕 Exposer les méthodes via le ref (déplacé ici après toutes les définitions de fonctions)
+  useImperativeHandle(ref, () => ({
+    exportFinalImage,
+    createFullImageDelimitation: () => {
+      try {
+        const metrics = getImageMetrics();
+        if (!metrics) {
+          return { success: false, error: 'Métriques d\'image non disponibles' };
+        }
+
+        const { originalWidth, originalHeight } = metrics;
+
+        // Créer une délimitation qui couvre toute l'image (avec une petite marge de 2%)
+        const margin = 0.02; // 2% de marge
+        const fullImageDelimitation: Delimitation = {
+          id: `delim-full-${Date.now()}`,
+          x: originalWidth * margin,
+          y: originalHeight * margin,
+          width: originalWidth * (1 - 2 * margin),
+          height: originalHeight * (1 - 2 * margin),
+          rotation: 0,
+          name: 'Zone autocollant'
+        };
+
+        // Ajouter la délimitation au canvas
+        addDelimitation(fullImageDelimitation);
+
+        // Retourner la délimitation créée
+        return {
+          success: true,
+          delimitations: [fullImageDelimitation]
+        };
+      } catch (error) {
+        console.error('Erreur lors de la création de la délimitation pleine image:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Erreur inconnue'
+        };
+      }
+    },
+    // 🆕 Exposer handleSaveChanges pour permettre la sauvegarde programmatique
+    saveChanges: handleSaveChanges
+  }), [exportFinalImage, getImageMetrics, addDelimitation, handleSaveChanges]);
 
   const renderDelimitationPreview = () => {
     if (!delimitation) return null;
@@ -667,7 +708,7 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
           {validation.warnings.length > 0 && (
             <div className="mt-2 space-y-1">
               {validation.warnings.map((warning, index) => (
-                <div key={index} className="text-amber-600 dark:text-amber-400 text-xs">
+                <div key={index} className="text-amber-600 text-xs">
                   ⚠️ {warning}
                 </div>
               ))}
@@ -677,7 +718,7 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
           {validation.suggestions.length > 0 && (
             <div className="mt-2 space-y-1">
               {validation.suggestions.map((suggestion, index) => (
-                <div key={index} className="text-blue-600 dark:text-blue-400 text-xs">
+                <div key={index} className="text-[rgb(20,104,154)] text-xs">
                   💡 {suggestion}
                 </div>
               ))}
@@ -686,27 +727,27 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
         </div>
 
         {/* Informations principales sur la délimitation */}
-        <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs">
-          <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">📐 Zone de personnalisation active</h4>
+        <div className="p-3 bg-green-50 border border-green-200 rounded text-xs">
+          <h4 className="font-semibold text-green-800 mb-2">📐 Zone de personnalisation active</h4>
           
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <div>
-                <span className="font-medium text-green-700 dark:text-green-300">Position réelle:</span>
-                <div className="font-mono text-green-800 dark:text-green-200">
+                <span className="font-medium text-green-700">Position réelle:</span>
+                <div className="font-mono text-green-800">
                   X: {realCoords.x.toFixed(0)}px ({((realCoords.x / metrics.originalWidth) * 100).toFixed(1)}%)
                 </div>
-                <div className="font-mono text-green-800 dark:text-green-200">
+                <div className="font-mono text-green-800">
                   Y: {realCoords.y.toFixed(0)}px ({((realCoords.y / metrics.originalHeight) * 100).toFixed(1)}%)
                 </div>
               </div>
               
               <div>
-                <span className="font-medium text-green-700 dark:text-green-300">Dimensions réelles:</span>
-                <div className="font-mono text-green-800 dark:text-green-200">
+                <span className="font-medium text-green-700">Dimensions réelles:</span>
+                <div className="font-mono text-green-800">
                   {realCoords.width.toFixed(0)} × {realCoords.height.toFixed(0)} pixels
                 </div>
-                <div className="text-green-600 dark:text-green-400">
+                <div className="text-green-600">
                   Ratio: {aspectRatio.toFixed(2)} ({aspectRatio > 1 ? 'Paysage' : aspectRatio < 1 ? 'Portrait' : 'Carré'})
                 </div>
               </div>
@@ -714,18 +755,18 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
             
             <div className="space-y-2">
               <div>
-                <span className="font-medium text-green-700 dark:text-green-300">Centre de la zone:</span>
-                <div className="font-mono text-green-800 dark:text-green-200">
+                <span className="font-medium text-green-700">Centre de la zone:</span>
+                <div className="font-mono text-green-800">
                   ({centerX.toFixed(0)}, {centerY.toFixed(0)})
                 </div>
               </div>
               
               <div>
-                <span className="font-medium text-green-700 dark:text-green-300">Aire de personnalisation:</span>
-                <div className="font-mono text-green-800 dark:text-green-200">
+                <span className="font-medium text-green-700">Aire de personnalisation:</span>
+                <div className="font-mono text-green-800">
                   {(realCoords.width * realCoords.height).toFixed(0)} px²
                 </div>
-                <div className="text-green-600 dark:text-green-400">
+                <div className="text-green-600">
                   {percentageOfImage.toFixed(1)}% de l'image
                 </div>
               </div>
@@ -734,50 +775,50 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
         </div>
 
         {/* Guides pour le placement de designs */}
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs">
-          <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">🎯 Tailles recommandées pour designs</h4>
+        <div className="p-3 bg-[rgb(20,104,154)]/5 border border-[rgb(20,104,154)]/30 rounded text-xs">
+          <h4 className="font-semibold text-[rgb(20,104,154)] mb-2">🎯 Tailles recommandées pour designs</h4>
           
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white dark:bg-gray-800 p-2 rounded border">
-                <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">🏷️ Logo</div>
-                <div className="font-mono text-xs text-blue-600 dark:text-blue-400">
+              <div className="bg-white p-2 rounded border">
+                <div className="font-medium text-[rgb(20,104,154)] mb-1">🏷️ Logo</div>
+                <div className="font-mono text-xs text-[rgb(20,104,154)]">
                   {recommendedSizes.logo.width.toFixed(0)} × {recommendedSizes.logo.height.toFixed(0)}px
                 </div>
                 <div className="text-xs text-gray-500">Optimal pour logos</div>
               </div>
               
-              <div className="bg-white dark:bg-gray-800 p-2 rounded border">
-                <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">📝 Texte</div>
-                <div className="font-mono text-xs text-blue-600 dark:text-blue-400">
+              <div className="bg-white p-2 rounded border">
+                <div className="font-medium text-[rgb(20,104,154)] mb-1">📝 Texte</div>
+                <div className="font-mono text-xs text-[rgb(20,104,154)]">
                   {recommendedSizes.text.width.toFixed(0)} × {recommendedSizes.text.height.toFixed(0)}px
                 </div>
                 <div className="text-xs text-gray-500">Idéal pour textes</div>
               </div>
               
-              <div className="bg-white dark:bg-gray-800 p-2 rounded border">
-                <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">🎯 Icône</div>
-                <div className="font-mono text-xs text-blue-600 dark:text-blue-400">
+              <div className="bg-white p-2 rounded border">
+                <div className="font-medium text-[rgb(20,104,154)] mb-1">🎯 Icône</div>
+                <div className="font-mono text-xs text-[rgb(20,104,154)]">
                   {recommendedSizes.icon.width.toFixed(0)} × {recommendedSizes.icon.height.toFixed(0)}px
                 </div>
                 <div className="text-xs text-gray-500">Parfait pour icônes</div>
               </div>
               
-              <div className="bg-white dark:bg-gray-800 p-2 rounded border">
-                <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">🖼️ Zone complète</div>
-                <div className="font-mono text-xs text-blue-600 dark:text-blue-400">
+              <div className="bg-white p-2 rounded border">
+                <div className="font-medium text-[rgb(20,104,154)] mb-1">🖼️ Zone complète</div>
+                <div className="font-mono text-xs text-[rgb(20,104,154)]">
                   {recommendedSizes.fullArea.width.toFixed(0)} × {recommendedSizes.fullArea.height.toFixed(0)}px
                 </div>
                 <div className="text-xs text-gray-500">Utilise toute la zone</div>
               </div>
             </div>
             
-            <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
-              <span className="font-medium text-blue-700 dark:text-blue-300">Position pour centrage parfait:</span>
-              <div className="font-mono text-blue-800 dark:text-blue-200 mt-1">
+            <div className="pt-2 border-t border-[rgb(20,104,154)]/30">
+              <span className="font-medium text-[rgb(20,104,154)]">Position pour centrage parfait:</span>
+              <div className="font-mono text-[rgb(20,104,154)] mt-1">
                 Pour un design de L×H pixels, le positionner à:
               </div>
-              <div className="font-mono text-blue-600 dark:text-blue-400 text-xs">
+              <div className="font-mono text-[rgb(20,104,154)] text-xs">
                 X = {centerX.toFixed(0)} - (L/2) | Y = {centerY.toFixed(0)} - (H/2)
               </div>
             </div>
@@ -785,20 +826,20 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
         </div>
 
         {/* Exemple concret de centrage */}
-        <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded text-xs">
-          <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">💡 Exemple concret</h4>
+        <div className="p-3 bg-[rgb(20,104,154)]/5 border border-[rgb(20,104,154)]/30 rounded text-xs">
+          <h4 className="font-semibold text-[rgb(16,83,123)] mb-2">💡 Exemple concret</h4>
           
           <div className="space-y-1">
-            <div className="text-purple-700 dark:text-purple-300">
+            <div className="text-[rgb(20,104,154)]">
               <strong>Logo 100×60px centré dans cette zone :</strong>
             </div>
-            <div className="font-mono text-purple-800 dark:text-purple-200">
+            <div className="font-mono text-[rgb(16,83,123)]">
               Position X: {(centerX - 50).toFixed(0)}px
             </div>
-            <div className="font-mono text-purple-800 dark:text-purple-200">
+            <div className="font-mono text-[rgb(16,83,123)]">
               Position Y: {(centerY - 30).toFixed(0)}px
             </div>
-            <div className="text-purple-600 dark:text-purple-400 mt-1">
+            <div className="text-[rgb(20,104,154)] mt-1">
               Résultat: Logo parfaitement centré à {realCoords.width >= 100 && realCoords.height >= 60 ? '100%' : `${Math.min((realCoords.width/100)*100, (realCoords.height/60)*100).toFixed(0)}%`} de sa taille originale
             </div>
           </div>
@@ -828,27 +869,27 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
     });
 
     return (
-      <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
-        <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">🐛 Debug - Coordonnées</h4>
+      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+        <h4 className="font-semibold text-yellow-800 mb-2">🐛 Debug - Coordonnées</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-white dark:bg-gray-800 p-2 rounded">
-            <h5 className="font-medium text-gray-800 dark:text-gray-200">Image Originale</h5>
+          <div className="bg-white p-2 rounded">
+            <h5 className="font-medium text-gray-800">Image Originale</h5>
             <p>Taille: {metrics.originalWidth} × {metrics.originalHeight}px</p>
             <p>Échelle: {metrics.canvasScale.toFixed(3)}</p>
             <p>Offset: {metrics.canvasOffsetX.toFixed(0)}, {metrics.canvasOffsetY.toFixed(0)}</p>
           </div>
           
-          <div className="bg-white dark:bg-gray-800 p-2 rounded">
-            <h5 className="font-medium text-gray-800 dark:text-gray-200">Coordonnées Canvas</h5>
+          <div className="bg-white p-2 rounded">
+            <h5 className="font-medium text-gray-800">Coordonnées Canvas</h5>
             <p>X: {canvasCoords.x.toFixed(0)}px</p>
             <p>Y: {canvasCoords.y.toFixed(0)}px</p>
             <p>L: {canvasCoords.width.toFixed(0)}px</p>
             <p>H: {canvasCoords.height.toFixed(0)}px</p>
           </div>
           
-          <div className="bg-white dark:bg-gray-800 p-2 rounded">
-            <h5 className="font-medium text-green-800 dark:text-green-200">Coordonnées Réelles</h5>
+          <div className="bg-white p-2 rounded">
+            <h5 className="font-medium text-green-800">Coordonnées Réelles</h5>
             <p>X: {realCoords.x.toFixed(0)}px</p>
             <p>Y: {realCoords.y.toFixed(0)}px</p>
             <p>L: {realCoords.width.toFixed(0)}px</p>
@@ -866,22 +907,22 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
     if (!metrics) return null;
 
     return (
-      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-sm">
-        <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">💡 Guide d'utilisation des coordonnées réelles</h4>
+      <div className="p-4 bg-[rgb(20,104,154)]/5 border border-[rgb(20,104,154)]/30 rounded text-sm">
+        <h4 className="font-semibold text-[rgb(20,104,154)] mb-3">💡 Guide d'utilisation des coordonnées réelles</h4>
         
         <div className="space-y-3">
-          <div className="bg-white dark:bg-gray-800 p-3 rounded border">
-            <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-2">🖼️ Image source</h5>
-            <p className="text-gray-600 dark:text-gray-400">
-              Dimensions originales: <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{metrics.originalWidth} × {metrics.originalHeight} pixels</code>
+          <div className="bg-white p-3 rounded border">
+            <h5 className="font-medium text-gray-800 mb-2">🖼️ Image source</h5>
+            <p className="text-gray-600">
+              Dimensions originales: <code className="bg-gray-100 px-2 py-1 rounded">{metrics.originalWidth} × {metrics.originalHeight} pixels</code>
             </p>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-3 rounded border">
-            <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-2">🎯 Utilisation pratique</h5>
-            <div className="space-y-2 text-gray-600 dark:text-gray-400 text-xs">
+          <div className="bg-white p-3 rounded border">
+            <h5 className="font-medium text-gray-800 mb-2">🎯 Utilisation pratique</h5>
+            <div className="space-y-2 text-gray-600 text-xs">
               <p><strong>1. Récupération des coordonnées :</strong></p>
-              <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded overflow-x-auto">
+              <pre className="bg-gray-100 p-2 rounded overflow-x-auto">
 {`const delimitation = {
   x: 450,      // 450px du bord gauche
   y: 300,      // 300px du bord haut  
@@ -891,7 +932,7 @@ export const DelimitationCanvas = forwardRef<DelimitationCanvasHandle, Delimitat
               </pre>
               
               <p><strong>2. Centrage d'un design :</strong></p>
-              <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded overflow-x-auto">
+              <pre className="bg-gray-100 p-2 rounded overflow-x-auto">
 {`const designWidth = 100;
 const designHeight = 60;
 
@@ -905,7 +946,7 @@ const designY = centerY - (designHeight / 2);
               </pre>
 
               <p><strong>3. Génération de rendu final :</strong></p>
-              <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded overflow-x-auto">
+              <pre className="bg-gray-100 p-2 rounded overflow-x-auto">
 {`// Canvas de rendu aux dimensions réelles
 const canvas = new Canvas(${metrics.originalWidth}, ${metrics.originalHeight});
 
@@ -915,9 +956,9 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
             </div>
           </div>
 
-          <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded border border-green-200 dark:border-green-700">
-            <h5 className="font-medium text-green-800 dark:text-green-200 mb-2">✅ Avantages</h5>
-            <ul className="text-green-700 dark:text-green-300 text-xs space-y-1 list-disc list-inside">
+          <div className="bg-green-50 p-3 rounded border border-green-200">
+            <h5 className="font-medium text-green-800 mb-2">✅ Avantages</h5>
+            <ul className="text-green-700 text-xs space-y-1 list-disc list-inside">
               <li>Positionnement pixel-perfect sur l'image originale</li>
               <li>Indépendant de la taille d'affichage du navigateur</li>
               <li>Compatible avec tous les systèmes de rendu (Canvas, SVG, serveur)</li>
@@ -996,7 +1037,7 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
         {/* Barre d'outils minimaliste */}
         <div className="absolute top-4 left-4 pointer-events-auto">
           <div className="flex items-center gap-1 bg-black/80 backdrop-blur-sm rounded-lg p-1">
-            <Button
+            <AdminButton
               size="sm"
               variant={mode === 'select' ? 'default' : 'ghost'}
               onClick={() => {
@@ -1009,8 +1050,8 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
               disabled={!!designImageUrl}
             >
               <MousePointer className="h-4 w-4" />
-            </Button>
-            <Button
+            </AdminButton>
+            <AdminButton
               size="sm"
               variant={mode === 'draw' ? 'default' : 'ghost'}
               onClick={() => {
@@ -1023,9 +1064,9 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
               disabled={!!designImageUrl}
             >
               <Square className="h-4 w-4" />
-            </Button>
+            </AdminButton>
             {delimitation ? (
-              <Button
+              <AdminButton
                 size="sm"
                 variant="ghost"
                 onClick={() => {
@@ -1036,20 +1077,20 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
                 title="Supprimer la zone"
               >
                 <Trash2 className="h-4 w-4" />
-              </Button>
+              </AdminButton>
             ) : (
-              <Button
+              <AdminButton
                 size="sm"
                 variant="ghost"
                 onClick={() => {
                   console.log('🎯 Demo delimitation clicked');
                   handleTestAutoAdaptedDesign();
                 }}
-                className="h-8 w-8 p-0 text-blue-400 hover:bg-blue-500/20"
+                className="h-8 w-8 p-0 text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)]/50/20"
                 title="Créer une zone de démonstration"
               >
                 <Crosshair className="h-4 w-4" />
-              </Button>
+              </AdminButton>
             )}
           </div>
         </div>
@@ -1060,7 +1101,7 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 cursor-pointer transition-all duration-200 hover:shadow-xl border border-blue-500/30"
+              className="bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 cursor-pointer transition-all duration-200 hover:shadow-xl border border-[rgb(20,104,154)]/30"
               onClick={handleSaveChanges}
             >
               <Save className="h-4 w-4" />
@@ -1073,7 +1114,7 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
         {/* Indicateur d'état du dessin */}
         {isDrawing && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
-            <div className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 shadow-lg">
+            <div className="bg-[rgb(20,104,154)] text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 shadow-lg">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
               Tracez votre zone de personnalisation
             </div>
@@ -1156,7 +1197,7 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
         {!delimitation && !isDrawing && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
             <div className="bg-gray-800/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-              <Square className="h-4 w-4 text-blue-400" />
+              <Square className="h-4 w-4 text-[rgb(20,104,154)]" />
               Cliquez sur l'icône carré pour tracer une zone
             </div>
           </div>
@@ -1169,7 +1210,7 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
     return (
       <div className={`relative ${className}`}>
         {/* Canvas principal */}
-        <div className="w-full aspect-[4/3] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="w-full aspect-[4/3] bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
           <canvas 
             ref={canvasRef} 
             className="w-full h-full"
@@ -1190,9 +1231,9 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Header avec les actions */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <div className="flex items-center gap-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <Square className="h-5 w-5" />
             Zones de personnalisation
           </h3>
@@ -1202,22 +1243,22 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
         </div>
         
         <div className="flex items-center gap-2">
-          <Button 
+          <AdminButton 
             onClick={() => setShowInfo(!showInfo)} 
             size="sm" 
             variant="ghost"
             className="text-xs"
           >
             🐛 Debug
-          </Button>
-          <Button onClick={handleSaveChanges} size="sm">
+          </AdminButton>
+          <AdminButton onClick={handleSaveChanges} size="sm">
             <Save className="h-4 w-4 mr-1" />
             Sauvegarder
-          </Button>
-          <Button onClick={onCancel} size="sm" variant="outline">
+          </AdminButton>
+          <AdminButton onClick={onCancel} size="sm" variant="outline">
             <X className="h-4 w-4 mr-1" />
             Annuler
-          </Button>
+          </AdminButton>
         </div>
       </div>
 
@@ -1225,46 +1266,46 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
       {showInfo && renderDebugInfo()}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center gap-1">
-          <Button
+          <AdminButton
             size="sm"
             variant={mode === 'select' ? 'default' : 'ghost'}
             onClick={() => setMode('select')}
           >
             <MousePointer className="h-4 w-4" />
-          </Button>
-          <Button
+          </AdminButton>
+          <AdminButton
             size="sm"
             variant={mode === 'draw' ? 'default' : 'ghost'}
             onClick={() => setMode('draw')}
           >
             <Square className="h-4 w-4" />
-          </Button>
-          <Button
+          </AdminButton>
+          <AdminButton
             size="sm"
             variant={mode === 'move' ? 'default' : 'ghost'}
             onClick={() => setMode('move')}
           >
             <Move className="h-4 w-4" />
-          </Button>
+          </AdminButton>
         </div>
 
         <Separator orientation="vertical" className="h-6" />
 
         <div className="flex items-center gap-1">
-          <Button
+          <AdminButton
             size="sm"
             variant="outline"
             onClick={handleAddDelimitation}
           >
             <Maximize className="h-4 w-4 mr-1" />
             Nouvelle zone
-          </Button>
+          </AdminButton>
           
           {delimitation && (
             <>
-              <Button
+              <AdminButton
                 size="sm"
                 variant="outline"
                 onClick={() => {
@@ -1274,16 +1315,16 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
                 Valider zone
-              </Button>
+              </AdminButton>
               
-              <Button
+              <AdminButton
                 size="sm"
                 variant="outline"
                 onClick={() => removeDelimitation()}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 Supprimer
-              </Button>
+              </AdminButton>
             </>
           )}
         </div>
@@ -1302,7 +1343,7 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
         )}
 
         <div className="flex items-center gap-1">
-          <Button
+          <AdminButton
             size="sm"
             variant="outline"
             onClick={handleTestDesignPlacement}
@@ -1310,9 +1351,9 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
           >
             <Crosshair className="h-4 w-4 mr-1" />
             Test design
-          </Button>
+          </AdminButton>
           
-          <Button
+          <AdminButton
             size="sm"
             variant="outline"
             onClick={handleTestRealCoordinates}
@@ -1320,9 +1361,9 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
           >
             <Crosshair className="h-4 w-4 mr-1" />
             Test réelles
-          </Button>
+          </AdminButton>
           
-          <Button
+          <AdminButton
             size="sm"
             variant="outline"
             onClick={handleTestPreciseDesignPlacement}
@@ -1330,9 +1371,9 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
           >
             <Crosshair className="h-4 w-4 mr-1" />
             Test précis
-          </Button>
+          </AdminButton>
           
-          <Button
+          <AdminButton
             size="sm"
             variant="outline"
             onClick={handleTestAutoAdaptedDesign}
@@ -1340,9 +1381,9 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
           >
             <Crosshair className="h-4 w-4 mr-1" />
             Test adaptatif
-          </Button>
+          </AdminButton>
           
-          <Button
+          <AdminButton
             size="sm"
             variant="outline"
             onClick={handleExportPreview}
@@ -1350,13 +1391,13 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
           >
             <Download className="h-4 w-4 mr-1" />
             Exporter
-          </Button>
+          </AdminButton>
         </div>
       </div>
 
       {/* Canvas principal */}
-      <div className="flex-1 p-4 bg-gray-50 dark:bg-gray-900 overflow-hidden">
-        <div className="w-full h-full border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+      <div className="flex-1 p-4 bg-gray-50 overflow-hidden">
+        <div className="w-full h-full border border-gray-200 rounded-lg overflow-hidden bg-white">
           <canvas 
             ref={canvasRef} 
             className="w-full h-full"
@@ -1367,27 +1408,27 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
 
       {/* Liste des délimitations */}
       {existingDelimitations.length > 0 && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <h4 className="text-sm font-medium text-gray-900 mb-3">
             Zones délimitées
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {existingDelimitations.map((delim, index) => (
               <div
                 key={delim.id}
-                className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600"
+                className="flex items-center justify-between p-2 bg-white rounded border border-gray-200"
               >
-                <span className="text-xs text-gray-700 dark:text-gray-300">
+                <span className="text-xs text-gray-700">
                   Zone {index + 1}
                 </span>
-                <Button
+                <AdminButton
                   size="sm"
                   variant="ghost"
                   onClick={() => removeDelimitation()}
                   className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                 >
                   <X className="h-3 w-3" />
-                </Button>
+                </AdminButton>
               </div>
             ))}
           </div>
@@ -1395,18 +1436,18 @@ canvas.drawImage(designImg, designX, designY, designWidth, designHeight);`}
       )}
 
       {/* Instructions */}
-      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
-        <p className="text-xs text-blue-700 dark:text-blue-300">
+      <div className="p-3 bg-[rgb(20,104,154)]/5 border-t border-[rgb(20,104,154)]/30">
+        <p className="text-xs text-[rgb(20,104,154)]">
           💡 <strong>Instructions :</strong> 
         </p>
-        <div className="mt-2 space-y-1 text-xs text-blue-600 dark:text-blue-400">
+        <div className="mt-2 space-y-1 text-xs text-[rgb(20,104,154)]">
           <div>• <strong>Créer une zone :</strong> Utilisez "Nouvelle zone" ou activez le mode dessin pour tracer directement</div>
           <div>• <strong>Ajuster précisément :</strong> Déplacez et redimensionnez avec la souris, puis validez avec "Valider zone"</div>
           <div>• <strong>Coordonnées réelles :</strong> Toutes les dimensions sont automatiquement converties en pixels de l'image source</div>
           <div>• <strong>Tests de placement :</strong> 
-            <span className="font-mono bg-blue-100 dark:bg-blue-800 px-1 rounded">Test design</span> (centrage basique), 
-            <span className="font-mono bg-blue-100 dark:bg-blue-800 px-1 rounded">Test précis</span> (150×80px), 
-            <span className="font-mono bg-blue-100 dark:bg-blue-800 px-1 rounded">Test adaptatif</span> (auto-redimensionnement)
+            <span className="font-mono bg-[rgb(20,104,154)]/10 px-1 rounded">Test design</span> (centrage basique), 
+            <span className="font-mono bg-[rgb(20,104,154)]/10 px-1 rounded">Test précis</span> (150×80px), 
+            <span className="font-mono bg-[rgb(20,104,154)]/10 px-1 rounded">Test adaptatif</span> (auto-redimensionnement)
           </div>
           <div>• <strong>Prévisualisation :</strong> Les informations en temps réel montrent les coordonnées exactes et guides de centrage</div>
           <div>• <strong>Export :</strong> L'aperçu exporté inclut les délimitations avec leurs dimensions précises</div>

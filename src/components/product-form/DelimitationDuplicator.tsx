@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Copy, Check, X, ArrowRight } from 'lucide-react';
-import Button from '../ui/Button';
+import { AdminButton } from '../admin/AdminButton';
 import { Badge } from '../ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -17,6 +17,7 @@ interface DelimitationDuplicatorProps {
   sourceColorName: string;
   allColorVariations: ColorVariation[];
   onDuplicate: (targetImageIds: string[], delimitations: Delimitation[]) => void;
+  productGenre?: 'HOMME' | 'FEMME' | 'BEBE' | 'UNISEXE' | 'AUTOCOLLANT';
 }
 
 export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
@@ -26,10 +27,14 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
   sourceColorName,
   allColorVariations,
   onDuplicate,
+  productGenre,
 }) => {
   const [selectedTargetImages, setSelectedTargetImages] = useState<Set<string>>(new Set());
   const [selectedDelimitations, setSelectedDelimitations] = useState<Set<string>>(new Set());
   const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
+
+  // 🎨 État pour stocker les ratios d'aspect des images (pour les autocollants)
+  const [imageAspectRatios, setImageAspectRatios] = useState<Record<string, number>>({});
 
   // Initialize with all delimitations selected
   React.useEffect(() => {
@@ -108,17 +113,17 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
 
           // Style épuré : noir pour source sélectionnée, gris pour non-sélectionnée, gris foncé pour existante
           const colorScheme = isSource ? {
-            border: selectedDelimitations.has(delim.id) ? 'border-gray-900 dark:border-gray-100' : 'border-gray-400 dark:border-gray-600',
-            bg: selectedDelimitations.has(delim.id) ? 'bg-gray-900/20 dark:bg-gray-100/20' : 'bg-gray-400/10 dark:bg-gray-600/10',
-            badgeBg: selectedDelimitations.has(delim.id) ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-400 dark:bg-gray-600',
-            badgeText: selectedDelimitations.has(delim.id) ? 'text-white dark:text-gray-900' : 'text-white',
-            centerBg: selectedDelimitations.has(delim.id) ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-500 dark:bg-gray-600'
+            border: selectedDelimitations.has(delim.id) ? 'border-gray-900' : 'border-gray-400',
+            bg: selectedDelimitations.has(delim.id) ? 'bg-gray-900/20' : 'bg-gray-400/10',
+            badgeBg: selectedDelimitations.has(delim.id) ? 'bg-gray-900' : 'bg-gray-400',
+            badgeText: selectedDelimitations.has(delim.id) ? 'text-white' : 'text-white',
+            centerBg: selectedDelimitations.has(delim.id) ? 'bg-gray-900' : 'bg-gray-500'
           } : {
-            border: 'border-gray-600 dark:border-gray-400',
-            bg: 'bg-gray-600/15 dark:bg-gray-400/15',
-            badgeBg: 'bg-gray-600 dark:bg-gray-400',
-            badgeText: 'text-white dark:text-gray-900',
-            centerBg: 'bg-gray-700 dark:bg-gray-500'
+            border: 'border-gray-600',
+            bg: 'bg-gray-600/15',
+            badgeBg: 'bg-gray-600',
+            badgeText: 'text-white',
+            centerBg: 'bg-gray-700'
           };
 
           return (
@@ -223,7 +228,7 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] w-[95vw] flex flex-col p-0 gap-0">
-        <DialogHeader className="p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+        <DialogHeader className="p-6 pb-4 border-b border-gray-200">
           <DialogTitle className="flex items-center gap-3 text-2xl font-bold">
             <Copy className="h-6 w-6" />
             Dupliquer les zones de personnalisation
@@ -245,10 +250,10 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 flex-1 min-h-0 flex flex-col">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex-1 min-h-0 flex flex-col">
               <div 
                 id="duplicator-source-image"
-                className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-4 flex-shrink-0"
+                className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 mb-4 flex-shrink-0"
               >
                 <img
                   src={sourceImage.url}
@@ -276,12 +281,12 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
                 <ScrollArea className="h-full max-h-40">
                   <div className="space-y-3 pr-2">
                     {sourceImage.delimitations?.map((delim, index) => (
-                      <div key={delim.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <div key={delim.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
                         <Checkbox
                           id={`delim-${delim.id}`}
                           checked={selectedDelimitations.has(delim.id)}
                           onCheckedChange={() => handleDelimitationToggle(delim.id)}
-                          className="border-gray-300 dark:border-gray-600"
+                          className="border-gray-300"
                         />
                         <label 
                           htmlFor={`delim-${delim.id}`}
@@ -290,7 +295,7 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
                           <div className="product-meta font-semibold">
                             Zone {index + 1} {delim.name ? `(${delim.name})` : ''}
                           </div>
-                          <div className="stat-number text-gray-500 dark:text-gray-400">
+                          <div className="stat-number text-gray-500">
                             {Math.round(delim.width)}×{Math.round(delim.height)}px
                           </div>
                         </label>
@@ -309,35 +314,35 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
                 Destinations
               </h3>
               <div className="flex gap-2">
-                <Button 
+                <AdminButton 
                   size="sm" 
                   variant="outline"
                   onClick={handleSelectAllImages}
-                  className="text-xs border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="text-xs border-gray-300 hover:bg-gray-50"
                 >
                   Tout sélectionner
-                </Button>
-                <Button 
+                </AdminButton>
+                <AdminButton 
                   size="sm" 
                   variant="outline"
                   onClick={handleDeselectAllImages}
-                  className="text-xs border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="text-xs border-gray-300 hover:bg-gray-50"
                 >
                   Désélectionner
-                </Button>
+                </AdminButton>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex-1 min-h-0">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex-1 min-h-0">
               <ScrollArea className="h-full p-4">
                 <div className="space-y-6">
                   {allColorVariations
                     .filter(color => color.name !== sourceColorName)
                     .map((color) => (
                       <div key={color.id} className="space-y-3">
-                        <div className="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
                           <div 
-                            className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-gray-600"
+                            className="w-4 h-4 rounded-full border-2 border-gray-300"
                             style={{ backgroundColor: color.colorCode }}
                           />
                           <h4 className="product-title">
@@ -357,8 +362,8 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
                                 key={image.id}
                                 className={`relative cursor-pointer rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
                                   selectedTargetImages.has(image.id)
-                                    ? 'border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-700'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                    ? 'border-gray-900 bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300'
                                 }`}
                                 onClick={() => handleTargetImageToggle(image.id)}
                               >
@@ -391,20 +396,20 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
                                 {/* Indicateur de sélection */}
                                 <div className="absolute top-2 right-2">
                                   {selectedTargetImages.has(image.id) && (
-                                    <div className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-full p-1 shadow-lg">
+                                    <div className="bg-gray-900 text-white rounded-full p-1 shadow-lg">
                                       <Check className="h-3 w-3" />
                                     </div>
                                   )}
                                 </div>
 
                                 {/* Label de vue */}
-                                <div className="absolute bottom-2 left-2 bg-gray-900/80 dark:bg-gray-100/80 text-white dark:text-gray-900 text-xs px-2 py-1 rounded font-medium">
+                                <div className="absolute bottom-2 left-2 bg-gray-900/80 text-white text-xs px-2 py-1 rounded font-medium">
                                   {image.view}
                                 </div>
 
                                 {/* Indicateur de zones existantes */}
                                 {image.delimitations && image.delimitations.length > 0 && (
-                                  <div className="absolute top-2 left-2 bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 text-xs px-2 py-1 rounded font-medium">
+                                  <div className="absolute top-2 left-2 bg-gray-600 text-white text-xs px-2 py-1 rounded font-medium">
                                     {image.delimitations.length} zone{image.delimitations.length > 1 ? 's' : ''}
                                   </div>
                                 )}
@@ -421,30 +426,30 @@ export const DelimitationDuplicator: React.FC<DelimitationDuplicatorProps> = ({
         </div>
 
         {/* Actions - Footer fixe */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-800">
+        <div className="border-t border-gray-200 p-6 bg-gray-50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="text-readable">
               <span className="font-semibold">{selectedDelimitationsCount}</span> délimitation{selectedDelimitationsCount > 1 ? 's' : ''} → <span className="font-semibold">{selectedCount}</span> image{selectedCount > 1 ? 's' : ''} sélectionnée{selectedCount > 1 ? 's' : ''}
             </div>
             
             <div className="flex gap-3">
-              <Button 
+              <AdminButton 
                 variant="outline" 
                 onClick={onClose}
-                className="border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="border-gray-300 hover:bg-gray-50"
               >
                 <X className="h-4 w-4 mr-2" />
                 Annuler
-              </Button>
+              </AdminButton>
               
-              <Button 
+              <AdminButton 
                 onClick={handleDuplicate}
                 disabled={selectedCount === 0 || selectedDelimitationsCount === 0}
-                className="bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 button-text hover-lift"
+                className="bg-gray-900 hover:bg-gray-800 text-white button-text hover-lift"
               >
                 <ArrowRight className="h-4 w-4 mr-2" />
                 Dupliquer ({selectedDelimitationsCount} → {selectedCount})
-              </Button>
+              </AdminButton>
             </div>
           </div>
         </div>

@@ -215,7 +215,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       </Alert>
 
       {value && (
-        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+        <div className="flex items-center gap-2 text-sm text-green-600">
           <Package className="h-4 w-4" />
           <span>
             Catégorie liée: <strong>{flatCategories.find(c => c.id === value)?.name}</strong>
@@ -224,15 +224,15 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       )}
 
       {/* Test de débogage */}
-      <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Test de débogage :</p>
+      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <p className="text-sm font-medium text-yellow-800 mb-2">Test de débogage :</p>
         <div className="space-y-2">
           <button
             onClick={() => {
               console.log('🧪 [Test] Forcing selection of category 96 (2XL)');
               handleChange('96');
             }}
-            className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+            className="px-3 py-1 bg-[rgb(20,104,154)]/50 text-white text-xs rounded hover:bg-[rgb(20,104,154)]"
           >
             Test: Sélectionner 2XL (ID: 96)
           </button>
@@ -250,12 +250,12 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
               console.log('🧪 [Test] Forcing selection of category 92 (Vetement)');
               handleChange('92');
             }}
-            className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 ml-2"
+            className="px-3 py-1 bg-[rgb(20,104,154)]/50 text-white text-xs rounded hover:bg-[rgb(16,83,123)] ml-2"
           >
             Test: Sélectionner Vetement (ID: 92)
           </button>
         </div>
-        <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
+        <p className="text-xs text-yellow-700 mt-2">
           Valeur actuelle: {selectValue} | Prop value: {value}
         </p>
       </div>

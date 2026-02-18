@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
   Package2,
   Search,
-  Filter,
-  Plus,
-  Minus,
   RefreshCw,
   AlertTriangle,
-  X,
   ChevronRight,
   ChevronLeft,
   Image as ImageIcon,
@@ -17,10 +13,11 @@ import {
   TrendingDown,
   Clock,
   ArrowUpCircle,
-  ArrowDownCircle
+  ArrowDownCircle,
+  PlusCircle,
+  Filter
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Label } from '../../components/ui/label';
@@ -41,6 +38,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { LoadingSpinner } from '../../components/ui/loading';
 import { toast } from 'sonner';
+import { AdminButton } from '../../components/admin/AdminButton';
 import {
   fetchProductsWithStock,
   updateSizeStock,
@@ -416,7 +414,7 @@ export default function AdminStockManagement() {
 
     if (!currentColor || !currentColor.images || currentColor.images.length === 0) {
       return (
-        <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+        <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
           <ImageIcon className="h-8 w-8 text-gray-400" />
         </div>
       );
@@ -429,7 +427,7 @@ export default function AdminStockManagement() {
           <img
             src={currentColor.images[currentImageIndex]?.url}
             alt={`${currentColor.name} - ${currentColor.images[currentImageIndex]?.view}`}
-            className="w-full h-full object-cover rounded-lg border-2 border-gray-200 dark:border-gray-700"
+            className="w-full h-full object-cover rounded-lg border-2 border-gray-200"
           />
 
           {/* Contrôles d'images (si plusieurs images) */}
@@ -454,7 +452,7 @@ export default function AdminStockManagement() {
           {currentColor.images.length > 1 && (
             <Badge
               variant="outline"
-              className="absolute top-1 right-1 text-xs bg-white/90 dark:bg-gray-800/90 px-1 py-0"
+              className="absolute top-1 right-1 text-xs bg-white/90 px-1 py-0"
             >
               {currentImageIndex + 1}/{currentColor.images.length}
             </Badge>
@@ -466,19 +464,19 @@ export default function AdminStockManagement() {
           {colorVariations.length > 1 && (
             <button
               onClick={prevColor}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
           )}
 
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 rounded-md">
             <div
               className="w-4 h-4 rounded-full border-2 border-gray-300"
               style={{ backgroundColor: currentColor.colorCode }}
               title={currentColor.name}
             />
-            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <span className="text-xs font-medium text-gray-700">
               {currentColor.name}
             </span>
             {colorVariations.length > 1 && (
@@ -491,7 +489,7 @@ export default function AdminStockManagement() {
           {colorVariations.length > 1 && (
             <button
               onClick={nextColor}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -501,39 +499,71 @@ export default function AdminStockManagement() {
     );
   };
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadProducts();
+      toast.success('Données actualisées avec succès');
+    } catch (error) {
+      toast.error('Erreur lors de l\'actualisation');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50/30 dark:from-gray-950 dark:to-purple-950/30 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl shadow-lg">
-                <Package2 className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  Gestion de Stock
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Gérez les stocks de tous vos mockups en temps réel
-                </p>
-              </div>
+    <div className="w-full min-h-screen bg-gray-50">
+      {/* En-tête simplifié */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white border-b border-gray-200 px-4 sm:px-6 py-6"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Gestion des stocks
+            </h1>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-gray-600">
+                <span className="font-semibold text-gray-900">{products.length}</span> produit{products.length > 1 ? 's' : ''}
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-gray-900">{products.reduce((sum, p) => sum + p.totalStock, 0)}</span> unités
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-600">
+                <span className="font-semibold text-orange-600">{products.filter(p => p.totalStock < 20 && p.totalStock > 0).length}</span> stock faible
+              </span>
             </div>
-            <Button
-              onClick={loadProducts}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <AdminButton
               variant="outline"
-              className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-all"
+              size="sm"
+              onClick={handleRefreshData}
+              disabled={isRefreshing}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualiser
-            </Button>
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser</span>
+            </AdminButton>
           </div>
         </div>
+      </motion.div>
 
+      {/* Contenu principal */}
+      <div className="px-4 sm:px-6 py-8">
         {/* Filtres et recherche */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
+        <Card className="mb-6 shadow-sm border-gray-200">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Filter className="h-4 w-4 text-gray-600" />
+              <h3 className="text-sm font-semibold text-gray-900">Filtres</h3>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Recherche */}
               <div className="md:col-span-2">
@@ -580,93 +610,57 @@ export default function AdminStockManagement() {
           </CardContent>
         </Card>
 
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total produits</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {products.length}
-                  </p>
-                </div>
-                <Package2 className="h-10 w-10 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Stock total</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {products.reduce((sum, p) => sum + p.totalStock, 0)}
-                  </p>
-                </div>
-                <RefreshCw className="h-10 w-10 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Stock faible</p>
-                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {products.filter(p => p.totalStock < 20 && p.totalStock > 0).length}
-                  </p>
-                </div>
-                <AlertTriangle className="h-10 w-10 text-orange-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Table des produits */}
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <LoadingSpinner size="lg" />
           </div>
         ) : (
-        <Card>
+        <Card className="shadow-sm border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Liste des produits
+                </h3>
+                <Badge variant="outline" className="bg-gray-50">
+                  {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''}
+                </Badge>
+              </div>
+            </div>
+          </div>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Image principale
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                      Image
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Nom produit
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                      Nom
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                       Catégorie
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Sous-catégorie
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                      Couleurs
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Couleurs disponibles
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                      Stock
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                      Stock total
-                    </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                      Action
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                      Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-200">
                   {filteredProducts.map((product) => (
                     <motion.tr
                       key={product.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                      className="hover:bg-gray-50 transition-colors"
                     >
                       {/* Image principale */}
                       <td className="px-6 py-4">
@@ -674,10 +668,10 @@ export default function AdminStockManagement() {
                           <img
                             src={product.mainImage}
                             alt={product.name}
-                            className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-700"
+                            className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200"
                           />
                         ) : (
-                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
                             <ImageIcon className="h-6 w-6 text-gray-400" />
                           </div>
                         )}
@@ -685,7 +679,7 @@ export default function AdminStockManagement() {
 
                       {/* Nom */}
                       <td className="px-6 py-4">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                        <p className="text-sm font-semibold text-gray-900">
                           {product.name}
                         </p>
                       </td>
@@ -695,15 +689,6 @@ export default function AdminStockManagement() {
                         {product.category && (
                           <Badge variant="outline" className="text-xs">
                             {product.category}
-                          </Badge>
-                        )}
-                      </td>
-
-                      {/* Sous-catégorie */}
-                      <td className="px-6 py-4">
-                        {product.subcategory && (
-                          <Badge variant="outline" className="text-xs">
-                            {product.subcategory}
                           </Badge>
                         )}
                       </td>
@@ -736,13 +721,13 @@ export default function AdminStockManagement() {
 
                       {/* Bouton gérer */}
                       <td className="px-6 py-4 text-center">
-                        <Button
+                        <AdminButton
                           variant="outline"
                           size="sm"
                           onClick={() => handleProductClick(product)}
                         >
                           Gérer
-                        </Button>
+                        </AdminButton>
                       </td>
                     </motion.tr>
                   ))}
@@ -752,7 +737,7 @@ export default function AdminStockManagement() {
               {filteredProducts.length === 0 && (
                 <div className="text-center py-12">
                   <Package2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">
+                  <p className="text-gray-600">
                     Aucun produit trouvé
                   </p>
                 </div>
@@ -764,13 +749,13 @@ export default function AdminStockManagement() {
 
         {/* Modal de détail produit */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-white">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-3">
+              <DialogTitle className="flex items-center gap-3 text-xl font-semibold text-gray-900">
                 <Package2 className="h-6 w-6 text-blue-600" />
                 {selectedProduct?.name}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-gray-500">
                 Gérez les variations de couleur et les tailles de ce produit
               </DialogDescription>
             </DialogHeader>
@@ -830,11 +815,11 @@ export default function AdminStockManagement() {
                             <img
                               src={img.url}
                               alt={img.view}
-                              className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-700"
+                              className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
                             />
                             <Badge
                               variant="outline"
-                              className="absolute bottom-2 left-2 text-xs bg-white/90 dark:bg-gray-800/90"
+                              className="absolute bottom-2 left-2 text-xs bg-white/90"
                             >
                               {img.view}
                             </Badge>
@@ -843,38 +828,37 @@ export default function AdminStockManagement() {
                       </div>
 
                       {/* Table des tailles et stocks */}
-                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
                         <table className="w-full">
-                          <thead className="bg-gray-50 dark:bg-gray-800">
+                          <thead className="bg-gray-50">
                             <tr>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-white">
+                              <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
                                 Taille
                               </th>
-                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
+                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">
                                 Stock
                               </th>
-                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 dark:text-white" colSpan={2}>
-                                Mouvement de stock
+                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-900" colSpan={2}>
+                                Mouvement
                               </th>
-                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-                                Motif (optionnel)
+                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">
+                                Motif
                               </th>
-                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
+                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">
                                 Actions
                               </th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          <tbody className="divide-y divide-gray-200">
                             {color.sizes.map((size) => {
                               const key = `${selectedProduct.id}-${color.id}-${size.id}`;
-                              // S'assurer que sizeName est une string
                               const sizeName = typeof size.sizeName === 'string'
                                 ? size.sizeName
                                 : ((size.sizeName as any)?.name || String(size.sizeName));
 
                               return (
-                                <tr key={key} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                                <tr key={key} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
                                     {sizeName}
                                   </td>
                                   <td className="px-4 py-3 text-center">
@@ -895,7 +879,7 @@ export default function AdminStockManagement() {
                                     <div className="flex items-center justify-center gap-2">
                                       <Input
                                         type="number"
-                                        placeholder="Quantité"
+                                        placeholder="Qté"
                                         value={movementQuantity[key] || ''}
                                         onChange={(e) =>
                                           setMovementQuantity({
@@ -912,7 +896,7 @@ export default function AdminStockManagement() {
                                   <td className="px-4 py-3">
                                     <Input
                                       type="text"
-                                      placeholder="Ex: Réception fournisseur"
+                                      placeholder="Motif..."
                                       value={movementReason[key] || ''}
                                       onChange={(e) =>
                                         setMovementReason({
@@ -926,23 +910,23 @@ export default function AdminStockManagement() {
                                   </td>
                                   <td className="px-4 py-3">
                                     <div className="flex items-center justify-center gap-2">
-                                      <Button
-                                        variant="default"
+                                      <AdminButton
+                                        variant="primary"
                                         size="sm"
                                         onClick={() =>
                                           handleStockIn(selectedProduct.id, color.id, sizeName, key)
                                         }
                                         disabled={!movementQuantity[key] || processingMovement === key}
                                         className="bg-green-600 hover:bg-green-700"
-                                        title="Entrée de stock (réception)"
+                                        title="Entrée de stock"
                                       >
                                         {processingMovement === key ? (
                                           <RefreshCw className="h-4 w-4 animate-spin" />
                                         ) : (
                                           <ArrowUpCircle className="h-4 w-4" />
                                         )}
-                                      </Button>
-                                      <Button
+                                      </AdminButton>
+                                      <AdminButton
                                         variant="destructive"
                                         size="sm"
                                         onClick={() =>
@@ -956,7 +940,7 @@ export default function AdminStockManagement() {
                                         ) : (
                                           <ArrowDownCircle className="h-4 w-4" />
                                         )}
-                                      </Button>
+                                      </AdminButton>
                                     </div>
                                   </td>
                                 </tr>
@@ -979,45 +963,45 @@ export default function AdminStockManagement() {
                     ) : stockHistory.length === 0 ? (
                       <div className="text-center py-12">
                         <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <p className="text-gray-600">
                           Aucun mouvement de stock enregistré
                         </p>
                       </div>
                     ) : (
                       <>
-                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
                           <table className="w-full">
-                            <thead className="bg-gray-50 dark:bg-gray-800">
+                            <thead className="bg-gray-50">
                               <tr>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-white">
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
                                   Date
                                 </th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-white">
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
                                   Type
                                 </th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-white">
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
                                   Couleur
                                 </th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-white">
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
                                   Taille
                                 </th>
-                                <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
+                                <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">
                                   Quantité
                                 </th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-white">
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
                                   Motif
                                 </th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-gray-200">
                               {stockHistory.map((movement) => (
                                 <motion.tr
                                   key={movement.id}
                                   initial={{ opacity: 0, y: 10 }}
                                   animate={{ opacity: 1, y: 0 }}
-                                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                  className="hover:bg-gray-50"
                                 >
-                                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                  <td className="px-4 py-3 text-sm text-gray-900">
                                     {new Date(movement.createdAt).toLocaleDateString('fr-FR', {
                                       day: '2-digit',
                                       month: '2-digit',
@@ -1044,10 +1028,10 @@ export default function AdminStockManagement() {
                                       )}
                                     </Badge>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                  <td className="px-4 py-3 text-sm text-gray-900">
                                     {movement.colorName}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                  <td className="px-4 py-3 text-sm text-gray-900">
                                     {movement.sizeName}
                                   </td>
                                   <td className="px-4 py-3 text-center">
@@ -1055,15 +1039,15 @@ export default function AdminStockManagement() {
                                       variant="outline"
                                       className={`font-bold ${
                                         movement.type === 'IN'
-                                          ? 'text-green-600 dark:text-green-400'
-                                          : 'text-red-600 dark:text-red-400'
+                                          ? 'text-green-600'
+                                          : 'text-red-600'
                                       }`}
                                     >
                                       {movement.type === 'IN' ? '+' : '-'}
                                       {movement.quantity}
                                     </Badge>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                                  <td className="px-4 py-3 text-sm text-gray-600">
                                     {movement.reason || '-'}
                                   </td>
                                 </motion.tr>
@@ -1075,12 +1059,12 @@ export default function AdminStockManagement() {
                         {/* Pagination de l'historique */}
                         {historyTotal > historyPerPage && (
                           <div className="flex items-center justify-between mt-4">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-gray-600">
                               Affichage de {(historyPage - 1) * historyPerPage + 1} à{' '}
                               {Math.min(historyPage * historyPerPage, historyTotal)} sur {historyTotal} mouvements
                             </p>
                             <div className="flex items-center gap-2">
-                              <Button
+                              <AdminButton
                                 variant="outline"
                                 size="sm"
                                 onClick={() => loadStockHistory(selectedProduct!.id, historyPage - 1)}
@@ -1088,11 +1072,11 @@ export default function AdminStockManagement() {
                               >
                                 <ChevronLeft className="h-4 w-4" />
                                 Précédent
-                              </Button>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                              </AdminButton>
+                              <span className="text-sm text-gray-600">
                                 Page {historyPage} / {Math.ceil(historyTotal / historyPerPage)}
                               </span>
-                              <Button
+                              <AdminButton
                                 variant="outline"
                                 size="sm"
                                 onClick={() => loadStockHistory(selectedProduct!.id, historyPage + 1)}
@@ -1100,7 +1084,7 @@ export default function AdminStockManagement() {
                               >
                                 Suivant
                                 <ChevronRight className="h-4 w-4" />
-                              </Button>
+                              </AdminButton>
                             </div>
                           </div>
                         )}

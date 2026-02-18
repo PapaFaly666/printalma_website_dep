@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../services/productService';
 import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle, Star } from 'lucide-react';
@@ -10,14 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 // ✅ CORRIGÉ : Retour à useDesignTransforms mais sans création automatique
 import { useDesignTransforms } from '../hooks/useDesignTransforms';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-  SheetClose
-} from '../components/ui/sheet';
+// Imports Sheet supprimés - remplacés par Dialog
 import {
   Dialog,
   DialogContent,
@@ -53,6 +46,12 @@ import {
   type DelimitationInfo,
   type DesignTransform as BoundingBoxTransform
 } from '../utils/boundingBoxCalculator';
+
+// 🆕 Import du modal de génération d'images multi-produits
+import { MultiProductImagesModal } from '../components/vendor/MultiProductImagesModal';
+
+// 🆕 Import du composant de configuration des prix par taille
+import { SizePricingConfig } from '../components/vendor/SizePricingConfig';
 
 // Déclaration de type pour dom-to-image-more
 declare module 'dom-to-image-more' {
@@ -230,6 +229,17 @@ const ModernDesignCanvas: React.FC<{
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
+  // 🆕 Détection si le produit est un autocollant
+  const isSticker = useMemo(() => {
+    return products.some((product: any) => product.genre === 'AUTOCOLLANT');
+  }, [products]);
+
+  // 🆕 Calcul du ratio d'aspect de l'image pour les autocollants
+  const imageAspectRatio = useMemo(() => {
+    if (!isSticker || !naturalSize.width || !naturalSize.height) return 1;
+    return naturalSize.width / naturalSize.height;
+  }, [isSticker, naturalSize]);
+
   // 🆕 Utilisation du hook pour les propriétés du design
   const { designProperties, designNaturalSize } = useDesignProperties(designUrl, products);
 
@@ -299,7 +309,8 @@ const ModernDesignCanvas: React.FC<{
   useEffect(() => {
     if (!containerRef.current) return;
     const update = () => {
-      const rect = containerRef.current!.getBoundingClientRect();
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
       setContainerSize({ width: rect.width, height: rect.height });
     };
     update();
@@ -448,7 +459,13 @@ const ModernDesignCanvas: React.FC<{
       cancelAnimationFrame(animationFrameId.current);
       animationFrameId.current = null;
     }
-    
+
+    // 🆕 Sauvegarder immédiatement la position finale après le drag/resize/rotation
+    if (isDragging || isResizing || isRotating) {
+      console.log('💾 Sauvegarde automatique de la position finale après interaction');
+      saveNow();
+    }
+
     // Reset interaction states - ARRÊT IMMÉDIAT comme dans Illustrator
     setIsDragging(false);
     setDragStart(null);
@@ -460,7 +477,7 @@ const ModernDesignCanvas: React.FC<{
     setIsRotating(false);
     setRotationStart(null);
     setInitialRotation(0);
-  }, []);
+  }, [isDragging, isResizing, isRotating, saveNow]);
 
   useEffect(() => {
     if (isDragging) {
@@ -1748,12 +1765,18 @@ const ProductViewWithDesign: React.FC<ProductViewWithDesignProps> = ({ view, des
       cancelAnimationFrame(animationFrameId.current);
       animationFrameId.current = null;
     }
-    
+
+    // 🆕 Sauvegarder immédiatement la position finale après le drag (mode classique)
+    if (dragState.current !== null) {
+      console.log('💾 Sauvegarde automatique de la position finale après interaction (mode classique)');
+      saveNow();
+    }
+
     // Reset interaction states - ARRÊT IMMÉDIAT comme dans Illustrator
     dragState.current = null;
     window.removeEventListener('mousemove', handleMouseMove);
     window.removeEventListener('mouseup', handleMouseUp);
-  }, [handleMouseMove]);
+  }, [handleMouseMove, saveNow]);
 
   // 🆕 Mode moderne par défaut avec possibilité de basculer vers le mode classique
   if (useModernCanvas && designUrl && delimitations.length > 0) {
@@ -2264,6 +2287,9 @@ const SellDesignPage: React.FC = () => {
   const [vendorCommission, setVendorCommission] = useState<number | null>(null);
   const [commissionLoading, setCommissionLoading] = useState(false);
 
+  // 🆕 États pour les prix par taille
+  const [sizePricingByProduct, setSizePricingByProduct] = useState<Record<number, Record<string, { salePrice: number; profit: number }>>>({});
+
   // 🧮 Helpers unifiés de calcul (source de vérité cohérente)
   const getSalePrice = useCallback((p: Product): number => {
     const editedPrice = editStates[p.id]?.price as number | undefined;
@@ -2372,12 +2398,56 @@ const SellDesignPage: React.FC = () => {
     setPostValidationAction
   } = useCascadeValidationIntegrated();
 
+  // 🆕 États pour le modal de génération
+  const [generationProgress, setGenerationProgress] = useState(() => {
+    const saved = localStorage.getItem('vendor_upload_progress');
+    return saved ? JSON.parse(saved).progress : 0;
+  });
+  const [generationMessage, setGenerationMessage] = useState('');
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(0);
+  const [colorsProcessed, setColorsProcessed] = useState(0);
+  const [totalColors, setTotalColors] = useState(0);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [backgroundUploadActive, setBackgroundUploadActive] = useState(() => {
+    const saved = localStorage.getItem('vendor_upload_progress');
+    return saved ? JSON.parse(saved).active : false;
+  });
+
+  // 🆕 États pour le modal de génération d'images multi-produits
+  const [createdProductIds, setCreatedProductIds] = useState<number[]>([]);
+  const [showImagesModal, setShowImagesModal] = useState(false);
+
+  // 🆕 Persister l'état de l'upload dans localStorage
+  useEffect(() => {
+    if (backgroundUploadActive) {
+      localStorage.setItem('vendor_upload_progress', JSON.stringify({
+        active: true,
+        progress: generationProgress,
+        timestamp: Date.now()
+      }));
+    } else {
+      localStorage.removeItem('vendor_upload_progress');
+    }
+  }, [backgroundUploadActive, generationProgress]);
+
   // Hook de publication vendeur avec gestion intégrée
   const { publishProducts, isPublishing, publishProgress, currentStep } = useVendorPublish({
     onSuccess: (results) => {
       console.log('🎉 Publication réussie:', results);
-      setCheckoutOpen(false); // Fermer la modal
-      
+      setCheckoutOpen(false);
+      setShowProgressModal(false);
+      setGenerationProgress(100);
+      setGenerationMessage('Produits créés avec succès !');
+      setBackgroundUploadActive(false);
+
+      // Afficher une notification de succès
+      toast({
+        title: 'Produits publiés !',
+        description: `${results.length} produit(s) ont été créés avec succès.`,
+        variant: 'success',
+        duration: 5000
+      });
+
       // Optionnel: réinitialiser pour une nouvelle session
       // setSelectedProductIds([]);
       // setDesignUrl('');
@@ -2385,6 +2455,8 @@ const SellDesignPage: React.FC = () => {
     },
     onError: (error) => {
       console.error('❌ Erreur publication:', error);
+      setGenerationMessage('Erreur lors de la génération');
+      setBackgroundUploadActive(false);
     },
     onProgress: (step, progress) => {
       console.log(`📊 ${step} - ${progress}%`);
@@ -2988,10 +3060,12 @@ const SellDesignPage: React.FC = () => {
 
   const fetchProducts = async () => {
     setLoading(true);
-    
+
     try {
       // Utiliser le nouvel endpoint backend avec le paramètre forVendorDesign=true
-      const response = await fetch('https://printalma-back-dep.onrender.com/products?forVendorDesign=true&limit=50');
+      // 🔧 UTILISER LOCALHOST pour le développement
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3004';
+      const response = await fetch(`${API_URL}/products?forVendorDesign=true&limit=50`);
       const result = await response.json();
       
       if (result.success && result.data) {
@@ -3467,6 +3541,26 @@ const SellDesignPage: React.FC = () => {
       ...prev,
       [productId]: Math.max(0, newProfit)
     }));
+  };
+
+  // 🆕 Fonction de callback pour gérer les changements de prix par taille
+  const handleSizePricesChange = (productId: number, prices: Record<string, { salePrice: number; profit: number }>) => {
+    setSizePricingByProduct(prev => ({
+      ...prev,
+      // ✅ FUSION: Conserver les prix existants et mettre à jour uniquement la taille modifiée
+      [productId]: { ...(prev[productId] || {}), ...prices }
+    }));
+
+    // Mettre à jour le prix principal avec la moyenne de TOUS les prix (pas seulement ceux qui viennent d'être modifiés)
+    const allPrices = { ...(sizePricingByProduct[productId] || {}), ...prices };
+    const priceValues = Object.values(allPrices);
+    if (priceValues.length > 0) {
+      const avgPrice = priceValues.reduce((sum, p) => sum + p.salePrice, 0) / priceValues.length;
+      const avgProfit = priceValues.reduce((sum, p) => sum + p.profit, 0) / priceValues.length;
+
+      setCustomProfits(prev => ({ ...prev, [productId]: avgProfit }));
+      handleFieldChange(productId, 'price', avgPrice);
+    }
   };
 
   const handleSavePricing = (productId: number) => {
@@ -3954,7 +4048,8 @@ const SellDesignPage: React.FC = () => {
         },
         getPreviewView,
         'DRAFT',
-        defaultColorIds
+        defaultColorIds,
+        sizePricingByProduct // 🆕 Prix par taille
       );
 
       const successful = (results || []).filter(r => r.success);
@@ -4067,7 +4162,8 @@ const SellDesignPage: React.FC = () => {
         },
         getPreviewView,
         'DRAFT',
-        defaultColorIds
+        defaultColorIds,
+        sizePricingByProduct // 🆕 Prix par taille
       );
 
       const successful = (results || []).filter(r => r.success);
@@ -4132,7 +4228,34 @@ const SellDesignPage: React.FC = () => {
   };
 
   const handlePublishProducts = async () => {
+    // 🆕 Variable pour collecter tous les productIds créés
+    let allCreatedProductIds: number[] = [];
+
     try {
+      // 🆕 Fermer le modal de confirmation et afficher le modal de progression
+      setCheckoutOpen(false);
+
+      // 🆕 Calculer le nombre total de couleurs sélectionnées pour l'estimation
+      let totalColorCount = 0;
+      selectedProductIds.forEach(idStr => {
+        const productId = Number(idStr);
+        const activeColors = (productColors[productId] || []).filter(c => c.isActive);
+        totalColorCount += activeColors.length;
+      });
+
+      // 🆕 Estimation du temps de traitement
+      const AVERAGE_TIME_PER_COLOR = 3000; // 3 secondes par couleur
+      const totalEstimatedTime = totalColorCount * AVERAGE_TIME_PER_COLOR;
+
+      // 🆕 Afficher le modal avec message initial
+      setTotalColors(totalColorCount);
+      setColorsProcessed(0);
+      setGenerationProgress(0);
+      setEstimatedTimeRemaining(totalEstimatedTime);
+      setGenerationMessage('Transmission des données au serveur...');
+      setShowProgressModal(true);
+      setBackgroundUploadActive(true);
+
       // 🆕 VALIDATION FINALE DES PRIX : Vérification non-bloquante avec avertissement
       const produitsAvecPrixInferieur: Array<{id: number, name: string, currentPrice: number, minimumPrice: number, type: string}> = [];
 
@@ -4189,7 +4312,7 @@ const SellDesignPage: React.FC = () => {
         }
       });
 
-      // 🆕 NOUVEAU WORKFLOW : Pas de blocage, création directe avec statut approprié
+      // 🆕 NOUVEAU WORKFLOW ASYNCHRONE : Pas de blocage, création directe avec statut approprié
       const selectedDesign = existingDesignsWithValidation.find(d => d.imageUrl === designUrl || d.thumbnailUrl === designUrl);
       const validationStatus = await checkDesignValidationStatus(selectedDesign?.id as number);
 
@@ -4217,13 +4340,19 @@ const SellDesignPage: React.FC = () => {
           },
           getPreviewView,
           'PENDING',
-          defaultColorIds
+          defaultColorIds,
+          sizePricingByProduct // 🆕 Prix par taille
         );
 
         const successful = (results || []).filter(r => r.success);
         const actionText = postValidationAction === PostValidationAction.AUTO_PUBLISH
           ? 'automatiquement publiés après validation'
           : 'mis en brouillon après validation';
+
+        // 🆕 Collecter les productIds créés
+        const createdIds = successful.map(r => r.productId).filter((id): id is number => id !== undefined);
+        allCreatedProductIds.push(...createdIds);
+        console.log(`📦 [Design non validé] ${createdIds.length} produits créés:`, createdIds);
 
         toast({
           title: `${successful.length} produit(s) en attente de validation`,
@@ -4254,11 +4383,18 @@ const SellDesignPage: React.FC = () => {
           },
           getPreviewView,
           'DRAFT',
-          defaultColorIds
+          defaultColorIds,
+          sizePricingByProduct // 🆕 Prix par taille
         );
 
         // 🚀 PUBLICATION IMMÉDIATE des produits créés (design validé)
         const successful = (results || []).filter(r => r.success);
+
+        // 🆕 Collecter les productIds créés
+        const createdIds = successful.map(r => r.productId).filter((id): id is number => id !== undefined);
+        allCreatedProductIds.push(...createdIds);
+        console.log(`📦 [Design validé + AUTO_PUBLISH] ${createdIds.length} produits créés:`, createdIds);
+
         let publishResults: any[] = [];
 
         if (successful.length > 0) {
@@ -4328,10 +4464,16 @@ const SellDesignPage: React.FC = () => {
           },
           getPreviewView,
           'DRAFT',
-          defaultColorIds
+          defaultColorIds,
+          sizePricingByProduct // 🆕 Prix par taille
         );
 
         const successful = (results || []).filter(r => r.success);
+
+        // 🆕 Collecter les productIds créés
+        const createdIds = successful.map(r => r.productId).filter((id): id is number => id !== undefined);
+        allCreatedProductIds.push(...createdIds);
+        console.log(`📦 [Design validé + TO_DRAFT] ${createdIds.length} produits créés:`, createdIds);
 
         toast({
           title: `${successful.length} produit(s) sauvé(s) en brouillon`,
@@ -4341,13 +4483,31 @@ const SellDesignPage: React.FC = () => {
         });
       }
 
-      // Toujours rediriger vers la liste des produits pour voir le résultat
-      setTimeout(() => {
-        navigate('/vendeur/products');
-      }, 2000);
-      
+      // 🆕 Fermer l'ancien modal de progression
+      setShowProgressModal(false);
+      setBackgroundUploadActive(false);
+
+      // 🆕 Ouvrir le modal de génération d'images si des produits ont été créés
+      if (allCreatedProductIds.length > 0) {
+        console.log(`🖼️ Ouverture du modal de génération pour ${allCreatedProductIds.length} produit(s):`, allCreatedProductIds);
+        setCreatedProductIds(allCreatedProductIds);
+        setShowImagesModal(true);
+      } else {
+        // Pas de produits créés, rediriger immédiatement
+        console.log('⚠️ Aucun produit créé, redirection immédiate');
+        setTimeout(() => {
+          navigate('/vendeur/products');
+        }, 2000);
+      }
+
     } catch (error) {
       console.error('Erreur lors de la publication:', error);
+
+      // Fermer les modals en cas d'erreur
+      setShowProgressModal(false);
+      setBackgroundUploadActive(false);
+      setShowImagesModal(false);
+
       toast({
         title: 'Erreur lors de la publication',
         description: 'Une erreur est survenue. Veuillez réessayer.',
@@ -4895,6 +5055,16 @@ const SellDesignPage: React.FC = () => {
                             : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
                         }`}
                       >
+                        {/* Badge type de produit (autocollant ou tableau) */}
+                        {(product.genre as string === 'AUTOCOLLANT' || product.genre as string === 'TABLEAU') && (
+                          <div className="absolute top-4 left-4 z-20">
+                            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1">
+                              <Package className="w-3 h-3" />
+                              {(product.genre as string) === 'AUTOCOLLANT' ? 'Autocollant' : 'Tableau'}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Indicateur de sélection moderne */}
                         <div className="absolute top-4 right-4 z-20">
                           <button
@@ -4984,7 +5154,7 @@ const SellDesignPage: React.FC = () => {
                               className="w-full text-lg font-semibold bg-transparent border-none focus:ring-0 p-0 text-black dark:text-white placeholder-gray-400"
                               placeholder="Nom du produit"
                             />
-                            
+
                             <textarea
                               value={editStates[product.id]?.description ?? (product.description || '')}
                               onChange={e => handleFieldChange(product.id, 'description', e.target.value)}
@@ -5018,19 +5188,19 @@ const SellDesignPage: React.FC = () => {
                               return (
                                 <>
                                   {/* Affichage principal responsive avec indicateurs intelligents */}
-                                  <motion.div 
+                                  <motion.div
                                     className="relative overflow-hidden"
                                     layout
                                     transition={{ duration: 0.3, ease: "easeInOut" }}
                                   >
                                     <div className="bg-gradient-to-br from-white via-gray-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
-                                      {/* Header avec prix principal */}
+                                      {/* Header avec plage de prix par taille */}
                                       <div className="p-4 sm:p-5">
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-baseline gap-2 mb-1">
                                               <span className="text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">
-                                                Prix de vente
+                                                Prix par taille
                                               </span>
                                               <div className="flex items-center gap-1">
                                                 {isSaving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
@@ -5045,20 +5215,58 @@ const SellDesignPage: React.FC = () => {
                                                 )}
                                               </div>
                                             </div>
-                                            {/* 🔄 NOUVEAU: Prix final (lecture seule - calculé automatiquement) */}
+                                            {/* 🔄 Plage de prix ou "À partir de" */}
                                             <div className="mb-2">
-                                              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-                                                {new Intl.NumberFormat('fr-FR', {
-                                                  style: 'currency',
-                                                  currency: 'XOF',
-                                                  maximumFractionDigits: 0
-                                                }).format(currentPrice)}
-                                              </div>
-                                             
+                                              {(() => {
+                                                // Récupérer tous les prix des tailles actives
+                                                const activeSizes = (productSizes[product.id] || []).filter(s => s.isActive);
+                                                const prices = activeSizes.map(size => {
+                                                  const sizePrice = sizePricingByProduct[product.id]?.[size.sizeName];
+                                                  const hasCustomPrice = sizePrice && sizePrice.salePrice > 0;
+                                                  const defaultPrice = product.sizePrices?.find(sp => sp.size === size.sizeName)?.suggestedPrice || product.suggestedPrice || product.price;
+                                                  return hasCustomPrice ? sizePrice.salePrice : defaultPrice;
+                                                }).filter(p => p > 0);
+
+                                                if (prices.length === 0) {
+                                                  return (
+                                                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                                                      {new Intl.NumberFormat('fr-FR', {
+                                                        style: 'currency',
+                                                        currency: 'XOF',
+                                                        maximumFractionDigits: 0
+                                                      }).format(currentPrice)}
+                                                    </div>
+                                                  );
+                                                }
+
+                                                const minPrice = Math.min(...prices);
+                                                const maxPrice = Math.max(...prices);
+
+                                                if (minPrice === maxPrice) {
+                                                  // Un seul prix
+                                                  return (
+                                                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                                                      {minPrice.toLocaleString()} F CFA
+                                                    </div>
+                                                  );
+                                                }
+
+                                                // Plage de prix
+                                                return (
+                                                  <div>
+                                                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                                                              À partir de {minPrice.toLocaleString()} F CFA
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                              jusqu'à {maxPrice.toLocaleString()} F CFA
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })()}
                                             </div>
-                                            
+
                                           </div>
-                                          
+
                                           {/* Bouton flèche pour panneau latéral moderne */}
                                           <button
                                             onClick={() => togglePricingExpansion(product.id)}
@@ -5070,7 +5278,7 @@ const SellDesignPage: React.FC = () => {
                                       </div>
 
                                     </div>
-                                    
+
                                     {/* Effet de lueur pour état actif */}
                                     {isExpanded && (
                                       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl" />
@@ -5224,27 +5432,49 @@ const SellDesignPage: React.FC = () => {
                             </div>
                           )}
 
-                            {/* Tailles */}
+                            {/* Tailles avec prix */}
                             {(productSizes[product.id] || []).length > 0 && (
                               <div>
                                 <span className="text-sm font-medium text-black dark:text-white block mb-3">
-                                  Tailles
+                                  Tailles et prix
                                 </span>
-                                <div className="flex flex-wrap gap-2">
-                                  {(productSizes[product.id] || []).map((size) => (
-                                    <button
-                                      key={size.id}
-                                      onClick={() => handleSizeToggle(product.id, size.id)}
-                                      className={`px-3 py-1 text-xs rounded-full transition-all ${
-                                        size.isActive
-                                          ? 'bg-black dark:bg-white text-white dark:text-black'
-                                          : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-                                      }`}
-                                    >
-                                      {size.sizeName}
-                                    </button>
-                                  ))}
-                          </div>
+                                <div className="space-y-2">
+                                  {(productSizes[product.id] || []).map((size) => {
+                                    // Récupérer le prix personnalisé pour cette taille
+                                    const sizePrice = sizePricingByProduct[product.id]?.[size.sizeName];
+                                    const hasCustomPrice = sizePrice && sizePrice.salePrice > 0;
+
+                                    // Calculer le prix suggéré par défaut pour cette taille
+                                    const defaultPrice = product.sizePrices?.find(sp => sp.size === size.sizeName)?.suggestedPrice || product.suggestedPrice || product.price;
+
+                                    // Prix final à afficher
+                                    const displayPrice = hasCustomPrice ? sizePrice.salePrice : defaultPrice;
+
+                                    return (
+                                      <button
+                                        key={size.id}
+                                        onClick={() => handleSizeToggle(product.id, size.id)}
+                                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
+                                          size.isActive
+                                            ? 'bg-black dark:bg-white text-white dark:text-black'
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                        } hover:opacity-80`}
+                                      >
+                                        <span className="text-xs font-medium">{size.sizeName}</span>
+                                        <div className="flex items-center gap-2">
+                                          {hasCustomPrice && (
+                                            <span className="text-xs opacity-75 line-through">
+                                              {defaultPrice.toLocaleString()} FCFA
+                                            </span>
+                                          )}
+                                          <span className="text-sm font-bold">
+                                            {displayPrice.toLocaleString()} FCFA
+                                          </span>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             )}
                         </div>
@@ -5343,6 +5573,8 @@ const SellDesignPage: React.FC = () => {
                   const profitPercentage = prixDeRevientMockup > 0 ?
                     Math.round((customProfit / prixDeRevientMockup) * 100) : 0;
                   const hasSuggestedPrice = product.suggestedPrice && product.suggestedPrice > 0;
+                  // 🆕 Vérifier si le produit a des prix par taille (sizePrices)
+                  const hasSizePricing = product.sizePrices && product.sizePrices.length > 0;
 
                   return (
                     <motion.div
@@ -5371,201 +5603,214 @@ const SellDesignPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Section prix suggéré */}
-                      {hasSuggestedPrice && (
-                        <div className="mb-6">
-                          <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                              <h5 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
-                                Système de prix suggéré activé
-                              </h5>
-                            </div>
+                      {/* 🆕 Utiliser SizePricingConfig si le produit a des prix par taille */}
+                      {hasSizePricing ? (
+                        <SizePricingConfig
+                          product={product}
+                          onPricesChange={handleSizePricesChange}
+                          currentPrices={sizePricingByProduct}
+                          commissionRate={vendorCommission ?? undefined}
+                          activeSizes={productSizes[product.id]?.filter(s => s.isActive)}
+                        />
+                      ) : (
+                        <>
+                          {/* Section prix suggéré (ancien système) */}
+                          {hasSuggestedPrice && (
+                            <div className="mb-6">
+                              <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                  <h5 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                                    Système de prix suggéré activé
+                                  </h5>
+                                </div>
 
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                              <div className="bg-white/50 dark:bg-gray-800/50 rounded p-3 border border-purple-100 dark:border-purple-800">
-                                <div className="text-gray-600 dark:text-gray-400 mb-1">Prix de revient</div>
-                                <div className="font-semibold text-gray-800 dark:text-gray-200">
-                                  {new Intl.NumberFormat('fr-FR', {
-                                    style: 'currency',
-                                    currency: 'XOF',
-                                    maximumFractionDigits: 0
-                                  }).format(prixDeRevientMockup)}
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                  <div className="bg-white/50 dark:bg-gray-800/50 rounded p-3 border border-purple-100 dark:border-purple-800">
+                                    <div className="text-gray-600 dark:text-gray-400 mb-1">Prix de revient</div>
+                                    <div className="font-semibold text-gray-800 dark:text-gray-200">
+                                      {new Intl.NumberFormat('fr-FR', {
+                                        style: 'currency',
+                                        currency: 'XOF',
+                                        maximumFractionDigits: 0
+                                      }).format(prixDeRevientMockup)}
+                                    </div>
+                                  </div>
+
+                                  <div className="bg-purple-100/50 dark:bg-purple-900/50 rounded p-3 border border-purple-200 dark:border-purple-700">
+                                    <div className="text-purple-600 dark:text-purple-300 mb-1">Prix suggéré</div>
+                                    <div className="font-bold text-purple-800 dark:text-purple-200">
+                                      {new Intl.NumberFormat('fr-FR', {
+                                        style: 'currency',
+                                        currency: 'XOF',
+                                        maximumFractionDigits: 0
+                                      }).format(product.suggestedPrice)}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-3 text-xs text-purple-700 dark:text-purple-300 bg-purple-100/50 dark:bg-purple-900/30 rounded p-2">
+                                  <span className="font-medium">💡 Info:</span> Ajoutez votre bénéfice au-dessus de ce prix suggéré.
                                 </div>
                               </div>
-
-                              <div className="bg-purple-100/50 dark:bg-purple-900/50 rounded p-3 border border-purple-200 dark:border-purple-700">
-                                <div className="text-purple-600 dark:text-purple-300 mb-1">Prix suggéré</div>
-                                <div className="font-bold text-purple-800 dark:text-purple-200">
-                                  {new Intl.NumberFormat('fr-FR', {
-                                    style: 'currency',
-                                    currency: 'XOF',
-                                    maximumFractionDigits: 0
-                                  }).format(product.suggestedPrice)}
-                                </div>
-                              </div>
                             </div>
-
-                            <div className="mt-3 text-xs text-purple-700 dark:text-purple-300 bg-purple-100/50 dark:bg-purple-900/30 rounded p-2">
-                              <span className="font-medium">💡 Info:</span> Ajoutez votre bénéfice au-dessus de ce prix suggéré.
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Configuration du prix */}
-                      <div className="space-y-4">
-                        {/* Info sur la marge maximale */}
-                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
-                          <div className="text-xs text-blue-700 dark:text-blue-300">
-                            <span className="font-medium">💡 MARGE RECOMMANDÉE:</span> Il est conseillé de vendre au minimum à prix de revient + 10%
-                            <br />
-                            <span className="text-blue-600 dark:text-blue-400">
-                              Prix de revient 6000 FCFA → Prix recommandé: 6600 FCFA (vous pouvez vendre moins ou plus)
-                            </span>
-                          </div>
-                        </div>
-                        {/* Prix de vente */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                            {(() => {
-                              const currentValue = pricingInputValues[product.id] !== undefined
-                                ? Number(pricingInputValues[product.id])
-                                : currentPrice;
-                              const suggestedPrice = product.suggestedPrice ?? product.price;
-                              const isUsingSuggestedPrice = currentValue === suggestedPrice;
-                              return isUsingSuggestedPrice ? "Prix de vente suggéré" : "Prix de vente personnalisé";
-                            })()}
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              step="100"
-                              value={pricingInputValues[product.id] !== undefined
-                                ? pricingInputValues[product.id]
-                                : String(product.suggestedPrice ?? product.price)}
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                setPricingInputValues(prev => ({ ...prev, [product.id]: raw }));
-
-                                const nouveauPrixDeVente = Number(raw);
-                                if (Number.isFinite(nouveauPrixDeVente) && nouveauPrixDeVente > 0) {
-                                  // ✅ NOUVEAU: Pas de blocage - juste avertissement
-                                  const prixMinimumAvecMarge = prixDeRevientMockup * 1.10; // Prix recommandé avec 10% de marge
-                                  const nouveauBenefice = Math.max(0, nouveauPrixDeVente - prixDeRevientMockup);
-
-                                  // Toujours mettre à jour les valeurs
-                                  setCustomProfits(prev => ({ ...prev, [product.id]: nouveauBenefice }));
-                                  handleFieldChange(product.id, 'price', nouveauPrixDeVente);
-
-                                  // Avertissement si en dessous du minimum recommandé
-                                  if (nouveauPrixDeVente < prixMinimumAvecMarge) {
-                                    setPriceErrors(prev => ({
-                                      ...prev,
-                                      [product.id]: `⚠️ Prix recommandé minimum: ${Math.round(prixMinimumAvecMarge).toLocaleString()} FCFA (prix de revient + 10% de marge)`
-                                    }));
-                                  } else {
-                                    // Prix correct - pas d'erreur
-                                    setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
-                                  }
-                                }
-                              }}
-                              onBlur={(e) => {
-                                // ✅ CORRIGÉ: Ne sauvegarder que si on quitte vraiment le champ, pas lors de la fermeture du panneau
-                                setTimeout(() => {
-                                  if (expandedPricingIds[product.id]) {
-                                    handleSave(product.id);
-                                  }
-                                }, 100);
-                              }}
-                              className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                            />
-                            <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">FCFA</span>
-                          </div>
-                          {priceErrors[product.id] && (
-                            <div className="text-xs text-red-600 dark:text-red-400">{priceErrors[product.id]}</div>
                           )}
-                        </div>
 
-                        {/* Bénéfice */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-green-700 dark:text-green-300">
-                            Votre bénéfice
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              step="100"
-                              value={customProfit}
-                              onChange={(e) => {
-                                const newProfit = Math.max(0, Number(e.target.value));
-                                const nouveauPrixDeVente = prixDeRevientMockup + newProfit;
-
-                                // ✅ NOUVEAU: Pas de blocage - juste avertissement
-                                const beneficeMinimumRecommande = prixDeRevientMockup * 0.10; // 10% de marge recommandée
-
-                                // Toujours mettre à jour les valeurs
-                                setCustomProfits(prev => ({ ...prev, [product.id]: newProfit }));
-                                handleFieldChange(product.id, 'price', nouveauPrixDeVente);
-
-                                // ✅ NOUVEAU: Synchroniser le champ prix de vente pour qu'il s'affiche
-                                setPricingInputValues(prev => ({ ...prev, [product.id]: String(nouveauPrixDeVente) }));
-
-                                // Avertissement si bénéfice trop faible
-                                if (newProfit < beneficeMinimumRecommande) {
-                                  setPriceErrors(prev => ({
-                                    ...prev,
-                                    [product.id]: `⚠️ Bénéfice recommandé minimum: ${Math.round(beneficeMinimumRecommande).toLocaleString()} FCFA (10% de marge)`
-                                  }));
-                                } else {
-                                  // Bénéfice correct - pas d'erreur
-                                  setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
-                                }
-                              }}
-                              onBlur={(e) => {
-                                // ✅ CORRIGÉ: Ne sauvegarder que si on quitte vraiment le champ, pas lors de la fermeture du panneau
-                                setTimeout(() => {
-                                  if (expandedPricingIds[product.id]) {
-                                    handleSave(product.id);
-                                  }
-                                }, 100);
-                              }}
-                              className="flex-1 px-3 py-2 text-sm border border-green-300 dark:border-green-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-green-500 focus:outline-none"
-                            />
-                            <span className="text-sm text-green-600 dark:text-green-400 font-medium">FCFA</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Résumé des revenus - Affiché seulement si valeurs valides */}
-                      {(() => {
-                        const revenue = getVendorRevenue(product);
-                        const isValidRevenue = Number.isFinite(revenue) && revenue >= 0;
-
-                        if (!isValidRevenue && !commissionLoading) {
-                          return null; // Ne pas afficher si invalide
-                        }
-
-                        return (
-                          <div className="mt-6 bg-green-50 dark:bg-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <PiggyBank className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                <span className="text-sm text-green-700 dark:text-green-300 font-medium">
-                                  Vos revenus par vente
+                          {/* Configuration du prix */}
+                          <div className="space-y-4">
+                            {/* Info sur la marge maximale */}
+                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                              <div className="text-xs text-blue-700 dark:text-blue-300">
+                                <span className="font-medium">💡 MARGE RECOMMANDÉE:</span> Il est conseillé de vendre au minimum à prix de revient + 10%
+                                <br />
+                                <span className="text-blue-600 dark:text-blue-400">
+                                  Prix de revient 6000 FCFA → Prix recommandé: 6600 FCFA (vous pouvez vendre moins ou plus)
                                 </span>
                               </div>
-                              <div className="text-lg font-bold text-green-800 dark:text-green-200">
-                                {commissionLoading ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-green-600" />
-                                ) : (
-                                  commissionService.formatCFA(revenue)
-                                )}
+                            </div>
+                            {/* Prix de vente */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                                {(() => {
+                                  const currentValue = pricingInputValues[product.id] !== undefined
+                                    ? Number(pricingInputValues[product.id])
+                                    : currentPrice;
+                                  const suggestedPrice = product.suggestedPrice ?? product.price;
+                                  const isUsingSuggestedPrice = currentValue === suggestedPrice;
+                                  return isUsingSuggestedPrice ? "Prix de vente suggéré" : "Prix de vente personnalisé";
+                                })()}
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  step="100"
+                                  value={pricingInputValues[product.id] !== undefined
+                                    ? pricingInputValues[product.id]
+                                    : String(product.suggestedPrice ?? product.price)}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    setPricingInputValues(prev => ({ ...prev, [product.id]: raw }));
+
+                                    const nouveauPrixDeVente = Number(raw);
+                                    if (Number.isFinite(nouveauPrixDeVente) && nouveauPrixDeVente > 0) {
+                                      // ✅ NOUVEAU: Pas de blocage - juste avertissement
+                                      const prixMinimumAvecMarge = prixDeRevientMockup * 1.10; // Prix recommandé avec 10% de marge
+                                      const nouveauBenefice = Math.max(0, nouveauPrixDeVente - prixDeRevientMockup);
+
+                                      // Toujours mettre à jour les valeurs
+                                      setCustomProfits(prev => ({ ...prev, [product.id]: nouveauBenefice }));
+                                      handleFieldChange(product.id, 'price', nouveauPrixDeVente);
+
+                                      // Avertissement si en dessous du minimum recommandé
+                                      if (nouveauPrixDeVente < prixMinimumAvecMarge) {
+                                        setPriceErrors(prev => ({
+                                          ...prev,
+                                          [product.id]: `⚠️ Prix recommandé minimum: ${Math.round(prixMinimumAvecMarge).toLocaleString()} FCFA (prix de revient + 10% de marge)`
+                                        }));
+                                      } else {
+                                        // Prix correct - pas d'erreur
+                                        setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
+                                      }
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    // ✅ CORRIGÉ: Ne sauvegarder que si on quitte vraiment le champ, pas lors de la fermeture du panneau
+                                    setTimeout(() => {
+                                      if (expandedPricingIds[product.id]) {
+                                        handleSave(product.id);
+                                      }
+                                    }, 100);
+                                  }}
+                                  className="flex-1 px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                                />
+                                <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">FCFA</span>
+                              </div>
+                              {priceErrors[product.id] && (
+                                <div className="text-xs text-red-600 dark:text-red-400">{priceErrors[product.id]}</div>
+                              )}
+                            </div>
+
+                            {/* Bénéfice */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-green-700 dark:text-green-300">
+                                Votre bénéfice
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  step="100"
+                                  value={customProfit}
+                                  onChange={(e) => {
+                                    const newProfit = Math.max(0, Number(e.target.value));
+                                    const nouveauPrixDeVente = prixDeRevientMockup + newProfit;
+
+                                    // ✅ NOUVEAU: Pas de blocage - juste avertissement
+                                    const beneficeMinimumRecommande = prixDeRevientMockup * 0.10; // 10% de marge recommandée
+
+                                    // Toujours mettre à jour les valeurs
+                                    setCustomProfits(prev => ({ ...prev, [product.id]: newProfit }));
+                                    handleFieldChange(product.id, 'price', nouveauPrixDeVente);
+
+                                    // ✅ NOUVEAU: Synchroniser le champ prix de vente pour qu'il s'affiche
+                                    setPricingInputValues(prev => ({ ...prev, [product.id]: String(nouveauPrixDeVente) }));
+
+                                    // Avertissement si bénéfice trop faible
+                                    if (newProfit < beneficeMinimumRecommande) {
+                                      setPriceErrors(prev => ({
+                                        ...prev,
+                                        [product.id]: `⚠️ Bénéfice recommandé minimum: ${Math.round(beneficeMinimumRecommande).toLocaleString()} FCFA (10% de marge)`
+                                      }));
+                                    } else {
+                                      // Bénéfice correct - pas d'erreur
+                                      setPriceErrors(prev => { const { [product.id]: _, ...rest } = prev; return rest; });
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    // ✅ CORRIGÉ: Ne sauvegarder que si on quitte vraiment le champ, pas lors de la fermeture du panneau
+                                    setTimeout(() => {
+                                      if (expandedPricingIds[product.id]) {
+                                        handleSave(product.id);
+                                      }
+                                    }, 100);
+                                  }}
+                                  className="flex-1 px-3 py-2 text-sm border border-green-300 dark:border-green-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-green-500 focus:outline-none"
+                                />
+                                <span className="text-sm text-green-600 dark:text-green-400 font-medium">FCFA</span>
                               </div>
                             </div>
                           </div>
-                        );
-                      })()}
+
+                          {/* Résumé des revenus - Affiché seulement si valeurs valides */}
+                          {(() => {
+                            const revenue = getVendorRevenue(product);
+                            const isValidRevenue = Number.isFinite(revenue) && revenue >= 0;
+
+                            if (!isValidRevenue && !commissionLoading) {
+                              return null; // Ne pas afficher si invalide
+                            }
+
+                            return (
+                              <div className="mt-6 bg-green-50 dark:bg-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <PiggyBank className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    <span className="text-sm text-green-700 dark:text-green-300 font-medium">
+                                      Vos revenus par vente
+                                    </span>
+                                  </div>
+                                  <div className="text-lg font-bold text-green-800 dark:text-green-200">
+                                    {commissionLoading ? (
+                                      <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+                                    ) : (
+                                      commissionService.formatCFA(revenue)
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </>
+                      )}
                     </motion.div>
                   );
                 })}
@@ -5616,118 +5861,149 @@ const SellDesignPage: React.FC = () => {
         closeButton
       />
 
-      {/* Modal de prévisualisation avant publication - Dialog simple */}
-      <Sheet open={checkoutOpen} onOpenChange={(open) => {
+      {/* Modal de confirmation avant publication */}
+      <Dialog open={checkoutOpen && !isPublishing} onOpenChange={(open) => {
         console.log('🔥 Modal state change:', { open, checkoutOpen });
         setCheckoutOpen(open);
       }}>
-        <SheetContent className="w-3/4 sm:max-w-2xl lg:max-w-4xl h-full overflow-y-auto p-4 sm:p-6" side="right">
-          <SheetHeader className="border-b pb-4 mb-6">
-            <SheetTitle className="text-lg font-bold">
-              Prévisualiser et publier ({selectedProductIds.length})
-            </SheetTitle>
-          </SheetHeader>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold text-gray-900">
+              Publier {selectedProductIds.length} produit{selectedProductIds.length > 1 ? 's' : ''}
+            </DialogTitle>
+            <DialogDescription className="text-base text-gray-600 mt-3">
+              {(() => {
+                let totalColorCount = 0;
+                selectedProductIds.forEach(idStr => {
+                  const productId = Number(idStr);
+                  const activeColors = (productColors[productId] || []).filter(c => c.isActive);
+                  totalColorCount += activeColors.length;
+                });
+                const totalSeconds = Math.round((totalColorCount * 3000) / 1000);
+                const timeText = totalSeconds < 60 ? `${totalSeconds} secondes` : `${Math.floor(totalSeconds / 60)} min ${totalSeconds % 60} sec`;
+                return `Temps de préparation : environ ${timeText}`;
+              })()}
+            </DialogDescription>
+          </DialogHeader>
 
-          {/* Barre de progression lors de la publication */}
-          {isPublishing && (
-            <div className="mb-4 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">{currentStep || 'Préparation...'}</span>
-                <span className="font-medium">{publishProgress}%</span>
+          <DialogFooter className="flex-col sm:flex-row gap-3 mt-6">
+            <Button
+              onClick={handleSaveAsDraft}
+              variant="outline"
+              className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Enregistrer en brouillon
+            </Button>
+            <Button
+              onClick={handlePublishProducts}
+              className="w-full sm:w-auto bg-black hover:bg-gray-800 text-white"
+            >
+              Publier maintenant
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de progression - Design minimaliste fermable */}
+      <Dialog open={showProgressModal} onOpenChange={setShowProgressModal}>
+        <DialogContent className="sm:max-w-md border-0 shadow-2xl">
+          <div className="flex flex-col items-center justify-center py-8 px-4">
+            {/* Animation de chargement */}
+            <div className="relative mb-8">
+              <div className="w-16 h-16 border-4 border-gray-200 rounded-full"></div>
+              <div className="w-16 h-16 border-4 border-black border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            </div>
+
+            {/* Message principal */}
+            <h3 className="text-xl font-semibold text-gray-900 mb-2 text-center">
+              Préparation en cours
+            </h3>
+
+            <p className="text-sm text-gray-500 mb-8 text-center">
+              Vos produits sont en cours de préparation
+            </p>
+
+            {/* Barre de progression minimaliste */}
+            <div className="w-full space-y-3">
+              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-black h-full transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${generationProgress}%` }}
+                />
               </div>
-              <Progress value={publishProgress} className="w-full" />
+
+              {/* Compteur simple - seulement le pourcentage */}
+              <div className="flex items-center justify-center text-sm">
+                <span className="text-gray-500">
+                  {Math.round(generationProgress)}%
+                </span>
+              </div>
             </div>
-          )}
 
-          <div className="space-y-4">
+            {/* Temps restant */}
+            {estimatedTimeRemaining > 1000 && (
+              <p className="text-xs text-gray-400 mt-6">
+                {Math.round(estimatedTimeRemaining / 1000)}s restantes
+              </p>
+            )}
 
-            {/* Liste des produits sélectionnés */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-2">
-              {selectedProductIds.map((idStr) => {
-                const product = products.find(p => p.id === Number(idStr));
-                if (!product) return null;
-
-                const view = getPreviewView(product);
-
-                return (
-                  <button
-                    key={product.id}
-                    onClick={() => openDetailedPreview(product)}
-                    className="bg-gray-50 rounded-lg p-3 border hover:border-blue-400 transition-colors text-left"
-                  >
-                    <div className="flex gap-3">
-                      {/* Miniature */}
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-white border flex-shrink-0">
-                        {view ? (
-                          <ProductViewWithDesign
-                            view={view}
-                            designUrl={designUrl}
-                            productId={getVendorProductId(product) ?? 0}
-                            products={products}
-                            vendorDesigns={existingDesignsWithValidation}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ImageIcon className="h-5 w-5 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Infos */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm truncate">
-                          {editStates[product.id]?.name || product.name}
-                        </h4>
-                        <p className="text-sm font-bold text-gray-700 mt-1">
-                          {getSalePrice(product).toLocaleString()} FCFA
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Message pour indiquer que c'est fermable */}
+            <p className="text-xs text-gray-400 mt-6 text-center">
+              Vous pouvez fermer cette fenêtre, la préparation continuera en arrière-plan
+            </p>
           </div>
+        </DialogContent>
+      </Dialog>
 
-          <SheetFooter className="mt-6 border-t pt-4">
-            <div className="flex gap-3 w-full">
-              <Button
-                onClick={handleSaveAsDraft}
-                disabled={isPublishing}
-                variant="outline"
-                className="flex-1"
-              >
-                {isPublishing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Brouillon
-                  </>
-                )}
-              </Button>
+      {/* Indicateur de progression persistant en bas */}
+      <AnimatePresence>
+        {backgroundUploadActive && !showProgressModal && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-6 right-6 sm:left-auto sm:right-6 sm:w-96 z-50"
+          >
+            <div className="bg-white border border-gray-200 rounded-lg shadow-2xl p-4">
+              <div className="flex items-start gap-3">
+                {/* Animation de chargement */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 border-3 border-gray-200 rounded-full"></div>
+                  <div className="w-10 h-10 border-3 border-black border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                </div>
 
-              <Button
-                onClick={handlePublishProducts}
-                disabled={isPublishing}
-                className="flex-1 bg-black hover:bg-gray-800 text-white font-semibold"
-              >
-                {isPublishing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {currentStep || 'Publication...'}
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="h-4 w-4 mr-2" />
-                    Publier
-                  </>
-                )}
-              </Button>
+                {/* Contenu */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-900">
+                      Préparation en cours
+                    </h4>
+                    <button
+                      onClick={() => setShowProgressModal(true)}
+                      className="text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                      Détails
+                    </button>
+                  </div>
+
+                  {/* Barre de progression */}
+                  <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden mb-2">
+                    <div
+                      className="bg-black h-full transition-all duration-300 ease-out"
+                      style={{ width: `${generationProgress}%` }}
+                    />
+                  </div>
+
+                  {/* Pourcentage */}
+                  <p className="text-xs text-gray-500">
+                    {Math.round(generationProgress)}% terminé
+                  </p>
+                </div>
+              </div>
             </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal pour définir le prix du design */}
       <Dialog open={showDesignPriceModal} onOpenChange={setShowDesignPriceModal}>
@@ -6158,6 +6434,36 @@ const SellDesignPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 🆕 Modal de génération d'images multi-produits */}
+      <MultiProductImagesModal
+        productIds={createdProductIds}
+        isOpen={showImagesModal}
+        onClose={() => {
+          setShowImagesModal(false);
+          setCreatedProductIds([]);
+        }}
+        onComplete={(results) => {
+          console.log('✅ Génération terminée pour tous les produits!', results);
+          setShowImagesModal(false);
+          setCreatedProductIds([]);
+
+          // Rediriger vers la liste des produits
+          setTimeout(() => {
+            navigate('/vendeur/products');
+          }, 500);
+        }}
+        onError={(error) => {
+          console.error('❌ Erreur génération images:', error);
+          toast({
+            title: 'Erreur de génération',
+            description: error,
+            variant: 'destructive',
+            duration: 5000
+          });
+        }}
+        autoCloseDelay={2000}
+      />
     </div>
   );
 };
