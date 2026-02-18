@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -43,23 +43,29 @@ const OrderConfirmationPage: React.FC = () => {
 
   const orderService = new OrderService();
 
+  // Callback stable (ne change pas entre re-renders) pour éviter
+  // que usePaymentWebSocket relance sa connexion à chaque setState
+  const handleWsStatusChange = useCallback((status: PaymentStatus) => {
+    console.log('🔔 [OrderConfirmation] Mise à jour WebSocket reçue:', status);
+
+    if (status === PaymentStatus.PAID) {
+      setPaymentStatus('paid');
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 5000);
+    } else if (status === PaymentStatus.FAILED || status === PaymentStatus.CANCELLED) {
+      setPaymentStatus('failed');
+    } else if (status === PaymentStatus.PENDING) {
+      setPaymentStatus('pending');
+    }
+  }, []);
+
   // WebSocket pour les mises à jour en temps réel
+  // Désactivé dès que le statut est terminal pour éviter les reconnexions inutiles
+  const isTerminal = paymentStatus === 'paid' || paymentStatus === 'failed';
   const { isConnected: wsConnected } = usePaymentWebSocket({
     orderNumber,
-    onStatusChange: (status) => {
-      console.log('🔔 [OrderConfirmation] Mise à jour WebSocket reçue:', status);
-
-      if (status === PaymentStatus.PAID) {
-        setPaymentStatus('paid');
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 5000);
-      } else if (status === PaymentStatus.FAILED || status === PaymentStatus.CANCELLED) {
-        setPaymentStatus('failed');
-      } else if (status === PaymentStatus.PENDING) {
-        setPaymentStatus('pending');
-      }
-    },
-    enabled: !!token
+    onStatusChange: handleWsStatusChange,
+    enabled: !!token && !isTerminal
   });
 
   // Polling continu du statut de paiement PayDunya (sans limite de temps)
@@ -72,6 +78,8 @@ const OrderConfirmationPage: React.FC = () => {
     console.log('🔄 [OrderConfirmation] Démarrage du polling continu pour token:', token);
 
     const checkInterval = 3000;
+
+    let intervalId: ReturnType<typeof setInterval>;
 
     const checkPaymentStatus = async () => {
       try {
@@ -86,14 +94,14 @@ const OrderConfirmationPage: React.FC = () => {
           setPaymentStatus('paid');
           setShowConfetti(true);
           setTimeout(() => setShowConfetti(false), 5000);
-          clearInterval(intervalId); // ✅ Arrêter seulement si le paiement est réussi
+          clearInterval(intervalId);
           return;
         }
 
         if (response.status === PaymentStatus.FAILED || response.status === PaymentStatus.CANCELLED) {
-          console.log('❌ [OrderConfirmation] Paiement échoué MAIS le polling continue...');
+          console.log('❌ [OrderConfirmation] Paiement échoué - arrêt du polling.');
           setPaymentStatus('failed');
-          // ❌ NE PAS arrêter le polling - le paiement peut encore réussir
+          clearInterval(intervalId);
           return;
         }
 
@@ -104,8 +112,8 @@ const OrderConfirmationPage: React.FC = () => {
       }
     };
 
+    intervalId = setInterval(checkPaymentStatus, checkInterval);
     checkPaymentStatus();
-    const intervalId = setInterval(checkPaymentStatus, checkInterval);
 
     return () => {
       clearInterval(intervalId);

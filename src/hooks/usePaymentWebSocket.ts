@@ -36,8 +36,10 @@ export const usePaymentWebSocket = ({
     const connectWebSocket = () => {
       try {
         // Déterminer l'URL du WebSocket en fonction de l'environnement
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        // Forcer wss: si le host est distant (Render ne supporte pas ws: non sécurisé)
         const wsHost = import.meta.env.VITE_WS_URL || 'localhost:3004';
+        const isRemote = !wsHost.includes('localhost');
+        const wsProtocol = (window.location.protocol === 'https:' || isRemote) ? 'wss:' : 'ws:';
         const wsUrl = `${wsProtocol}//${wsHost}`;
 
         console.log('🔌 [WebSocket] Connexion à:', wsUrl);
