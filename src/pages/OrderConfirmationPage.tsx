@@ -41,6 +41,12 @@ const OrderConfirmationPage: React.FC = () => {
   const [orderData, setOrderData] = useState<Order | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(true);
 
+  // Sélecteur de méthode de paiement (SoftPay)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'wave' | 'orange-money' | null>(null);
+  const [omPhoneNumber, setOmPhoneNumber] = useState('');
+  const [omLoading, setOmLoading] = useState(false);
+  const [omError, setOmError] = useState<string | null>(null);
+
   const orderService = new OrderService();
 
   // Callback stable (ne change pas entre re-renders) pour éviter
@@ -155,6 +161,47 @@ const OrderConfirmationPage: React.FC = () => {
   const handleRetryPayment = () => {
     if (paymentUrl) {
       window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  // Initier le paiement Orange Money via SoftPay
+  // Doc: https://developers.paydunya.com/doc/FR/softpay
+  const handleOrangeMoneyPayment = async () => {
+    if (!token || !omPhoneNumber.trim()) return;
+
+    setOmLoading(true);
+    setOmError(null);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3004';
+      const shippingDetails = orderData?.shippingDetails as any;
+      const customerName = shippingDetails?.firstName
+        ? `${shippingDetails.firstName} ${shippingDetails.lastName || ''}`.trim()
+        : 'Client';
+
+      const response = await fetch(`${API_URL}/paydunya/softpay/orange-money`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_token: token,
+          customer_name: customerName,
+          customer_email: email || '',
+          phone_number: omPhoneNumber.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data?.url) {
+        // Rediriger vers l'URL Orange Money retournée par PayDunya SoftPay
+        window.location.href = data.data.url;
+      } else {
+        setOmError(data.message || 'Échec de l\'initiation du paiement Orange Money');
+      }
+    } catch {
+      setOmError('Erreur de connexion. Veuillez réessayer.');
+    } finally {
+      setOmLoading(false);
     }
   };
 
@@ -686,29 +733,113 @@ const OrderConfirmationPage: React.FC = () => {
                 transition={{ delay: 0.4 }}
                 className="flex flex-col gap-3"
               >
-                {/* Bouton de paiement - visible seulement si non payé - PrintAlma Branding */}
+                {/* Sélecteur de méthode de paiement - visible seulement si non payé */}
                 <AnimatePresence>
-                  {paymentStatus !== 'paid' && paymentUrl && (
-                    <motion.a
+                  {paymentStatus !== 'paid' && token && (
+                    <motion.div
                       initial={{ scale: 0.9, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.9, opacity: 0 }}
-                      href={paymentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative w-full px-6 py-4 bg-[#049be5] text-white rounded-xl font-semibold hover:bg-[#0387c7] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl overflow-hidden"
+                      className="space-y-3"
                     >
-                      <motion.div
-                        className="absolute inset-0 bg-white/10"
-                        initial={{ x: '-100%' }}
-                        whileHover={{ x: '100%' }}
-                        transition={{ duration: 0.5 }}
-                      />
-                      <ExternalLink className="w-5 h-5 relative z-10 group-hover:scale-110 transition-transform" />
-                      <span className="relative z-10">
-                        {paymentStatus === 'failed' ? 'Réessayer le paiement' : 'Procéder au paiement'}
-                      </span>
-                    </motion.a>
+                      <p className="text-sm font-semibold text-gray-700 text-center">
+                        {paymentStatus === 'failed' ? 'Réessayer avec :' : 'Choisissez votre méthode de paiement :'}
+                      </p>
+
+                      {/* Boutons de sélection opérateur */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Wave */}
+                        <button
+                          onClick={() => setSelectedPaymentMethod('wave')}
+                          className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 font-semibold transition-all ${
+                            selectedPaymentMethod === 'wave'
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
+                          }`}
+                        >
+                          <img src="/wave-logo.png" alt="Wave" className="h-8 w-auto object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          <span className="text-sm">Wave</span>
+                          {selectedPaymentMethod === 'wave' && (
+                            <span className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full" />
+                          )}
+                        </button>
+
+                        {/* Orange Money */}
+                        <button
+                          onClick={() => setSelectedPaymentMethod('orange-money')}
+                          className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 font-semibold transition-all ${
+                            selectedPaymentMethod === 'orange-money'
+                              ? 'border-orange-500 bg-orange-50 text-orange-700'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-orange-300'
+                          }`}
+                        >
+                          <img src="/om-logo.png" alt="Orange Money" className="h-8 w-auto object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          <span className="text-sm">Orange Money</span>
+                          {selectedPaymentMethod === 'orange-money' && (
+                            <span className="absolute top-2 right-2 w-3 h-3 bg-orange-500 rounded-full" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Wave → lien direct */}
+                      {selectedPaymentMethod === 'wave' && paymentUrl && (
+                        <motion.a
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          href={paymentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"
+                        >
+                          <ExternalLink className="w-5 h-5" />
+                          Payer avec Wave
+                        </motion.a>
+                      )}
+
+                      {/* Orange Money → SoftPay flow */}
+                      {selectedPaymentMethod === 'orange-money' && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="space-y-3"
+                        >
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Votre numéro Orange Money
+                            </label>
+                            <input
+                              type="tel"
+                              value={omPhoneNumber}
+                              onChange={(e) => setOmPhoneNumber(e.target.value)}
+                              placeholder="77XXXXXXX"
+                              maxLength={9}
+                              className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl text-sm focus:outline-none focus:border-orange-500 transition-colors"
+                            />
+                          </div>
+                          {omError && (
+                            <p className="text-xs text-red-600 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              {omError}
+                            </p>
+                          )}
+                          <button
+                            onClick={handleOrangeMoneyPayment}
+                            disabled={omLoading || omPhoneNumber.trim().length < 9}
+                            className="w-full px-6 py-4 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"
+                          >
+                            {omLoading ? (
+                              <><Loader2 className="w-5 h-5 animate-spin" /> Initiation en cours...</>
+                            ) : (
+                              <><CreditCard className="w-5 h-5" /> Payer avec Orange Money</>
+                            )}
+                          </button>
+                        </motion.div>
+                      )}
+                    </motion.div>
                   )}
                 </AnimatePresence>
 
