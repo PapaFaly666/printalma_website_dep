@@ -60,7 +60,10 @@ export interface PaymentStatusResponse {
       token: string;
       url: string;
       total_amount: number;
+      fail_reason?: string;
     };
+    fail_reason?: string;
+    cancel_reason?: string;
   };
 }
 
