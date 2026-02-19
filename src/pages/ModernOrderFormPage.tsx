@@ -1564,35 +1564,60 @@ const ModernOrderFormPage: React.FC = () => {
         throw new Error(orderResponse.message || 'Échec de la création de commande');
       }
 
-      const paymentData = orderResponse.data.payment;
-      if (!paymentData) {
-        throw new Error('Données de paiement PayDunya manquantes');
-      }
+      // 6. CRÉER UNE FACTURE PAYDUNYA DIRECTE (fraîche, sans expiry court du backend)
+      console.log('6️⃣ Création facture PayDunya directe...');
+      const API_URL = import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com';
+      const customerName = `${formData.firstName || ''} ${formData.lastName || ''}`.trim() || 'Client';
 
-      const validation = validatePaymentData(paymentData);
-      if (!validation.isValid) {
-        throw new Error(`Données de paiement incomplètes: ${validation.missingFields.join(', ')}`);
-      }
-
-      const retrievedPaymentUrl = paymentData.redirect_url || paymentData.payment_url;
-      if (!retrievedPaymentUrl) {
-        throw new Error('URL de paiement PayDunya manquante');
-      }
-
-      const pendingPaymentData = {
-        orderId: orderResponse.data.id,
-        orderNumber: orderResponse.data.orderNumber,
-        token: paymentData.token,
-        totalAmount: orderResponse.data.totalAmount,
-        timestamp: Date.now(),
+      const paydunyaPayload = {
+        invoice: {
+          total_amount: totalAmount,
+          description: `Commande ${orderResponse.data.orderNumber} - PrintAlma`,
+        },
+        store: { name: 'PrintAlma' },
+        customer: {
+          name: customerName,
+          phone: formData.phone,
+          ...(formData.email ? { email: formData.email } : {}),
+        },
+        custom_data: {
+          orderId: orderResponse.data.id,
+          orderNumber: orderResponse.data.orderNumber,
+        },
+        actions: {
+          callback_url: `${API_URL}/paydunya/webhook`,
+          return_url: `${window.location.origin}/order-confirmation?orderNumber=${orderResponse.data.orderNumber}&status=success&totalAmount=${totalAmount}`,
+          cancel_url: `${window.location.origin}/order-confirmation?orderNumber=${orderResponse.data.orderNumber}&status=cancelled&totalAmount=${totalAmount}`,
+        },
       };
 
-      paymentStatusService.savePendingPayment(pendingPaymentData);
+      const paydunyaRes = await fetch(`${API_URL}/paydunya/payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paydunyaPayload),
+      });
 
-      // Rediriger l'onglet actuel vers PayDunya
-      // PayDunya redirigera automatiquement vers /order-confirmation après le paiement
-      console.log('🔄 [ModernOrderForm] Redirection vers PayDunya:', retrievedPaymentUrl);
-      window.location.href = retrievedPaymentUrl;
+      const paydunyaData = await paydunyaRes.json();
+      console.log('📊 [ModernOrderForm] Réponse PayDunya directe:', paydunyaData);
+
+      if (!paydunyaData.success || !paydunyaData.data?.redirect_url) {
+        throw new Error(paydunyaData.message || paydunyaData.error || 'Impossible de créer la facture PayDunya');
+      }
+
+      const paymentUrl = paydunyaData.data.redirect_url;
+      const paymentToken = paydunyaData.data.token;
+
+      paymentStatusService.savePendingPayment({
+        orderId: orderResponse.data.id,
+        orderNumber: orderResponse.data.orderNumber,
+        token: paymentToken,
+        totalAmount: totalAmount,
+        timestamp: Date.now(),
+      });
+
+      // Rediriger l'onglet actuel vers PayDunya (même onglet pour éviter les blocages mobile)
+      console.log('🔄 [ModernOrderForm] Redirection vers PayDunya:', paymentUrl);
+      window.location.href = paymentUrl;
 
     } catch (error: any) {
       console.error('=== ERREUR PAIEMENT PAYDUNYA ===');
