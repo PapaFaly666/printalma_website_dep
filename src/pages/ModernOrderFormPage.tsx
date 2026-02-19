@@ -1615,6 +1615,18 @@ const ModernOrderFormPage: React.FC = () => {
         timestamp: Date.now(),
       });
 
+      // Sauvegarder le token PayDunya dans transactionId immédiatement (avant paiement)
+      try {
+        await fetch(`${API_URL}/orders/${orderResponse.data.id}/payment-status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payment_status: 'PENDING', transaction_id: paymentToken }),
+        });
+        console.log('💾 [ModernOrderForm] Token PayDunya sauvegardé dans transactionId:', paymentToken);
+      } catch (e) {
+        console.warn('⚠️ [ModernOrderForm] Impossible de sauvegarder le token:', e);
+      }
+
       // Rediriger l'onglet actuel vers PayDunya (même onglet pour éviter les blocages mobile)
       console.log('🔄 [ModernOrderForm] Redirection vers PayDunya:', paymentUrl);
       window.location.href = paymentUrl;
