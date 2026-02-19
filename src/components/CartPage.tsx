@@ -32,6 +32,8 @@ import {
 import { AlertDialog, AlertDialogDescription } from '../components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { newOrderService } from '../services/newOrderService';
+import { paydunyaService } from '../services/paydunyaService';
+import { paymentStatusService } from '../services/paymentStatusService';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../hooks/useCart';
 import { PaymentMethod } from '../types/order';
@@ -349,32 +351,10 @@ const CartPage: React.FC = () => {
         // Préparer les détails de livraison avec le numéro de paiement
         const orderShippingDetails = {
           ...shippingDetails,
-          phone: mobileNumber // Utiliser le numéro de paiement
+          phone: mobileNumber
         };
 
-        console.log('📦 Création de commande avec:', {
-          cartItems,
-          shippingDetails: orderShippingDetails,
-          paymentMethod,
-          user: user.email
-        });
-
-        // Ajouter un log détaillé des items du panier
-        console.log('🛒 Items détaillés du panier:', cartItems.map((item, index) => ({
-          index,
-          item: {
-            id: item.id,
-            title: item.title,
-            selectedColorId: item.selectedColorId,
-            selectedColorObject: item.selectedColorObject,
-            selectedColor: item.selectedColor,
-            selectedSize: item.selectedSize,
-            size: item.size,
-            color: item.color
-          }
-        })));
-
-        // Créer la commande via le service
+        // 1. Créer la commande
         const order = await newOrderService.createOrderFromCart(
           cartItems,
           orderShippingDetails,
@@ -382,22 +362,70 @@ const CartPage: React.FC = () => {
         );
 
         setCreatedOrder(order);
-        toast.success(`Commande ${order.orderNumber} créée avec succès!`);
+        toast.success(`Commande ${order.orderNumber} créée! Redirection vers le paiement...`);
 
-        // Simuler la confirmation OTP
-        setTimeout(() => {
-          setIsProcessing(false);
-          setOtpConfirmation(true);
-        }, 2000);
+        // 2. Initier le paiement PayDunya
+        const total = calculateTotal();
+        const paydunyaResponse = await paydunyaService.initiatePayment({
+          invoice: {
+            total_amount: total,
+            description: `Commande ${order.orderNumber} - PrintAlma`,
+            items: cartItems.map(item => ({
+              name: item.title,
+              quantity: item.quantity,
+              unit_price: extractPrice(item.price),
+              total_price: extractPrice(item.price) * item.quantity,
+            }))
+          },
+          store: {
+            name: 'PrintAlma',
+            website_url: window.location.origin,
+          },
+          customer: {
+            name: `${shippingDetails.firstName} ${shippingDetails.lastName}`,
+            phone: mobileNumber,
+            email: (user as any).email || '',
+          },
+          custom_data: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+          },
+          actions: {
+            callback_url: `${import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com'}/paydunya/webhook`,
+            return_url: `${window.location.origin}/payment/success?orderId=${order.id}&orderNumber=${order.orderNumber}`,
+            cancel_url: `${window.location.origin}/payment/cancel?orderId=${order.id}`,
+          }
+        });
+
+        if (paydunyaResponse.success && paydunyaResponse.data?.redirect_url) {
+          // 3. Sauvegarder les infos pour la page de succès
+          paymentStatusService.savePendingPayment({
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            token: paydunyaResponse.data.token,
+            totalAmount: total,
+            timestamp: Date.now(),
+          });
+
+          // 4. Vider le panier si achat depuis le panier
+          if (fromCart) {
+            clearCart();
+          }
+
+          // 5. Rediriger vers la page de paiement PayDunya
+          window.location.href = paydunyaResponse.data.redirect_url;
+        } else {
+          throw new Error(paydunyaResponse.message || 'Erreur lors de l\'initiation du paiement PayDunya');
+        }
 
       } catch (error: any) {
-        console.error('❌ Erreur lors de la création de commande:', error);
+        console.error('❌ Erreur lors du paiement:', error);
         setIsProcessing(false);
-        
-        const errorMessage = error?.response?.data?.message || 
-                           error?.message || 
+
+        const errorMessage = error?.response?.data?.message ||
+                           error?.message ||
                            'Erreur lors de la création de la commande';
-        
+
         setOrderError(errorMessage);
         toast.error(errorMessage);
       }

@@ -706,16 +706,12 @@ const OrderFormPage: React.FC = () => {
       console.log('📋 Order ID:', orderResponse.data.id);
       console.log('📋 Order Number:', orderResponse.data.orderNumber);
 
-      // Afficher un message de chargement avant la redirection
-      const loadingMessage = `✅ Commande créée avec succès !\n\n📋 Numéro: ${orderResponse.data.orderNumber}\n💰 Montant: ${totalAmount} FCFA\n\n🔄 Redirection vers PayDunya...`;
-      console.log(loadingMessage);
+      console.log('🔄 [OrderForm] Redirection directe vers PayDunya...');
+      console.log('🌐 URL:', paymentUrl);
 
-      // Ouvrir PayDunya dans un nouvel onglet
-      window.open(paymentUrl, '_blank', 'noopener,noreferrer');
-
-      // Rediriger vers la page de confirmation avec les paramètres
-      const confirmationUrl = `/order-confirmation?orderNumber=${encodeURIComponent(orderResponse.data.orderNumber)}&token=${encodeURIComponent(paymentData.token)}&paymentUrl=${encodeURIComponent(paymentUrl)}&totalAmount=${encodeURIComponent(totalAmount)}&email=${encodeURIComponent(formData.email)}`;
-      navigate(confirmationUrl);
+      // Rediriger le même onglet vers PayDunya
+      // (évite le blocage des popups sur mobile et la confusion entre onglets)
+      window.location.href = paymentUrl;
 
     } catch (error: any) {
       console.error('❌ [OrderForm] Erreur lors du processus de commande:', error);

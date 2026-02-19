@@ -29,6 +29,7 @@ import { useOrder } from '../hooks/useOrder';
 import { orderService, type CreateOrderRequest as OrderRequest } from '../services/orderService';
 import { paymentStatusService } from '../services/paymentStatusService';
 import { validatePaymentData } from '../types/payment';
+import { paydunyaService } from '../services/paydunyaService';
 import SimpleProductPreview from '../components/vendor/SimpleProductPreview';
 import { formatPriceInFRF as formatPrice } from '../utils/priceUtils';
 import { motion, AnimatePresence } from 'framer-motion';

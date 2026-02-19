@@ -32,14 +32,25 @@ const OrderConfirmationPage: React.FC = () => {
   // Récupérer les paramètres de l'URL
   const orderNumber = searchParams.get('orderNumber') || '';
   const token = searchParams.get('token') || '';
-  const paymentUrl = searchParams.get('paymentUrl') || '';
+  // Reconstruire paymentUrl depuis le token si absent (cas du cancel_url backend)
+  const rawPaymentUrl = searchParams.get('paymentUrl') || '';
+  const paymentUrl = rawPaymentUrl || (token ? `https://paydunya.com/checkout/invoice/${token}` : '');
   const totalAmount = searchParams.get('totalAmount') || '0';
   const email = searchParams.get('email') || '';
+  const statusParam = searchParams.get('status'); // 'cancelled' quand PayDunya redirige depuis cancel_url
 
-  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'checking' | 'paid' | 'failed'>('checking');
+  // Si PayDunya redirige avec status=cancelled, on sait déjà que c'est échoué
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'checking' | 'paid' | 'failed'>(
+    statusParam === 'cancelled' ? 'failed' : 'checking'
+  );
   const [showConfetti, setShowConfetti] = useState(false);
   const [orderData, setOrderData] = useState<Order | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(true);
+
+  // Nouvelle facture PayDunya créée pour retry (quand l'ancienne est expirée/annulée)
+  const [retryPaymentUrl, setRetryPaymentUrl] = useState<string>('');
+  const [retryToken, setRetryToken] = useState<string>('');
+  const [isCreatingRetry, setIsCreatingRetry] = useState(false);
 
   // Sélecteur de méthode de paiement (SoftPay)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'wave' | 'orange-money' | null>(null);
@@ -76,6 +87,11 @@ const OrderConfirmationPage: React.FC = () => {
   useEffect(() => {
     if (!token) {
       setPaymentStatus('pending');
+      return;
+    }
+
+    // Si PayDunya a déjà indiqué cancelled via l'URL, pas besoin de poller
+    if (statusParam === 'cancelled') {
       return;
     }
 
@@ -158,16 +174,74 @@ const OrderConfirmationPage: React.FC = () => {
     }
   }, [paymentStatus, clearCart]);
 
+  // Quand la commande est chargée et le paiement annulé → créer une nouvelle facture fraîche
+  useEffect(() => {
+    if (statusParam === 'cancelled' && orderData && !retryPaymentUrl && !isCreatingRetry) {
+      createRetryInvoice(orderData);
+    }
+  }, [statusParam, orderData]);
+
+  // Créer une nouvelle facture PayDunya fraîche pour l'ordre existant
+  const createRetryInvoice = async (order: Order) => {
+    setIsCreatingRetry(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com';
+      const customerName = [
+        (order.shippingDetails as any)?.firstName,
+        (order.shippingDetails as any)?.lastName
+      ].filter(Boolean).join(' ') || 'Client';
+
+      const response = await fetch(`${API_URL}/paydunya/payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice: {
+            total_amount: order.totalAmount,
+            description: `Commande ${orderNumber} - PrintAlma`,
+          },
+          store: { name: 'PrintAlma' },
+          customer: {
+            name: customerName,
+            phone: (order as any).phoneNumber || '',
+            email: email || '',
+          },
+          custom_data: {
+            orderId: order.id,
+            orderNumber: orderNumber,
+          },
+          actions: {
+            callback_url: `${API_URL}/paydunya/webhook`,
+            return_url: `${window.location.origin}/order-confirmation?orderNumber=${orderNumber}&totalAmount=${order.totalAmount}&email=${encodeURIComponent(email)}`,
+            cancel_url: `${window.location.origin}/order-confirmation?orderNumber=${orderNumber}&status=cancelled`,
+          },
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.data?.redirect_url) {
+        setRetryPaymentUrl(data.data.redirect_url);
+        setRetryToken(data.data.token);
+        console.log('✅ Nouvelle facture créée pour retry:', data.data.token);
+      }
+    } catch (err) {
+      console.error('❌ Erreur création nouvelle facture retry:', err);
+    } finally {
+      setIsCreatingRetry(false);
+    }
+  };
+
   const handleRetryPayment = () => {
-    if (paymentUrl) {
-      window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+    const url = retryPaymentUrl || paymentUrl;
+    if (url) {
+      window.location.href = url;
     }
   };
 
   // Initier le paiement Orange Money via SoftPay
   // Doc: https://developers.paydunya.com/doc/FR/softpay
   const handleOrangeMoneyPayment = async () => {
-    if (!token || !omPhoneNumber.trim()) return;
+    const activeToken = retryToken || token;
+    if (!activeToken || !omPhoneNumber.trim()) return;
 
     setOmLoading(true);
     setOmError(null);
@@ -179,11 +253,12 @@ const OrderConfirmationPage: React.FC = () => {
         ? `${shippingDetails.firstName} ${shippingDetails.lastName || ''}`.trim()
         : 'Client';
 
+      const activeToken = retryToken || token;
       const response = await fetch(`${API_URL}/paydunya/softpay/orange-money`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          invoice_token: token,
+          invoice_token: activeToken,
           customer_name: customerName,
           customer_email: email || '',
           phone_number: omPhoneNumber.trim(),
@@ -550,30 +625,25 @@ const OrderConfirmationPage: React.FC = () => {
                         <p className="text-sm font-semibold text-red-900 mb-1">
                           Le paiement n'a pas abouti
                         </p>
-                        <p className="text-xs text-red-700 mb-2">
-                          Votre commande est en attente. La vérification continue en temps réel.
-                        </p>
-                        <p className="text-xs text-red-600 italic mb-4">
-                          💡 Le statut peut changer automatiquement si le paiement aboutit.
+                        <p className="text-xs text-red-700 mb-3">
+                          Votre commande est conservée. Choisissez une méthode ci-dessous pour payer.
                         </p>
 
-                        {/* Actions pour le paiement échoué */}
-                        <div className="flex gap-3">
-                          <button
-                            onClick={handleForceCheckPayment}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                            Vérifier le paiement
-                          </button>
+                        {/* Bouton réessayer rapide */}
+                        {isCreatingRetry ? (
+                          <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-3 py-2 rounded-lg">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Préparation d'un nouveau lien de paiement...
+                          </div>
+                        ) : (retryPaymentUrl || paymentUrl) ? (
                           <button
                             onClick={handleRetryPayment}
-                            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                            className="w-full bg-[#049be5] hover:bg-[#0388cc] text-white px-4 py-3 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                           >
                             <CreditCard className="w-4 h-4" />
                             Réessayer le paiement
                           </button>
-                        </div>
+                        ) : null}
                       </div>
                     </div>
                   </motion.div>
@@ -606,7 +676,9 @@ const OrderConfirmationPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Montant total</p>
-                      <p className="text-sm font-bold text-gray-900">{formatPrice(parseFloat(totalAmount))}</p>
+                      <p className="text-sm font-bold text-gray-900">
+                        {formatPrice(parseFloat(totalAmount) || orderData?.totalAmount || 0)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -785,19 +857,31 @@ const OrderConfirmationPage: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Wave → lien direct */}
-                      {selectedPaymentMethod === 'wave' && paymentUrl && (
-                        <motion.a
+                      {/* Wave → redirection directe */}
+                      {selectedPaymentMethod === 'wave' && (
+                        <motion.div
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
-                          href={paymentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"
                         >
-                          <ExternalLink className="w-5 h-5" />
-                          Payer avec Wave
-                        </motion.a>
+                          {isCreatingRetry ? (
+                            <div className="w-full px-6 py-4 bg-blue-100 text-blue-700 rounded-xl font-semibold flex items-center justify-center gap-2">
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              Préparation du paiement...
+                            </div>
+                          ) : (retryPaymentUrl || paymentUrl) ? (
+                            <button
+                              onClick={() => { window.location.href = retryPaymentUrl || paymentUrl; }}
+                              className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"
+                            >
+                              <ExternalLink className="w-5 h-5" />
+                              Payer avec Wave
+                            </button>
+                          ) : (
+                            <div className="w-full px-6 py-4 bg-gray-100 text-gray-500 rounded-xl text-sm text-center">
+                              Lien de paiement indisponible
+                            </div>
+                          )}
+                        </motion.div>
                       )}
 
                       {/* Orange Money → SoftPay flow */}
