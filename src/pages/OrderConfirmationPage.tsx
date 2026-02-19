@@ -57,6 +57,9 @@ const OrderConfirmationPage: React.FC = () => {
   const [omPhoneNumber, setOmPhoneNumber] = useState('');
   const [omLoading, setOmLoading] = useState(false);
   const [omError, setOmError] = useState<string | null>(null);
+  const [wavePhoneNumber, setWavePhoneNumber] = useState('');
+  const [waveLoading, setWaveLoading] = useState(false);
+  const [waveError, setWaveError] = useState<string | null>(null);
 
   const orderService = new OrderService();
 
@@ -277,6 +280,46 @@ const OrderConfirmationPage: React.FC = () => {
       setOmError('Erreur de connexion. Veuillez réessayer.');
     } finally {
       setOmLoading(false);
+    }
+  };
+
+  // Initier le paiement Wave via SoftPay
+  const handleWavePayment = async () => {
+    const activeToken = retryToken || token;
+    if (!activeToken || !wavePhoneNumber.trim()) return;
+
+    setWaveLoading(true);
+    setWaveError(null);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com';
+      const shippingDetails = orderData?.shippingDetails as any;
+      const customerName = shippingDetails?.firstName
+        ? `${shippingDetails.firstName} ${shippingDetails.lastName || ''}`.trim()
+        : 'Client';
+
+      const response = await fetch(`${API_URL}/paydunya/softpay/wave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_token: activeToken,
+          customer_name: customerName,
+          customer_email: email || '',
+          phone_number: wavePhoneNumber.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data?.redirect_url) {
+        window.location.href = data.data.redirect_url;
+      } else {
+        setWaveError(data.message || 'Échec de l\'initiation du paiement Wave');
+      }
+    } catch {
+      setWaveError('Erreur de connexion. Veuillez réessayer.');
+    } finally {
+      setWaveLoading(false);
     }
   };
 
@@ -857,30 +900,43 @@ const OrderConfirmationPage: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Wave → redirection directe */}
+                      {/* Wave → SoftPay flow (même approche qu'Orange Money) */}
                       {selectedPaymentMethod === 'wave' && (
                         <motion.div
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
+                          className="space-y-3"
                         >
-                          {isCreatingRetry ? (
-                            <div className="w-full px-6 py-4 bg-blue-100 text-blue-700 rounded-xl font-semibold flex items-center justify-center gap-2">
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                              Préparation du paiement...
-                            </div>
-                          ) : (retryPaymentUrl || paymentUrl) ? (
-                            <button
-                              onClick={() => { window.location.href = retryPaymentUrl || paymentUrl; }}
-                              className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"
-                            >
-                              <ExternalLink className="w-5 h-5" />
-                              Payer avec Wave
-                            </button>
-                          ) : (
-                            <div className="w-full px-6 py-4 bg-gray-100 text-gray-500 rounded-xl text-sm text-center">
-                              Lien de paiement indisponible
-                            </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Votre numéro Wave
+                            </label>
+                            <input
+                              type="tel"
+                              value={wavePhoneNumber}
+                              onChange={(e) => setWavePhoneNumber(e.target.value)}
+                              placeholder="77XXXXXXX"
+                              maxLength={9}
+                              className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                            />
+                          </div>
+                          {waveError && (
+                            <p className="text-xs text-red-600 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              {waveError}
+                            </p>
                           )}
+                          <button
+                            onClick={handleWavePayment}
+                            disabled={waveLoading || wavePhoneNumber.trim().length < 9}
+                            className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"
+                          >
+                            {waveLoading ? (
+                              <><Loader2 className="w-5 h-5 animate-spin" /> Initiation en cours...</>
+                            ) : (
+                              <><CreditCard className="w-5 h-5" /> Payer avec Wave</>
+                            )}
+                          </button>
                         </motion.div>
                       )}
 
