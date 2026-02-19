@@ -17,13 +17,9 @@ export const PAYDUNYA_CONFIG = {
 
   // URLs de callback pour PayDunya
   get CALLBACK_URL(): string {
-    if (isLocalDevelopment()) {
-      // En développement local, utiliser l'URL locale
-      return `${this.API_BASE_URL}/paydunya/callback`;
-    } else {
-      // En production, utiliser le domaine réel
-      return `${window.location.origin}/api/paydunya/callback`;
-    }
+    // ⚠️ IMPORTANT : Le backend utilise /paydunya/webhook, pas /paydunya/callback
+    // Le webhook doit pointer vers le backend, pas le frontend
+    return `${this.API_BASE_URL}/paydunya/webhook`;
   },
 
   get RETURN_URL(): string {
