@@ -725,7 +725,7 @@ export const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({
                   <div className="text-xs text-red-600">
                     ⚠️ Prix inférieur au minimum recommandé ({getMinimumPrice().toLocaleString()} FCFA)
                   </div>
-                )}
+                )} 
               </div>
 
               {/* Bénéfice */}
