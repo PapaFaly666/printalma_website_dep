@@ -1455,7 +1455,7 @@ const ModernOrderFormPage: React.FC = () => {
         notes: formData.notes || undefined,
         orderItems: orderItems,
         paymentMethod: 'PAYDUNYA',
-        initiatePayment: true,
+        initiatePayment: false, // On crée la facture PayDunya directement après
         totalAmount: totalAmount, // Total calculé (produits + livraison)
         deliveryInfo: deliveryInfo // 🚚 AJOUTER LES INFOS DE LIVRAISON
       };
