@@ -115,6 +115,13 @@ const OrderConfirmationPage: React.FC = () => {
           setShowConfetti(true);
           setTimeout(() => setShowConfetti(false), 5000);
           clearInterval(intervalId);
+          // Mise à jour du statut backend (filet de sécurité si webhook non reçu)
+          if (orderData?.id) {
+            paymentStatusService.updateOrderPaymentStatus(orderData.id, {
+              payment_status: 'PAID',
+              transaction_id: response.transaction_id || token,
+            }).catch(err => console.error('⚠️ [OrderConfirmation] Erreur mise à jour statut:', err));
+          }
           return;
         }
 
@@ -173,6 +180,24 @@ const OrderConfirmationPage: React.FC = () => {
       clearCart();
     }
   }, [paymentStatus, clearCart]);
+
+  // Si PayDunya redirige avec status=success → paiement confirmé directement
+  useEffect(() => {
+    if (statusParam === 'success' && token && orderData?.id) {
+      console.log('✅ [OrderConfirmation] status=success détecté - marquage PAID immédiat');
+      setPaymentStatus('paid');
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 5000);
+      paymentStatusService.updateOrderPaymentStatus(orderData.id, {
+        payment_status: 'PAID',
+        transaction_id: token,
+      }).then(() => {
+        console.log('✅ [OrderConfirmation] Statut commande mis à jour à PAID');
+      }).catch(err => {
+        console.error('⚠️ [OrderConfirmation] Erreur mise à jour statut:', err);
+      });
+    }
+  }, [statusParam, token, orderData]);
 
   // Quand la commande est chargée et le paiement annulé → créer une nouvelle facture fraîche
   useEffect(() => {
