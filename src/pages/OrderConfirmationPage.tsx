@@ -38,6 +38,7 @@ const OrderConfirmationPage: React.FC = () => {
   const totalAmount = searchParams.get('totalAmount') || '0';
   const email = searchParams.get('email') || '';
   const statusParam = searchParams.get('status'); // 'cancelled' quand PayDunya redirige depuis cancel_url
+  const paymentMethodParam = searchParams.get('paymentMethod'); // 'ORANGE_MONEY' pour Orange Money
 
   // Si PayDunya redirige avec status=cancelled, on sait déjà que c'est échoué
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'checking' | 'paid' | 'failed'>(
@@ -57,6 +58,15 @@ const OrderConfirmationPage: React.FC = () => {
   const [omPhoneNumber, setOmPhoneNumber] = useState('');
   const [omLoading, setOmLoading] = useState(false);
   const [omError, setOmError] = useState<string | null>(null);
+
+  // Orange Money QR Code data
+  const [orangeMoneyData, setOrangeMoneyData] = useState<{
+    qrCode: string;
+    deepLinks: { MAXIT: string; OM: string };
+    reference: string;
+    orderNumber: string;
+    totalAmount: number;
+  } | null>(null);
 
   const orderService = new OrderService();
 
@@ -82,6 +92,24 @@ const OrderConfirmationPage: React.FC = () => {
     onStatusChange: handleWsStatusChange,
     enabled: false
   });
+
+  // Charger les données Orange Money depuis localStorage
+  useEffect(() => {
+    if (paymentMethodParam === 'ORANGE_MONEY') {
+      const storedData = localStorage.getItem('orangeMoneyPayment');
+      if (storedData) {
+        try {
+          const parsed = JSON.parse(storedData);
+          console.log('🍊 [OrderConfirmation] Orange Money data loaded:', parsed);
+          setOrangeMoneyData(parsed);
+          // Nettoyer le localStorage après chargement
+          localStorage.removeItem('orangeMoneyPayment');
+        } catch (error) {
+          console.error('❌ [OrderConfirmation] Erreur parsing Orange Money data:', error);
+        }
+      }
+    }
+  }, [paymentMethodParam]);
 
   // Polling continu du statut de paiement PayDunya (sans limite de temps)
   useEffect(() => {
@@ -150,6 +178,66 @@ const OrderConfirmationPage: React.FC = () => {
     };
   }, [token]);
 
+  // Polling pour Orange Money - vérification via l'endpoint /orders/number/:orderNumber
+  useEffect(() => {
+    // Activer uniquement si c'est un paiement Orange Money
+    if (paymentMethodParam !== 'ORANGE_MONEY' || !orderNumber) {
+      return;
+    }
+
+    console.log('🍊 [OrderConfirmation] Démarrage du polling Orange Money pour commande:', orderNumber);
+
+    const checkInterval = 3000; // 3 secondes
+    let intervalId: ReturnType<typeof setInterval>;
+
+    const checkOrangeMoneyPaymentStatus = async () => {
+      try {
+        console.log('🔍 [OrderConfirmation] Vérification statut Orange Money...');
+
+        const API_URL = import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com';
+        const response = await fetch(`${API_URL}/orders/number/${orderNumber}`);
+
+        if (!response.ok) {
+          console.error('❌ [OrderConfirmation] Erreur récupération commande');
+          return;
+        }
+
+        const data = await response.json();
+        const order = data.data;
+
+        console.log('📊 [OrderConfirmation] Statut commande Orange Money:', order.paymentStatus);
+
+        if (order.paymentStatus === 'PAID') {
+          console.log('✅ [OrderConfirmation] Paiement Orange Money confirmé !');
+          setPaymentStatus('paid');
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 5000);
+          clearInterval(intervalId);
+          return;
+        }
+
+        if (order.paymentStatus === 'FAILED' || order.paymentStatus === 'CANCELLED') {
+          console.log('❌ [OrderConfirmation] Paiement Orange Money échoué');
+          setPaymentStatus('failed');
+          clearInterval(intervalId);
+          return;
+        }
+
+        console.log('⏳ [OrderConfirmation] Paiement Orange Money en attente...');
+
+      } catch (error) {
+        console.error('❌ [OrderConfirmation] Erreur vérification Orange Money:', error);
+      }
+    };
+
+    intervalId = setInterval(checkOrangeMoneyPaymentStatus, checkInterval);
+    checkOrangeMoneyPaymentStatus();
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [paymentMethodParam, orderNumber]);
+
   // Charger les données de commande
   useEffect(() => {
     const loadOrderData = async () => {
@@ -184,7 +272,7 @@ const OrderConfirmationPage: React.FC = () => {
   // Si PayDunya redirige avec status=success → paiement confirmé directement
   useEffect(() => {
     if (statusParam === 'success' && token && orderData?.id) {
-      console.log('✅ [OrderConfirmation] status=success détecté - marquage PAID immédiat');
+      console.log('✅ [OrderConfirmation] status=success détecté (PayDunya) - marquage PAID immédiat');
       setPaymentStatus('paid');
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 5000);
@@ -198,6 +286,32 @@ const OrderConfirmationPage: React.FC = () => {
       });
     }
   }, [statusParam, token, orderData]);
+
+  // Si Orange Money redirige avec status=success → paiement confirmé directement
+  useEffect(() => {
+    if (statusParam === 'success' && paymentMethodParam === 'ORANGE_MONEY' && orderData?.id) {
+      console.log('✅ [OrderConfirmation] status=success détecté (Orange Money) - marquage PAID immédiat');
+      setPaymentStatus('paid');
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 5000);
+
+      // Le webhook Orange Money a déjà mis à jour le statut côté backend
+      // Mais on force une vérification pour être sûr
+      const API_URL = import.meta.env.VITE_API_URL || 'https://printalma-back-dep.onrender.com';
+      fetch(`${API_URL}/orders/number/${orderNumber}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.data.paymentStatus !== 'PAID') {
+            console.log('⚠️ [OrderConfirmation] Backend pas encore à jour, on attend le polling');
+          } else {
+            console.log('✅ [OrderConfirmation] Paiement Orange Money confirmé par le backend');
+          }
+        })
+        .catch(err => {
+          console.error('⚠️ [OrderConfirmation] Erreur vérification statut:', err);
+        });
+    }
+  }, [statusParam, paymentMethodParam, orderData, orderNumber]);
 
   // Quand la commande est chargée et le paiement annulé → créer une nouvelle facture fraîche
   useEffect(() => {
@@ -819,6 +933,101 @@ const OrderConfirmationPage: React.FC = () => {
                         />
                       );
                     })}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Orange Money QR Code Display */}
+              {paymentMethodParam === 'ORANGE_MONEY' && orangeMoneyData && paymentStatus !== 'paid' && (
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.35 }}
+                  className="mb-8"
+                >
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-3xl p-8 border-2 border-orange-200 shadow-xl">
+                    {/* Header */}
+                    <div className="text-center mb-6">
+                      <div className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                        🍊 Paiement Orange Money
+                      </div>
+                      <h3 className="text-2xl font-bold text-orange-900 mb-2">
+                        Scannez le QR Code
+                      </h3>
+                      <p className="text-orange-700 text-sm">
+                        Utilisez votre application MAX IT ou Orange Money
+                      </p>
+                    </div>
+
+                    {/* QR Code */}
+                    <div className="bg-white rounded-2xl p-6 mb-6 shadow-lg">
+                      <div className="flex justify-center">
+                        <img
+                          src={`data:image/png;base64,${orangeMoneyData.qrCode}`}
+                          alt="QR Code Orange Money"
+                          className="w-64 h-64 object-contain"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Montant */}
+                    <div className="bg-white rounded-2xl p-4 mb-6 text-center shadow-md">
+                      <p className="text-sm text-gray-600 mb-1">Montant à payer</p>
+                      <p className="text-3xl font-bold text-orange-600">
+                        {formatPrice(parseFloat(totalAmount))}
+                      </p>
+                    </div>
+
+                    {/* Instructions */}
+                    <div className="bg-white rounded-2xl p-6 mb-6 shadow-md">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <span className="text-orange-500">📱</span>
+                        Comment payer :
+                      </h4>
+                      <ol className="space-y-2 text-sm text-gray-700">
+                        <li className="flex items-start gap-2">
+                          <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                          <span>Ouvrez votre application <strong>MAX IT</strong> ou <strong>Orange Money</strong></span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                          <span>Scannez le QR Code ci-dessus</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                          <span>Validez le paiement de <strong>{formatPrice(parseFloat(totalAmount))}</strong></span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                          <span>Attendez la confirmation - cette page se mettra à jour automatiquement</span>
+                        </li>
+                      </ol>
+                    </div>
+
+                    {/* Mobile Deeplinks */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <a
+                        href={orangeMoneyData.deepLinks.MAXIT}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl font-semibold text-sm text-center transition-colors shadow-md flex items-center justify-center gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Ouvrir MAX IT
+                      </a>
+                      <a
+                        href={orangeMoneyData.deepLinks.OM}
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-xl font-semibold text-sm text-center transition-colors shadow-md flex items-center justify-center gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Ouvrir Orange Money
+                      </a>
+                    </div>
+
+                    {/* Reference */}
+                    <div className="mt-4 text-center">
+                      <p className="text-xs text-gray-500">
+                        Référence: <span className="font-mono font-semibold text-gray-700">{orangeMoneyData.reference}</span>
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
               )}

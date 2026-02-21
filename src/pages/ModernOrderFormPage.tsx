@@ -39,6 +39,8 @@ import CityAutocomplete from '../components/ui/CityAutocomplete';
 import { COUNTRIES, getCountryByCode } from '../data/countries';
 import { CustomizationPreview } from '../components/order/CustomizationPreview';
 import { useToast } from '../components/ui/use-toast';
+import { PaymentConfigService } from '../services/paymentConfigService';
+import { OrangeMoneyService } from '../services/orangeMoneyService';
 
 interface OrderFormData {
   firstName: string;
@@ -677,6 +679,7 @@ const ModernOrderFormPage: React.FC = () => {
   const [selectedZone, setSelectedZone] = useState<InternationalZone | null>(null);
 
   const [selectedPayment, setSelectedPayment] = useState<string>('paydunya');
+  const [codEnabled, setCodEnabled] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<OrderFormData> & { delivery?: string; payment?: string }>({});
 
@@ -1209,6 +1212,19 @@ const ModernOrderFormPage: React.FC = () => {
     }
   }, [cartItems, navigate]);
 
+  // Charger le statut du paiement à la livraison
+  useEffect(() => {
+    PaymentConfigService.getCodStatus()
+      .then(data => {
+        setCodEnabled(data.isEnabled);
+        // Si COD désactivé et sélectionné, basculer sur paydunya
+        if (!data.isEnabled) {
+          setSelectedPayment('paydunya');
+        }
+      })
+      .catch(() => setCodEnabled(true)); // Actif par défaut en cas d'erreur
+  }, []);
+
   // Transformer les données du produit pour SimpleProductPreview
   const getProductForPreview = () => {
     if (!productData) return null;
@@ -1368,6 +1384,121 @@ const ModernOrderFormPage: React.FC = () => {
     const timestamp = Date.now().toString(36).toUpperCase();
     const random = Math.random().toString(36).substr(2, 5).toUpperCase();
     return `ORD-${timestamp}-${random}`;
+  };
+
+  // Traitement du paiement Orange Money
+  const processOrangeMoneyPayment = async () => {
+    try {
+      setIsSubmitting(true);
+      console.log('=== DÉBUT PAIEMENT ORANGE MONEY ===');
+
+      // 1. VALIDATION DE LA LIVRAISON
+      if (!validateDeliveryInfo()) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. CONSTRUCTION DELIVERY INFO
+      const deliveryInfo = buildDeliveryInfo();
+      if (!deliveryInfo) {
+        setErrors(prev => ({ ...prev, delivery: 'Erreur lors de la construction des infos de livraison' }));
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 3. CRÉATION DES ORDER ITEMS
+      const orderItems = createOrderItems();
+
+      // 4. CALCUL DU TOTAL
+      const subtotal = orderItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+      const totalAmount = subtotal + deliveryInfo.deliveryFee;
+
+      // 5. CRÉER LA COMMANDE
+      const orderRequest: OrderRequest = {
+        email: formData.email,
+        shippingDetails: {
+          firstName: formData.firstName || undefined,
+          lastName: formData.lastName || undefined,
+          street: formData.address,
+          city: formData.city,
+          region: formData.city,
+          postalCode: formData.postalCode || undefined,
+          country: formData.country,
+        },
+        phoneNumber: formData.phone,
+        notes: formData.notes || undefined,
+        orderItems: orderItems.map(item => {
+          const cleaned = { ...item };
+          if (cleaned.vendorProductId && cleaned.designId) {
+            delete cleaned.customizationId;
+            delete cleaned.customizationIds;
+            delete cleaned.designElements;
+            delete cleaned.designElementsByView;
+            delete cleaned.viewsMetadata;
+          }
+          return cleaned;
+        }),
+        paymentMethod: 'ORANGE_MONEY',
+        initiatePayment: false,
+        totalAmount: totalAmount,
+        deliveryInfo: deliveryInfo
+      };
+
+      const orderResponse = orderService.isUserAuthenticated()
+        ? await orderService.createOrderWithPayment(orderRequest)
+        : await orderService.createGuestOrder(orderRequest);
+
+      if (!orderResponse.success || !orderResponse.data) {
+        throw new Error(orderResponse.message || 'Échec de la création de commande');
+      }
+
+      // 6. GÉNÉRER LE QR CODE ET DEEPLINKS ORANGE MONEY
+      console.log('🍊 Génération QR Code Orange Money...');
+      const customerName = `${formData.firstName || ''} ${formData.lastName || ''}`.trim() || 'Client';
+
+      const orangePaymentResult = await OrangeMoneyService.createPayment({
+        orderId: orderResponse.data.id,
+        amount: totalAmount,
+        customerName,
+        customerPhone: formData.phone,
+        orderNumber: orderResponse.data.orderNumber,
+      });
+
+      if (!orangePaymentResult.success || !orangePaymentResult.data) {
+        throw new Error(orangePaymentResult.error || 'Échec génération Orange Money');
+      }
+
+      const { qrCode, deepLinks, reference } = orangePaymentResult.data;
+
+      // 7. STOCKER LES DONNÉES ORANGE MONEY POUR LA PAGE DE CONFIRMATION
+      const orangeMoneyData = {
+        qrCode,
+        deepLinks,
+        reference,
+        orderNumber: orderResponse.data.orderNumber,
+        totalAmount,
+        timestamp: Date.now()
+      };
+
+      // Sauvegarder dans localStorage pour affichage sur OrderConfirmationPage
+      localStorage.setItem('orangeMoneyPayment', JSON.stringify(orangeMoneyData));
+
+      // Rediriger vers la page de confirmation avec paramètre Orange Money
+      navigate(`/order-confirmation?orderNumber=${orderResponse.data.orderNumber}&paymentMethod=ORANGE_MONEY&totalAmount=${totalAmount}&email=${encodeURIComponent(formData.email || '')}`);
+      console.log('✅ Redirection vers page de confirmation Orange Money');
+
+    } catch (error: any) {
+      console.error('=== ERREUR PAIEMENT ORANGE MONEY ===');
+      console.error('❌ Erreur:', error);
+      toast({
+        title: "Erreur de paiement",
+        description: error.message || "Impossible de générer le paiement Orange Money",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+      console.log('=== FIN PAIEMENT ORANGE MONEY ===');
+    }
   };
 
   // Traitement du paiement PayDunya
@@ -1724,6 +1855,8 @@ const ModernOrderFormPage: React.FC = () => {
   const handleFinalSubmit = async () => {
     if (selectedPayment === 'paydunya') {
       await processPayDunyaPayment();
+    } else if (selectedPayment === 'orange') {
+      await processOrangeMoneyPayment();
     } else {
       // Pour le paiement à la livraison, créer la commande directement
       setIsSubmitting(true);
@@ -2505,8 +2638,8 @@ const ModernOrderFormPage: React.FC = () => {
 
                       <label
                         className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedPayment === 'cash'
-                            ? 'border-[#14689a] bg-[#14689a]/5'
+                          selectedPayment === 'orange'
+                            ? 'border-orange-500 bg-orange-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
@@ -2514,19 +2647,51 @@ const ModernOrderFormPage: React.FC = () => {
                           <input
                             type="radio"
                             name="payment"
-                            value="cash"
-                            checked={selectedPayment === 'cash'}
+                            value="orange"
+                            checked={selectedPayment === 'orange'}
                             onChange={(e) => setSelectedPayment(e.target.value)}
                             className="mt-1 w-4 h-4"
                           />
                           <div className="flex-1">
-                            <p className="font-bold text-gray-900 text-sm mb-1">Paiement à la livraison</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-bold text-gray-900 text-sm">Orange Money</p>
+                              <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs font-medium rounded">
+                                QR Code + Deeplink
+                              </span>
+                            </div>
                             <p className="text-xs text-gray-600">
-                              Payez en espèces lors de la réception de votre commande
+                              Paiement rapide par QR Code (desktop) ou application mobile (MAX IT / Orange Money)
                             </p>
                           </div>
                         </div>
                       </label>
+
+                      {codEnabled && (
+                        <label
+                          className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedPayment === 'cash'
+                              ? 'border-[#14689a] bg-[#14689a]/5'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="radio"
+                              name="payment"
+                              value="cash"
+                              checked={selectedPayment === 'cash'}
+                              onChange={(e) => setSelectedPayment(e.target.value)}
+                              className="mt-1 w-4 h-4"
+                            />
+                            <div className="flex-1">
+                              <p className="font-bold text-gray-900 text-sm mb-1">Paiement à la livraison</p>
+                              <p className="text-xs text-gray-600">
+                                Payez en espèces lors de la réception de votre commande
+                              </p>
+                            </div>
+                          </div>
+                        </label>
+                      )}
                     </div>
 
                     {errors.payment && (

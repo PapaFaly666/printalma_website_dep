@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { AdminButton } from '../../components/admin/AdminButton';
 import { usePaydunyaConfig } from '../../hooks/usePaydunyaConfig';
+import { useOrangeMoneyConfig } from '../../hooks/useOrangeMoneyConfig';
 import { PaymentConfigService } from '../../services/paymentConfigService';
 import {
   Card,
@@ -61,9 +62,23 @@ const PaymentMethodsPage: React.FC = () => {
   // Hook pour la configuration Paydunya (mode admin avec authentification par cookies)
   const { config: paydunyaConfig, loading: paydunyaLoading, refetch: refetchPaydunya } = usePaydunyaConfig(true);
 
+  // Hook pour la configuration Orange Money (mode admin avec authentification par cookies)
+  const { config: orangeMoneyConfig, loading: orangeMoneyLoading, refetch: refetchOrangeMoney } = useOrangeMoneyConfig(true);
+
   // États pour la gestion Paydunya
   const [switchingMode, setSwitchingMode] = useState(false);
   const [isPaydunyaModalOpen, setIsPaydunyaModalOpen] = useState(false);
+  const [isCreatingPaydunya, setIsCreatingPaydunya] = useState(false);
+
+  // États pour la gestion Orange Money
+  const [switchingOrangeMode, setSwitchingOrangeMode] = useState(false);
+  const [isOrangeMoneyModalOpen, setIsOrangeMoneyModalOpen] = useState(false);
+  const [isCreatingOrangeMoney, setIsCreatingOrangeMoney] = useState(false);
+
+  // État pour le paiement à la livraison
+  const [codEnabled, setCodEnabled] = useState(true);
+  const [codLoading, setCodLoading] = useState(true);
+  const [togglingCod, setTogglingCod] = useState(false);
   const [paydunyaFormData, setPaydunyaFormData] = useState({
     mode: 'test' as 'test' | 'live',
     publicKey: '',
@@ -72,6 +87,43 @@ const PaymentMethodsPage: React.FC = () => {
     masterKey: ''
   });
 
+  const [orangeMoneyFormData, setOrangeMoneyFormData] = useState({
+    mode: 'test' as 'test' | 'live',
+    clientId: '',
+    clientSecret: '',
+    merchantCode: ''
+  });
+
+  // Charger le statut COD au montage
+  React.useEffect(() => {
+    PaymentConfigService.getCodStatus()
+      .then(data => {
+        setCodEnabled(data.isEnabled);
+        setPaymentMethods(prev =>
+          prev.map(m => m.type === 'cash_on_delivery' ? { ...m, isActive: data.isEnabled } : m)
+        );
+      })
+      .catch(() => setCodEnabled(true))
+      .finally(() => setCodLoading(false));
+  }, []);
+
+  // Toggle du paiement à la livraison
+  const handleToggleCod = async () => {
+    setTogglingCod(true);
+    try {
+      const result = await PaymentConfigService.toggleCodStatus(!codEnabled);
+      setCodEnabled(result.isEnabled);
+      // Sync avec la liste des moyens de paiement
+      setPaymentMethods(prev =>
+        prev.map(m => m.type === 'cash_on_delivery' ? { ...m, isActive: result.isEnabled } : m)
+      );
+    } catch (error: any) {
+      alert(`❌ Erreur: ${error.message}`);
+    } finally {
+      setTogglingCod(false);
+    }
+  };
+
   // État pour les moyens de paiement (Wave et Orange Money sont gérés par Paydunya)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     {
@@ -79,7 +131,7 @@ const PaymentMethodsPage: React.FC = () => {
       name: 'Paiement à la livraison',
       type: 'cash_on_delivery',
       provider: 'Cash on Delivery',
-      isActive: true,
+      isActive: codEnabled,
       icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="%2310b981" stroke-width="2"%3E%3Cpath d="M20 6 9 17l-5-5"/%3E%3C/svg%3E',
       description: 'Paiement en espèces à la réception',
       isSystem: true
@@ -186,12 +238,14 @@ const PaymentMethodsPage: React.FC = () => {
 
   // Toggle activation
   const toggleActive = (id: number) => {
+    const method = paymentMethods.find(m => m.id === id);
+    // Le COD est géré via le backend
+    if (method?.type === 'cash_on_delivery') {
+      handleToggleCod();
+      return;
+    }
     setPaymentMethods(prev =>
-      prev.map(method =>
-        method.id === id
-          ? { ...method, isActive: !method.isActive }
-          : method
-      )
+      prev.map(m => m.id === id ? { ...m, isActive: !m.isActive } : m)
     );
   };
 
@@ -229,8 +283,22 @@ const PaymentMethodsPage: React.FC = () => {
     }
   };
 
+  // Ouvrir le modal de création de la config Paydunya
+  const handleCreatePaydunyaConfig = () => {
+    setIsCreatingPaydunya(true);
+    setPaydunyaFormData({
+      mode: 'test',
+      publicKey: '',
+      privateKey: '',
+      token: '',
+      masterKey: ''
+    });
+    setIsPaydunyaModalOpen(true);
+  };
+
   // Ouvrir le modal d'édition des clés Paydunya
   const handleEditPaydunyaKeys = (mode: 'test' | 'live') => {
+    setIsCreatingPaydunya(false);
     // Les clés sont stockées directement dans la config avec des préfixes test/live
     const publicKey = mode === 'test' ? paydunyaConfig?.testPublicKey : paydunyaConfig?.livePublicKey;
     const privateKey = mode === 'test' ? paydunyaConfig?.testPrivateKey : paydunyaConfig?.livePrivateKey;
@@ -272,12 +340,101 @@ const PaymentMethodsPage: React.FC = () => {
     console.log('💾 [PaymentMethods] Sauvegarde des clés', paydunyaFormData.mode);
 
     try {
-      await PaymentConfigService.updatePaydunyaKeys(paydunyaFormData);
-      alert(`✅ Clés ${paydunyaFormData.mode.toUpperCase()} mises à jour avec succès`);
+      if (isCreatingPaydunya) {
+        await PaymentConfigService.createPaydunyaConfig(paydunyaFormData);
+        alert(`✅ Configuration PayDunya créée avec succès en mode ${paydunyaFormData.mode.toUpperCase()}`);
+      } else {
+        await PaymentConfigService.updatePaydunyaKeys(paydunyaFormData);
+        alert(`✅ Clés ${paydunyaFormData.mode.toUpperCase()} mises à jour avec succès`);
+      }
       setIsPaydunyaModalOpen(false);
+      setIsCreatingPaydunya(false);
       await refetchPaydunya();
     } catch (error: any) {
       console.error('❌ [PaymentMethods] Erreur lors de la sauvegarde des clés:', error);
+      alert(`❌ Erreur: ${error.message}`);
+    }
+  };
+
+  // ========== HANDLERS ORANGE MONEY ==========
+
+  // Basculer entre test et live pour Orange Money
+  const handleOrangeMoneyMode = async (mode: 'test' | 'live') => {
+    console.log('🔄 [PaymentMethods] Basculement Orange Money vers mode:', mode);
+
+    if (mode === 'live') {
+      const confirmed = window.confirm(
+        '⚠️ ATTENTION: Basculer en mode PRODUCTION pour Orange Money ?\n\n' +
+        'Toutes les transactions seront RÉELLES et FACTURÉES !\n\n' +
+        'Êtes-vous sûr de vouloir continuer ?'
+      );
+      if (!confirmed) return;
+    }
+
+    setSwitchingOrangeMode(true);
+    try {
+      await PaymentConfigService.switchOrangeMoneyMode(mode);
+      alert(`✅ Basculement réussi vers le mode ${mode.toUpperCase()} pour Orange Money`);
+      await refetchOrangeMoney();
+    } catch (error: any) {
+      console.error('❌ [PaymentMethods] Erreur lors du basculement Orange Money:', error);
+      alert(`❌ Erreur: ${error.message}`);
+    } finally {
+      setSwitchingOrangeMode(false);
+    }
+  };
+
+  // Ouvrir le modal de création de la config Orange Money
+  const handleCreateOrangeMoneyConfig = () => {
+    setIsCreatingOrangeMoney(true);
+    setOrangeMoneyFormData({
+      mode: 'test',
+      clientId: '',
+      clientSecret: '',
+      merchantCode: ''
+    });
+    setIsOrangeMoneyModalOpen(true);
+  };
+
+  // Ouvrir le modal d'édition des clés Orange Money
+  const handleEditOrangeMoneyKeys = (mode: 'test' | 'live') => {
+    setIsCreatingOrangeMoney(false);
+    const clientId = mode === 'test' ? orangeMoneyConfig?.testPublicKey : orangeMoneyConfig?.livePublicKey;
+    const clientSecret = mode === 'test' ? orangeMoneyConfig?.testPrivateKey : orangeMoneyConfig?.livePrivateKey;
+    const merchantCode = mode === 'test' ? orangeMoneyConfig?.testToken : orangeMoneyConfig?.liveToken;
+
+    setOrangeMoneyFormData({
+      mode,
+      clientId: clientId || '',
+      clientSecret: clientSecret || '',
+      merchantCode: merchantCode || ''
+    });
+    setIsOrangeMoneyModalOpen(true);
+  };
+
+  // Sauvegarder les clés Orange Money
+  const handleSaveOrangeMoneyKeys = async () => {
+    // Validation : tous les champs sont requis
+    if (!orangeMoneyFormData.clientId || !orangeMoneyFormData.clientSecret || !orangeMoneyFormData.merchantCode) {
+      alert('⚠️ Tous les champs (Client ID, Client Secret, Merchant Code) sont requis');
+      return;
+    }
+
+    console.log('💾 [PaymentMethods] Sauvegarde des clés Orange Money', orangeMoneyFormData.mode);
+
+    try {
+      if (isCreatingOrangeMoney) {
+        await PaymentConfigService.createOrangeMoneyConfig(orangeMoneyFormData);
+        alert(`✅ Configuration Orange Money créée avec succès en mode ${orangeMoneyFormData.mode.toUpperCase()}`);
+      } else {
+        await PaymentConfigService.updateOrangeMoneyKeys(orangeMoneyFormData);
+        alert(`✅ Clés ${orangeMoneyFormData.mode.toUpperCase()} Orange Money mises à jour avec succès`);
+      }
+      setIsOrangeMoneyModalOpen(false);
+      setIsCreatingOrangeMoney(false);
+      await refetchOrangeMoney();
+    } catch (error: any) {
+      console.error('❌ [PaymentMethods] Erreur lors de la sauvegarde des clés Orange Money:', error);
       alert(`❌ Erreur: ${error.message}`);
     }
   };
@@ -519,8 +676,223 @@ const PaymentMethodsPage: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-8 text-gray-600">
-            <AlertTriangle className="w-12 h-12 mx-auto mb-2 text-amber-500" />
-            <p>Configuration PayDunya non disponible</p>
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Key className="w-8 h-8 text-blue-600" />
+            </div>
+            <p className="text-lg font-semibold text-gray-800 mb-2">Aucune configuration PayDunya</p>
+            <p className="text-sm text-gray-500 mb-6">
+              Configurez vos clés API PayDunya pour activer les paiements Wave et Orange Money.
+            </p>
+            <AdminButton
+              onClick={handleCreatePaydunyaConfig}
+              variant="primary"
+              size="lg"
+              className="gap-2 mx-auto"
+            >
+              <Plus className="w-5 h-5" />
+              Initialiser la configuration PayDunya
+            </AdminButton>
+          </div>
+        )}
+      </div>
+
+      {/* Section Orange Money */}
+      <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-6 mb-6 shadow-sm border-2 border-orange-200">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center">
+            <Smartphone className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-gray-900">Configuration Orange Money</h2>
+            <p className="text-sm text-gray-600">Gestion des clés API et basculement test/live</p>
+          </div>
+        </div>
+
+        {orangeMoneyLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+            <span className="ml-2 text-gray-600">Chargement...</span>
+          </div>
+        ) : orangeMoneyConfig ? (
+          <div className="space-y-4">
+            {/* Mode actuel */}
+            <div className={`p-4 rounded-lg border-2 ${
+              orangeMoneyConfig.activeMode === 'test'
+                ? 'bg-blue-50 border-blue-300'
+                : 'bg-amber-50 border-amber-400'
+            }`}>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  {orangeMoneyConfig.activeMode === 'test' ? (
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xl">🧪</span>
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xl">🚀</span>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-bold text-lg">
+                      {orangeMoneyConfig.activeMode === 'test' ? 'Mode TEST' : 'Mode PRODUCTION'}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {orangeMoneyConfig.activeMode === 'test'
+                        ? 'Transactions de test uniquement - Aucun paiement réel'
+                        : '⚠️ ATTENTION: Tous les paiements sont réels et facturés'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge
+                    className={`${
+                      orangeMoneyConfig.isActive
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    {orangeMoneyConfig.isActive ? (
+                      <>
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Actif
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3 h-3 mr-1" />
+                        Inactif
+                      </>
+                    )}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Basculement de mode */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="border-blue-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <span className="text-lg">🧪</span>
+                    </div>
+                    Mode TEST
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Clés API de test - Transactions fictives
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="text-xs text-gray-600">
+                    <p className="font-mono bg-gray-50 px-2 py-1 rounded truncate">
+                      Client ID: {orangeMoneyConfig.testPublicKey?.substring(0, 25) || 'Non défini'}...
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <AdminButton
+                      onClick={() => handleOrangeMoneyMode('test')}
+                      disabled={orangeMoneyConfig.activeMode === 'test' || switchingOrangeMode}
+                      variant={orangeMoneyConfig.activeMode === 'test' ? 'primary' : 'secondary'}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      {switchingOrangeMode ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                          Basculement...
+                        </>
+                      ) : (
+                        <>
+                          {orangeMoneyConfig.activeMode === 'test' ? (
+                            <><CheckCircle className="w-4 h-4 mr-1" /> Actuel</>
+                          ) : (
+                            <><ToggleLeft className="w-4 h-4 mr-1" /> Activer</>
+                          )}
+                        </>
+                      )}
+                    </AdminButton>
+                    <AdminButton
+                      onClick={() => handleEditOrangeMoneyKeys('test')}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Key className="w-4 h-4" />
+                    </AdminButton>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-amber-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <span className="text-lg">🚀</span>
+                    </div>
+                    Mode LIVE
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Clés API de production - Paiements réels
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="text-xs text-gray-600">
+                    <p className="font-mono bg-gray-50 px-2 py-1 rounded truncate">
+                      Client ID: {orangeMoneyConfig.livePublicKey?.substring(0, 25) || 'Non défini'}...
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <AdminButton
+                      onClick={() => handleOrangeMoneyMode('live')}
+                      disabled={orangeMoneyConfig.activeMode === 'live' || switchingOrangeMode}
+                      variant={orangeMoneyConfig.activeMode === 'live' ? 'destructive' : 'secondary'}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      {switchingOrangeMode ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                          Basculement...
+                        </>
+                      ) : (
+                        <>
+                          {orangeMoneyConfig.activeMode === 'live' ? (
+                            <><CheckCircle className="w-4 h-4 mr-1" /> Actuel</>
+                          ) : (
+                            <><AlertTriangle className="w-4 h-4 mr-1" /> Activer</>
+                          )}
+                        </>
+                      )}
+                    </AdminButton>
+                    <AdminButton
+                      onClick={() => handleEditOrangeMoneyKeys('live')}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Key className="w-4 h-4" />
+                    </AdminButton>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-600">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Smartphone className="w-8 h-8 text-orange-600" />
+            </div>
+            <p className="text-lg font-semibold text-gray-800 mb-2">Aucune configuration Orange Money</p>
+            <p className="text-sm text-gray-500 mb-6">
+              Configurez vos clés API Orange Money pour activer les paiements mobile.
+            </p>
+            <AdminButton
+              onClick={handleCreateOrangeMoneyConfig}
+              variant="primary"
+              size="lg"
+              className="gap-2 mx-auto"
+            >
+              <Plus className="w-5 h-5" />
+              Initialiser la configuration Orange Money
+            </AdminButton>
           </div>
         )}
       </div>
@@ -643,8 +1015,13 @@ const PaymentMethodsPage: React.FC = () => {
                   variant={method.isActive ? 'secondary' : 'primary'}
                   size="sm"
                   className="flex-1"
+                  disabled={method.type === 'cash_on_delivery' && (togglingCod || codLoading)}
                 >
-                  {method.isActive ? 'Désactiver' : 'Activer'}
+                  {method.type === 'cash_on_delivery' && togglingCod ? (
+                    <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Mise à jour...</>
+                  ) : (
+                    method.isActive ? 'Désactiver' : 'Activer'
+                  )}
                 </AdminButton>
                 {!method.isSystem && (
                   <>
@@ -857,12 +1234,16 @@ const PaymentMethodsPage: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white">
-                    Clés API PayDunya - Mode {paydunyaFormData.mode.toUpperCase()}
+                    {isCreatingPaydunya
+                      ? 'Créer la configuration PayDunya'
+                      : `Clés API PayDunya - Mode ${paydunyaFormData.mode.toUpperCase()}`}
                   </h2>
                   <p className="text-sm text-white/80">
-                    {paydunyaFormData.mode === 'test'
-                      ? 'Configuration pour les transactions de test'
-                      : '⚠️ Configuration pour les transactions RÉELLES'}
+                    {isCreatingPaydunya
+                      ? 'Saisissez vos clés API pour initialiser PayDunya'
+                      : paydunyaFormData.mode === 'test'
+                        ? 'Configuration pour les transactions de test'
+                        : '⚠️ Configuration pour les transactions RÉELLES'}
                   </p>
                 </div>
               </div>
@@ -875,7 +1256,20 @@ const PaymentMethodsPage: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-4">
-              {paydunyaFormData.mode === 'live' && (
+              {isCreatingPaydunya && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mode</label>
+                  <select
+                    value={paydunyaFormData.mode}
+                    onChange={(e) => setPaydunyaFormData({ ...paydunyaFormData, mode: e.target.value as 'test' | 'live' })}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  >
+                    <option value="test">TEST - Transactions fictives</option>
+                    <option value="live">LIVE - Paiements réels</option>
+                  </select>
+                </div>
+              )}
+              {!isCreatingPaydunya && paydunyaFormData.mode === 'live' && (
                 <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -980,7 +1374,158 @@ const PaymentMethodsPage: React.FC = () => {
                 className="gap-2 w-full sm:w-auto"
               >
                 <Save className="w-4 h-4" />
-                Sauvegarder les clés
+                {isCreatingPaydunya ? 'Créer la configuration' : 'Sauvegarder les clés'}
+              </AdminButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'édition des clés Orange Money */}
+      {isOrangeMoneyModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
+            style={{ animation: 'scaleIn 0.3s ease-out' }}
+          >
+            <div className={`p-6 border-b border-gray-200 flex items-center justify-between ${
+              orangeMoneyFormData.mode === 'test'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700'
+                : 'bg-gradient-to-r from-orange-600 to-orange-700'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Smartphone className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">
+                    {isCreatingOrangeMoney
+                      ? 'Créer la configuration Orange Money'
+                      : `Clés API Orange Money - Mode ${orangeMoneyFormData.mode.toUpperCase()}`}
+                  </h2>
+                  <p className="text-sm text-white/80">
+                    {isCreatingOrangeMoney
+                      ? 'Saisissez vos clés API pour initialiser Orange Money'
+                      : orangeMoneyFormData.mode === 'test'
+                        ? 'Configuration pour les transactions de test'
+                        : '⚠️ Configuration pour les transactions RÉELLES'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOrangeMoneyModalOpen(false)}
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {isCreatingOrangeMoney && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mode</label>
+                  <select
+                    value={orangeMoneyFormData.mode}
+                    onChange={(e) => setOrangeMoneyFormData({ ...orangeMoneyFormData, mode: e.target.value as 'test' | 'live' })}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  >
+                    <option value="test">TEST - Transactions fictives</option>
+                    <option value="live">LIVE - Paiements réels</option>
+                  </select>
+                </div>
+              )}
+              {!isCreatingOrangeMoney && orangeMoneyFormData.mode === 'live' && (
+                <div className="bg-orange-50 border-2 border-orange-400 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-orange-900">Mode Production</p>
+                      <p className="text-sm text-orange-800 mt-1">
+                        Ces clés seront utilisées pour traiter les paiements réels. Assurez-vous d'utiliser
+                        les clés de production fournies par Orange Money.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Client ID */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Client ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={orangeMoneyFormData.clientId}
+                  onChange={(e) => setOrangeMoneyFormData({ ...orangeMoneyFormData, clientId: e.target.value })}
+                  className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all font-mono text-sm"
+                  placeholder="Client ID Orange Money"
+                />
+              </div>
+
+              {/* Client Secret */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Client Secret <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={orangeMoneyFormData.clientSecret}
+                  onChange={(e) => setOrangeMoneyFormData({ ...orangeMoneyFormData, clientSecret: e.target.value })}
+                  className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all font-mono text-sm"
+                  placeholder="Client Secret Orange Money"
+                />
+              </div>
+
+              {/* Merchant Code */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Merchant Code <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={orangeMoneyFormData.merchantCode}
+                  onChange={(e) => setOrangeMoneyFormData({ ...orangeMoneyFormData, merchantCode: e.target.value })}
+                  className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all font-mono text-sm"
+                  placeholder="Code Marchand Orange Money"
+                />
+              </div>
+
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs">i</span>
+                  </div>
+                  <div className="text-sm text-orange-900">
+                    <p className="font-semibold mb-1">Comment obtenir ces clés ?</p>
+                    <ol className="list-decimal list-inside space-y-1 text-orange-800">
+                      <li>Contactez Orange Money Business pour obtenir vos clés API</li>
+                      <li>Vous recevrez un Client ID, un Client Secret et un Merchant Code</li>
+                      <li>Obtenez des clés séparées pour le mode TEST et LIVE</li>
+                      <li>Copiez les clés correspondantes dans les champs ci-dessus</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-6 border-t border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 bg-gray-50">
+              <AdminButton
+                onClick={() => setIsOrangeMoneyModalOpen(false)}
+                variant="secondary"
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                Annuler
+              </AdminButton>
+              <AdminButton
+                onClick={handleSaveOrangeMoneyKeys}
+                variant="primary"
+                size="lg"
+                className="gap-2 w-full sm:w-auto"
+              >
+                <Save className="w-4 h-4" />
+                {isCreatingOrangeMoney ? 'Créer la configuration' : 'Sauvegarder les clés'}
               </AdminButton>
             </div>
           </div>
