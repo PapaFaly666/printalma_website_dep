@@ -172,6 +172,9 @@ import PaymentSuccessPageNew from './pages/payment/PaymentSuccessPage';
 import PaymentFailedPageNew from './pages/payment/PaymentFailedPage';
 import PaymentStatusHandler from './components/payment/PaymentStatusHandler';
 
+// 🍊 Page de paiement Orange Money avec polling
+import OrangeMoneyPaymentPage from './pages/payment/OrangeMoneyPaymentPage';
+
 // Page publique pour afficher les produits d'un thème
 import PublicThemeProductsPage from './pages/ThemeProductsPage';
 
@@ -315,6 +318,9 @@ function App() {
                 <Route path='/payment/failed' element={<PaymentFailedPageNew />} />
                 <Route path='/payment/cancel' element={<PaymentFailedPageNew />} />
                 <Route path='/payment/status' element={<PaymentStatusHandler />} />
+
+                {/* Route de paiement Orange Money avec polling automatique */}
+                <Route path='/payment/orange-money' element={<OrangeMoneyPaymentPage />} />
 
                 {/* Routes de paiement PayTech (compatibilité - anciennes pages) */}
                 <Route path='/paytech/success' element={<PaymentSuccessPage />} />

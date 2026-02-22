@@ -77,7 +77,8 @@ export const CustomizationPreview: React.FC<CustomizationPreviewProps> = ({
     if (!imageLoaded || !containerRef.current) return;
 
     const calculateDisplaySize = () => {
-      const container = containerRef.current!.getBoundingClientRect();
+      if (!containerRef.current) return; // Guard contre null pendant ResizeObserver
+      const container = containerRef.current.getBoundingClientRect();
 
       // ✅ CHANGEMENT CLÉ: Utiliser les dimensions du conteneur directement
       // comme ProductDesignEditor (ligne 1341, 1343-1344)

@@ -1470,7 +1470,7 @@ const ModernOrderFormPage: React.FC = () => {
 
       const { qrCode, deepLinks, reference } = orangePaymentResult.data;
 
-      // 7. STOCKER LES DONNÉES ORANGE MONEY POUR LA PAGE DE CONFIRMATION
+      // 7. STOCKER LES DONNÉES ORANGE MONEY POUR LA PAGE DE PAIEMENT
       const orangeMoneyData = {
         qrCode,
         deepLinks,
@@ -1480,12 +1480,12 @@ const ModernOrderFormPage: React.FC = () => {
         timestamp: Date.now()
       };
 
-      // Sauvegarder dans localStorage pour affichage sur OrderConfirmationPage
+      // Sauvegarder dans localStorage pour affichage sur la page de paiement
       localStorage.setItem('orangeMoneyPayment', JSON.stringify(orangeMoneyData));
 
-      // Rediriger vers la page de confirmation avec paramètre Orange Money
-      navigate(`/order-confirmation?orderNumber=${orderResponse.data.orderNumber}&paymentMethod=ORANGE_MONEY&totalAmount=${totalAmount}&email=${encodeURIComponent(formData.email || '')}`);
-      console.log('✅ Redirection vers page de confirmation Orange Money');
+      // Rediriger vers la page de paiement Orange Money avec polling automatique (1 seconde)
+      navigate(`/payment/orange-money?orderNumber=${orderResponse.data.orderNumber}`);
+      console.log('✅ Redirection vers page de paiement Orange Money avec polling');
 
     } catch (error: any) {
       console.error('=== ERREUR PAIEMENT ORANGE MONEY ===');

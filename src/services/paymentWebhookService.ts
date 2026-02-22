@@ -80,6 +80,47 @@ export class PaymentWebhookService {
   }
 
   /**
+   * Vérifier le statut d'un paiement Orange Money via orderNumber
+   */
+  async verifyOrangeMoneyStatus(orderNumber: string): Promise<OrderStatusResponse> {
+    try {
+      console.log(`🍊 [Webhook] Vérification du statut Orange Money pour: ${orderNumber}`);
+
+      const response = await apiClient.get<any>(
+        `/orange-money/payment-status/${orderNumber}`
+      );
+
+      console.log('📊 [Webhook] Statut Orange Money:', response.data);
+
+      // Vérifier si une redirection est nécessaire
+      if (response.data.shouldRedirect) {
+        console.log(`🔀 [Webhook] Redirection nécessaire: ${response.data.redirectUrl}`);
+      }
+
+      return {
+        success: response.data.success !== false,
+        message: response.data.message || 'Statut récupéré avec succès',
+        order: {
+          orderNumber: response.data.orderNumber,
+          paymentStatus: response.data.paymentStatus,
+          transactionId: response.data.transactionId,
+          paymentMethod: response.data.paymentMethod,
+          totalAmount: response.data.totalAmount,
+          status: response.data.orderStatus,
+          shouldRedirect: response.data.shouldRedirect,
+          redirectUrl: response.data.redirectUrl,
+        },
+      };
+    } catch (error: any) {
+      console.error('❌ [Webhook] Erreur vérification Orange Money:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Erreur lors de la vérification Orange Money',
+      };
+    }
+  }
+
+  /**
    * Vérifier le statut d'un paiement via le token PayDunya
    */
   async verifyPaymentByToken(token: string): Promise<PaymentStatusResponse> {
