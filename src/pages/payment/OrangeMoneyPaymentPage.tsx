@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, XCircle, Loader2, ArrowLeft, Home, Clock, ExternalLink } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, ArrowLeft, Home, Clock, ExternalLink, Ban } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { paymentWebhookService } from '../../services/paymentWebhookService';
 import { PaymentStatus } from '../../types/payment';
+import { apiClient } from '../../lib/api';
 
 const OrangeMoneyPaymentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const OrangeMoneyPaymentPage: React.FC = () => {
   const [orderData, setOrderData] = useState<any>(null);
   const [error, setError] = useState<string>('');
   const [attempts, setAttempts] = useState(0);
+  const [isCancelling, setIsCancelling] = useState(false);
   const maxAttempts = 180; // 3 minutes (toutes les secondes)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -171,6 +173,31 @@ const OrangeMoneyPaymentPage: React.FC = () => {
     navigate('/my-orders');
   };
 
+  const handleCancelPayment = async () => {
+    if (!orderNumber) return;
+
+    setIsCancelling(true);
+    console.log(`🚫 [OM Payment] Annulation du paiement pour ${orderNumber}`);
+
+    try {
+      await apiClient.post(`/orange-money/cancel-payment/${orderNumber}`);
+      console.log('✅ [OM Payment] Paiement annulé');
+
+      // Arrêter le polling
+      stopPolling();
+
+      // Afficher l'état échoué
+      setPaymentStatus(PaymentStatus.CANCELLED);
+      setIsVerifying(false);
+      setError('Vous avez annulé le paiement');
+    } catch (error: any) {
+      console.error('❌ [OM Payment] Erreur annulation:', error);
+      setError(error.response?.data?.message || 'Erreur lors de l\'annulation');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   // États finaux: PAID, FAILED, CANCELLED
   const isFinalState = paymentStatus === PaymentStatus.PAID ||
                        paymentStatus === PaymentStatus.FAILED ||
@@ -274,6 +301,35 @@ const OrangeMoneyPaymentPage: React.FC = () => {
           <p className="text-xs text-gray-500">
             ⏱️ Vérification automatique toutes les secondes
           </p>
+
+          {/* Bouton annuler après 60 secondes */}
+          {attempts >= 60 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-sm text-gray-600 mb-3 text-center">
+                Le paiement prend trop de temps ?
+              </p>
+              <button
+                onClick={handleCancelPayment}
+                disabled={isCancelling}
+                className="w-full px-6 py-3 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Annulation en cours...
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-5 h-5" />
+                    Annuler ce paiement
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Vous pourrez réessayer après l'annulation
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
