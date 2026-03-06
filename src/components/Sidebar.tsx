@@ -40,17 +40,19 @@ import {
     Wallet,
     Banknote,
     PackageSearch,
-    Star,
     Truck,
     Sticker,
     Image,
-    Landmark
+    Landmark,
+    Shield
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { cn } from '../lib/utils';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import passwordResetService from '../services/passwordResetService';
+import { useSidebarCounts } from '../hooks/useSidebarCounts';
+import usePermissions from '../hooks/usePermissions';
 
 interface NavItemProps {
     icon: React.ReactNode;
@@ -89,13 +91,16 @@ export default function Sidebar() {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout, isAdmin, isSuperAdmin, isVendeur } = useAuth();
+    const { counts, loading: countsLoading } = useSidebarCounts();
+    const { hasPermission, hasAnyPermission } = usePermissions();
 
     // Utiliser les vraies données utilisateur ou des données par défaut
     const adminUser = user ? {
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
-        role: user.role === 'SUPERADMIN' ? 'Super Administrateur' : 'Administrateur',
-        avatarUrl: undefined // Peut être ajouté plus tard
+        // Utiliser roleDisplay si disponible, sinon fallback vers l'ancien système
+        role: user.roleDisplay || (user.role === 'SUPERADMIN' ? 'Super Administrateur' : 'Administrateur'),
+        avatarUrl: user.profile_photo_url || undefined
     } : {
         name: "Admin User",
         email: "admin@example.com",
@@ -169,10 +174,6 @@ export default function Sidebar() {
             setActiveItem('categories');
         } else if (location.pathname.includes('/admin/design-categories')) {
             setActiveItem('design-categories');
-        } else if (location.pathname.includes('/admin/featured-themes')) {
-            setActiveItem('featured-themes');
-        } else if (location.pathname.includes('/admin/featured-designers')) {
-            setActiveItem('featured-designers');
         } else if (location.pathname.includes('/admin/orders')) {
             setActiveItem('orders');
         } else if (location.pathname.includes('/admin/livraison')) {
@@ -199,6 +200,8 @@ export default function Sidebar() {
             setActiveItem('users-create');
         } else if (location.pathname.includes('/admin/users')) {
             setActiveItem('users');
+        } else if (location.pathname.includes('/admin/roles')) {
+            setActiveItem('roles');
         }
         // Vendor routes
         else if (location.pathname.includes('/vendeur/dashboard')) {
@@ -406,10 +409,13 @@ export default function Sidebar() {
                     {/* Admin Navigation */}
                     {(isAdmin() || isSuperAdmin()) && (
                         <>
+                    {/* Groupe Produits - visible si au moins une permission liée aux produits */}
+                    {(isSuperAdmin() || hasAnyPermission(['products.mockups.view', 'products.categories.view', 'products.themes.view', 'products.stock.view', 'users.vendors.view', 'trash.view'])) && (
                     <NavGroup
                         title="Produits"
                         collapsed={collapsed && !isMobile}
                     >
+                        {/* Tableau de bord - toujours visible pour les admins */}
                         <NavItem
                             icon={<BarChart3 size={18} />}
                             label="Tableau de bord"
@@ -420,18 +426,19 @@ export default function Sidebar() {
                             textColor=""
                         />
 
+                        {(isSuperAdmin() || hasPermission('products.mockups.view')) && (
                         <NavItem
                             icon={<Package size={18} />}
                                     label="Mockups"
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'products'}
                             onClick={() => handleNavigation('products')}
-                            badge="24"
+                            badge={countsLoading ? '...' : counts.mockupsCount.toString()}
                             textColor=""
                         />
+                        )}
 
-
-
+                        {(isSuperAdmin() || hasPermission('products.categories.view')) && (
                         <NavItem
                             icon={<Tag size={18} />}
                             label="Catégories"
@@ -441,6 +448,9 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        )}
+
+                        {(isSuperAdmin() || hasPermission('products.themes.view')) && (
                         <NavItem
                             icon={<Palette size={18} />}
                             label="Thèmes"
@@ -450,24 +460,9 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
-                        <NavItem
-                            icon={<Star size={18} />}
-                            label="Thèmes en Vedette"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'featured-themes'}
-                            onClick={() => handleNavigation('featured-themes')}
-                            badge=""
-                            textColor=""
-                        />
-                        <NavItem
-                            icon={<User size={18} />}
-                            label="Designers"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'featured-designers'}
-                            onClick={() => handleNavigation('featured-designers')}
-                            badge=""
-                            textColor=""
-                        />
+                        )}
+
+                        {(isSuperAdmin() || hasPermission('products.stock.view')) && (
                         <NavItem
                             icon={<PackageSearch size={18} />}
                             label="Stock"
@@ -477,7 +472,9 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        )}
 
+                        {(isSuperAdmin() || hasPermission('users.vendors.view')) && (
                         <NavItem
                             icon={<Users size={18} />}
                             label="Vendeurs"
@@ -487,6 +484,9 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        )}
+
+                        {(isSuperAdmin() || hasPermission('trash.view')) && (
                         <NavItem
                             icon={<Trash2 size={18} />}
                             label="Corbeille"
@@ -496,33 +496,30 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        )}
                     </NavGroup>
+                    )}
 
+                    {/* Groupe Validation - visible si au moins une permission validation */}
+                    {(isSuperAdmin() || hasAnyPermission(['validation.designs.view', 'validation.auto.view'])) && (
                     <NavGroup
                         title="Validation"
                         collapsed={collapsed && !isMobile}
                     >
+                        {(isSuperAdmin() || hasPermission('validation.designs.view')) && (
                         <NavItem
                             icon={<CheckCircle size={18} />}
                                     label="Design"
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'design-validation'}
                             onClick={() => handleNavigation('design-validation')}
-                            badge="5"
+                            badge={countsLoading ? '...' : (counts.designValidationCount > 0 ? counts.designValidationCount.toString() : '')}
                             badgeColor="yellow"
                             textColor=""
                         />
+                        )}
 
-                        <NavItem
-                            icon={<Package size={18} />}
-                            label="Produits"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'product-validation'}
-                            onClick={() => handleNavigation('product-validation')}
-                            badge=""
-                            textColor=""
-                        />
-
+                        {(isSuperAdmin() || hasPermission('validation.auto.view')) && (
                         <NavItem
                             icon={<span className="text-base">🤖</span>}
                             label="Auto-validation"
@@ -532,12 +529,17 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        )}
                     </NavGroup>
+                    )}
 
+                    {/* Groupe Commandes - visible si au moins une permission commandes */}
+                    {(isSuperAdmin() || hasAnyPermission(['orders.view', 'orders.delivery.view'])) && (
                     <NavGroup
                         title="Commandes"
                         collapsed={collapsed && !isMobile}
                     >
+                        {(isSuperAdmin() || hasPermission('orders.view')) && (
                         <NavItem
                             icon={<ShoppingBag size={18} />}
                             label="Gestion des commandes"
@@ -547,6 +549,9 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        )}
+
+                        {(isSuperAdmin() || hasPermission('orders.delivery.view')) && (
                         <NavItem
                             icon={<Truck size={18} />}
                             label="Livraison"
@@ -556,13 +561,17 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        )}
                     </NavGroup>
+                    )}
 
-                    {/* Utilisateurs (Admins & Superadmins) */}
+                    {/* Groupe Utilisateurs - visible si au moins une permission utilisateurs */}
+                    {(isSuperAdmin() || hasAnyPermission(['users.admins.view', 'users.admins.create', 'users.admins.roles'])) && (
                     <NavGroup
                         title="Utilisateurs"
                         collapsed={collapsed && !isMobile}
                     >
+                        {(isSuperAdmin() || hasPermission('users.admins.view')) && (
                         <NavItem
                             icon={<Users size={18} />}
                             label="Admins & Superadmins"
@@ -572,8 +581,9 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
+                        )}
 
-                        {isSuperAdmin() && (
+                        {(isSuperAdmin() || hasPermission('users.admins.create')) && (
                             <NavItem
                                 icon={<User size={18} />}
                                 label="Créer utilisateur"
@@ -584,8 +594,23 @@ export default function Sidebar() {
                                 textColor=""
                             />
                         )}
-                    </NavGroup>
 
+                        {(isSuperAdmin() || hasPermission('users.admins.roles')) && (
+                            <NavItem
+                                icon={<Shield size={18} />}
+                                label="Rôles & Permissions"
+                                collapsed={collapsed && !isMobile}
+                                active={activeItem === 'roles'}
+                                onClick={() => handleNavigation('roles')}
+                                badge=""
+                                textColor=""
+                            />
+                        )}
+                    </NavGroup>
+                    )}
+
+                    {/* Groupe Contenu - visible si permission content */}
+                    {(isSuperAdmin() || hasPermission('content.view')) && (
                     <NavGroup
                         title="Contenu"
                         collapsed={collapsed && !isMobile}
@@ -600,7 +625,10 @@ export default function Sidebar() {
                             textColor=""
                         />
                     </NavGroup>
+                    )}
 
+                    {/* Groupe Statistiques - visible si permission analytics */}
+                    {(isSuperAdmin() || hasPermission('statistics.analytics')) && (
                     <NavGroup
                         title="Statistiques"
                         collapsed={collapsed && !isMobile}
@@ -614,24 +642,29 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
-
                     </NavGroup>
+                    )}
 
+                    {/* Groupe Paiements - visible si au moins une permission paiements */}
+                    {(isSuperAdmin() || hasAnyPermission(['payments.requests.view', 'payments.methods.view'])) && (
                     <NavGroup
                         title="Paiements"
                         collapsed={collapsed && !isMobile}
                     >
+                        {(isSuperAdmin() || hasPermission('payments.requests.view')) && (
                         <NavItem
                             icon={<CreditCard size={18} />}
                             label="Demandes"
                             collapsed={collapsed && !isMobile}
                             active={activeItem === 'payment-requests'}
                             onClick={() => handleNavigation('payment-requests')}
-                            badge="3"
+                            badge={countsLoading ? '...' : (counts.paymentRequestsCount > 0 ? counts.paymentRequestsCount.toString() : '')}
                             badgeColor="red"
                             textColor=""
                         />
+                        )}
 
+                        {(isSuperAdmin() || hasPermission('payments.methods.view')) && (
                         <NavItem
                             icon={<Landmark size={18} />}
                             label="Moyens de paiement"
@@ -641,8 +674,9 @@ export default function Sidebar() {
                             badge=""
                             textColor=""
                         />
-
+                        )}
                     </NavGroup>
+                    )}
                         </>
                     )}
 
@@ -815,8 +849,8 @@ export default function Sidebar() {
                         textColor="text-[#049be5]"
                     />
 
-                    {/* Paramètres - seulement pour les admins */}
-                    {(isAdmin() || isSuperAdmin()) && (
+                    {/* Paramètres - visible si permission settings */}
+                    {(isSuperAdmin() || hasPermission('settings.view')) && (
                         <NavItem
                             icon={<Settings size={18} />}
                             label="Paramètres"

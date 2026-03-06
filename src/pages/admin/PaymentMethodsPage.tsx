@@ -15,7 +15,6 @@ import {
   XCircle,
   Key,
   ToggleLeft,
-  ToggleRight,
   AlertTriangle,
   Loader2
 } from 'lucide-react';
@@ -505,6 +504,30 @@ const PaymentMethodsPage: React.FC = () => {
             <h2 className="text-xl font-bold text-gray-900">Configuration PayDunya</h2>
             <p className="text-sm text-gray-600">Gestion des clés API et basculement test/live</p>
           </div>
+          {paydunyaConfig && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Activer PayDunya:</span>
+              <button
+                onClick={async () => {
+                  try {
+                    await PaymentConfigService.togglePaydunyaStatus(!paydunyaConfig.isActive);
+                    await refetchPaydunya();
+                  } catch (error: any) {
+                    alert(`❌ Erreur: ${error.message}`);
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  paydunyaConfig.isActive ? 'bg-green-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    paydunyaConfig.isActive ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
         </div>
 
         {paydunyaLoading ? (
@@ -706,6 +729,30 @@ const PaymentMethodsPage: React.FC = () => {
             <h2 className="text-xl font-bold text-gray-900">Configuration Orange Money</h2>
             <p className="text-sm text-gray-600">Gestion des clés API et basculement test/live</p>
           </div>
+          {orangeMoneyConfig && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Activer Orange Money:</span>
+              <button
+                onClick={async () => {
+                  try {
+                    await PaymentConfigService.toggleOrangeMoneyStatus(!orangeMoneyConfig.isActive);
+                    await refetchOrangeMoney();
+                  } catch (error: any) {
+                    alert(`❌ Erreur: ${error.message}`);
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  orangeMoneyConfig.isActive ? 'bg-green-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    orangeMoneyConfig.isActive ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
         </div>
 
         {orangeMoneyLoading ? (

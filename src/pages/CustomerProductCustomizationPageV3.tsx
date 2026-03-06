@@ -45,6 +45,7 @@ import Footer from '../components/Footer';
 import AIImageGenerator from '../components/ai-image-generator/AIImageGenerator';
 import SynchronizedStickerPreview from '../components/SynchronizedStickerPreview';
 import ImageUploadModal from '../components/ImageUploadModal';
+import { prepareCustomizationData } from '../utils/canvasToDesignElements';
 
 // Fonction debounce pour l'auto-sauvegarde
 function debounce<T extends (...args: any[]) => any>(
@@ -859,6 +860,21 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
       };
       localStorage.setItem(storageKey, JSON.stringify(dataToSave));
 
+      // 🎨 Extraire les données visuelles du canvas DOM
+      let canvasData = null;
+      if (editorRef.current) {
+        const canvasElement = editorRef.current.getCanvasElement();
+        if (canvasElement) {
+          console.log('📊 [Customization] Extraction des données visuelles du canvas...');
+          canvasData = prepareCustomizationData(canvasElement);
+          console.log('✅ [Customization] Données extraites:', {
+            designElements: canvasData.designElements.length,
+            productImageUrl: canvasData.productImageUrl,
+            canvasDimensions: canvasData.canvasDimensions
+          });
+        }
+      }
+
       // Sauvegarder dans le backend pour la vue actuelle
       const customizationData = {
         productId: product.id,
@@ -866,12 +882,18 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
         viewId: selectedView.id,
         designElements: currentElements,
         sessionId: customizationService.getOrCreateSessionId(),
+        // 🆕 Ajouter les données visuelles extraites pour la génération Sharp
+        ...(canvasData && {
+          elementsByView: canvasData.elementsByView,
+          productImageUrl: canvasData.productImageUrl
+        })
       };
 
       console.log('💾 [Customization] Sauvegarde manuelle:', {
         viewKey,
         elementsCount: currentElements.length,
-        elements: currentElements.map(el => ({ id: el.id, type: el.type }))
+        elements: currentElements.map(el => ({ id: el.id, type: el.type })),
+        hasCanvasData: !!canvasData
       });
 
       const result = await customizationService.saveCustomization(customizationData);
@@ -880,11 +902,19 @@ const CustomerProductCustomizationPageV3: React.FC = () => {
 
       console.log('✅ Personnalisation sauvegardée:', result);
 
+      // Message de succès avec info sur le mockup
+      const mockupGenerated = result.finalImageUrlCustom || result.previewImageUrl;
       toast({
         title: '✅ Sauvegardé',
-        description: `${currentElements.length} élément(s) sauvegardé(s) en base de données (ID: ${result.id})`,
+        description: mockupGenerated
+          ? `${currentElements.length} élément(s) sauvegardé(s) - Mockup généré avec succès! (ID: ${result.id})`
+          : `${currentElements.length} élément(s) sauvegardé(s) en base de données (ID: ${result.id})`,
         duration: 3000
       });
+
+      if (mockupGenerated) {
+        console.log('🖼️ [Customization] Mockup généré:', mockupGenerated);
+      }
     } catch (error: any) {
       console.error('Erreur sauvegarde:', error);
       setSyncError(error.message || 'Erreur de sauvegarde');

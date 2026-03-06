@@ -93,6 +93,8 @@ export interface ProductDesignEditorRef {
   getSelectedElement: () => DesignElement | undefined;
   updateTextProperty: (property: string, value: any) => void;
   updateText: (text: string) => void;
+  // Exposition du canvas pour l'extraction des données visuelles
+  getCanvasElement: () => HTMLDivElement | null;
 }
 
 export const FONTS = [
@@ -356,7 +358,9 @@ export const ProductDesignEditor = React.forwardRef<ProductDesignEditorRef, Prod
     // Méthodes pour l'édition de texte
     getSelectedElement: () => elements.find(el => el.id === selectedElementId),
     updateTextProperty,
-    updateText
+    updateText,
+    // Méthode pour obtenir le canvas pour l'extraction
+    getCanvasElement: () => canvasRef.current
   }));
 
   // Générer un ID unique

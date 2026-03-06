@@ -61,6 +61,18 @@ const SecretAdminLoginPage = () => {
       console.log('Réponse du serveur:', data);
 
       if (response.ok) {
+        // Vérifier si l'OTP est requis
+        if (data.otpRequired) {
+          console.log('OTP requis, redirection vers la page de vérification');
+          navigate('/admin/verify-otp', {
+            state: {
+              email: formData.email,
+              from: '/admin'
+            }
+          });
+          return;
+        }
+
         console.log('Utilisateur connecté:', data.user);
         console.log('Rôle de l\'utilisateur:', data.user.role);
 

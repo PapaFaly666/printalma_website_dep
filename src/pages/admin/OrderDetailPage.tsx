@@ -591,7 +591,7 @@ if (loading) {
                       const { firstName, lastName } = parseShippingName(order.shippingName);
                       return `${firstName} ${lastName}`.trim() || order.shippingName;
                     }
-                    return `${order.user.firstName} ${order.user.lastName}`;
+                    return order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Client invité';
                   })()}
                 </div>
               </div>
@@ -975,7 +975,7 @@ if (loading) {
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Client</h3>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-11 w-11 ring-2 ring-gray-100">
-                    {order.user.photo_profil && <AvatarImage src={order.user.photo_profil} />}
+                    {order.user?.photo_profil && <AvatarImage src={order.user.photo_profil} />}
                     <AvatarFallback className="bg-gray-900 text-white text-sm font-medium">
                       {(() => {
                         // Utiliser shippingName si disponible, sinon user
@@ -983,7 +983,7 @@ if (loading) {
                           const { firstName, lastName } = parseShippingName(order.shippingName);
                           return `${firstName?.[0]?.toUpperCase() || ''}${lastName?.[0]?.toUpperCase() || ''}`;
                         }
-                        return `${order.user.firstName?.[0]?.toUpperCase() || ''}${order.user.lastName?.[0]?.toUpperCase() || ''}`;
+                        return `${order.user?.firstName?.[0]?.toUpperCase() || ''}${order.user?.lastName?.[0]?.toUpperCase() || ''}`;
                       })()}
                     </AvatarFallback>
                   </Avatar>
@@ -995,11 +995,11 @@ if (loading) {
                           const { firstName, lastName } = parseShippingName(order.shippingName);
                           return `${firstName} ${lastName}`.trim() || order.shippingName;
                         }
-                        return `${order.user.firstName} ${order.user.lastName}`;
+                        return order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Client invité';
                       })()}
                     </div>
                     <div className="text-sm text-gray-500 truncate">
-                      {order.email || order.user.email}
+                      {order.email || order.user?.email}
                     </div>
                   </div>
                 </div>

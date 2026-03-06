@@ -19,7 +19,8 @@ import {
   Edit3,
   Home,
   Globe,
-  Search
+  Search,
+  AlertCircle
 } from 'lucide-react';
 import { BiSolidUser } from 'react-icons/bi';
 import { IoLocationSharp } from 'react-icons/io5';
@@ -680,6 +681,8 @@ const ModernOrderFormPage: React.FC = () => {
 
   const [selectedPayment, setSelectedPayment] = useState<string>('paydunya');
   const [codEnabled, setCodEnabled] = useState<boolean>(true);
+  const [paydunyaEnabled, setPaydunyaEnabled] = useState<boolean>(true);
+  const [orangeMoneyEnabled, setOrangeMoneyEnabled] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<OrderFormData> & { delivery?: string; payment?: string }>({});
 
@@ -1212,17 +1215,37 @@ const ModernOrderFormPage: React.FC = () => {
     }
   }, [cartItems, navigate]);
 
-  // Charger le statut du paiement à la livraison
+  // Charger les méthodes de paiement actives
   useEffect(() => {
-    PaymentConfigService.getCodStatus()
-      .then(data => {
-        setCodEnabled(data.isEnabled);
-        // Si COD désactivé et sélectionné, basculer sur paydunya
-        if (!data.isEnabled) {
+    PaymentConfigService.getActivePaymentMethods()
+      .then(response => {
+        const methods = response.paymentMethods;
+
+        // Mettre à jour les états selon les méthodes actives
+        const paydunya = methods.find(m => m.provider === 'PAYDUNYA');
+        const orangeMoney = methods.find(m => m.provider === 'ORANGE_MONEY');
+        const cod = methods.find(m => m.provider === 'CASH_ON_DELIVERY');
+
+        setPaydunyaEnabled(paydunya?.isActive || false);
+        setOrangeMoneyEnabled(orangeMoney?.isActive || false);
+        setCodEnabled(cod?.isActive || false);
+
+        // Sélectionner automatiquement la première méthode active
+        if (paydunya?.isActive) {
           setSelectedPayment('paydunya');
+        } else if (orangeMoney?.isActive) {
+          setSelectedPayment('orange');
+        } else if (cod?.isActive) {
+          setSelectedPayment('cash');
         }
       })
-      .catch(() => setCodEnabled(true)); // Actif par défaut en cas d'erreur
+      .catch(err => {
+        console.error('❌ Erreur chargement méthodes de paiement:', err);
+        // En cas d'erreur, tout activer par défaut
+        setPaydunyaEnabled(true);
+        setOrangeMoneyEnabled(true);
+        setCodEnabled(true);
+      });
   }, []);
 
   // Transformer les données du produit pour SimpleProductPreview
@@ -1853,6 +1876,35 @@ const ModernOrderFormPage: React.FC = () => {
 
   // Soumission finale
   const handleFinalSubmit = async () => {
+    // Vérifier que la méthode sélectionnée est bien activée
+    if (selectedPayment === 'paydunya' && !paydunyaEnabled) {
+      toast({
+        title: "Méthode de paiement indisponible",
+        description: "PayDunya est actuellement désactivé. Veuillez choisir une autre méthode de paiement.",
+        variant: "destructive",
+      });
+      setCurrentStep('payment');
+      return;
+    }
+    if (selectedPayment === 'orange' && !orangeMoneyEnabled) {
+      toast({
+        title: "Méthode de paiement indisponible",
+        description: "Orange Money est actuellement désactivé. Veuillez choisir une autre méthode de paiement.",
+        variant: "destructive",
+      });
+      setCurrentStep('payment');
+      return;
+    }
+    if (selectedPayment === 'cash' && !codEnabled) {
+      toast({
+        title: "Méthode de paiement indisponible",
+        description: "Le paiement à la livraison est actuellement désactivé. Veuillez choisir une autre méthode de paiement.",
+        variant: "destructive",
+      });
+      setCurrentStep('payment');
+      return;
+    }
+
     if (selectedPayment === 'paydunya') {
       await processPayDunyaPayment();
     } else if (selectedPayment === 'orange') {
@@ -2606,65 +2658,69 @@ const ModernOrderFormPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-3">
-                      <label
-                        className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedPayment === 'paydunya'
-                            ? 'border-[#14689a] bg-[#14689a]/5'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="paydunya"
-                            checked={selectedPayment === 'paydunya'}
-                            onChange={(e) => setSelectedPayment(e.target.value)}
-                            className="mt-1 w-4 h-4"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-bold text-gray-900 text-sm">PayDunya</p>
-                              <span className="px-2 py-0.5 bg-[#14689a]/10 text-[#14689a] text-xs font-medium rounded">
-                                Recommandé
-                              </span>
+                      {paydunyaEnabled && (
+                        <label
+                          className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedPayment === 'paydunya'
+                              ? 'border-[#14689a] bg-[#14689a]/5'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="radio"
+                              name="payment"
+                              value="paydunya"
+                              checked={selectedPayment === 'paydunya'}
+                              onChange={(e) => setSelectedPayment(e.target.value)}
+                              className="mt-1 w-4 h-4"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-bold text-gray-900 text-sm">PayDunya</p>
+                                <span className="px-2 py-0.5 bg-[#14689a]/10 text-[#14689a] text-xs font-medium rounded">
+                                  Recommandé
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600">
+                                Paiement sécurisé avec toutes les principales méthodes mobile et bancaire
+                              </p>
                             </div>
-                            <p className="text-xs text-gray-600">
-                              Paiement sécurisé avec toutes les principales méthodes mobile et bancaire
-                            </p>
                           </div>
-                        </div>
-                      </label>
+                        </label>
+                      )}
 
-                      <label
-                        className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedPayment === 'orange'
-                            ? 'border-orange-500 bg-orange-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="orange"
-                            checked={selectedPayment === 'orange'}
-                            onChange={(e) => setSelectedPayment(e.target.value)}
-                            className="mt-1 w-4 h-4"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-bold text-gray-900 text-sm">Orange Money</p>
-                              <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs font-medium rounded">
-                                QR Code + Deeplink
-                              </span>
+                      {orangeMoneyEnabled && (
+                        <label
+                          className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedPayment === 'orange'
+                              ? 'border-orange-500 bg-orange-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="radio"
+                              name="payment"
+                              value="orange"
+                              checked={selectedPayment === 'orange'}
+                              onChange={(e) => setSelectedPayment(e.target.value)}
+                              className="mt-1 w-4 h-4"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-bold text-gray-900 text-sm">Orange Money</p>
+                                <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs font-medium rounded">
+                                  QR Code + Deeplink
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600">
+                                Paiement rapide par QR Code (desktop) ou application mobile (MAX IT / Orange Money)
+                              </p>
                             </div>
-                            <p className="text-xs text-gray-600">
-                              Paiement rapide par QR Code (desktop) ou application mobile (MAX IT / Orange Money)
-                            </p>
                           </div>
-                        </div>
-                      </label>
+                        </label>
+                      )}
 
                       {codEnabled && (
                         <label
@@ -2691,6 +2747,21 @@ const ModernOrderFormPage: React.FC = () => {
                             </div>
                           </div>
                         </label>
+                      )}
+
+                      {/* Message si aucune méthode disponible */}
+                      {!paydunyaEnabled && !orangeMoneyEnabled && !codEnabled && (
+                        <div className="p-4 border-2 border-red-200 rounded-lg bg-red-50">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-bold text-red-900 text-sm mb-1">Aucune méthode de paiement disponible</p>
+                              <p className="text-xs text-red-700">
+                                Toutes les méthodes de paiement sont temporairement désactivées. Veuillez contacter le support.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
 
@@ -2812,7 +2883,11 @@ const ModernOrderFormPage: React.FC = () => {
                           </button>
                         </div>
                         <p className="text-xs sm:text-sm text-gray-900 font-medium">
-                          {selectedPayment === 'paydunya' ? 'PayDunya - Paiement sécurisé' : 'Paiement à la livraison'}
+                          {selectedPayment === 'paydunya'
+                            ? 'PayDunya - Paiement sécurisé'
+                            : selectedPayment === 'orange'
+                            ? 'Orange Money - QR Code + Deeplink'
+                            : 'Paiement à la livraison'}
                         </p>
                       </div>
 

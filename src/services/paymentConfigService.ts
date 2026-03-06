@@ -174,38 +174,17 @@ export class PaymentConfigService {
    * Active ou désactive le paiement à la livraison (admin)
    */
   static async toggleCodStatus(isActive: boolean): Promise<{ isEnabled: boolean }> {
-    const response = await fetch(`${API_URL}/admin/payment-config/cash-on-delivery/toggle`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isActive })
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Erreur lors de la mise à jour' }));
-      throw new Error(error.message);
-    }
-    return response.json();
+    // Utiliser le nouvel endpoint standardisé
+    const result = await this.togglePaymentMethod('CASH_ON_DELIVERY', isActive);
+    return { isEnabled: result.isActive };
   }
 
   /**
    * Active ou désactive Paydunya
    */
   static async togglePaydunyaStatus(isActive: boolean): Promise<any> {
-    const response = await fetch(`${API_URL}/admin/payment-config/paydunya/toggle`, {
-      method: 'POST',
-      credentials: 'include', // Authentification via cookies
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ isActive })
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Erreur lors du changement de statut' }));
-      throw new Error(error.message);
-    }
-
-    return response.json();
+    // Utiliser le nouvel endpoint standardisé
+    return this.togglePaymentMethod('PAYDUNYA', isActive);
   }
 
   // ================== ORANGE MONEY ==================
@@ -332,7 +311,47 @@ export class PaymentConfigService {
    * Active ou désactive Orange Money
    */
   static async toggleOrangeMoneyStatus(isActive: boolean): Promise<any> {
-    const response = await fetch(`${API_URL}/admin/payment-config/ORANGE_MONEY`, {
+    // Utiliser le nouvel endpoint standardisé
+    return this.togglePaymentMethod('ORANGE_MONEY', isActive);
+  }
+
+  // ================== NOUVEAU SYSTÈME DE GESTION DES MÉTHODES ==================
+
+  /**
+   * Récupère toutes les méthodes de paiement avec leur statut (Admin)
+   */
+  static async getAllPaymentMethods(): Promise<Array<{
+    provider: string;
+    isActive: boolean;
+    mode?: string;
+    label: string;
+  }>> {
+    const response = await fetch(`${API_URL}/admin/payment-methods`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Erreur lors de la récupération des méthodes de paiement' }));
+      throw new Error(error.message);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Active ou désactive une méthode de paiement (Admin)
+   * @param provider - 'PAYDUNYA' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY'
+   * @param isActive - true pour activer, false pour désactiver
+   */
+  static async togglePaymentMethod(provider: string, isActive: boolean): Promise<{
+    provider: string;
+    isActive: boolean;
+    message: string;
+  }> {
+    const response = await fetch(`${API_URL}/admin/payment-methods/${provider}/toggle`, {
       method: 'PATCH',
       credentials: 'include',
       headers: {
@@ -342,8 +361,28 @@ export class PaymentConfigService {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Erreur lors du changement de statut Orange Money' }));
+      const error = await response.json().catch(() => ({ message: 'Erreur lors de la mise à jour' }));
       throw new Error(error.message);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Récupère les méthodes de paiement actives (Public)
+   */
+  static async getActivePaymentMethods(): Promise<{
+    paymentMethods: Array<{
+      provider: string;
+      isActive: boolean;
+      mode?: string;
+      label: string;
+    }>
+  }> {
+    const response = await fetch(`${API_URL}/payment-methods`);
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des méthodes actives');
     }
 
     return response.json();

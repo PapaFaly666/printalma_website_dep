@@ -51,6 +51,17 @@ const VendorLoginClassicPage = () => {
       const data = await response.json();
 
       if (response.ok) {
+        // Vérifier si l'OTP est requis
+        if (data.otpRequired) {
+          navigate('/vendeur/verify-otp', {
+            state: {
+              email: formData.email,
+              from: data.user?.status === false ? '/vendeur/pending' : '/vendeur/dashboard'
+            }
+          });
+          return;
+        }
+
         if (data.user.status === false) {
           navigate('/vendeur/pending');
         } else {

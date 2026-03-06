@@ -686,7 +686,11 @@ export const VendorDesignsPage: React.FC = () => {
             <div className="absolute top-2 right-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" className="bg-white/20 backdrop-blur-sm text-white hover:bg-white/30">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="bg-gray-900/80 backdrop-blur-sm text-white hover:bg-gray-900 border border-white/20 shadow-lg"
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>

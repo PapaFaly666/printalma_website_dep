@@ -55,10 +55,24 @@ const MixedLoginPage = () => {
       const data = await response.json();
 
       if (response.ok) {
+        // Vérifier si l'OTP est requis
+        if (data.otpRequired) {
+          const redirectPath = isAdminMode ? '/admin/verify-otp' : '/vendeur/verify-otp';
+          const fromPath = isAdminMode ? '/admin/dashboard' : '/vendeur/dashboard';
+
+          navigate(redirectPath, {
+            state: {
+              email: formData.email,
+              from: fromPath
+            }
+          });
+          return;
+        }
+
         // Vérifier le rôle de l'utilisateur
         if (isAdminMode) {
           // Mode admin : vérifier que c'est bien un admin
-          if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
+          if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'SUPERADMIN') {
             navigate('/admin/dashboard');
           } else {
             setErrors({ submit: 'Accès administrateur requis. Cette page est réservée aux administrateurs.' });
@@ -71,7 +85,7 @@ const MixedLoginPage = () => {
             } else {
               navigate('/vendeur/dashboard');
             }
-          } else if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
+          } else if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'SUPERADMIN') {
             // Redirection silencieuse vers admin dashboard
             navigate('/admin/dashboard');
           } else {

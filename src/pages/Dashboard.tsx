@@ -69,21 +69,21 @@ const Dashboard = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Chiffre d'affaires annuel</CardTitle>
+              <CardTitle className="text-sm font-medium">CA Annuel (Commandes)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(dashboardData.financialStats.thisYearRevenue)}</div>
-              <p className={`text-xs ${positiveTextColor}`}>Gain annuel</p>
+              <p className={`text-xs ${positiveTextColor}`}>Montant total commandes année</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Chiffre d'affaires mensuel</CardTitle>
+              <CardTitle className="text-sm font-medium">CA Mensuel (Commandes)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(dashboardData.financialStats.thisMonthRevenue)}</div>
-              <p className={`text-xs ${positiveTextColor}`}>Gain mensuel</p>
+              <p className={`text-xs ${positiveTextColor}`}>Montant total commandes mois</p>
             </CardContent>
           </Card>
 

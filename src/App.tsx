@@ -53,6 +53,7 @@ import VendorLoginMethodsPage from './pages/auth/VendorLoginMethodsPage';
 import VendorLoginClassicPage from './pages/auth/VendorLoginClassicPage';
 import AdminLoginPage from './pages/auth/AdminLoginPage';
 import SecretAdminLoginPage from './pages/auth/SecretAdminLoginPage';
+import OtpVerificationPage from './pages/auth/OtpVerificationPage';
 
 // Nouveaux composants de réinitialisation de mot de passe
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -98,6 +99,8 @@ import AppelDeFondsPage from './pages/AppelDeFondsPage';
 // Page paramètres admin
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminUserCreatePage from './pages/admin/AdminUserCreatePage';
+import RolesManagementPage from './pages/admin/RolesManagementPage';
 
 // Page de gestion du contenu
 import { ContentManagementPage } from './pages/admin/ContentManagementPage';
@@ -387,7 +390,8 @@ function App() {
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="analytics" element={<ProductAnalytics />} />
                   <Route path="users" element={<AdminUsersPage />} />
-                  <Route path="users/create" element={<AdminUsersPage />} />
+                  <Route path="users/create" element={<AdminUserCreatePage />} />
+                  <Route path="roles" element={<RolesManagementPage />} />
                   <Route path="content-init" element={<ContentInitializationPage />} />
                   <Route path="content-management" element={<ContentManagementPage />} />
                   <Route path='payment-requests' element={<AdminPaymentRequestsPage />} />
@@ -457,6 +461,11 @@ function App() {
                   </PublicRoute>
                 } />
 
+                {/* Vérification OTP Admin */}
+                <Route path='/admin/verify-otp' element={
+                  <OtpVerificationPage />
+                } />
+
                 {/* Route par défaut - redirection intelligente */}
                 <Route path='/dashboard' element={
                   <ProtectedRoute>
@@ -483,6 +492,11 @@ function App() {
                   <PublicRoute>
                     <VendorLoginPage />
                   </PublicRoute>
+                } />
+
+                {/* Vérification OTP Vendeur */}
+                <Route path='/vendeur/verify-otp' element={
+                  <OtpVerificationPage />
                 } />
 
                 {/* Inscription vendeur */}

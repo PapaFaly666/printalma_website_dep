@@ -51,8 +51,19 @@ const AdminLoginPage = () => {
       const data = await response.json();
 
       if (response.ok) {
+        // Vérifier si l'OTP est requis
+        if (data.otpRequired) {
+          navigate('/admin/verify-otp', {
+            state: {
+              email: formData.email,
+              from: '/admin/dashboard'
+            }
+          });
+          return;
+        }
+
         // Vérifier si l'utilisateur est bien un admin
-        if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
+        if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'SUPERADMIN') {
           navigate('/admin/dashboard');
         } else {
           setErrors({ submit: 'Accès réservé aux administrateurs' });

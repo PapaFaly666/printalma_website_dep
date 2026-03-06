@@ -5,14 +5,31 @@ export enum VendeurType {
   ARTISTE = 'ARTISTE'
 }
 
-export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'VENDEUR';
+export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'MODERATEUR' | 'SUPPORT' | 'COMPTABLE' | 'VENDEUR';
+
+// Interface pour un rôle personnalisé avec ses permissions
+export interface CustomRole {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  permissions: Array<{
+    id: number;
+    slug: string;
+    name: string;
+    module: string;
+    description?: string | null;
+  }>;
+}
 
 export interface User {
   id: number;
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  role: UserRole; // Role pour la logique backend (ADMIN, SUPERADMIN, VENDEUR)
+  roleDisplay?: string; // Nom d'affichage du rôle (ex: "Comptable", "Modérateur")
+  customRole?: CustomRole | null; // Rôle personnalisé avec permissions
   vendeur_type: VendeurType | null;
   status: boolean;
   must_change_password?: boolean;

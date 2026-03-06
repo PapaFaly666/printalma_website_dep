@@ -4,13 +4,10 @@ import {
   CheckCircle2,
   Loader2,
   ExternalLink,
-  Mail,
   Package,
-  Truck,
   ArrowLeft,
   AlertCircle,
   RefreshCw,
-  Sparkles,
   Clock,
   CreditCard,
   CheckCheck
@@ -22,7 +19,6 @@ import { usePaymentWebSocket } from '../hooks/usePaymentWebSocket';
 import { useCart } from '../contexts/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OrderService, Order } from '../services/orderService';
-import { OrderProductPreview } from '../components/order/OrderProductPreview';
 
 const OrderConfirmationPage: React.FC = () => {
   const navigate = useNavigate();
@@ -419,37 +415,6 @@ const OrderConfirmationPage: React.FC = () => {
     }
   };
 
-  // Fonction pour forcer une vérification manuelle du statut du paiement
-  const handleForceCheckPayment = async () => {
-    if (!token) {
-      console.log('❌ [OrderConfirmation] Aucun token disponible pour la vérification');
-      return;
-    }
-
-    console.log('🔍 [OrderConfirmation] Vérification manuelle forcée pour token:', token);
-    setPaymentStatus('checking');
-
-    try {
-      const response = await paymentStatusService.checkPaymentStatus(token);
-      console.log('📊 [OrderConfirmation] Résultat de la vérification forcée:', response);
-
-      if (response.status === PaymentStatus.PAID) {
-        console.log('✅ [OrderConfirmation] Paiement confirmé lors de la vérification forcée !');
-        setPaymentStatus('paid');
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 5000);
-      } else if (response.status === PaymentStatus.FAILED || response.status === PaymentStatus.CANCELLED) {
-        console.log('❌ [OrderConfirmation] Paiement vraiment échoué (vérification forcée)');
-        setPaymentStatus('failed');
-      } else {
-        console.log('⏳ [OrderConfirmation] Paiement toujours en attente (vérification forcée)');
-        setPaymentStatus('pending');
-      }
-    } catch (error) {
-      console.error('❌ [OrderConfirmation] Erreur lors de la vérification forcée:', error);
-      setPaymentStatus('pending');
-    }
-  };
 
   // Animation de confetti
   const ConfettiAnimation = () => (
@@ -530,16 +495,8 @@ const OrderConfirmationPage: React.FC = () => {
             className="bg-white rounded-3xl shadow-2xl overflow-hidden"
           >
 
-            {/* Header coloré avec icône de statut - Branding PrintAlma */}
-            <div className={`relative px-8 py-12 text-center ${
-              paymentStatus === 'paid'
-                ? 'bg-gradient-to-br from-emerald-500 to-green-600'
-                : paymentStatus === 'checking'
-                ? 'bg-[#049be5]'
-                : paymentStatus === 'failed'
-                ? 'bg-gradient-to-br from-red-500 to-rose-600'
-                : 'bg-gradient-to-br from-amber-500 to-orange-500'
-            }`}>
+            {/* Header simple avec icône de statut */}
+            <div className="relative px-8 py-12 text-center bg-gray-800">
 
               {/* Icône animée */}
               <AnimatePresence mode="wait">
@@ -615,149 +572,59 @@ const OrderConfirmationPage: React.FC = () => {
             {/* Contenu principal */}
             <div className="p-8 lg:p-12">
 
-              {/* Numéro de commande avec animation - PrintAlma Branding */}
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="bg-gradient-to-br from-[#049be5]/5 to-[#049be5]/10 rounded-2xl p-6 mb-8 border-2 border-[#049be5]/20 relative overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#049be5]/10 rounded-full blur-2xl" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#049be5]/5 rounded-full blur-2xl" />
-
-                <div className="relative flex items-center justify-between">
-                  <div className="flex-1">
+              {/* Numéro de commande */}
+              <div className="bg-gray-50 rounded-lg p-6 mb-8 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <Package className="w-5 h-5 text-[#049be5]" />
+                      <Package className="w-5 h-5 text-gray-600" />
                       <p className="text-sm font-medium text-gray-600">Numéro de commande</p>
                     </div>
-                    <p className="text-2xl sm:text-3xl font-bold text-[#049be5]">
+                    <p className="text-2xl font-bold text-gray-900">
                       {orderNumber}
                     </p>
                   </div>
-                  <motion.div
-                    animate={{ rotate: [0, 10, -10, 0] }}
-                    transition={{ repeat: Infinity, duration: 3 }}
-                  >
-                    <Sparkles className="w-8 h-8 text-[#049be5]" />
-                  </motion.div>
                 </div>
-              </motion.div>
+              </div>
 
               {/* Statut de vérification en cours */}
               <AnimatePresence mode="wait">
                 {paymentStatus === 'checking' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="mb-8 bg-gradient-to-r from-[#049be5]/5 to-[#049be5]/10 border-2 border-[#049be5]/30 rounded-2xl p-6 relative overflow-hidden"
-                  >
-                    {/* Animation de fond */}
-                    <motion.div
-                      animate={{
-                        x: ['-100%', '100%'],
-                      }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 2,
-                        ease: 'linear'
-                      }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-[#049be5]/10 to-transparent"
-                    />
-
-                    <div className="relative flex items-start gap-4">
-                      <div className="flex-shrink-0">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-                        >
-                          <Loader2 className="w-6 h-6 text-[#049be5]" />
-                        </motion.div>
-                      </div>
-
+                  <div className="mb-8 bg-gray-50 border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-start gap-4">
+                      <Loader2 className="w-6 h-6 text-gray-600 animate-spin flex-shrink-0" />
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <p className="text-sm font-semibold text-gray-900">
-                            Vérification automatique en cours
-                          </p>
-                          {wsConnected && (
-                            <motion.span
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200"
-                            >
-                              <motion.span
-                                animate={{ scale: [1, 1.2, 1] }}
-                                transition={{ repeat: Infinity, duration: 2 }}
-                                className="w-2 h-2 bg-emerald-500 rounded-full"
-                              />
-                              En direct
-                            </motion.span>
-                          )}
-                        </div>
-
-                        <p className="text-xs text-gray-600 mb-3">
+                        <p className="text-sm font-semibold text-gray-900 mb-2">
+                          Vérification automatique en cours
+                        </p>
+                        <p className="text-xs text-gray-600">
                           Nous vérifions votre paiement en temps réel. La page se mettra à jour automatiquement.
                         </p>
-
-                        {/* Points de chargement animés */}
-                        <div className="flex gap-1">
-                          {[0, 1, 2].map((i) => (
-                            <motion.div
-                              key={i}
-                              animate={{
-                                scale: [1, 1.5, 1],
-                                opacity: [0.5, 1, 0.5]
-                              }}
-                              transition={{
-                                repeat: Infinity,
-                                duration: 1.5,
-                                delay: i * 0.2
-                              }}
-                              className="w-2 h-2 bg-[#049be5] rounded-full"
-                            />
-                          ))}
-                        </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
 
                 {/* Paiement réussi */}
                 {paymentStatus === 'paid' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="mb-8 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6"
-                  >
+                  <div className="mb-8 bg-green-50 border border-green-200 rounded-lg p-6">
                     <div className="flex items-start gap-3">
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: 'spring', delay: 0.2 }}
-                      >
-                        <CheckCheck className="w-6 h-6 text-green-600" />
-                      </motion.div>
+                      <CheckCheck className="w-6 h-6 text-green-600 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-green-900 mb-1">
-                          Paiement confirmé avec succès !
+                          Paiement confirmé avec succès
                         </p>
                         <p className="text-xs text-green-700">
-                          Votre commande est maintenant en cours de traitement. Vous recevrez une confirmation par email.
+                          Votre commande est maintenant en cours de traitement.
                         </p>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
 
                 {/* Paiement échoué */}
                 {paymentStatus === 'failed' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="mb-8 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl p-6"
-                  >
+                  <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-6">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
                       <div className="flex-1">
@@ -768,16 +635,15 @@ const OrderConfirmationPage: React.FC = () => {
                           Votre commande est conservée. Choisissez une méthode ci-dessous pour payer.
                         </p>
 
-                        {/* Bouton réessayer rapide */}
                         {isCreatingRetry ? (
-                          <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-3 py-2 rounded-lg">
+                          <div className="flex items-center gap-2 text-xs text-gray-700 bg-gray-100 px-3 py-2 rounded-lg">
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Préparation d'un nouveau lien de paiement...
                           </div>
                         ) : (retryPaymentUrl || paymentUrl) ? (
                           <button
                             onClick={handleRetryPayment}
-                            className="w-full bg-[#049be5] hover:bg-[#0388cc] text-white px-4 py-3 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                            className="w-full bg-gray-800 hover:bg-gray-900 text-white px-4 py-3 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                           >
                             <CreditCard className="w-4 h-4" />
                             Réessayer le paiement
@@ -785,167 +651,16 @@ const OrderConfirmationPage: React.FC = () => {
                         ) : null}
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
               </AnimatePresence>
 
-              {/* Détails de la commande - PrintAlma Branding */}
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-4 mb-8"
-              >
-                <div className="flex items-center justify-between py-4 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#049be5]/10 rounded-full flex items-center justify-center">
-                      <Mail className="w-5 h-5 text-[#049be5]" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Email de confirmation</p>
-                      <p className="text-sm font-medium text-gray-900">{email}</p>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between py-4 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#049be5]/10 rounded-full flex items-center justify-center">
-                      <CreditCard className="w-5 h-5 text-[#049be5]" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Montant total</p>
-                      <p className="text-sm font-bold text-gray-900">
-                        {formatPrice(parseFloat(totalAmount) || orderData?.totalAmount || 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      paymentStatus === 'paid'
-                        ? 'bg-emerald-50'
-                        : paymentStatus === 'checking'
-                        ? 'bg-[#049be5]/10'
-                        : 'bg-amber-50'
-                    }`}>
-                      <Truck className={`w-5 h-5 ${
-                        paymentStatus === 'paid'
-                          ? 'text-emerald-600'
-                          : paymentStatus === 'checking'
-                          ? 'text-[#049be5]'
-                          : 'text-amber-600'
-                      }`} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Statut du paiement</p>
-                      <p className={`text-sm font-semibold ${
-                        paymentStatus === 'paid'
-                          ? 'text-emerald-600'
-                          : paymentStatus === 'checking'
-                          ? 'text-[#049be5]'
-                          : paymentStatus === 'failed'
-                          ? 'text-red-600'
-                          : 'text-amber-600'
-                      }`}>
-                        {paymentStatus === 'paid'
-                          ? 'Payé ✓'
-                          : paymentStatus === 'checking'
-                          ? 'Vérification...'
-                          : paymentStatus === 'failed'
-                          ? 'Échoué'
-                          : 'En attente'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Produits commandés */}
-              {!loadingOrder && orderData && orderData.orderItems && orderData.orderItems.length > 0 && (
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.35 }}
-                  className="mb-8"
-                >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Package className="w-5 h-5 text-[#049be5]" />
-                    Produits commandés
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {orderData.orderItems.map((item: any, index: number) => {
-                      console.log('🎨 [OrderConfirmation] Item reçu:', item);
-
-                      // Extraire les données depuis enrichedVendorProduct
-                      const enriched = item.enrichedVendorProduct;
-                      console.log('🎨 [OrderConfirmation] enrichedVendorProduct:', enriched);
-
-                      // Trouver l'image mockup pour la couleur commandée
-                      let mockupUrl = null;
-                      if (enriched?.adminProduct?.colorVariations) {
-                        const colorVar = enriched.adminProduct.colorVariations.find(
-                          (cv: any) => cv.colorCode === item.colorVariation?.colorCode
-                        );
-                        mockupUrl = colorVar?.images?.[0]?.url || enriched.images?.primaryImageUrl;
-                      }
-
-                      // Extraire le design et sa position
-                      const hasDesign = enriched?.designApplication?.hasDesign;
-                      const designUrl = enriched?.designApplication?.designUrl;
-                      const designPosition = enriched?.designPositions?.[0]?.position || {
-                        x: 0,
-                        y: 0,
-                        scale: enriched?.designApplication?.scale || 0.8,
-                        rotation: 0
-                      };
-
-                      // Extraire la première délimitation
-                      const delimitation = enriched?.designDelimitations?.[0];
-
-                      console.log('🎨 [OrderConfirmation] Données extraites:', {
-                        mockupUrl,
-                        hasDesign,
-                        designUrl,
-                        designPosition,
-                        delimitation
-                      });
-
-                      return (
-                        <OrderProductPreview
-                          key={index}
-                          product={{
-                            id: item.productId || item.id,
-                            name: item.product?.name || enriched?.vendorName || 'Produit',
-                            quantity: item.quantity,
-                            unitPrice: item.unitPrice || 0,
-                            colorName: item.colorVariation?.name || item.color,
-                            colorCode: item.colorVariation?.colorCode,
-                            size: item.size,
-                            mockupImageUrl: mockupUrl,
-                            designImageUrl: hasDesign ? designUrl : null,
-                            designPosition: designPosition,
-                            delimitation: delimitation
-                          }}
-                          className="aspect-square"
-                        />
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
 
               {/* Orange Money QR Code Display */}
               {paymentMethodParam === 'ORANGE_MONEY' && orangeMoneyData && paymentStatus !== 'paid' && (
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.35 }}
-                  className="mb-8"
-                >
-                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-3xl p-8 border-2 border-orange-200 shadow-xl">
+                <div className="mb-8">
+                  <div className="bg-orange-50 rounded-lg p-8 border border-orange-200">
                     {/* Header */}
                     <div className="text-center mb-6">
                       <div className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-semibold mb-4">
@@ -960,7 +675,7 @@ const OrderConfirmationPage: React.FC = () => {
                     </div>
 
                     {/* QR Code */}
-                    <div className="bg-white rounded-2xl p-6 mb-6 shadow-lg">
+                    <div className="bg-white rounded-lg p-6 mb-6 border border-gray-200">
                       <div className="flex justify-center">
                         <img
                           src={`data:image/png;base64,${orangeMoneyData.qrCode}`}
@@ -971,15 +686,15 @@ const OrderConfirmationPage: React.FC = () => {
                     </div>
 
                     {/* Montant */}
-                    <div className="bg-white rounded-2xl p-4 mb-6 text-center shadow-md">
+                    <div className="bg-white rounded-lg p-4 mb-6 text-center border border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Montant à payer</p>
-                      <p className="text-3xl font-bold text-orange-600">
+                      <p className="text-2xl font-bold text-gray-900">
                         {formatPrice(parseFloat(totalAmount))}
                       </p>
                     </div>
 
                     {/* Instructions */}
-                    <div className="bg-white rounded-2xl p-6 mb-6 shadow-md">
+                    <div className="bg-white rounded-lg p-6 mb-6 border border-gray-200">
                       <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                         <span className="text-orange-500">📱</span>
                         Comment payer :
@@ -1008,14 +723,14 @@ const OrderConfirmationPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <a
                         href={orangeMoneyData.deepLinks.MAXIT}
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl font-semibold text-sm text-center transition-colors shadow-md flex items-center justify-center gap-2"
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-lg font-semibold text-sm text-center transition-colors flex items-center justify-center gap-2"
                       >
                         <ExternalLink className="w-4 h-4" />
                         Ouvrir MAX IT
                       </a>
                       <a
                         href={orangeMoneyData.deepLinks.OM}
-                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-xl font-semibold text-sm text-center transition-colors shadow-md flex items-center justify-center gap-2"
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg font-semibold text-sm text-center transition-colors flex items-center justify-center gap-2"
                       >
                         <ExternalLink className="w-4 h-4" />
                         Ouvrir Orange Money
@@ -1029,25 +744,15 @@ const OrderConfirmationPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {/* Boutons d'action */}
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="flex flex-col gap-3"
-              >
+              <div className="flex flex-col gap-3">
                 {/* Sélecteur de méthode de paiement - visible seulement si non payé */}
                 <AnimatePresence>
                   {paymentStatus !== 'paid' && token && (
-                    <motion.div
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.9, opacity: 0 }}
-                      className="space-y-3"
-                    >
+                    <div className="space-y-3">
                       <p className="text-sm font-semibold text-gray-700 text-center">
                         {paymentStatus === 'failed' ? 'Réessayer avec :' : 'Choisissez votre méthode de paiement :'}
                       </p>
@@ -1057,10 +762,10 @@ const OrderConfirmationPage: React.FC = () => {
                         {/* Wave */}
                         <button
                           onClick={() => setSelectedPaymentMethod('wave')}
-                          className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 font-semibold transition-all ${
+                          className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-lg border font-semibold transition-all ${
                             selectedPaymentMethod === 'wave'
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
+                              ? 'border-gray-800 bg-gray-50 text-gray-900'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
                           }`}
                         >
                           <img src="/wave-logo.png" alt="Wave" className="h-8 w-auto object-contain"
@@ -1068,17 +773,17 @@ const OrderConfirmationPage: React.FC = () => {
                           />
                           <span className="text-sm">Wave</span>
                           {selectedPaymentMethod === 'wave' && (
-                            <span className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full" />
+                            <span className="absolute top-2 right-2 w-3 h-3 bg-gray-800 rounded-full" />
                           )}
                         </button>
 
                         {/* Orange Money */}
                         <button
                           onClick={() => setSelectedPaymentMethod('orange-money')}
-                          className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 font-semibold transition-all ${
+                          className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-lg border font-semibold transition-all ${
                             selectedPaymentMethod === 'orange-money'
-                              ? 'border-orange-500 bg-orange-50 text-orange-700'
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-orange-300'
+                              ? 'border-gray-800 bg-gray-50 text-gray-900'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
                           }`}
                         >
                           <img src="/om-logo.png" alt="Orange Money" className="h-8 w-auto object-contain"
@@ -1086,45 +791,38 @@ const OrderConfirmationPage: React.FC = () => {
                           />
                           <span className="text-sm">Orange Money</span>
                           {selectedPaymentMethod === 'orange-money' && (
-                            <span className="absolute top-2 right-2 w-3 h-3 bg-orange-500 rounded-full" />
+                            <span className="absolute top-2 right-2 w-3 h-3 bg-gray-800 rounded-full" />
                           )}
                         </button>
                       </div>
 
                       {/* Wave → redirection directe */}
                       {selectedPaymentMethod === 'wave' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                        >
+                        <div>
                           {isCreatingRetry ? (
-                            <div className="w-full px-6 py-4 bg-blue-100 text-blue-700 rounded-xl font-semibold flex items-center justify-center gap-2">
+                            <div className="w-full px-6 py-4 bg-gray-100 text-gray-700 rounded-lg font-semibold flex items-center justify-center gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
                               Préparation du paiement...
                             </div>
                           ) : (retryPaymentUrl || paymentUrl) ? (
                             <button
                               onClick={() => { window.location.href = retryPaymentUrl || paymentUrl; }}
-                              className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"
+                              className="w-full px-6 py-4 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                             >
                               <ExternalLink className="w-5 h-5" />
                               Payer avec Wave
                             </button>
                           ) : (
-                            <div className="w-full px-6 py-4 bg-gray-100 text-gray-500 rounded-xl text-sm text-center">
+                            <div className="w-full px-6 py-4 bg-gray-100 text-gray-500 rounded-lg text-sm text-center">
                               Lien de paiement indisponible
                             </div>
                           )}
-                        </motion.div>
+                        </div>
                       )}
 
                       {/* Orange Money → SoftPay flow */}
                       {selectedPaymentMethod === 'orange-money' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="space-y-3"
-                        >
+                        <div className="space-y-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Votre numéro Orange Money
@@ -1135,7 +833,7 @@ const OrderConfirmationPage: React.FC = () => {
                               onChange={(e) => setOmPhoneNumber(e.target.value)}
                               placeholder="77XXXXXXX"
                               maxLength={9}
-                              className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl text-sm focus:outline-none focus:border-orange-500 transition-colors"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-gray-800 transition-colors"
                             />
                           </div>
                           {omError && (
@@ -1147,7 +845,7 @@ const OrderConfirmationPage: React.FC = () => {
                           <button
                             onClick={handleOrangeMoneyPayment}
                             disabled={omLoading || omPhoneNumber.trim().length < 9}
-                            className="w-full px-6 py-4 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"
+                            className="w-full px-6 py-4 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                           >
                             {omLoading ? (
                               <><Loader2 className="w-5 h-5 animate-spin" /> Initiation en cours...</>
@@ -1155,81 +853,35 @@ const OrderConfirmationPage: React.FC = () => {
                               <><CreditCard className="w-5 h-5" /> Payer avec Orange Money</>
                             )}
                           </button>
-                        </motion.div>
+                        </div>
                       )}
-                    </motion.div>
+                    </div>
                   )}
                 </AnimatePresence>
 
                 {/* Bouton pour réessayer la vérification si timeout */}
                 {paymentStatus === 'pending' && token && (
-                  <motion.button
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
+                  <button
                     onClick={handleRetryPayment}
-                    className="w-full px-6 py-4 bg-blue-100 text-blue-700 rounded-xl font-semibold hover:bg-blue-200 transition-colors flex items-center justify-center gap-2"
+                    className="w-full px-6 py-4 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
                   >
                     <RefreshCw className="w-5 h-5" />
                     Vérifier à nouveau le paiement
-                  </motion.button>
+                  </button>
                 )}
 
                 {/* Bouton retour à l'accueil */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={() => navigate('/')}
-                  className="w-full px-6 py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  className="w-full px-6 py-4 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
                 >
                   Retour à l'accueil
-                </motion.button>
-              </motion.div>
+                </button>
+              </div>
 
-              {/* Note informative */}
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl"
-              >
-                <p className="text-xs text-blue-800 text-center flex items-center justify-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <span>
-                    Un email de confirmation a été envoyé à <strong>{email}</strong>
-                  </span>
-                </p>
-              </motion.div>
             </div>
           </motion.div>
 
-          {/* Footer avec conseils */}
-          {paymentStatus !== 'paid' && (
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="mt-8 bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-gray-200"
-            >
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-purple-500" />
-                Besoin d'aide ?
-              </h3>
-              <ul className="space-y-2 text-xs text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">•</span>
-                  <span>Assurez-vous d'avoir finalisé le paiement sur PayDunya</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">•</span>
-                  <span>La vérification peut prendre quelques secondes</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">•</span>
-                  <span>Cette page se met à jour automatiquement, pas besoin de rafraîchir</span>
-                </li>
-              </ul>
-            </motion.div>
-          )}
         </div>
       </div>
     </div>

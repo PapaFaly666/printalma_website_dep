@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Image as ImageIcon, Upload, Save, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, Upload, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { AdminButton } from '../../components/admin/AdminButton';
 import { Input } from '../../components/ui/input';
@@ -245,10 +245,38 @@ export const ContentManagementPage: React.FC = () => {
     }
   };
 
+  // Calculer les statistiques pour chaque section
+  const getStats = () => {
+    const getItemsWithImages = (items: any[]) => items.filter(item => item.imageUrl && item.imageUrl !== '').length;
+    const getItemsWithNames = (items: any[]) => items.filter(item => item.name && item.name.trim() !== '').length;
+
+    return {
+      designs: {
+        total: CONTENT_LIMITS.designs,
+        withImages: getItemsWithImages(content.designs),
+        withNames: getItemsWithNames(content.designs),
+        percentage: Math.round((getItemsWithImages(content.designs) / CONTENT_LIMITS.designs) * 100)
+      },
+      influencers: {
+        total: CONTENT_LIMITS.influencers,
+        withImages: getItemsWithImages(content.influencers),
+        withNames: getItemsWithNames(content.influencers),
+        percentage: Math.round((getItemsWithImages(content.influencers) / CONTENT_LIMITS.influencers) * 100)
+      },
+      merchandising: {
+        total: CONTENT_LIMITS.merchandising,
+        withImages: getItemsWithImages(content.merchandising),
+        withNames: getItemsWithNames(content.merchandising),
+        percentage: Math.round((getItemsWithImages(content.merchandising) / CONTENT_LIMITS.merchandising) * 100)
+      }
+    };
+  };
+
+  const stats = getStats();
+
   const renderItemEditor = (
     item: DesignItem | InfluencerItem | MerchandisingItem,
     section: 'designs' | 'influencers' | 'merchandising',
-    bgColor: string,
     index: number
   ) => {
     const isUploading = uploadingItemId === item.id;
@@ -363,15 +391,137 @@ export const ContentManagementPage: React.FC = () => {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Gestion du contenu</h1>
-          <p className="text-sm text-gray-600 mt-1">Gérez les sections de la page d'accueil</p>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Gestion du contenu</h1>
+            <p className="text-sm text-gray-600 mt-1">Gérez les sections de la page d'accueil</p>
+          </div>
+          <AdminButton onClick={handleSaveAll} disabled={loading} variant="primary" className="sm:w-auto">
+            <Save className="h-4 w-4" />
+            <span>{loading ? 'Sauvegarde...' : 'Sauvegarder'}</span>
+          </AdminButton>
         </div>
-        <AdminButton onClick={handleSaveAll} disabled={loading} variant="primary" className="sm:w-auto">
-          <Save className="h-4 w-4" />
-          <span>{loading ? 'Sauvegarde...' : 'Sauvegarder'}</span>
-        </AdminButton>
+
+        {/* Cartes statistiques */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Designs Exclusifs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-br from-[rgb(241,209,45)] to-[rgb(221,189,25)] rounded-lg p-4 text-black shadow-md"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-xs font-medium opacity-80">Designs Exclusifs</p>
+                <h3 className="text-2xl font-bold mt-1">{stats.designs.withImages}/{stats.designs.total}</h3>
+              </div>
+              <div className={`p-2 rounded-lg ${stats.designs.withImages === stats.designs.total ? 'bg-green-500/20' : 'bg-black/10'}`}>
+                {stats.designs.withImages === stats.designs.total ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-700" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-black/60" />
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="opacity-80">Images uploadées</span>
+                <span className="font-semibold">{stats.designs.percentage}%</span>
+              </div>
+              <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${stats.designs.percentage}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="h-full bg-black/40 rounded-full"
+                />
+              </div>
+              <p className="text-xs opacity-70 mt-2">
+                {stats.designs.withNames}/{stats.designs.total} noms renseignés
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Influenceurs Partenaires */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gradient-to-br from-[rgb(20,104,154)] to-[rgb(10,84,134)] rounded-lg p-4 text-white shadow-md"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-xs font-medium opacity-80">Influenceurs</p>
+                <h3 className="text-2xl font-bold mt-1">{stats.influencers.withImages}/{stats.influencers.total}</h3>
+              </div>
+              <div className={`p-2 rounded-lg ${stats.influencers.withImages === stats.influencers.total ? 'bg-green-500/20' : 'bg-white/10'}`}>
+                {stats.influencers.withImages === stats.influencers.total ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-300" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-white/60" />
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="opacity-80">Images uploadées</span>
+                <span className="font-semibold">{stats.influencers.percentage}%</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${stats.influencers.percentage}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="h-full bg-white/40 rounded-full"
+                />
+              </div>
+              <p className="text-xs opacity-70 mt-2">
+                {stats.influencers.withNames}/{stats.influencers.total} noms renseignés
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Merchandising Musical */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-gradient-to-br from-[rgb(230,29,44)] to-[rgb(210,9,24)] rounded-lg p-4 text-white shadow-md"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-xs font-medium opacity-80">Merchandising</p>
+                <h3 className="text-2xl font-bold mt-1">{stats.merchandising.withImages}/{stats.merchandising.total}</h3>
+              </div>
+              <div className={`p-2 rounded-lg ${stats.merchandising.withImages === stats.merchandising.total ? 'bg-green-500/20' : 'bg-white/10'}`}>
+                {stats.merchandising.withImages === stats.merchandising.total ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-300" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-white/60" />
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="opacity-80">Images uploadées</span>
+                <span className="font-semibold">{stats.merchandising.percentage}%</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${stats.merchandising.percentage}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="h-full bg-white/40 rounded-full"
+                />
+              </div>
+              <p className="text-xs opacity-70 mt-2">
+                {stats.merchandising.withNames}/{stats.merchandising.total} noms renseignés
+              </p>
+            </div>
+          </motion.div>
+        </div>
       </div>
 
       {/* Tabs Navigation - Mobile only */}
@@ -424,7 +574,7 @@ export const ContentManagementPage: React.FC = () => {
           </CardHeader>
           <CardContent className="p-4">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-              {content.designs.map((item, index) => renderItemEditor(item, 'designs', 'rgb(241, 209, 45)', index))}
+              {content.designs.map((item, index) => renderItemEditor(item, 'designs', index))}
             </div>
           </CardContent>
         </Card>
@@ -444,7 +594,7 @@ export const ContentManagementPage: React.FC = () => {
           </CardHeader>
           <CardContent className="p-4">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-              {content.influencers.map((item, index) => renderItemEditor(item, 'influencers', 'rgb(20, 104, 154)', index))}
+              {content.influencers.map((item, index) => renderItemEditor(item, 'influencers', index))}
             </div>
           </CardContent>
         </Card>
@@ -464,7 +614,7 @@ export const ContentManagementPage: React.FC = () => {
           </CardHeader>
           <CardContent className="p-4">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-              {content.merchandising.map((item, index) => renderItemEditor(item, 'merchandising', 'rgb(230, 29, 44)', index))}
+              {content.merchandising.map((item, index) => renderItemEditor(item, 'merchandising', index))}
             </div>
           </CardContent>
         </Card>

@@ -28,6 +28,9 @@ export interface CustomizationData {
   sizeSelections?: SizeSelection[];
   sessionId?: string;
   previewImageUrl?: string;
+  // Données visuelles extraites du canvas pour génération Sharp
+  elementsByView?: Record<string, DesignElement[]>;
+  productImageUrl?: string;
 }
 
 export interface Customization {
@@ -40,6 +43,7 @@ export interface Customization {
   designElements: DesignElement[];
   sizeSelections: SizeSelection[] | null;
   previewImageUrl: string | null;
+  finalImageUrlCustom: string | null; // URL du mockup généré avec Sharp
   totalPrice: number;
   status: string;
   orderId: number | null;

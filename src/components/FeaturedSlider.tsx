@@ -13,6 +13,7 @@ interface BestSellerProduct {
   salesCount?: number;
   totalRevenue?: number;
   viewsCount?: number;
+  rank?: number; // 🏆 Rang du produit dans les meilleures ventes
   designCloudinaryUrl?: string;
   designWidth?: number;
   designHeight?: number;
@@ -44,6 +45,15 @@ interface BestSellerProduct {
     designWidth?: number;
     designHeight?: number;
   };
+  // 🖼️ Images finales générées avec design positionné
+  finalImages?: Array<{
+    id: number;
+    colorId: number;
+    colorName: string;
+    colorCode: string;
+    finalImageUrl: string;
+    mockupUrl: string;
+  }>;
   baseProduct?: {
     id: number;
     name: string;
@@ -218,9 +228,30 @@ const adaptBestSellerToVendorProduct = (item: BestSellerProduct) => {
   };
 };
 
-// Composant ProductCard utilisant SimpleProductPreview comme NouveautesSection
+// Composant ProductCard utilisant les images finales directement
 const ProductCard = ({ item, formatPrice, onProductClick }) => {
-  // Adapter le produit pour SimpleProductPreview
+  // 🖼️ Récupérer l'image finale (priorité: couleur par défaut, sinon première image)
+  const getFinalImage = () => {
+    if (!item.finalImages || item.finalImages.length === 0) {
+      console.log('⚠️ Pas d\'image finale pour produit', item.id, '- Utilisation du fallback');
+      return null;
+    }
+
+    // Essayer de trouver l'image de la couleur par défaut
+    if (item.defaultColorId) {
+      const defaultImage = item.finalImages.find(img => img.colorId === item.defaultColorId);
+      if (defaultImage) {
+        console.log('✅ Image finale couleur par défaut trouvée:', defaultImage.colorName);
+        return defaultImage.finalImageUrl;
+      }
+    }
+
+    // Sinon prendre la première image finale disponible
+    console.log('✅ Utilisation première image finale disponible');
+    return item.finalImages[0].finalImageUrl;
+  };
+
+  const finalImageUrl = getFinalImage();
   const adaptedProduct = adaptBestSellerToVendorProduct(item);
 
   return (
@@ -233,17 +264,32 @@ const ProductCard = ({ item, formatPrice, onProductClick }) => {
         height: "auto"
       }}
     >
+      {/* Image finale ou fallback */}
       <div className="absolute inset-0 w-full h-full overflow-hidden">
-        <SimpleProductPreview
-          product={adaptedProduct}
-          showColorSlider={false}
-          showDelimitations={false}
-          className="w-full h-full"
-          onColorChange={() => {}}
-          hideValidationBadges={true}
-          imageObjectFit="cover"
-          initialColorId={adaptedProduct.defaultColorId || undefined}
-        />
+        {finalImageUrl ? (
+          <img
+            src={finalImageUrl}
+            alt={item.name}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={(e) => {
+              console.error('❌ Erreur chargement image finale:', finalImageUrl);
+              // Fallback: utiliser SimpleProductPreview si l'image ne charge pas
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          // Fallback: SimpleProductPreview si pas d'image finale
+          <SimpleProductPreview
+            product={adaptedProduct}
+            showColorSlider={false}
+            showDelimitations={false}
+            className="w-full h-full"
+            onColorChange={() => {}}
+            hideValidationBadges={true}
+            imageObjectFit="cover"
+            initialColorId={adaptedProduct.defaultColorId || undefined}
+          />
+        )}
       </div>
 
       {/* Overlay texte */}

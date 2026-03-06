@@ -27,7 +27,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 import { vendorProductService } from '../../services/vendorProductService';
 import { vendorFundsService, VendorEarnings } from '../../services/vendorFundsService';
-import { vendorStatsService, VendorStatsData } from '../../services/vendorStatsService';
+import { vendorStatsService, VendorStatsData, MonthlyRevenueData, RevenueStats as VendorRevenueStats } from '../../services/vendorStatsService';
 import { ordersService, OrdersResponse } from '../../services/ordersService';
 import vendorDesignRevenueService, { RevenueStats } from '../../services/vendorDesignRevenueService';
 
@@ -181,17 +181,21 @@ export const VendorDashboardPage: React.FC = () => {
   const [designRevenueStats, setDesignRevenueStats] = useState<RevenueStats | null>(null);
   const [designRevenueLoading, setDesignRevenueLoading] = useState(false);
 
-  // Données de graphiques basées sur les vraies statistiques financières
-  const generateRevenueData = (monthlyRevenue: number) => {
-    const base = monthlyRevenue / 7;
-    return Array.from({ length: 7 }, (_, i) => Math.floor(base * (0.7 + (i * 0.05) + Math.random() * 0.3)));
-  };
+  // État pour les données mensuelles
+  const [monthlyRevenueData, setMonthlyRevenueData] = useState<MonthlyRevenueData[]>([]);
+  const [monthlyRevenueLoading, setMonthlyRevenueLoading] = useState(false);
 
-  const revenueData = generateRevenueData(finances.monthlyRevenue || 45000);
-  
-  // Données pour les graphiques des vues et commandes
+  // État pour les statistiques de revenus avec pourcentages
+  const [revenueStats, setRevenueStats] = useState<VendorRevenueStats | null>(null);
+  const [revenueStatsLoading, setRevenueStatsLoading] = useState(false);
+
+  // Données pour les graphiques des vues
   const viewsData = [1200, 1350, 1100, 1450, 1600, 1800, 2100];
-  const ordersData = [15, 18, 12, 22, 25, 28, 32];
+
+  // Données pour les revenus mensuels (graphique évolution)
+  const monthlyRevenueChartData = monthlyRevenueData.length > 0
+    ? monthlyRevenueData.map(m => m.revenue)
+    : Array(7).fill(0);
 
   // Chargement des données des revenus des designs
   const loadDesignRevenueData = async () => {
@@ -209,6 +213,51 @@ export const VendorDashboardPage: React.FC = () => {
     }
   };
 
+  // Chargement des données mensuelles
+  const loadMonthlyRevenueData = async () => {
+    try {
+      setMonthlyRevenueLoading(true);
+      console.log('🔄 [Dashboard] Chargement des données mensuelles...');
+      const monthlyData = await vendorStatsService.getMonthlyRevenue(7);
+      console.log('✅ [Dashboard] Données mensuelles chargées:', monthlyData);
+
+      if (monthlyData && Array.isArray(monthlyData)) {
+        setMonthlyRevenueData(monthlyData);
+      } else {
+        console.warn('⚠️ [Dashboard] Données mensuelles invalides, utilisation de données vides');
+        setMonthlyRevenueData([]);
+      }
+    } catch (error) {
+      console.error('❌ [Dashboard] Erreur chargement données mensuelles:', error);
+      // Garder un tableau vide en cas d'erreur
+      setMonthlyRevenueData([]);
+    } finally {
+      setMonthlyRevenueLoading(false);
+    }
+  };
+
+  // Chargement des statistiques de revenus avec pourcentages
+  const loadRevenueStats = async () => {
+    try {
+      setRevenueStatsLoading(true);
+      console.log('🔄 [Dashboard] Chargement des statistiques de revenus...');
+      const stats = await vendorStatsService.getRevenueStats();
+      console.log('✅ [Dashboard] Statistiques de revenus chargées:', stats);
+
+      if (stats) {
+        setRevenueStats(stats);
+      } else {
+        console.warn('⚠️ [Dashboard] Statistiques de revenus invalides');
+        setRevenueStats(null);
+      }
+    } catch (error) {
+      console.error('❌ [Dashboard] Erreur chargement statistiques de revenus:', error);
+      setRevenueStats(null);
+    } finally {
+      setRevenueStatsLoading(false);
+    }
+  };
+
   // Chargement des données financières via /orders/my-orders (endpoint qui retourne les statistiques)
   const loadDashboardData = async () => {
     setLoading(true);
@@ -219,8 +268,10 @@ export const VendorDashboardPage: React.FC = () => {
         setExtendedProfile(profileData.vendor);
       }
 
-      // Charger les revenus des designs en parallèle
+      // Charger les revenus des designs, données mensuelles et statistiques de revenus en parallèle
       loadDesignRevenueData();
+      loadMonthlyRevenueData();
+      loadRevenueStats();
 
       // 🎯 Utiliser /orders/my-orders qui retourne les statistiques financières
       console.log('🔄 Chargement des données financières depuis /orders/my-orders...');
@@ -435,14 +486,25 @@ export const VendorDashboardPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">
-                  {loading ? '...' : `${finances.yearlyRevenue.toLocaleString()} F`}
+                  {revenueStatsLoading || loading ? '...' : `${(revenueStats?.annual.currentYearRevenue || 0).toLocaleString()} F`}
                 </div>
-                <div className="flex items-center text-xs text-green-600">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  <span>+12.5% par rapport à l'année dernière</span>
+                <div className={`flex items-center text-xs ${
+                  (revenueStats?.annual.yearOverYearGrowth || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {(revenueStats?.annual.yearOverYearGrowth || 0) >= 0 ? (
+                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                  ) : (
+                    <ArrowDownRight className="h-3 w-3 mr-1" />
+                  )}
+                  <span>
+                    {revenueStatsLoading ? '...' : `${(revenueStats?.annual.yearOverYearGrowth || 0) >= 0 ? '+' : ''}${(revenueStats?.annual.yearOverYearGrowth || 0).toFixed(1)}% par rapport à l'année dernière`}
+                  </span>
                 </div>
                 <div className="mt-4">
-                  <MiniChart data={revenueData} color="#10b981" />
+                  <MiniChart
+                    data={revenueStats?.annual.monthlyData || Array(12).fill(0)}
+                    color="#10b981"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -461,14 +523,25 @@ export const VendorDashboardPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">
-                  {loading ? '...' : `${finances.monthlyRevenue.toLocaleString()} F`}
+                  {revenueStatsLoading || loading ? '...' : `${(revenueStats?.monthly.currentMonthRevenue || 0).toLocaleString()} F`}
                 </div>
-                <div className="flex items-center text-xs text-blue-600">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  <span>+8.2% ce mois</span>
+                <div className={`flex items-center text-xs ${
+                  (revenueStats?.monthly.monthOverMonthGrowth || 0) >= 0 ? 'text-blue-600' : 'text-red-600'
+                }`}>
+                  {(revenueStats?.monthly.monthOverMonthGrowth || 0) >= 0 ? (
+                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                  ) : (
+                    <ArrowDownRight className="h-3 w-3 mr-1" />
+                  )}
+                  <span>
+                    {revenueStatsLoading ? '...' : `${(revenueStats?.monthly.monthOverMonthGrowth || 0) >= 0 ? '+' : ''}${(revenueStats?.monthly.monthOverMonthGrowth || 0).toFixed(1)}% ce mois`}
+                  </span>
                 </div>
                 <div className="mt-4">
-                  <MiniChart data={revenueData.map(v => v * 0.7)} color="#3b82f6" />
+                  <MiniChart
+                    data={revenueStats?.monthly.weeklyData || Array(7).fill(0)}
+                    color="#3b82f6"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -587,8 +660,8 @@ export const VendorDashboardPage: React.FC = () => {
                   <Progress
                     value={designRevenueStats ? Math.min((designRevenueStats.totalUsages / 100) * 100, 100) : 0}
                     className="h-2"
-                  />
-                </div>
+                  />  
+                </div>  
               </CardContent>
             </Card>
           </motion.div>
@@ -704,21 +777,76 @@ export const VendorDashboardPage: React.FC = () => {
                     <CardTitle className="text-base">Évolution mensuelle</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-32">
-                      <MiniChart data={ordersData} color="#6366f1" />
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-2">
-                      <span>Jan</span>
-                      <span>Fév</span>
-                      <span>Mar</span>
-                      <span>Avr</span>
-                      <span>Mai</span>
-                      <span>Jun</span>
-                      <span>Jul</span>
-                    </div>
-                    <div className="mt-4 text-sm text-gray-600">
-                      💰 Données financières depuis /orders/my-orders
-                    </div>
+                    {monthlyRevenueLoading ? (
+                      <div className="flex items-center justify-center h-32">
+                        <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="h-32">
+                          <MiniChart data={monthlyRevenueChartData} color="#6366f1" />
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 mt-2">
+                          {monthlyRevenueData.length > 0 ? (
+                            monthlyRevenueData.map((item, index) => (
+                              <span key={index}>{item.month}</span>
+                            ))
+                          ) : (
+                            <>
+                              <span>Jan</span>
+                              <span>Fév</span>
+                              <span>Mar</span>
+                              <span>Avr</span>
+                              <span>Mai</span>
+                              <span>Jun</span>
+                              <span>Jul</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="mt-4 space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500">Revenus totaux</span>
+                            <span className="text-gray-700 font-medium">
+                              {monthlyRevenueData.length > 0
+                                ? `${monthlyRevenueData[monthlyRevenueData.length - 1].revenue.toLocaleString()} F`
+                                : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500">├─ Produits</span>
+                            <span className="text-gray-600 font-medium">
+                              {monthlyRevenueData.length > 0
+                                ? `${(monthlyRevenueData[monthlyRevenueData.length - 1].productRevenue || 0).toLocaleString()} F`
+                                : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500">└─ Designs</span>
+                            <span className="text-pink-600 font-medium">
+                              {monthlyRevenueData.length > 0
+                                ? `${(monthlyRevenueData[monthlyRevenueData.length - 1].designRevenue || 0).toLocaleString()} F`
+                                : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs border-t pt-2 mt-2">
+                            <span className="text-gray-500">Commandes</span>
+                            <span className="text-gray-700 font-medium">
+                              {monthlyRevenueData.length > 0
+                                ? monthlyRevenueData[monthlyRevenueData.length - 1].orders
+                                : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500">Usages designs</span>
+                            <span className="text-pink-600 font-medium">
+                              {monthlyRevenueData.length > 0
+                                ? (monthlyRevenueData[monthlyRevenueData.length - 1].designUsages || 0)
+                                : 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </div>

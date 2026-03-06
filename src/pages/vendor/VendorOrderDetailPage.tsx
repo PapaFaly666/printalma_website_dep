@@ -228,8 +228,14 @@ const VendorOrderDetailPage: React.FC = () => {
 
   // Contacter le client
   const contactClient = () => {
-    if (order) {
+    if (order && order.user?.email) {
       window.location.href = `mailto:${order.user.email}?subject=Commande ${order.orderNumber}`;
+    } else {
+      toast({
+        title: "Email introuvable",
+        description: "L'email du client n'est pas disponible.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -325,7 +331,7 @@ const VendorOrderDetailPage: React.FC = () => {
                 <div>
                   <h3 className="font-medium text-gray-900 mb-4">Produits commandés</h3>
                   <div className="space-y-4">
-                    {order.orderItems.map((item) => {
+                    {order.orderItems?.map((item) => {
                       return (
                         <div key={item.id} className="p-5 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
                           {/* Product Header */}
@@ -627,14 +633,14 @@ const VendorOrderDetailPage: React.FC = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={order.user.photo_profil} alt={`${order.user.firstName} ${order.user.lastName}`} />
+                    <AvatarImage src={order.user?.photo_profil || undefined} alt={`${order.user?.firstName || ''} ${order.user?.lastName || ''}`} />
                     <AvatarFallback>
-                      {order.user.firstName[0]}{order.user.lastName[0]}
+                      {order.user?.firstName?.[0] || 'U'}{order.user?.lastName?.[0] || 'N'}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium text-gray-900">
-                      {order.user.firstName} {order.user.lastName}
+                      {order.user?.firstName || 'Utilisateur'} {order.user?.lastName || 'Inconnu'}
                     </p>
                   </div>
                 </div>
