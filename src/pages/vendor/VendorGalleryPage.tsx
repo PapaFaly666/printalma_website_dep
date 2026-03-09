@@ -197,7 +197,7 @@ const VendorGalleryPage: React.FC = () => {
       // S'assurer que les captions sont correctement formatées
       const formattedCaptions = formData.captions.slice(0, optimizedImages.length);
 
-      const updatedGallery = await galleryService.createOrUpdateGallery({
+      await galleryService.createOrUpdateGallery({
         title: formData.title,
         description: formData.description,
         images: optimizedImages,
@@ -205,7 +205,10 @@ const VendorGalleryPage: React.FC = () => {
       });
 
       toast.success(galleries.length > 0 ? 'Galerie mise à jour avec succès' : 'Galerie créée avec succès');
-      setGalleries(galleries.length > 0 ? [updatedGallery] : [updatedGallery]);
+
+      // Recharger toutes les galeries pour avoir les données complètes
+      await loadGalleries();
+
       setIsEditDialogOpen(false);
       resetForm();
     } catch (error: any) {
@@ -222,7 +225,7 @@ const VendorGalleryPage: React.FC = () => {
     setIsLoading(true);
     try {
       const firstGallery = galleries[0];
-      const updatedGallery = await galleryService.updateGalleryInfo({
+      await galleryService.updateGalleryInfo({
         title: formData.title,
         description: formData.description,
         status: firstGallery.status,
@@ -230,7 +233,10 @@ const VendorGalleryPage: React.FC = () => {
       });
 
       toast.success('Informations de la galerie mises à jour');
-      setGalleries([updatedGallery]);
+
+      // Recharger toutes les galeries pour avoir les données complètes
+      await loadGalleries();
+
       setIsEditDialogOpen(false);
       resetForm();
     } catch (error: any) {
@@ -268,13 +274,10 @@ const VendorGalleryPage: React.FC = () => {
         throw new Error('Aucune galerie trouvée');
       }
 
-      const updatedGallery = await galleryService.togglePublishGallery(targetGalleryId, isPublished);
+      await galleryService.togglePublishGallery(targetGalleryId, isPublished);
 
-      // Mettre à jour la galerie dans la liste
-      const updatedGalleries = galleries.map(g =>
-        g.id === targetGalleryId ? updatedGallery : g
-      );
-      setGalleries(updatedGalleries);
+      // Recharger toutes les galeries pour avoir les données complètes
+      await loadGalleries();
 
       toast.success(isPublished ? 'Galerie publiée avec succès' : 'Galerie dépubliée avec succès');
     } catch (error: any) {
@@ -606,7 +609,7 @@ const GalleryFormDialog: React.FC<GalleryFormDialogProps> = ({
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const remainingSlots = GALLERY_CONSTRAINTS.IMAGES_COUNT - formData.images.length;
-  const isOnlyInfoUpdate = isEdit && gallery?.images.length === GALLERY_CONSTRAINTS.IMAGES_COUNT;
+  const isOnlyInfoUpdate = isEdit && (gallery?.images?.length ?? 0) === GALLERY_CONSTRAINTS.IMAGES_COUNT;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

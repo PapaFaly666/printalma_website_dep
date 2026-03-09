@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isAdmin, normalizeRole, getLoginRedirect } from '../../utils/roleHelpers';
 
 const SecretAdminLoginPage = () => {
   const [formData, setFormData] = useState({
@@ -67,7 +68,7 @@ const SecretAdminLoginPage = () => {
           navigate('/admin/verify-otp', {
             state: {
               email: formData.email,
-              from: '/admin'
+              from: '/admin/dashboard'
             }
           });
           return;
@@ -76,12 +77,9 @@ const SecretAdminLoginPage = () => {
         console.log('Utilisateur connecté:', data.user);
         console.log('Rôle de l\'utilisateur:', data.user.role);
 
-        // Vérifier si l'utilisateur est bien un admin
-        const userRole = data.user.role?.toString().toUpperCase();
-        console.log('Rôle normalisé pour comparaison:', userRole);
-
-        if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPERADMIN') {
-          console.log('Accès admin autorisé, redirection vers /admin');
+        // Utiliser le helper pour vérifier si l'utilisateur est admin
+        if (isAdmin(data.user)) {
+          console.log('Accès admin autorisé');
 
           // Stocker les infos utilisateur pour la session admin
           localStorage.setItem('auth_session', JSON.stringify({
@@ -90,11 +88,13 @@ const SecretAdminLoginPage = () => {
             isAuthenticated: true
           }));
 
-          // Redirection forcée pour éviter les intercepteurs du routeur
-          window.location.href = '/admin';
+          // Rediriger vers le dashboard approprié
+          const redirectPath = getLoginRedirect(data.user);
+          navigate(redirectPath, { replace: true });
         } else {
-          console.log('Rôle non admin détecté:', data.user.role, 'type:', typeof data.user.role);
-          setErrors({ submit: `Accès réservé aux administrateurs. Rôle détecté: ${data.user.role}` });
+          const role = normalizeRole(data.user.role);
+          console.log('Rôle non admin détecté:', role);
+          setErrors({ submit: `Accès réservé aux administrateurs. Rôle détecté: ${role || data.user.role}` });
         }
       } else {
         console.log('Erreur de connexion:', data);

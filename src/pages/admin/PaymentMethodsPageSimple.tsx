@@ -60,6 +60,15 @@ const PaymentMethodsPageSimple: React.FC = () => {
   };
 
   const handleToggleMethod = async (provider: string, currentStatus: boolean) => {
+    // Vérifier qu'au moins une méthode reste active
+    if (currentStatus) {
+      const activeMethodsCount = methods.filter(m => m.isActive).length;
+      if (activeMethodsCount <= 1) {
+        alert('⚠️ Vous devez garder au moins une méthode de paiement active !');
+        return;
+      }
+    }
+
     setToggling(provider);
     try {
       await PaymentConfigService.togglePaymentMethod(provider, !currentStatus);
@@ -281,11 +290,41 @@ const PaymentMethodsPageSimple: React.FC = () => {
               <div className="text-sm text-blue-900">
                 <p className="font-medium mb-1">À propos des méthodes de paiement</p>
                 <ul className="list-disc list-inside space-y-1 text-blue-800">
+                  <li><strong>Au moins une méthode doit rester active</strong></li>
                   <li>Les méthodes désactivées ne seront pas disponibles lors du checkout</li>
                   <li>Vous pouvez activer plusieurs méthodes simultanément</li>
                   <li>Les changements prennent effet immédiatement</li>
                 </ul>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Statut des méthodes actives */}
+        <Card className="mt-4">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Méthodes actives</p>
+                <p className="text-2xl font-bold">
+                  {methods.filter(m => m.isActive).length} / {methods.length}
+                </p>
+              </div>
+              {methods.filter(m => m.isActive).length === 0 && (
+                <Badge variant="destructive" className="text-sm">
+                  Aucune méthode active !
+                </Badge>
+              )}
+              {methods.filter(m => m.isActive).length === 1 && (
+                <Badge variant="default" className="text-sm bg-orange-500">
+                  Minimum requis
+                </Badge>
+              )}
+              {methods.filter(m => m.isActive).length > 1 && (
+                <Badge variant="default" className="text-sm bg-green-500">
+                  Configuration OK
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>

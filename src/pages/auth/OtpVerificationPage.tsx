@@ -106,9 +106,20 @@ const OtpVerificationPage = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Connexion réussie, rediriger selon le rôle
+        // Stocker les infos utilisateur dans localStorage pour la session
+        if (data.user) {
+          localStorage.setItem('auth_session', JSON.stringify({
+            timestamp: Date.now(),
+            user: data.user,
+            isAuthenticated: true
+          }));
+        }
+
+        // Connexion réussie, rediriger selon le rôle avec rechargement pour mettre à jour le contexte
         const redirectPath = state.from || '/admin/dashboard';
-        navigate(redirectPath, { replace: true });
+
+        // Utiliser window.location pour forcer le rechargement du contexte d'authentification
+        window.location.href = redirectPath;
       } else {
         setError(data.message || 'Code invalide ou expiré');
         setOtp(['', '', '', '', '', '']);

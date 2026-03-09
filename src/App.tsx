@@ -98,8 +98,7 @@ import AppelDeFondsPage from './pages/AppelDeFondsPage';
 
 // Page paramètres admin
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminUserCreatePage from './pages/admin/AdminUserCreatePage';
+import AdminUsersPageModern from './pages/admin/AdminUsersPageModern';
 import RolesManagementPage from './pages/admin/RolesManagementPage';
 
 // Page de gestion du contenu
@@ -110,7 +109,7 @@ import { ContentInitializationPage } from './pages/admin/ContentInitializationPa
 import VendorFundsRequestPage from './pages/vendor/VendorFundsRequestPage';
 import VendorWithdrawalsPage from './pages/vendor/VendorWithdrawalsPage';
 import AdminPaymentRequestsPage from './pages/admin/AdminPaymentRequestsPage';
-import PaymentMethodsPage from './pages/admin/PaymentMethodsPage';
+import PaymentMethodsPage from './pages/admin/PaymentMethodsPageSimple';
 
 // Page de gestion des mockups
 import ProductMockupsPage from './pages/admin/ProductMockupsPage';
@@ -226,9 +225,6 @@ import AdminLoginTest from './pages/test/AdminLoginTest';
 // 💳 Test PayDunya
 import TestPaydunyaPage from './pages/TestPaydunyaPage';
 import TestPaydunyaFixPage from './pages/TestPaydunyaFixPage';
-
-// 🧪 Page de test authentification
-import TestAuth from './pages/TestAuth';
 
 // 🧪 Page de test stickers
 import StickerTestPage from './pages/StickerTestPage';
@@ -389,8 +385,7 @@ function App() {
                   <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="analytics" element={<ProductAnalytics />} />
-                  <Route path="users" element={<AdminUsersPage />} />
-                  <Route path="users/create" element={<AdminUserCreatePage />} />
+                  <Route path="users" element={<AdminUsersPageModern />} />
                   <Route path="roles" element={<RolesManagementPage />} />
                   <Route path="content-init" element={<ContentInitializationPage />} />
                   <Route path="content-management" element={<ContentManagementPage />} />
@@ -408,8 +403,8 @@ function App() {
                   <Route path="stock" element={<AdminStockManagement />} />
                   <Route path="delivery" element={<DeliveryManagementPage />} />
                   <Route path="livraison" element={<ZonesLivraisonPage />} />
-                  <Route path="settings" element={<AdminSettingsPage />} />/
-                  <Route index element={<Navigate to="/test-auth" replace />} />
+                  <Route path="settings" element={<AdminSettingsPage />} />
+                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
                 </Route>
                 
                 {/* Route d'onboarding vendeur - hors du layout */}
@@ -550,8 +545,6 @@ function App() {
                 <Route path='/test-paydunya' element={<TestPaydunyaPage />} />
                 <Route path='/test-paydunya-fix' element={<TestPaydunyaFixPage />} />
 
-                {/* 🧪 Test authentification */}
-                <Route path='/test-auth' element={<TestAuth />} />
 
                 {/* Confirmation de changement d'email */}
                 <Route path='/confirm-email-change' element={<ConfirmEmailChange />} />

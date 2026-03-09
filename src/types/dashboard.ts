@@ -140,3 +140,11 @@ export interface DashboardData {
   orderStats: OrderStats;
   pendingFundRequests: PendingFundRequests;
 }
+
+export interface MonthlyRevenueData {
+  month: string; // Format: "Jan 2026", "Feb 2026", etc.
+  year: number;
+  monthNumber: number; // 1-12
+  revenue: number; // Chiffre d'affaires total
+  orderCount: number; // Nombre de commandes
+}

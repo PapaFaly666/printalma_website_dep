@@ -840,113 +840,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   );
 };
 
-// Composant pour afficher un produit supprimé dans le modal corbeille
-const DeletedProductCard: React.FC<{ prod: any }> = ({ prod }) => {
-  const [selectedColorIndex, setSelectedColorIndex] = React.useState(0);
-  const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
-  const currentColor = prod.colorVariations[selectedColorIndex];
-  const currentImage = currentColor?.images[selectedImageIndex];
-
-  return (
-    <div className="flex items-center gap-4 py-4 border-b border-[#049BE5]/10 hover:bg-[#049BE5]/5 transition-colors duration-200">
-      {/* Image principale */}
-      <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-        {currentImage ? (
-          <img
-            src={currentImage.url}
-            alt={prod.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Package className="w-8 h-8 text-gray-400" />
-          </div>
-        )}
-        {/* Navigation des images (faces) */}
-        {currentColor?.images.length > 1 && (
-          <>
-            <button
-              onClick={() => setSelectedImageIndex(prev => prev === 0 ? currentColor.images.length - 1 : prev - 1)}
-              className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-[#049BE5]/80 hover:bg-[#049BE5] text-white rounded-full flex items-center justify-center"
-            >
-              <ChevronLeft className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => setSelectedImageIndex(prev => prev === currentColor.images.length - 1 ? 0 : prev + 1)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-[#049BE5]/80 hover:bg-[#049BE5] text-white rounded-full flex items-center justify-center"
-            >
-              <ChevronRight className="w-3 h-3" />
-            </button>
-          </>
-        )}
-      </div>
-      {/* Infos produit */}
-      <div className="flex-1 min-w-0">
-        <div className="font-semibold text-gray-900">{prod.name}</div>
-
-        {/* Prix par taille - version compacte pour la corbeille */}
-        <div className="mt-1.5 space-y-1">
-          {prod.useGlobalPricing ? (
-            // Prix global
-            <div className="flex items-center gap-2">
-              {prod.globalCostPrice > 0 && (
-                <span className="text-xs text-gray-600">
-                  Coût: {prod.globalCostPrice.toLocaleString()} FCFA
-                </span>
-              )}
-              <span className="text-sm font-semibold text-[rgb(20,104,154)]">
-                {(prod.globalSuggestedPrice || prod.suggestedPrice || prod.price).toLocaleString()} FCFA
-              </span>
-            </div>
-          ) : prod.sizePrices && Array.isArray(prod.sizePrices) && prod.sizePrices.length > 0 ? (
-            // Prix par taille - affichage compact
-            prod.sizePrices.slice(0, 2).map((sp: any) => (
-              <div key={sp.id} className="flex items-center gap-2 text-xs">
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-white border-gray-300">
-                  {sp.size}
-                </Badge>
-                {sp.costPrice > 0 && (
-                  <span className="text-gray-600">
-                    {sp.costPrice.toLocaleString()}
-                  </span>
-                )}
-                <span className="font-semibold text-[rgb(20,104,154)]">
-                  {sp.suggestedPrice.toLocaleString()} FCFA
-                </span>
-              </div>
-            ))
-          ) : (
-            // Fallback
-            <div className="text-sm font-semibold text-[#049BE5]">
-              {(prod.suggestedPrice || prod.price).toLocaleString()} FCFA
-            </div>
-          )}
-        </div>
-        {/* Navigation couleurs */}
-        {prod.colorVariations.length > 1 && (
-          <div className="flex items-center gap-2 mt-1">
-            {prod.colorVariations.map((color: any, idx: number) => (
-              <button
-                key={color.id}
-                onClick={() => {
-                  setSelectedColorIndex(idx);
-                  setSelectedImageIndex(0);
-                }}
-                className={`w-5 h-5 rounded-full border-2 transition-all ${idx === selectedColorIndex ? 'border-gray-900 scale-110' : 'border-gray-300 hover:border-gray-600'}`}
-                style={{ backgroundColor: color.colorCode }}
-                title={color.name}
-              />
-            ))}
-          </div>
-        )}
-        {/* Nom couleur et vue */}
-        <div className="text-xs text-gray-500 mt-1">
-          {currentColor?.name} {currentImage?.view ? `- ${currentImage.view}` : ''}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // 1. Fonction utilitaire pour soft delete
 async function softDeleteProduct(productId: number) {
@@ -961,6 +854,332 @@ async function softDeleteProduct(productId: number) {
   if (!res.ok) throw new Error(data.message || 'Erreur lors de la suppression');
   return data;
 }
+
+// 🆕 Composant modal pour afficher les détails du produit
+const ProductDetailsModal: React.FC<{
+  product: Product | null;
+  open: boolean;
+  onClose: () => void;
+  vendorDesigns?: any[];
+}> = ({ product, open, onClose, vendorDesigns = [] }) => {
+  const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  if (!product) return null;
+
+  const currentColor = product.colorVariations[selectedColorIndex];
+  const currentImage = currentColor?.images[selectedImageIndex];
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-gray-900">{product.name}</DialogTitle>
+          <DialogDescription>
+            Détails complets du produit et mockup
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+          {/* Colonne gauche - Images */}
+          <div className="space-y-4">
+            {/* Image principale */}
+            <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+              {currentImage ? (
+                (() => {
+                  const hasDesign = (product as any).designApplication?.designUrl;
+                  const hasDelimitations = currentImage.delimitations && currentImage.delimitations.length > 0;
+
+                  if (hasDesign && hasDelimitations) {
+                    return (
+                      <ProductImageWithDesign
+                        productImage={{
+                          id: currentImage.id,
+                          url: currentImage.url,
+                          viewType: currentImage.view || 'Front',
+                          delimitations: currentImage.delimitations.map(d => ({
+                            x: d.x,
+                            y: d.y,
+                            width: d.width,
+                            height: d.height,
+                            coordinateType: (d.coordinateType === 'PERCENTAGE' ? 'PERCENTAGE' : 'ABSOLUTE') as 'PERCENTAGE' | 'ABSOLUTE'
+                          }))
+                        }}
+                        designUrl={(product as any).designApplication.designUrl}
+                        designConfig={{
+                          positioning: (product as any).designApplication?.positioning || 'CENTER',
+                          scale: (product as any).designApplication?.scale || 0.8
+                        }}
+                        showDelimitations={false}
+                        className="w-full h-full"
+                        vendorProductId={product.id}
+                        vendorDesigns={vendorDesigns}
+                      />
+                    );
+                  } else {
+                    return (
+                      <ProductImageDisplay
+                        src={currentImage.url}
+                        alt={`${product.name} - ${currentColor.name}`}
+                        className="w-full h-full"
+                      />
+                    );
+                  }
+                })()
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center text-gray-400">
+                    <ImageIcon className="w-16 h-16 mx-auto mb-2" />
+                    <p className="text-sm">Aucune image</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Vue actuelle */}
+              {currentImage && (
+                <div className="absolute top-3 left-3">
+                  <Badge className="bg-black/70 text-white">
+                    {currentImage.view || 'Vue'}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            {/* Navigation des images (vues) */}
+            {currentColor && currentColor.images.length > 1 && (
+              <div className="grid grid-cols-4 gap-2">
+                {currentColor.images.map((img, idx) => (
+                  <button
+                    key={img.id}
+                    onClick={() => setSelectedImageIndex(idx)}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      idx === selectedImageIndex
+                        ? 'border-[rgb(20,104,154)] ring-2 ring-[rgb(20,104,154)]/20'
+                        : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.view}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-1 py-0.5 text-center">
+                      {img.view}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Sélecteur de couleurs */}
+            {product.colorVariations.length > 1 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-gray-700">Couleurs disponibles</h4>
+                <div className="flex flex-wrap gap-2">
+                  {product.colorVariations.map((color, idx) => (
+                    <button
+                      key={color.id}
+                      onClick={() => {
+                        setSelectedColorIndex(idx);
+                        setSelectedImageIndex(0);
+                      }}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                        idx === selectedColorIndex
+                          ? 'border-[rgb(20,104,154)] bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-400'
+                      }`}
+                    >
+                      <div
+                        className="w-6 h-6 rounded-full border-2 border-white shadow-sm ring-1 ring-gray-300"
+                        style={{ backgroundColor: color.colorCode }}
+                      />
+                      <span className="text-sm font-medium text-gray-700">{color.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Colonne droite - Informations */}
+          <div className="space-y-6">
+            {/* Statut */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">Statut</h4>
+              <StatusBadge
+                status={product.status as any}
+                isValidated={product.isValidated}
+              />
+            </div>
+
+            {/* Description */}
+            {product.description && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Description</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">{product.description}</p>
+              </div>
+            )}
+
+            {/* Prix */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">Prix</h4>
+              {product.useGlobalPricing ? (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Prix de vente</div>
+                      <div className="text-2xl font-bold text-[rgb(20,104,154)]">
+                        {(product.globalSuggestedPrice || product.suggestedPrice || product.price).toLocaleString()} FCFA
+                      </div>
+                    </div>
+                    {product.globalCostPrice > 0 && (
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Coût</div>
+                        <div className="text-lg font-semibold text-gray-700">
+                          {product.globalCostPrice.toLocaleString()} FCFA
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : product.sizePrices && product.sizePrices.length > 0 ? (
+                <div className="space-y-2">
+                  {product.sizePrices.map((sizePrice) => (
+                    <div
+                      key={sizePrice.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-200"
+                    >
+                      <Badge variant="outline" className="text-sm font-medium px-2 py-1">
+                        {sizePrice.size}
+                      </Badge>
+                      <div className="flex items-center gap-4">
+                        {sizePrice.costPrice > 0 && (
+                          <div className="text-right">
+                            <div className="text-[10px] text-gray-500 uppercase">Coût</div>
+                            <div className="text-sm font-semibold text-gray-700">
+                              {sizePrice.costPrice.toLocaleString()} FCFA
+                            </div>
+                          </div>
+                        )}
+                        <div className="text-right">
+                          <div className="text-[10px] text-[rgb(20,104,154)] uppercase">Prix</div>
+                          <div className="text-base font-bold text-[rgb(20,104,154)]">
+                            {sizePrice.suggestedPrice.toLocaleString()} FCFA
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {(product.suggestedPrice || product.price).toLocaleString()} FCFA
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tailles */}
+            {product.sizes && product.sizes.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Tailles disponibles</h4>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map(size => (
+                    <Badge key={size.id} variant="outline" className="px-3 py-1">
+                      {size.sizeName}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Stock */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">Stock</h4>
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <div className="text-lg font-semibold text-gray-900">{product.stock} unités</div>
+              </div>
+            </div>
+
+            {/* Catégories et Genre */}
+            <div className="space-y-3">
+              {product.categories && product.categories.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Catégories</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {product.categories.map(cat => (
+                      <Badge key={cat.id} variant="secondary" className="px-3 py-1">
+                        {cat.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {product.subCategory && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Sous-catégorie</h4>
+                  <Badge variant="secondary" className="px-3 py-1 bg-green-100 text-green-700 border-green-200">
+                    {product.subCategory.name}
+                  </Badge>
+                </div>
+              )}
+
+              {product.genre && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Genre</h4>
+                  <GenreBadge genre={product.genre} />
+                </div>
+              )}
+            </div>
+
+            {/* Dates */}
+            <div className="pt-4 border-t border-gray-200 space-y-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                <span>Créé le {new Date(product.createdAt).toLocaleDateString('fr-FR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                <span>Modifié le {new Date(product.updatedAt).toLocaleDateString('fr-FR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</span>
+              </div>
+            </div>
+
+            {/* Raison de rejet si présente */}
+            {product.rejectionReason && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2 text-red-800 mb-1">
+                  <AlertCircle className="w-4 h-4" />
+                  <h4 className="text-sm font-semibold">Motif de rejet</h4>
+                </div>
+                <p className="text-sm text-red-700">{product.rejectionReason}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <AdminButton variant="outline">Fermer</AdminButton>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 interface ProductListModernProps {
   products: Product[];
@@ -986,12 +1205,12 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
   products,
   loading = false,
   onEditProduct,
-  onViewProduct,
-  onDeleteProduct,
+  onViewProduct: _onViewProduct,
+  onDeleteProduct: _onDeleteProduct,
   onRefresh,
   onAddProduct,
   onPublishProduct,
-  
+
   // Customization props for vendor context
   title,
   showAddButton = true,
@@ -1008,31 +1227,10 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
 
   // 2. State local pour la suppression douce
   const [deletingId, setDeletingId] = useState<number|null>(null);
-  const [showTrashModal, setShowTrashModal] = useState(false);
-  const [deletedProducts, setDeletedProducts] = useState<any[]>([]);
-  const [loadingTrash, setLoadingTrash] = useState(false);
-  const [errorTrash, setErrorTrash] = useState<string|null>(null);
 
-  // Charger les produits supprimés quand on ouvre le modal
-  const openTrashModal = async () => {
-    setShowTrashModal(true);
-    setLoadingTrash(true);
-    setErrorTrash(null);
-    try {
-      const res = await fetch('https://printalma-back-dep.onrender.com/products/deleted', {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('Erreur lors de la récupération des produits supprimés');
-      const data = await res.json();
-      setDeletedProducts(data);
-    } catch (e: any) {
-      setErrorTrash(e.message || 'Erreur lors de la récupération des produits supprimés');
-    } finally {
-      setLoadingTrash(false);
-    }
-  };
+  // 🆕 State pour le modal de détails du produit
+  const [selectedProductForView, setSelectedProductForView] = useState<Product | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // 3. Handler suppression douce
   const handleSoftDelete = async (id: number) => {
@@ -1046,6 +1244,13 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
     } finally {
       setDeletingId(null);
     }
+  };
+
+  // 🆕 Handler pour ouvrir le modal de détails
+  const handleViewProductClick = (product: Product) => {
+    setSelectedProductForView(product);
+    setShowDetailsModal(true);
+    // Ne pas appeler onViewProduct pour éviter toute redirection
   };
 
   // 4. Filtrage des produits supprimés (isDelete: true)
@@ -1110,35 +1315,13 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
       </motion.div>
 
 
-      {/* Modal Corbeille */}
-      <Dialog open={showTrashModal} onOpenChange={setShowTrashModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Produits supprimés (Corbeille)</DialogTitle>
-            <DialogDescription>
-              Liste des produits supprimés (soft delete). Vous pouvez les restaurer si besoin.
-            </DialogDescription>
-          </DialogHeader>
-          {loadingTrash ? (
-            <div className="py-8 text-center text-gray-500">Chargement...</div>
-          ) : errorTrash ? (
-            <div className="py-8 text-center text-red-600">{errorTrash}</div>
-          ) : deletedProducts.length === 0 ? (
-            <div className="py-8 text-center text-gray-400">Aucun produit supprimé.</div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {deletedProducts.map((prod: any) => (
-                <DeletedProductCard key={prod.id} prod={prod} />
-              ))}
-            </div>
-          )}
-          <DialogFooter>
-            <DialogClose asChild>
-              <AdminButton variant="outline">Fermer</AdminButton>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* 🆕 Modal Détails du Produit */}
+      <ProductDetailsModal
+        product={selectedProductForView}
+        open={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        vendorDesigns={vendorDesigns}
+      />
 
       {/* Barre de recherche et filtres */}
       <div className="px-4 sm:px-6 py-4 space-y-4">
@@ -1261,7 +1444,7 @@ export const ProductListModern: React.FC<ProductListModernProps> = ({
                   product={product}
                   onDelete={handleSoftDelete}
                   onEdit={onEditProduct}
-                  onView={onViewProduct}
+                  onView={handleViewProductClick}
                   onPublish={onPublishProduct}
                   viewMode={viewMode}
                   vendorDesigns={vendorDesigns}

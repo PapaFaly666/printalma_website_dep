@@ -13,10 +13,8 @@ export const ProductsPage: React.FC = () => {
   };
 
   const handleViewProduct = (product: any) => {
-    // Implémentez la logique de redirection vers la vue détaillée
-    console.log('Voir le produit:', product);
-    toast.info('Redirection vers les détails du produit...');
-    // Par exemple: router.push(`/admin/products/${product.id}`);
+    // Le modal de détails s'ouvre automatiquement dans ProductListModern
+    console.log('Affichage des détails du produit:', product);
   };
 
   const handleDeleteProduct = async (id: number) => {

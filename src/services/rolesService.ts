@@ -243,6 +243,13 @@ export const rolesService = {
   },
 
   /**
+   * Assigne des permissions à un rôle (alias de updateRolePermissions)
+   */
+  async assignPermissionsToRole(roleId: number, permissionIds: number[]): Promise<CustomRole> {
+    return this.updateRolePermissions(roleId, permissionIds);
+  },
+
+  /**
    * Supprimer un rôle personnalisé
    */
   async deleteRole(roleId: number): Promise<void> {

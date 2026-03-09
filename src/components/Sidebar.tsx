@@ -53,6 +53,8 @@ import { useAuth } from '../contexts/AuthContext';
 import passwordResetService from '../services/passwordResetService';
 import { useSidebarCounts } from '../hooks/useSidebarCounts';
 import usePermissions from '../hooks/usePermissions';
+import useNavigation from '../hooks/useNavigation';
+import { NavItem as NavItemType } from '../types/navigation';
 
 interface NavItemProps {
     icon: React.ReactNode;
@@ -93,6 +95,7 @@ export default function Sidebar() {
     const { user, logout, isAdmin, isSuperAdmin, isVendeur } = useAuth();
     const { counts, loading: countsLoading } = useSidebarCounts();
     const { hasPermission, hasAnyPermission } = usePermissions();
+    const { currentNavigation, footerNavigation } = useNavigation();
 
     // Utiliser les vraies données utilisateur ou des données par défaut
     const adminUser = user ? {
@@ -262,16 +265,29 @@ export default function Sidebar() {
     );
 
     // Handle navigation for both admin and vendor
-    const handleNavigation = (path: string) => {
-        setActiveItem(path);
-        if (path === 'vendor-products-admin') {
-            navigate(`/admin/${path}`);
-        } else if (path.startsWith('vendor-')) {
-            const vendorPath = path.replace('vendor-', '');
-            navigate(`/vendeur/${vendorPath}`);
-        } else {
-            navigate(`/admin/${path}`);
+    const handleNavigation = (item: NavItemType) => {
+        setActiveItem(item.id);
+
+        // Gestion spéciale pour la déconnexion
+        if (item.id === 'logout') {
+            handleLogoutClick();
+            return;
         }
+
+        // Gestion spéciale pour le retour au site
+        if (item.path === '/') {
+            navigate('/');
+            if (isMobile) setIsMenuOpen(false);
+            return;
+        }
+
+        // Navigation normale
+        if (isVendeur()) {
+            navigate(`/vendeur/${item.path}`);
+        } else {
+            navigate(`/admin/${item.path}`);
+        }
+
         if (isMobile) setIsMenuOpen(false);
     };
 
@@ -406,430 +422,27 @@ export default function Sidebar() {
 
                 {/* Navigation */}
                 <nav className="flex-1 py-4 px-3 overflow-y-auto">
-                    {/* Admin Navigation */}
-                    {(isAdmin() || isSuperAdmin()) && (
-                        <>
-                    {/* Groupe Produits - visible si au moins une permission liée aux produits */}
-                    {(isSuperAdmin() || hasAnyPermission(['products.mockups.view', 'products.categories.view', 'products.themes.view', 'products.stock.view', 'users.vendors.view', 'trash.view'])) && (
-                    <NavGroup
-                        title="Produits"
-                        collapsed={collapsed && !isMobile}
-                    >
-                        {/* Tableau de bord - toujours visible pour les admins */}
-                        <NavItem
-                            icon={<BarChart3 size={18} />}
-                            label="Tableau de bord"
+                    {currentNavigation.map((group) => (
+                        <NavGroup
+                            key={group.id}
+                            title={group.title}
                             collapsed={collapsed && !isMobile}
-                            active={activeItem === 'dashboard'}
-                            onClick={() => handleNavigation('dashboard')}
-                            badge=""
-                            textColor=""
-                        />
-
-                        {(isSuperAdmin() || hasPermission('products.mockups.view')) && (
-                        <NavItem
-                            icon={<Package size={18} />}
-                                    label="Mockups"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'products'}
-                            onClick={() => handleNavigation('products')}
-                            badge={countsLoading ? '...' : counts.mockupsCount.toString()}
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('products.categories.view')) && (
-                        <NavItem
-                            icon={<Tag size={18} />}
-                            label="Catégories"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'categories'}
-                            onClick={() => handleNavigation('categories')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('products.themes.view')) && (
-                        <NavItem
-                            icon={<Palette size={18} />}
-                            label="Thèmes"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'design-categories'}
-                            onClick={() => handleNavigation('design-categories')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('products.stock.view')) && (
-                        <NavItem
-                            icon={<PackageSearch size={18} />}
-                            label="Stock"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'stock'}
-                            onClick={() => handleNavigation('stock')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('users.vendors.view')) && (
-                        <NavItem
-                            icon={<Users size={18} />}
-                            label="Vendeurs"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'clients'}
-                            onClick={() => handleNavigation('clients')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('trash.view')) && (
-                        <NavItem
-                            icon={<Trash2 size={18} />}
-                            label="Corbeille"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'trash'}
-                            onClick={() => handleNavigation('trash')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-                    </NavGroup>
-                    )}
-
-                    {/* Groupe Validation - visible si au moins une permission validation */}
-                    {(isSuperAdmin() || hasAnyPermission(['validation.designs.view', 'validation.auto.view'])) && (
-                    <NavGroup
-                        title="Validation"
-                        collapsed={collapsed && !isMobile}
-                    >
-                        {(isSuperAdmin() || hasPermission('validation.designs.view')) && (
-                        <NavItem
-                            icon={<CheckCircle size={18} />}
-                                    label="Design"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'design-validation'}
-                            onClick={() => handleNavigation('design-validation')}
-                            badge={countsLoading ? '...' : (counts.designValidationCount > 0 ? counts.designValidationCount.toString() : '')}
-                            badgeColor="yellow"
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('validation.auto.view')) && (
-                        <NavItem
-                            icon={<span className="text-base">🤖</span>}
-                            label="Auto-validation"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'auto-validation'}
-                            onClick={() => handleNavigation('auto-validation')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-                    </NavGroup>
-                    )}
-
-                    {/* Groupe Commandes - visible si au moins une permission commandes */}
-                    {(isSuperAdmin() || hasAnyPermission(['orders.view', 'orders.delivery.view'])) && (
-                    <NavGroup
-                        title="Commandes"
-                        collapsed={collapsed && !isMobile}
-                    >
-                        {(isSuperAdmin() || hasPermission('orders.view')) && (
-                        <NavItem
-                            icon={<ShoppingBag size={18} />}
-                            label="Gestion des commandes"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'orders'}
-                            onClick={() => handleNavigation('orders')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('orders.delivery.view')) && (
-                        <NavItem
-                            icon={<Truck size={18} />}
-                            label="Livraison"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'livraison'}
-                            onClick={() => handleNavigation('livraison')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-                    </NavGroup>
-                    )}
-
-                    {/* Groupe Utilisateurs - visible si au moins une permission utilisateurs */}
-                    {(isSuperAdmin() || hasAnyPermission(['users.admins.view', 'users.admins.create', 'users.admins.roles'])) && (
-                    <NavGroup
-                        title="Utilisateurs"
-                        collapsed={collapsed && !isMobile}
-                    >
-                        {(isSuperAdmin() || hasPermission('users.admins.view')) && (
-                        <NavItem
-                            icon={<Users size={18} />}
-                            label="Admins & Superadmins"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'users'}
-                            onClick={() => handleNavigation('users')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('users.admins.create')) && (
-                            <NavItem
-                                icon={<User size={18} />}
-                                label="Créer utilisateur"
-                                collapsed={collapsed && !isMobile}
-                                active={activeItem === 'users-create'}
-                                onClick={() => handleNavigation('users/create')}
-                                badge=""
-                                textColor=""
-                            />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('users.admins.roles')) && (
-                            <NavItem
-                                icon={<Shield size={18} />}
-                                label="Rôles & Permissions"
-                                collapsed={collapsed && !isMobile}
-                                active={activeItem === 'roles'}
-                                onClick={() => handleNavigation('roles')}
-                                badge=""
-                                textColor=""
-                            />
-                        )}
-                    </NavGroup>
-                    )}
-
-                    {/* Groupe Contenu - visible si permission content */}
-                    {(isSuperAdmin() || hasPermission('content.view')) && (
-                    <NavGroup
-                        title="Contenu"
-                        collapsed={collapsed && !isMobile}
-                    >
-                        <NavItem
-                            icon={<Image size={18} />}
-                            label="Gestion du contenu"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'content-management' || activeItem === 'content-init'}
-                            onClick={() => handleNavigation('content-init')}
-                            badge=""
-                            textColor=""
-                        />
-                    </NavGroup>
-                    )}
-
-                    {/* Groupe Statistiques - visible si permission analytics */}
-                    {(isSuperAdmin() || hasPermission('statistics.analytics')) && (
-                    <NavGroup
-                        title="Statistiques"
-                        collapsed={collapsed && !isMobile}
-                    >
-                        <NavItem
-                            icon={<BarChart3 size={18} />}
-                            label="Analytiques"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'analytics'}
-                            onClick={() => handleNavigation('analytics')}
-                            badge=""
-                            textColor=""
-                        />
-                    </NavGroup>
-                    )}
-
-                    {/* Groupe Paiements - visible si au moins une permission paiements */}
-                    {(isSuperAdmin() || hasAnyPermission(['payments.requests.view', 'payments.methods.view'])) && (
-                    <NavGroup
-                        title="Paiements"
-                        collapsed={collapsed && !isMobile}
-                    >
-                        {(isSuperAdmin() || hasPermission('payments.requests.view')) && (
-                        <NavItem
-                            icon={<CreditCard size={18} />}
-                            label="Demandes"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'payment-requests'}
-                            onClick={() => handleNavigation('payment-requests')}
-                            badge={countsLoading ? '...' : (counts.paymentRequestsCount > 0 ? counts.paymentRequestsCount.toString() : '')}
-                            badgeColor="red"
-                            textColor=""
-                        />
-                        )}
-
-                        {(isSuperAdmin() || hasPermission('payments.methods.view')) && (
-                        <NavItem
-                            icon={<Landmark size={18} />}
-                            label="Moyens de paiement"
-                            collapsed={collapsed && !isMobile}
-                            active={activeItem === 'payment-methods'}
-                            onClick={() => handleNavigation('payment-methods')}
-                            badge=""
-                            textColor=""
-                        />
-                        )}
-                    </NavGroup>
-                    )}
-                        </>
-                    )}
-
-                    {/* Vendor Navigation */}
-                    {isVendeur() && (
-                        <>
-                            <NavGroup
-                                title="Vue d'ensemble"
-                                collapsed={collapsed && !isMobile}
-                            >
+                        >
+                            {group.items.map((item) => (
                                 <NavItem
-                                    icon={<BarChart3 size={18} />}
-                                    label="Tableau de bord"
+                                    key={item.id}
+                                    icon={<item.icon size={18} />}
+                                    label={item.label}
                                     collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-dashboard'}
-                                    onClick={() => handleNavigation('vendor-dashboard')}
-                                    badge=""
-                                    textColor=""
+                                    active={activeItem === item.id}
+                                    onClick={() => handleNavigation(item)}
+                                    badge={item.badge || ''}
+                                    badgeColor={item.badgeColor}
+                                    textColor={item.textColor || ''}
                                 />
-
-                                <NavItem
-                                    icon={<BarChart3 size={18} />}
-                                    label="Analytiques"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-analytics'}
-                                    onClick={() => handleNavigation('vendor-analytics')}
-                                    badge=""
-                                    textColor=""
-                                />
-                            </NavGroup>
-
-                            <NavGroup
-                                title="Mes Produits"
-                                collapsed={collapsed && !isMobile}
-                            >
-                                <NavItem
-                                    icon={<Package size={18} />}
-                                    label="Mes Produits"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-products'}
-                                    onClick={() => handleNavigation('vendor-products')}
-                                    badge=""
-                                    textColor=""
-                                />
-
-                                <NavItem
-                                    icon={<Palette size={18} />}
-                                    label="Créer Design"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-sell-design'}
-                                    onClick={() => handleNavigation('vendor-sell-design')}
-                                    badge=""
-                                    textColor=""
-                                />
-
-                                <NavItem
-                                    icon={<Sticker size={18} />}
-                                    label="Vendre Stickers"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-stickers'}
-                                    onClick={() => handleNavigation('vendor-stickers')}
-                                    badge="NOUVEAU"
-                                    badgeColor="blue"
-                                    textColor=""
-                                />
-                            </NavGroup>
-
-                            <NavGroup
-                                title="Commandes"
-                                collapsed={collapsed && !isMobile}
-                            >
-                                <NavItem
-                                    icon={<ShoppingBag size={18} />}
-                                    label="Mes Commandes"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-orders'}
-                                    onClick={() => handleNavigation('vendor-orders')}
-                                    badge=""
-                                    textColor=""
-                                />
-                            </NavGroup>
-
-                            <NavGroup
-                                title="Profil & Boutique"
-                                collapsed={collapsed && !isMobile}
-                            >
-                                <NavItem
-                                    icon={<User size={18} />}
-                                    label="Mon Profil"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-profile'}
-                                    onClick={() => handleNavigation('vendor-profile')}
-                                    badge=""
-                                    textColor=""
-                                />
-
-                                <NavItem
-                                    icon={<Camera size={18} />}
-                                    label="Photo de Profil"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-photo'}
-                                    onClick={() => handleNavigation('vendor-photo-profile')}
-                                    badge=""
-                                    textColor=""
-                                />
-
-                                <NavItem
-                                    icon={<Store size={18} />}
-                                    label="Ma Boutique"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-shop'}
-                                    onClick={() => handleNavigation('vendor-shop-settings')}
-                                    badge=""
-                                    textColor=""
-                                />
-                            </NavGroup>
-
-                            <NavGroup
-                                title="Finances"
-                                collapsed={collapsed && !isMobile}
-                            >
-                                <NavItem
-                                    icon={<Wallet size={18} />}
-                                    label="Mes Gains"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-earnings'}
-                                    onClick={() => handleNavigation('vendor-earnings')}
-                                    badge=""
-                                    textColor=""
-                                />
-
-                                <NavItem
-                                    icon={<FileText size={18} />}
-                                    label="Demandes de Paiement"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-payment-requests'}
-                                    onClick={() => handleNavigation('vendor-payment-requests')}
-                                    badge=""
-                                    textColor=""
-                                />
-
-                                <NavItem
-                                    icon={<Banknote size={18} />}
-                                    label="Appel de Fonds"
-                                    collapsed={collapsed && !isMobile}
-                                    active={activeItem === 'vendor-appel-de-fonds'}
-                                    onClick={() => handleNavigation('vendor-appel-de-fonds')}
-                                    badge=""
-                                    textColor=""
-                                />
-                            </NavGroup>
-                        </>
-                    )}
+                            ))}
+                        </NavGroup>
+                    ))}
                 </nav>
 
                 <div className="px-3 py-2">
@@ -838,29 +451,19 @@ export default function Sidebar() {
 
                 {/* Footer */}
                 <div className="p-3 space-y-1">
-                    {/* Bouton Retour au site - visible pour tous */}
-                    <NavItem
-                        icon={<Home size={18} />}
-                        label="Retour au site"
-                        collapsed={collapsed && !isMobile}
-                        active={false}
-                        onClick={() => navigate('/')}
-                        badge=""
-                        textColor="text-[#049be5]"
-                    />
-
-                    {/* Paramètres - visible si permission settings */}
-                    {(isSuperAdmin() || hasPermission('settings.view')) && (
+                    {/* Navigation du footer (filtrée par permissions) */}
+                    {footerNavigation.map((item) => (
                         <NavItem
-                            icon={<Settings size={18} />}
-                            label="Paramètres"
+                            key={item.id}
+                            icon={<item.icon size={18} className={item.textColor || ''} />}
+                            label={item.label}
                             collapsed={collapsed && !isMobile}
-                            active={activeItem === 'settings'}
-                            onClick={() => handleNavigation('settings')}
-                            badge=""
-                            textColor=""
+                            active={activeItem === item.id}
+                            onClick={() => handleNavigation(item)}
+                            badge={item.badge || ''}
+                            textColor={item.textColor || ''}
                         />
-                    )}
+                    ))}
 
                     {/* Bouton de nettoyage des tokens (admin uniquement) */}
                     {(isAdmin() || isSuperAdmin()) && (
@@ -906,17 +509,6 @@ export default function Sidebar() {
                             )}
                         </>
                     )}
-
-
-
-                    <NavItem
-                        icon={<LogOut size={18} className="text-gray-500" />}
-                        label="Déconnexion"
-                        collapsed={collapsed && !isMobile}
-                        onClick={handleLogoutClick}
-                        textColor="text-gray-500"
-                        badge=""
-                    />
                 </div>
             </aside>
 
