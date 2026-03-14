@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
@@ -10,10 +10,6 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Vérifier si la route secrète admin est activée
-  const isAdminMode = location.pathname === '/admin/login';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -71,77 +67,42 @@ const LoginForm = () => {
       if (response.ok) {
         // ✅ Vérifier si l'utilisateur doit changer son mot de passe (première connexion)
         // Cas 1: user existe avec must_change_password
-        if (data.user && data.user.must_change_password) {
-          console.log('🔑 Utilisateur doit changer son mot de passe (première connexion)');
-          // Stocker l'ID temporaire pour le changement de mot de passe
-          localStorage.setItem('tempUserId', data.user.id.toString());
-          // Stocker les infos minimales pour la redirection
-          localStorage.setItem('user', JSON.stringify(data.user));
-          // Rediriger vers la page de changement de mot de passe
-          window.location.href = '/change-password';
-          return;
-        }
-
-        // Cas 2: user est undefined mais le message indique de changer le mot de passe
-        if (!data.user && data.message && data.message.toLowerCase().includes('changer votre mot de passe')) {
-          console.log('🔑 Utilisateur doit changer son mot de passe (message sans user object)');
-          // Stocker l'email pour récupérer l'ID plus tard
-          localStorage.setItem('tempUserEmail', formData.email);
-          // Rediriger vers la page de changement de mot de passe
-          window.location.href = '/change-password';
-          return;
-        }
-
-        // Si pas d'utilisateur, afficher le message d'erreur
+        // Si pas d'utilisateur ou rôle inconnu : erreur générique (couvre OTP, admin, etc.)
         if (!data.user) {
-          console.log('❌ Pas de données utilisateur dans la réponse');
-          setErrors({ submit: data.message || 'Email ou mot de passe incorrect' });
+          setErrors({ submit: 'Email ou mot de passe incorrect' });
           setIsLoading(false);
           return;
         }
 
-        // Stocker les informations utilisateur dans localStorage avec le bon format
-        const authData = {
+        // Dès ici on a data.user — vérifier que c'est un vendeur avant tout
+        if (data.user.role !== 'VENDEUR') {
+          localStorage.removeItem('auth_session');
+          localStorage.removeItem('user');
+          setErrors({ submit: 'Email ou mot de passe incorrect' });
+          setIsLoading(false);
+          return;
+        }
+
+        // Vendeur avec changement de mot de passe obligatoire
+        if (data.user.must_change_password) {
+          localStorage.setItem('tempUserId', data.user.id.toString());
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.location.href = '/change-password';
+          return;
+        }
+
+        // Stocker la session vendeur et rediriger
+        localStorage.setItem('auth_session', JSON.stringify({
           timestamp: Date.now(),
           user: data.user,
           isAuthenticated: true
-        };
-        localStorage.setItem('auth_session', JSON.stringify(authData));
+        }));
         localStorage.setItem('user', JSON.stringify(data.user));
-        console.log('💾 Données utilisateur stockées:', data.user);
 
-        // Vérifier le rôle de l'utilisateur
-        if (isAdminMode) {
-          // Mode admin : vérifier que c'est bien un admin
-          if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'SUPERADMIN') {
-            console.log('👨‍💼 Redirection forcée vers admin dashboard');
-            // Forcer la redirection navigateur pour éviter les conflits avec PublicRoute
-            window.location.href = '/admin/dashboard';
-          } else {
-            setErrors({ submit: 'Accès administrateur requis. Cette page est réservée aux administrateurs.' });
-          }
+        if (data.user.status === false) {
+          window.location.href = '/vendeur/pending';
         } else {
-          // Mode vendeur normal
-          console.log('🏪 Mode vendeur - Rôle détecté:', data.user.role);
-          if (data.user.role === 'VENDEUR') {
-            console.log('🏪 Utilisateur vendeur confirmé - Status:', data.user.status);
-            if (data.user.status === false) {
-              console.log('⏳ Vendeur en attente de validation');
-              // Forcer la redirection navigateur pour éviter les conflits avec PublicRoute
-              window.location.href = '/vendeur/pending';
-            } else {
-              console.log('✅ Vendeur actif - Redirection forcée vers dashboard');
-              // Forcer la redirection navigateur pour éviter les conflits avec PublicRoute
-              window.location.href = '/vendeur/dashboard';
-            }
-          } else if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'SUPERADMIN') {
-            console.log('🕵️ Admin détecté sur page publique - Message d\'erreur factice pour cacher l\'existence du compte');
-            // Cacher l'existence des comptes admin en montrant une erreur générique
-            setErrors({ submit: 'Email ou mot de passe incorrect' });
-          } else {
-            console.log('❌ Rôle non reconnu:', data.user.role);
-            setErrors({ submit: `Type de compte non reconnu: ${data.user.role}` });
-          }
+          window.location.href = '/vendeur/dashboard';
         }
       } else {
         console.log('❌ Erreur de connexion:', data.message);
@@ -172,22 +133,11 @@ const LoginForm = () => {
 
           {/* Title */}
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center italic">
-            {isAdminMode ? 'Administration' : 'Rebonjour !'}
+            Rebonjour !
           </h2>
           <p className="text-sm text-gray-600 mb-8 text-center">
-            {isAdminMode ? 'Accès sécurisé pour les administrateurs' : 'Entrez vos identifiants pour continuer'}
+            Entrez vos identifiants pour continuer
           </p>
-
-          {/* Admin Mode Badge - Visible seulement en mode admin */}
-          {isAdminMode && (
-            <div className="w-full mb-6">
-              <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded-lg text-sm text-center">
-                <span className="font-bold">⚠️ Mode Administrateur</span>
-                <br />
-                Accès sécurisé activé
-              </div>
-            </div>
-          )}
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -282,18 +232,16 @@ const LoginForm = () => {
             </button>
           </form>
 
-          {/* Register Link - Masqué en mode admin */}
-          {!isAdminMode && (
-            <p className="text-sm text-gray-600 text-center mt-6">
-              Vous n'avez pas encore de compte ?{' '}
-              <button
-                onClick={() => navigate('/vendeur/register')}
-                className="text-blue-500 font-semibold hover:underline bg-transparent border-none cursor-pointer"
-              >
-                S'inscrire
-              </button>
-            </p>
-          )}
+          {/* Register Link */}
+          <p className="text-sm text-gray-600 text-center mt-6">
+            Vous n'avez pas encore de compte ?{' '}
+            <button
+              onClick={() => navigate('/vendeur/register')}
+              className="text-blue-500 font-semibold hover:underline bg-transparent border-none cursor-pointer"
+            >
+              S'inscrire
+            </button>
+          </p>
 
           {/* Bottom Links */}
           <div className="w-full mt-6">
@@ -318,7 +266,7 @@ const LoginForm = () => {
             <div className="relative z-10">
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold italic text-black mb-2">
-                  {isAdminMode ? 'Administration Sécurisée' : 'Lorem ipsum dolor sit<br />amet, consectuer'}
+                  Lorem ipsum dolor sit amet, consectuer
                 </h3>
               </div>
 

@@ -29,8 +29,8 @@ export interface User {
   avatar?: string;
   profile_photo_url?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
-  role: Role;
-  roleId: number;
+  role?: Role | null;
+  roleId?: number | null;
   emailVerified: boolean;
   lastLogin?: string;
   createdAt: string;
@@ -139,7 +139,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 // ===========================
 
 /**
- * Liste tous les utilisateurs admins/superadmins
+ * Liste tous les utilisateurs (hors vendeurs)
  */
 export async function listAdmins(filters: UserFilters = {}): Promise<UsersListResponse> {
   const params = new URLSearchParams();
@@ -154,8 +154,8 @@ export async function listAdmins(filters: UserFilters = {}): Promise<UsersListRe
 
   const queryString = params.toString();
   const url = queryString
-    ? `${API_URL}/admin/users/admins-only?${queryString}`
-    : `${API_URL}/admin/users/admins-only`;
+    ? `${API_URL}/admin/users?${queryString}`
+    : `${API_URL}/admin/users`;
 
   const response = await fetch(url, {
     method: 'GET',

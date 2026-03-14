@@ -368,8 +368,15 @@ const VendorOrderDetailPage: React.FC = () => {
                               )}
                             </div>
                             <div className="text-right ml-4">
-                              <div className="text-lg font-semibold text-gray-900">{formatAmount(item.totalPrice || item.unitPrice * item.quantity)}</div>
-                              <div className="text-xs text-gray-500">{formatAmount(item.unitPrice)} / unité</div>
+                              <div className="text-lg font-semibold text-gray-900">
+                                {item.quantity > 1
+                                  ? `${formatAmount(item.unitPrice)} × ${item.quantity}`
+                                  : formatAmount(item.totalPrice || item.unitPrice * item.quantity)
+                                }
+                              </div>
+                              {item.quantity > 1 && (
+                                <div className="text-xs text-gray-500">= {formatAmount(item.totalPrice || item.unitPrice * item.quantity)}</div>
+                              )}
                             </div>
                           </div>
 
@@ -489,10 +496,13 @@ const VendorOrderDetailPage: React.FC = () => {
                 {/* Résumé financier simplifié */}
                 <div className="border-t pt-4">
                   <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Sous-total</span>
-                      <span className="text-gray-900">{formatAmount(order.subtotal || order.totalAmount - (order.shippingAmount || 0))}</span>
-                    </div>
+                    {/* Afficher le sous-total seulement si différents frais s'appliquent */}
+                    {((order.shippingAmount && order.shippingAmount > 0) || (order.taxAmount && order.taxAmount > 0)) && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Sous-total</span>
+                        <span className="text-gray-900">{formatAmount(order.subtotal || order.totalAmount - (order.shippingAmount || 0))}</span>
+                      </div>
+                    )}
                     {order.shippingAmount && order.shippingAmount > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Livraison</span>
@@ -505,8 +515,7 @@ const VendorOrderDetailPage: React.FC = () => {
                         <span className="text-gray-900">{formatAmount(order.taxAmount)}</span>
                       </div>
                     )}
-                    <Separator />
-                    <div className="flex justify-between font-semibold text-base">
+                    <div className={`flex justify-between font-semibold ${((order.shippingAmount && order.shippingAmount > 0) || (order.taxAmount && order.taxAmount > 0)) ? 'text-base border-t pt-2' : 'text-lg'}`}>
                       <span className="text-gray-900">Total commande</span>
                       <span className="text-gray-900">{formatAmount(order.totalAmount)}</span>
                     </div>
@@ -658,16 +667,7 @@ const VendorOrderDetailPage: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Bénéfice net - en premier */}
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-200">
-                    <div>
-                      <span className="text-sm font-medium text-green-700">Votre bénéfice</span>
-                      <p className="text-xs text-green-600 mt-0.5">Ce que vous gagnez vraiment</p>
-                    </div>
-                    <span className="text-2xl font-bold text-green-900">{formatAmount((order as any).beneficeCommande)}</span>
-                  </div>
-
-                  {/* Montant que le vendeur reçoit - en deuxième */}
+                  {/* Montant que le vendeur reçoit */}
                   <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
                     <span className="text-sm font-medium text-blue-700">Après commission</span>
                     <span className="text-xl font-bold text-blue-900">{formatAmount((order as any).vendorAmount)}</span>
@@ -675,10 +675,6 @@ const VendorOrderDetailPage: React.FC = () => {
 
                   {/* Details */}
                   <div className="text-xs text-gray-600 space-y-1 pt-2 border-t border-gray-200">
-                    <div className="flex justify-between">
-                      <span>Total commande:</span>
-                      <span>{formatAmount(order.totalAmount)}</span>
-                    </div>
                     {(order as any).commissionRate && (
                       <div className="flex justify-between">
                         <span>Commission:</span>
@@ -703,10 +699,6 @@ const VendorOrderDetailPage: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Méthode:</span>
                     <span className="font-medium">{order.paymentMethod}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Montant:</span>
-                    <span className="font-medium">{formatAmount(order.totalAmount)}</span>
                   </div>
                 </div>
               </CardContent>

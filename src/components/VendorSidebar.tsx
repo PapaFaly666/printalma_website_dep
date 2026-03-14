@@ -563,7 +563,7 @@ const NavItem = ({
 }: NavItemProps) => {
     const baseClasses = "group flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 w-full";
     const activeClasses = active
-        ? "bg-black text-white"
+        ? "bg-[rgb(20,104,154)] text-white"
         : "text-gray-700 hover:bg-gray-100 hover:text-black";
     
     const textColorClasses = textColor || (active ? "text-white" : "text-gray-700");

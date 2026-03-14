@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/react-query/queryClient';
 import './App.css';
 
 // 🔧 Utilitaires de debug globaux pour l'isolation des positions
@@ -45,7 +46,7 @@ import { FavoritesProvider } from './contexts/FavoritesContext';
 import FavoritesDrawer from './components/FavoritesDrawer';
 import LoginForm from './components/auth/LoginForm';
 import ChangePasswordPage from './pages/ChangePasswordPage';
-import ProtectedRoute, { AdminRoute, VendeurRoute, PublicRoute } from './components/auth/ProtectedRoute';
+import ProtectedRoute, { AdminRoute, SuperAdminRoute, VendeurRoute, PublicRoute } from './components/auth/ProtectedRoute';
 import VendorLoginPage from './pages/auth/VendorLoginPage';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage';
 import VendorPendingPage from './pages/auth/VendorPendingPage';
@@ -247,9 +248,6 @@ import ProfilePage from './pages/ProfilePage';
 // 🎯 Devenir Vendeur
 import BecomeVendorPage from './pages/BecomeVendorPage';
 
-// Créer une instance globale de QueryClient
-const queryClient = new QueryClient();
-
 import ConfirmEmailChange from './pages/ConfirmEmailChange';
 import ProductsPage from './pages/ProductsPage';
 import { useAuthPersistence } from './hooks/useAuthPersistence';
@@ -385,8 +383,8 @@ function App() {
                   <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="analytics" element={<ProductAnalytics />} />
-                  <Route path="users" element={<AdminUsersPageModern />} />
-                  <Route path="roles" element={<RolesManagementPage />} />
+                  <Route path="users" element={<SuperAdminRoute><AdminUsersPageModern /></SuperAdminRoute>} />
+                  <Route path="roles" element={<SuperAdminRoute><RolesManagementPage /></SuperAdminRoute>} />
                   <Route path="content-init" element={<ContentInitializationPage />} />
                   <Route path="content-management" element={<ContentManagementPage />} />
                   <Route path='payment-requests' element={<AdminPaymentRequestsPage />} />

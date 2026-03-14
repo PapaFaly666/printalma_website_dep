@@ -736,7 +736,7 @@ const NouveautesGrid: React.FC = () => {
         {/* Bouton "Voir plus" centré */}
         <div className="flex justify-center mt-3 xs:mt-4 sm:mt-4">
           <Button
-            onClick={() => navigate('/nouveautes')}
+            onClick={() => navigate('/filtered-articles')}
             variant="outline"
             size="xl"
             className="bg-red-500 hover:bg-red-600 text-white border-red-500 hover:border-red-600 px-4 py-1.5 xs:px-6 xs:py-2 sm:px-10 sm:py-4 md:px-12 md:py-4 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium min-h-[32px] xs:min-h-[36px] sm:min-h-[56px] rounded-lg xs:rounded-xl sm:rounded-full"

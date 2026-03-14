@@ -68,7 +68,8 @@ export const RolesManagementPage: React.FC = () => {
         rolesService.getAllRoles(),
         rolesService.getAllPermissions(),
       ]);
-      setRoles(rolesData);
+      // Exclure le rôle superadmin de l'affichage - il est géré uniquement par le système
+      setRoles(rolesData.filter((r) => r.slug !== 'superadmin'));
       setPermissions(permsData);
     } catch (err: any) {
       console.error('Erreur chargement:', err);
@@ -195,6 +196,15 @@ export const RolesManagementPage: React.FC = () => {
       return;
     }
 
+    // Bloquer la création d'un rôle superadmin
+    if (
+      newRoleSlug.toLowerCase().trim() === 'superadmin' ||
+      newRoleName.toLowerCase().trim() === 'superadmin'
+    ) {
+      toast.error('Le rôle superadmin est réservé au système et ne peut pas être recréé');
+      return;
+    }
+
     try {
       setCreating(true);
       const newRole = await rolesService.createRole({
@@ -298,6 +308,10 @@ export const RolesManagementPage: React.FC = () => {
             <div className="flex items-center gap-4 text-sm">
               <span className="text-gray-600">
                 <span className="font-semibold text-gray-900">{roles.length}</span> rôle{roles.length > 1 ? 's' : ''}
+              </span>
+              <span className="flex items-center gap-1 text-gray-400">
+                <Lock className="h-3.5 w-3.5" />
+                Le rôle superadmin est géré par le système
               </span>
             </div>
           </div>

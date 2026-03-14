@@ -18,7 +18,9 @@ import {
   Search,
   Filter,
   DollarSign,
-  CreditCard
+  CreditCard,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { ordersService, Order, OrderStatus, OrdersResponse, OrderStatistics, VendorFinances } from '../../services/ordersService';
 import { toast } from 'sonner';
@@ -57,6 +59,8 @@ export const VendorSalesPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'ALL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Charger les commandes
   const fetchOrders = async (showLoader = true) => {
@@ -152,6 +156,17 @@ export const VendorSalesPage: React.FC = () => {
 
   // 🆕 Gains en attente de livraison (non disponibles pour retrait)
   const pendingVendorEarnings = totalVendorEarnings - deliveredVendorEarnings;
+
+  // Pagination
+  const totalPages = Math.ceil(orders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = orders.slice(startIndex, endIndex);
+
+  // Réinitialiser à la page 1 lors du changement de filtres
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatus, searchTerm]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -397,7 +412,10 @@ export const VendorSalesPage: React.FC = () => {
         <CardHeader>
           <CardTitle>Toutes les commandes ({orders.length})</CardTitle>
           <CardDescription>
-            Affichage de toutes vos commandes
+            {orders.length > 0
+              ? `Page ${currentPage} / ${totalPages} - Affichage de ${startIndex + 1}-${Math.min(endIndex, orders.length)} sur ${orders.length} commandes`
+              : 'Aucune commande'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -414,9 +432,9 @@ export const VendorSalesPage: React.FC = () => {
               </AlertDescription>
             </Alert>
           ) : (
-            <ScrollArea className="h-[600px]">
-              <div className="space-y-4">
-                {orders.map((order) => {
+            <>
+              <div className="space-y-4 mb-6">
+                {paginatedOrders.map((order) => {
                   const StatusIcon = statusConfig[order.status].icon;
                   return (
                     <Card key={order.id} className="border-l-4" style={{
@@ -522,8 +540,6 @@ export const VendorSalesPage: React.FC = () => {
                             )}
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-gray-900">{(order.beneficeCommande || order.totalAmount / 100).toLocaleString()} F</p>
-                            <p className="text-xs text-gray-500">Bénéfice commande</p>
                             {order.commission_info && order.commission_info.has_custom_rate && (
                               <Badge variant="secondary" className="mt-1">
                                 Taux personnalisé
@@ -545,7 +561,67 @@ export const VendorSalesPage: React.FC = () => {
                   );
                 })}
               </div>
-            </ScrollArea>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} sur {totalPages}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="gap-1"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Précédent
+                    </Button>
+
+                    {/* Numéros de pages */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            className="w-9 h-9"
+                            onClick={() => setCurrentPage(pageNum)}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="gap-1"
+                    >
+                      Suivant
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           </CardContent>

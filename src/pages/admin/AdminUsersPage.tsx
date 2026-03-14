@@ -32,9 +32,9 @@ api.interceptors.request.use((config) => {
 
 type Role = { id: number; name: string; slug: string };
 
-type AdminsListFilters = { page?: number; limit?: number; search?: string };
+type AdminsListFilters = { page?: number; limit?: number; search?: string; roleId?: number; status?: string };
 
-type AdminUser = { id: number; name: string; email: string; role: Role };
+type AdminUser = { id: number; name: string; email: string; role: Role | null; status: string; createdAt?: string; phone?: string };
 
 async function fetchAvailableRolesForUsers(): Promise<Role[]> {
   const { data } = await api.get('/admin/roles/available-for-users');
@@ -59,13 +59,15 @@ async function createUser(payload: { name: string; email: string; password: stri
   }
 }
 
-async function listAdminsOnly(filters: AdminsListFilters = {}) {
+async function listAllUsers(filters: AdminsListFilters = {}) {
   const params = new URLSearchParams();
   if (filters.page) params.append('page', String(filters.page));
   if (filters.limit) params.append('limit', String(filters.limit));
   if (filters.search) params.append('search', filters.search);
+  if (filters.roleId) params.append('roleId', String(filters.roleId));
+  if (filters.status) params.append('status', filters.status);
   const qs = params.toString();
-  const url = qs ? `/admin/users/admins-only?${qs}` : '/admin/users/admins-only';
+  const url = qs ? `/admin/users?${qs}` : '/admin/users';
   const { data } = await api.get(url);
   return data; // { success, data: { users, total, page, limit } }
 }
@@ -75,7 +77,16 @@ async function deleteUserById(userId: number) {
     const { data } = await api.delete(`/admin/users/${userId}`);
     return data;
   } catch (err: any) {
-    throw new Error('Erreur lors de la suppression de l’utilisateur.');
+    throw new Error("Erreur lors de la suppression de l’utilisateur.");
+  }
+}
+
+async function updateUserStatus(userId: number, status: "ACTIVE" | "INACTIVE") {
+  try {
+    const { data } = await api.patch(`/admin/users/${userId}/status`, { status });
+    return data;
+  } catch (err: any) {
+    throw new Error("Erreur lors de la mise à jour du statut.");
   }
 }
 
@@ -98,6 +109,9 @@ const AdminUsersPage: React.FC = () => {
   const [limit, setLimit] = useState(20);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
+  const [filterRoleId, setFilterRoleId] = useState<number | undefined>(undefined);
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [allRoles, setAllRoles] = useState<Role[]>([]);
 
   // Create state
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
@@ -107,19 +121,46 @@ const AdminUsersPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
 
+  // Status toggle state
+  const [statusLoading, setStatusLoading] = useState<number | null>(null);
+
+  const reloadUsers = () => {
+    setLoading(true);
+    listAllUsers({ page, limit, search, roleId: filterRoleId, status: filterStatus || undefined }).then((res) => {
+      const payload = res?.data ?? res;
+      setUsers(payload?.users ?? []);
+      setTotal(payload?.total ?? 0);
+    }).catch((e) => {
+      toast.error('Erreur de chargement des utilisateurs.');
+      console.error(e);
+    }).finally(() => setLoading(false));
+  };
+
+  const handleToggleStatus = async (u: AdminUser) => {
+    const newStatus = u.status?.toUpperCase() === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    try {
+      setStatusLoading(u.id);
+      await updateUserStatus(u.id, newStatus);
+      toast.success(newStatus === 'ACTIVE' ? 'Utilisateur activé.' : 'Utilisateur désactivé.');
+      reloadUsers();
+    } catch (e: any) {
+      toast.error(e?.message || 'Erreur lors de la mise à jour du statut.');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
   useEffect(() => {
     if (!isCreate) {
-      setLoading(true);
-      listAdminsOnly({ page, limit, search }).then((res) => {
-        const payload = res?.data ?? res;
-        setUsers(payload?.users ?? []);
-        setTotal(payload?.total ?? 0);
-      }).catch((e) => {
-        toast.error('Erreur de chargement des utilisateurs.');
-        console.error(e);
-      }).finally(() => setLoading(false));
+      reloadUsers();
     }
-  }, [isCreate, page, limit, search]);
+  }, [isCreate, page, limit, search, filterRoleId, filterStatus]);
+
+  useEffect(() => {
+    if (!isCreate) {
+      fetchAvailableRolesForUsers().then((roles) => setAllRoles(roles)).catch(() => {});
+    }
+  }, [isCreate]);
 
   useEffect(() => {
     if (isCreate) {
@@ -238,14 +279,50 @@ const AdminUsersPage: React.FC = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
+  const statusLabel: Record<string, { label: string; className: string }> = {
+    ACTIVE: { label: 'Actif', className: 'bg-green-100 text-green-700' },
+    INACTIVE: { label: 'Inactif', className: 'bg-gray-100 text-gray-600' },
+    SUSPENDED: { label: 'Suspendu', className: 'bg-red-100 text-red-700' },
+  };
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-xl font-semibold">Admins & Superadmins</h1>
-        <div className="flex items-center gap-2">
-          <Input placeholder="Rechercher (nom, email)" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
-            <SelectTrigger className="w-24">
+        <div>
+          <h1 className="text-xl font-semibold">Utilisateurs</h1>
+          <p className="text-sm text-gray-500">{total} utilisateur{total !== 1 ? 's' : ''} au total</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Input
+            placeholder="Rechercher (nom, email)"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-48"
+          />
+          <Select value={filterRoleId ? String(filterRoleId) : 'all'} onValueChange={(v) => { setFilterRoleId(v === 'all' ? undefined : Number(v)); setPage(1); }}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Rôle" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les rôles</SelectItem>
+              {allRoles.map((r) => (
+                <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus || 'all'} onValueChange={(v) => { setFilterStatus(v === 'all' ? '' : v); setPage(1); }}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="ACTIVE">Actif</SelectItem>
+              <SelectItem value="INACTIVE">Inactif</SelectItem>
+              <SelectItem value="SUSPENDED">Suspendu</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
+            <SelectTrigger className="w-20">
               <SelectValue placeholder="Limite" />
             </SelectTrigger>
             <SelectContent>
@@ -254,7 +331,9 @@ const AdminUsersPage: React.FC = () => {
               <SelectItem value="50">50</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => navigate('/admin/users/create')}>Nouveau</Button>
+          {isSuperAdmin && (
+            <Button onClick={() => navigate('/admin/users/create')}>Nouveau</Button>
+          )}
         </div>
       </div>
 
@@ -264,46 +343,83 @@ const AdminUsersPage: React.FC = () => {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left border-b">
-                  <th className="py-2 pr-4">Nom</th>
-                  <th className="py-2 pr-4">Email</th>
-                  <th className="py-2 pr-4">Rôle</th>
-                  <th className="py-2 pr-4">Actions</th>
+                  <th className="py-2 pr-4 font-medium text-gray-600">Nom</th>
+                  <th className="py-2 pr-4 font-medium text-gray-600">Email</th>
+                  <th className="py-2 pr-4 font-medium text-gray-600">Rôle</th>
+                  <th className="py-2 pr-4 font-medium text-gray-600">Statut</th>
+                  <th className="py-2 pr-4 font-medium text-gray-600">Créé le</th>
+                  <th className="py-2 pr-4 font-medium text-gray-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-b">
-                    <td className="py-2 pr-4">{u.name}</td>
-                    <td className="py-2 pr-4">{u.email}</td>
-                    <td className="py-2 pr-4">{u.role?.name || '—'}</td>
-                    <td className="py-2 pr-4">
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => toast.info('Modification à implémenter')}>Modifier</Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => { setUserToDelete(u); setDeleteDialogOpen(true); }}
-                        >
-                          Supprimer
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
+                {loading && users.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-gray-500">Aucun résultat</td>
+                    <td colSpan={6} className="py-6 text-center text-gray-400">Chargement...</td>
                   </tr>
                 )}
+                {!loading && users.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-6 text-center text-gray-500">Aucun utilisateur trouvé</td>
+                  </tr>
+                )}
+                {users.map((u) => {
+                  const statusInfo = u.status ? statusLabel[u.status.toUpperCase()] : null;
+                  return (
+                    <tr key={u.id} className="border-b hover:bg-gray-50">
+                      <td className="py-2 pr-4 font-medium">{u.name}</td>
+                      <td className="py-2 pr-4 text-gray-600">{u.email}</td>
+                      <td className="py-2 pr-4">
+                        {u.role ? (
+                          <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                            {u.role.name}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {statusInfo ? (
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusInfo.className}`}>
+                            {statusInfo.label}
+                          </span>
+                        ) : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-500 text-xs">
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('fr-FR') : '—'}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={statusLoading === u.id}
+                            onClick={() => handleToggleStatus(u)}
+                          >
+                            {statusLoading === u.id
+                              ? '...'
+                              : u.status?.toUpperCase() === 'ACTIVE'
+                              ? 'Désactiver'
+                              : 'Activer'}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => { setUserToDelete(u); setDeleteDialogOpen(true); }}
+                          >
+                            Supprimer
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           <div className="flex items-center justify-between mt-4">
-            <div className="text-xs text-gray-500">Page {page} / {totalPages}</div>
+            <div className="text-xs text-gray-500">Page {page} / {totalPages} — {total} résultat{total !== 1 ? 's' : ''}</div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Précédent</Button>
-              <Button variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Suivant</Button>
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Précédent</Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Suivant</Button>
             </div>
           </div>
         </CardContent>
@@ -312,30 +428,25 @@ const AdminUsersPage: React.FC = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer définitivement</AlertDialogTitle>
             <AlertDialogDescription>
-              Voulez-vous vraiment supprimer l’utilisateur {userToDelete?.name} ? Cette action est irréversible.
+              Voulez-vous vraiment supprimer définitivement l’utilisateur <strong>{userToDelete?.name}</strong> ?
+              Cette action est irréversible et supprime toutes les données associées.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
               onClick={async () => {
                 if (!userToDelete) return;
                 try {
                   setLoading(true);
                   await deleteUserById(userToDelete.id);
-                  toast.success('Utilisateur supprimé.');
-                  // Reload list
-                  listAdminsOnly({ page, limit, search }).then((res) => {
-                    const payload = res?.data ?? res;
-                    setUsers(payload?.users ?? []);
-                    setTotal(payload?.total ?? 0);
-                  }).catch(() => {
-                    toast.error('Erreur lors du rechargement de la liste.');
-                  });
+                  toast.success("Utilisateur supprimé définitivement.");
+                  reloadUsers();
                 } catch (e: any) {
-                  toast.error(e?.message || 'Erreur lors de la suppression.');
+                  toast.error(e?.message || "Erreur lors de la suppression.");
                 } finally {
                   setLoading(false);
                   setDeleteDialogOpen(false);
@@ -343,7 +454,7 @@ const AdminUsersPage: React.FC = () => {
                 }
               }}
             >
-              Supprimer
+              Supprimer définitivement
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

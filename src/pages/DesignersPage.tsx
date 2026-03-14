@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import CategoryTabs from '../components/CategoryTabs';
 import ServiceFeatures from '../pages/ServiceFeatures ';
 import { VendorServiceInstance } from '../services/vendorService';
+import { vendorStatsService } from '../services/vendorStatsService';
 import DesignersSection from './DesignersSection';
 
 interface Designer {
@@ -44,6 +45,7 @@ export default function DesignersPage() {
   }, []);
 
   const handleViewShop = (designer: Designer) => {
+    vendorStatsService.trackShopClick(designer.id);
     // Utiliser le nom de la boutique si disponible, sinon le firstName
     const shopName = designer.shopName || designer.firstName || designer.name;
     // Convertir en URL-friendly (remplacer les espaces et caractères spéciaux)

@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
-import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Eye, EyeOff, User, AlertCircle, Camera, X, Upload, Edit3, Save, Trash2, Shield, Settings, Mail, Phone, MapPin, Store, Key, AlertTriangle, Info, Move, RotateCw, ZoomIn, ZoomOut, Crop, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, User, AlertCircle, Camera, X, Upload, Edit3, Save, Trash2, Shield, Settings, Mail, Phone, MapPin, Store, Key, AlertTriangle, Info, Move, RotateCw, ZoomIn, ZoomOut, Crop, CheckCircle, RefreshCw, Plus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
@@ -917,24 +916,21 @@ const VendorAccountPage: React.FC = () => {
             )}
             
             <div className="flex gap-3 pt-2">
-              <Button
-                size="sm"
+              <button
                 onClick={() => saveField(fieldName)}
                 disabled={isLoading || !!field.error}
-                className="text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm gap-1.5 bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white"
               >
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-4 w-4" />
                 Sauvegarder
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
+              </button>
+              <button
                 onClick={() => cancelEditing(fieldName)}
                 disabled={isLoading}
-                className="text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-4 py-2 rounded-lg transition-all duration-200"
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white px-4 py-2 text-sm"
               >
                 Annuler
-              </Button>
+              </button>
             </div>
           </div>
         ) : (
@@ -952,15 +948,13 @@ const VendorAccountPage: React.FC = () => {
                 )}
               </div>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
+            <button
               onClick={() => startEditing(fieldName)}
-              className="text-sm font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200 flex-shrink-0"
+              className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50 px-3 py-2 text-sm gap-1.5"
             >
-              <Edit3 className="h-4 w-4 mr-1" />
+              <Edit3 className="h-4 w-4" />
               Modifier
-            </Button>
+            </button>
           </div>
         )}
       </div>
@@ -970,56 +964,75 @@ const VendorAccountPage: React.FC = () => {
   EditableField.displayName = 'EditableField';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-8 font-sans">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        {/* Header moderne avec typographie améliorée */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-7xl mx-auto">
+        {/* Header moderne */}
+        <div className="bg-white border-b border-gray-200 px-6 py-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">
                 Mon Profil Vendeur
               </h1>
-              <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed mt-2">
+              <p className="text-gray-600 text-sm">
                 Gérez vos informations professionnelles et vos paramètres
               </p>
             </div>
-            <Badge className={accountStatus ? "bg-green-100 text-green-800 font-semibold text-sm px-4 py-2" : "bg-orange-100 text-orange-800 font-semibold text-sm px-4 py-2"}>
-              {accountStatus ? '✓ Compte Actif' : '⚠ Compte Désactivé'}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={
+                accountStatus
+                  ? "bg-green-100 text-green-800 border-0 font-medium px-3 py-1"
+                  : "bg-orange-100 text-orange-800 border-0 font-medium px-3 py-1"
+              }>
+                {accountStatus ? (
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Compte Actif
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Compte Désactivé
+                  </span>
+                )}
+              </Badge>
+            </div>
           </div>
         </div>
 
+        <div className="px-6 pb-8">
         {/* Bandeau d'avertissement si compte désactivé */}
         {!accountStatus && (
-          <Alert className="border-orange-200 bg-orange-50 mb-6">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
-            <AlertDescription className="text-sm text-orange-800 leading-relaxed">
-              <div className="flex items-center justify-between">
-                <span>
-                  <strong>Votre compte est désactivé.</strong> Vos produits sont masqués aux clients mais vous gardez un accès complet : visualisation, ajout, modification de produits et designs.
-                </span>
-                <Button
-                  size="sm"
-                  onClick={handleReactivateAccount}
-                  disabled={isLoading}
-                  className="ml-4 text-sm font-semibold bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-all duration-200"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Réactivation...
-                    </>
-                  ) : (
-                    'Réactiver mon compte'
-                  )}
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
+          <div className="mb-6 bg-orange-50 border-2 border-orange-200 rounded-xl p-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-orange-900 font-semibold mb-1">
+                Votre compte est désactivé
+              </p>
+              <p className="text-sm text-orange-800 leading-relaxed mb-3">
+                Vos produits sont masqués aux clients mais vous gardez un accès complet : visualisation, ajout, modification de produits et designs.
+              </p>
+              <button
+                onClick={handleReactivateAccount}
+                disabled={isLoading}
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 text-sm gap-1.5 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Réactivation...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="h-4 w-4" />
+                    Réactiver mon compte
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         )}
 
-        <div className="max-w-5xl mx-auto">
-          <div className="space-y-8">
+        <div className="max-w-5xl mx-auto space-y-8">
 
             {/* Groupe: Identité visuelle */}
             <div className="space-y-4">
@@ -1030,10 +1043,12 @@ const VendorAccountPage: React.FC = () => {
               </div>
 
               {/* Section Photo de profil */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="border-2 border-gray-200 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all duration-200">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                  <Camera className="h-6 w-6 text-blue-600" />
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <Camera className="h-4 w-4 text-blue-600" />
+                  </div>
                   Photo de profil
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 leading-relaxed">
@@ -1099,14 +1114,13 @@ const VendorAccountPage: React.FC = () => {
                       <p className="text-base text-gray-600 mb-3 leading-relaxed">
                         Glissez-déposez votre photo ici ou
                       </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <button
+                        type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-sm font-semibold border-gray-300 hover:bg-gray-100 px-6 py-2 rounded-lg transition-all duration-200"
+                        className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-4 py-2 text-sm"
                       >
                         Choisir un fichier
-                      </Button>
+                      </button>
                       <p className="text-xs text-gray-500 mt-3 leading-relaxed">
                         JPG, PNG, WebP (max 5MB)
                       </p>
@@ -1114,30 +1128,31 @@ const VendorAccountPage: React.FC = () => {
                     
                     {profilePhoto && (
                       <div className="flex gap-3">
-                        <Button
+                        <button
+                          type="button"
                           onClick={handleUploadPhoto}
                           disabled={isUploadingPhoto}
-                          className="flex-1 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-200 hover:shadow-md"
+                          className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex-1 px-4 py-2 text-sm gap-1.5 bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white"
                         >
                           {isUploadingPhoto ? (
                             <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              <RefreshCw className="h-4 w-4 animate-spin" />
                               Upload en cours...
                             </>
                           ) : (
                             <>
-                              <Upload className="h-4 w-4 mr-2" />
+                              <Upload className="h-4 w-4" />
                               Uploader la photo
                             </>
                           )}
-                        </Button>
-                        <Button
-                          variant="outline"
+                        </button>
+                        <button
+                          type="button"
                           onClick={handleRemovePhoto}
-                          className="text-sm font-semibold text-red-600 border-red-300 hover:bg-red-50 px-4 py-3 rounded-lg transition-all duration-200"
+                          className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-red-200 text-red-600 hover:bg-red-50 bg-white px-3 py-2 text-sm"
                         >
                           <X className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1163,10 +1178,12 @@ const VendorAccountPage: React.FC = () => {
               </div>
 
               {/* Section Informations personnelles */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="border-2 border-gray-200 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all duration-200">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                  <User className="h-6 w-6 text-blue-600" />
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <User className="h-4 w-4 text-blue-600" />
+                  </div>
                   Informations personnelles
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 leading-relaxed">
@@ -1252,10 +1269,12 @@ const VendorAccountPage: React.FC = () => {
             </Card>
 
             {/* Section Numéros de téléphone */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="border-2 border-gray-200 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all duration-200">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                  <Phone className="h-6 w-6 text-blue-600" />
+                  <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                    <Phone className="h-4 w-4 text-green-600" />
+                  </div>
                   Numéros de téléphone
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 leading-relaxed">
@@ -1289,25 +1308,27 @@ const VendorAccountPage: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                    <Button
-                      variant="outline"
+                    <button
+                      type="button"
                       onClick={openPhoneDialog}
-                      className="w-full text-sm font-semibold text-blue-600 border-blue-300 hover:bg-blue-50 px-4 py-3 rounded-lg transition-all duration-200"
+                      className="w-full inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-4 py-2 text-sm gap-1.5"
                     >
-                      <Edit3 className="h-4 w-4 mr-2" />
+                      <Edit3 className="h-4 w-4" />
                       Modifier les numéros
-                    </Button>
+                    </button>
                   </>
                 ) : (
                   <div className="text-center py-8">
                     <Phone className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                     <p className="text-gray-600 mb-4">Aucun numéro enregistré</p>
-                    <Button
+                    <button
+                      type="button"
                       onClick={openPhoneDialog}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm gap-1.5 bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white"
                     >
+                      <Plus className="h-4 w-4" />
                       Ajouter des numéros
-                    </Button>
+                    </button>
                   </div>
                 )}
               </CardContent>
@@ -1321,13 +1342,15 @@ const VendorAccountPage: React.FC = () => {
             />
 
             {/* Section Profil Public */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="border-2 border-gray-200 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all duration-200">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </div>
                   Profil Public
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 leading-relaxed">
@@ -1352,10 +1375,8 @@ const VendorAccountPage: React.FC = () => {
                       <span className="text-sm text-gray-700 font-mono">
                         printalma.com/{user?.vendeur_type?.toLowerCase() || 'designer'}/{editableFields.shop_name.value.toLowerCase().replace(/\s+/g, '-')}
                       </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-sm font-semibold border-blue-300 hover:bg-blue-50"
+                      <button
+                        className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-blue-200 text-blue-600 hover:bg-blue-50 px-3 py-1.5 text-sm"
                         onClick={() => {
                           const url = `http://localhost:5174/${user?.vendeur_type?.toLowerCase() || 'designer'}/${editableFields.shop_name.value.toLowerCase().replace(/\s+/g, '-')}`;
                           navigator.clipboard.writeText(url);
@@ -1363,7 +1384,7 @@ const VendorAccountPage: React.FC = () => {
                         }}
                       >
                         Copier
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1453,10 +1474,12 @@ const VendorAccountPage: React.FC = () => {
               </div>
 
               {/* Section Sécurité */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="border-2 border-gray-200 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all duration-200">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                  <Shield className="h-6 w-6 text-green-600" />
+                  <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                    <Shield className="h-4 w-4 text-green-600" />
+                  </div>
                   Sécurité
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 leading-relaxed">
@@ -1474,23 +1497,25 @@ const VendorAccountPage: React.FC = () => {
                       <p className="text-sm text-gray-500 leading-relaxed">Modifiez votre mot de passe pour sécuriser votre compte</p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
+                  <button
+                    type="button"
                     onClick={() => setShowPasswordDialog(true)}
-                    className="text-sm font-semibold text-blue-600 border-blue-300 hover:bg-blue-50 px-4 py-2 rounded-lg transition-all duration-200"
+                    className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-4 py-2 text-sm gap-1.5"
                   >
-                    <Edit3 className="h-4 w-4 mr-2" />
+                    <Edit3 className="h-4 w-4" />
                     Modifier
-                  </Button>
+                  </button>
                 </div>
               </CardContent>
             </Card>
 
             {/* Section Paramètres du compte */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="border-2 border-gray-200 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all duration-200">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                  <Settings className="h-6 w-6 text-purple-600" />
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <Settings className="h-4 w-4 text-purple-600" />
+                  </div>
                   Paramètres du compte
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 leading-relaxed">
@@ -1500,7 +1525,7 @@ const VendorAccountPage: React.FC = () => {
               <CardContent className="space-y-6">
                 {accountStatus ? (
                   // Compte actif - Bouton de désactivation
-                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border-2 border-orange-200">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-orange-100 rounded-lg">
                         <AlertTriangle className="h-6 w-6 text-orange-600" />
@@ -1510,18 +1535,18 @@ const VendorAccountPage: React.FC = () => {
                         <p className="text-sm text-gray-500 leading-relaxed">Masquer vos produits aux clients. Vous gardez l'accès complet pour gérer, ajouter et modifier vos contenus</p>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
+                    <button
+                      type="button"
                       onClick={() => setShowDeactivateDialog(true)}
-                      className="text-sm font-semibold text-orange-600 border-orange-300 hover:bg-orange-50 px-4 py-2 rounded-lg transition-all duration-200"
+                      className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-orange-200 text-orange-600 hover:bg-orange-50 bg-white px-4 py-2 text-sm gap-1.5"
                     >
-                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      <AlertTriangle className="h-4 w-4" />
                       Désactiver
-                    </Button>
+                    </button>
                   </div>
                 ) : (
                   // Compte désactivé - Bouton de réactivation
-                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-green-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-green-50 rounded-xl border-2 border-green-200">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-green-100 rounded-lg">
                         <Shield className="h-6 w-6 text-green-600" />
@@ -1531,24 +1556,24 @@ const VendorAccountPage: React.FC = () => {
                         <p className="text-sm text-gray-500 leading-relaxed">Rendre vos produits visibles aux clients</p>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
+                    <button
+                      type="button"
                       onClick={handleReactivateAccount}
                       disabled={isLoading}
-                      className="text-sm font-semibold text-green-600 border-green-300 hover:bg-green-50 px-4 py-2 rounded-lg transition-all duration-200"
+                      className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm gap-1.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white"
                     >
                       {isLoading ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
                           Réactivation...
                         </>
                       ) : (
                         <>
-                          <Shield className="h-4 w-4 mr-2" />
+                          <Shield className="h-4 w-4" />
                           Réactiver
                         </>
                       )}
-                    </Button>
+                    </button>
                   </div>
                 )}
               </CardContent>
@@ -1644,27 +1669,23 @@ const VendorAccountPage: React.FC = () => {
                   <RotateCw className="h-4 w-4" />
                   Rotation
                 </Label>
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => setRotation((r) => (r + 90) % 360)}
-                  className="text-sm font-medium"
+                  className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-gray-200 text-gray-600 hover:bg-gray-50 px-3 py-1.5 text-sm gap-1.5"
                 >
-                  <RotateCw className="h-4 w-4 mr-2" />
+                  <RotateCw className="h-4 w-4" />
                   Faire pivoter 90°
-                </Button>
+                </button>
               </div>
 
               {/* Boutons de réinitialisation */}
               <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => { setZoom(1); setRotation(0); setCrop({ x: 0, y: 0 }); }}
-                  className="text-sm font-medium text-gray-600"
+                  className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-gray-200 text-gray-600 hover:bg-gray-50 px-3 py-1.5 text-sm"
                 >
                   Réinitialiser
-                </Button>
+                </button>
                 <div className="text-xs text-gray-500">
                   <p>💡 Astuce : Glissez l'image pour la repositionner</p>
                 </div>
@@ -1673,20 +1694,19 @@ const VendorAccountPage: React.FC = () => {
           </div>
 
           <DialogFooter className="pt-6 border-t border-gray-200">
-            <Button
-              variant="outline"
+            <button
               onClick={handleCancelImageEdit}
-              className="text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-6 py-2 rounded-lg transition-all duration-200"
+              className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white px-4 py-2 text-sm"
             >
               Annuler
-            </Button>
-            <Button
+            </button>
+            <button
               onClick={handleSaveEditedImage}
-              className="text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
+              className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-4 py-2 text-sm gap-1.5 bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white"
             >
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="h-4 w-4" />
               Appliquer les modifications
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1712,15 +1732,13 @@ const VendorAccountPage: React.FC = () => {
                   placeholder="Votre mot de passe actuel"
                   className="text-base leading-relaxed border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-gray-600"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                 >
                   {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+                </button>
               </div>
             </div>
             <div className="space-y-2">
@@ -1734,15 +1752,13 @@ const VendorAccountPage: React.FC = () => {
                   placeholder="Nouveau mot de passe"
                   className="text-base leading-relaxed border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-gray-600"
                   onClick={() => setShowNewPassword(!showNewPassword)}
                 >
                   {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+                </button>
               </div>
             </div>
             <div className="space-y-2">
@@ -1756,43 +1772,40 @@ const VendorAccountPage: React.FC = () => {
                   placeholder="Confirmer le nouveau mot de passe"
                   className="text-base leading-relaxed border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-gray-600"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+                </button>
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button
+              <button
                 type="button"
-                variant="outline"
                 onClick={() => setShowPasswordDialog(false)}
-                className="text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-4 py-2 rounded-lg transition-all duration-200"
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white px-4 py-2 text-sm"
               >
                 Annuler
-              </Button>
-              <Button
+              </button>
+              <button
                 type="submit"
                 disabled={isLoading}
-                className="text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm gap-1.5 bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white"
               >
                 {isLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
                     Modification...
                   </>
                 ) : (
                   <>
-                    <Save className="h-4 w-4 mr-2" />
+                    <Save className="h-4 w-4" />
                     Modifier le mot de passe
                   </>
                 )}
-              </Button>
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1828,30 +1841,30 @@ const VendorAccountPage: React.FC = () => {
               />
             </div>
             <DialogFooter className="pt-4">
-              <Button
-                variant="outline"
+              <button
+                type="button"
                 onClick={() => setShowDeactivateDialog(false)}
-                className="text-sm font-semibold text-gray-700 border-gray-300 hover:bg-gray-100 px-4 py-2 rounded-lg transition-all duration-200"
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white px-4 py-2 text-sm"
               >
                 Annuler
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={handleDeactivateAccount}
                 disabled={isLoading || deactivateConfirmation !== 'DESACTIVER'}
-                className="text-sm font-semibold bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm gap-1.5 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white"
               >
                 {isLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
                     Désactivation...
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    <AlertTriangle className="h-4 w-4" />
                     Désactiver le compte
                   </>
                 )}
-              </Button>
+              </button>
             </DialogFooter>
           </div>
         </DialogContent>
@@ -1886,15 +1899,13 @@ const VendorAccountPage: React.FC = () => {
                     {index < 2 && <span className="text-red-600 ml-1">*</span>}
                   </Label>
                   {index >= 2 && (
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="sm"
                       onClick={() => removePhone(index)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 p-2"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </button>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -1909,15 +1920,13 @@ const VendorAccountPage: React.FC = () => {
                     />
                   </div>
                   {!phone.isPrimary && (
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
-                      size="sm"
                       onClick={() => setPrimary(index)}
-                      className="whitespace-nowrap border-blue-300 text-blue-600 hover:bg-blue-50"
+                      className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-blue-200 text-blue-600 hover:bg-blue-50 px-3 py-1.5 text-sm whitespace-nowrap"
                     >
                       Définir principal
-                    </Button>
+                    </button>
                   )}
                   {phone.isPrimary && (
                     <Badge className="flex items-center gap-1 bg-blue-100 text-blue-700 border-blue-300 px-3">
@@ -1930,43 +1939,42 @@ const VendorAccountPage: React.FC = () => {
             ))}
 
             {editingPhones.length < 3 && (
-              <Button
+              <button
                 type="button"
-                variant="outline"
                 onClick={addPhone}
-                className="w-full border-dashed border-2 border-blue-300 text-blue-600 hover:bg-blue-50"
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-dashed border-blue-200 text-blue-600 hover:bg-blue-50 px-4 py-2 text-sm w-full gap-1.5"
               >
-                <Phone className="h-4 w-4 mr-2" />
+                <Phone className="h-4 w-4" />
                 Ajouter un numéro
-              </Button>
+              </button>
             )}
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
+            <button
+              type="button"
               onClick={() => setShowPhoneDialog(false)}
-              className="text-sm font-semibold"
+              className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white px-4 py-2 text-sm"
             >
               Annuler
-            </Button>
-            <Button
+            </button>
+            <button
               onClick={handleSavePhones}
               disabled={isLoading}
-              className="text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+              className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm gap-1.5 bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white"
             >
               {isLoading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
                   Enregistrement...
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4" />
                   Enregistrer
                 </>
               )}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

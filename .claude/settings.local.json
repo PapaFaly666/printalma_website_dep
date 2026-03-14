@@ -1,60 +1,29 @@
 {
-  "env": {
+  /* "env": {
     "ANTHROPIC_AUTH_TOKEN": "962afa57981e44f1ade9f91f24a6b97b.Ng0qr6jFxbMf97MV",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
-  }, 
+  }, */
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)",
-      "Bash(npx tsc:*)",
-      "Bash(npm run dev:*)",
-      "Bash(npm run lint)",
-      "Bash(curl:*)",
-      "Bash(node:*)",
-      "Bash(npx ts-node:*)",
-      "Bash(pkill:*)",
-      "Bash(npm run lint:*)",
-      "Bash(git checkout:*)",
-      "Bash(git restore:*)",
-      "Bash(npx eslint:*)",
-      "Bash(npm restart)",
-      "Bash(npm install)",
-      "Bash(npm start)",
-      "Bash(grep:*)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "mcp__ide__getDiagnostics",
-      "Bash(npm install:*)",
-      "Bash(cat:*)",
-      "WebSearch",
-      "WebFetch(domain:paytech.sn)",
-      "WebFetch(domain:doc.paytech.sn)",
-      "WebFetch(domain:docs.intech.sn)",
-      "WebFetch(domain:doc.intech.sn)",
-      "Bash(chmod:*)",
-      "Bash(timeout 10s npm run dev:*)",
-      "Bash(sudo:*)",
-      "Bash(CHOKIDAR_USEPOLLING=true npm run dev:*)",
-      "WebFetch(domain:www.spreadshirt.com)",
-      "Bash(find:*)",
-      "Bash(mkdir:*)",
-      "Bash(touch:*)",
-      "Bash(timeout:*)",
-      "Bash('http://localhost:3004/vendor/orders/381' )",
-      "Bash(__NEW_LINE__ echo -e \"\\n\\n=== Test avec ''image'' ===\")",
-      "Bash(__NEW_LINE__ echo -e \"\\n\\n=== Test avec ''images'' ===\")",
-      "Bash(lsof:*)",
-      "Bash(xargs kill:*)",
-      "Bash(dos2unix:*)"
-    ],
-    "deny": [],
-    "ask": [],
-    "additionalDirectories": [
-      "/mnt/c/Users/HP/Desktop/Pro",
-      "/return \\("
+      "Bash(cd \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma_website_dep\" && npm run build 2>&1 | tail -20)",
+      "Bash(cd \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma_website_dep\" && npm run build 2>&1 | tail -10)",
+      "Bash(cd \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma_website_dep\" && npm run build 2>&1 | tail -15)",
+      "Bash(cd \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma_website_dep\" && npm run build 2>&1 | grep -i \"AdminUsersPageModern\\\\|AdminUsersPage\\\\b\" | head -10)",
+      "Bash(cd \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma_website_dep\" && npm run build 2>&1 | grep -v \"^>\" | grep -i \"error\\\\|warning\" | grep -v \"pre-existing\\\\|Sidebar\\\\|MonthlyRevenue\\\\|usePermissions\\\\|roleService\" | head -15)",
+      "Bash(cd \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma_website_dep\" && npm run build 2>&1 | tail -5)",
+      "Bash(cd \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma_website_dep\" && npm run build 2>&1 | grep -i \"LoginForm\\\\|auth/Login\" | head -5)",
+      "Bash(find \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma-back-dep-main\" -type f -name \"*auth*\" | grep -E \"\\\\.\\(ts|js\\)$\" | head -20)",
+      "Bash(find /c/Users/DELL/Desktop/projet/printalma-back-dep-main -type f -name \"*order*\" | grep -E \"\\\\.\\(ts|js\\)$\" | head -20)",
+      "Bash(cd \"C:\\\\Users\\\\DELL\\\\Desktop\\\\projet\\\\printalma-back-dep-main\" && npx tsc --noEmit 2>&1 | grep -i \"order.controller\\\\|paytech\" | head -10)",
+      "Bash(cd \"C:/Users/DELL/Desktop/projet/printalma-back-dep-main\" && npx tsc --noEmit 2>&1 | head -15)",
+      "Bash(cd \"C:/Users/DELL/Desktop/projet/printalma-back-dep-main\" && npx tsc --noEmit 2>&1 | grep \"order.controller\" | head -10)",
+      "Bash(cd \"C:/Users/DELL/Desktop/projet/printalma-back-dep-main\" && npx tsc --noEmit 2>&1 | grep -E \"order\\\\.service|order\\\\.controller|mail\\\\.service\" | head -10)",
+      "Bash(cd \"C:/Users/DELL/Desktop/projet/printalma-back-dep-main\" && npx tsc --noEmit 2>&1 | grep -E \"mail\\\\.service|order\\\\.service|order\\\\.controller\" | head -10)",
+      "Bash(cd \"C:/Users/DELL/Desktop/projet/printalma-back-dep-main\" && npx prisma generate 2>&1 | tail -5)",
+      "Bash(cd \"C:/Users/DELL/Desktop/projet/printalma-back-dep-main\" && npx tsc --noEmit 2>&1 | grep -v \"sticker\" | head -10)"
     ]
   }
 }

@@ -155,6 +155,7 @@ export const navigationConfig: NavigationConfig = {
       id: 'users-group',
       title: 'Utilisateurs',
       permissions: ['users.admins.view', 'users.admins.roles'],
+      roles: ['SUPERADMIN'],
       items: [
         {
           id: 'users',

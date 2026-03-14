@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import CategoryTabs from '../components/CategoryTabs';
 import ServiceFeatures from '../pages/ServiceFeatures ';
 import { VendorServiceInstance } from '../services/vendorService';
+import { vendorStatsService } from '../services/vendorStatsService';
 
 interface Influencer {
   id: number;
@@ -145,6 +146,7 @@ export default function InfluenceursPage() {
   }, []);
 
   const handleViewShop = (influencer: Influencer) => {
+    vendorStatsService.trackShopClick(influencer.id);
     // Utiliser le nom de la boutique si disponible, sinon le firstName
     const shopName = influencer.shopName || influencer.firstName || influencer.name;
     // Convertir en URL-friendly (remplacer les espaces et caractères spéciaux)

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { DesignFileChecker } from '../components/vendor/DesignFileChecker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../services/productService';
 import { Loader2, Upload, Image as ImageIcon, CloudUpload, Rocket, Store, Check, Save, Info, Ruler, Palette, X, Package, DollarSign, Edit3, Move, RotateCw, Calculator, ChevronDown, ChevronUp, ChevronRight, TrendingUp, Percent, RotateCcw, Zap, Target, Sparkles, ArrowRight, Eye, BarChart3, PiggyBank, Coins, AlertCircle, Star } from 'lucide-react';
@@ -2370,6 +2371,8 @@ const SellDesignPage: React.FC = () => {
   const [designName, setDesignName] = useState<string>('');
   const [designDescription, setDesignDescription] = useState<string>('');
   const [tempDesignFile, setTempDesignFile] = useState<File | null>(null);
+  const [checkerFile, setCheckerFile] = useState<File | null>(null);
+  const [fileIsValid, setFileIsValid] = useState(false);
   const [tempDesignUrl, setTempDesignUrl] = useState<string>('');
   const [designPriceError, setDesignPriceError] = useState<string>('');
   const [designNameError, setDesignNameError] = useState<string>('');
@@ -3283,7 +3286,10 @@ const SellDesignPage: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
-    
+
+    // Toujours afficher le checker, même pour les fichiers invalides
+    setCheckerFile(file);
+
     // Vérifier le type de fichier
     const isValidImageType = file.type.startsWith('image/') ||
                            file.type === 'image/svg+xml' ||
@@ -3298,29 +3304,74 @@ const SellDesignPage: React.FC = () => {
       });
       return;
     }
-    
-    // Traitement simplifié sans recadrage automatique (temporaire)
-    setTempDesignFile(file);
+
+    // Taille max 5 Mo
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "Le fichier ne doit pas dépasser 5 Mo.",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+
+    const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg');
+
+    const applyFile = () => {
+      setTempDesignFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setTempDesignUrl(objectUrl);
+      setCropInfo(null);
+      toast({
+        title: "📁 Design importé",
+        description: "Votre design a été importé avec ses dimensions originales.",
+        variant: "success",
+        duration: 3000,
+      });
+      setDesignPrice(0);
+      setDesignName(file.name.replace(/\.[^/.]+$/, ""));
+      setDesignDescription('');
+      setDesignPriceError('');
+      setDesignNameError('');
+      setDesignCategoryId(null);
+      setDesignCategoryError('');
+      setShowDesignPriceModal(true);
+    };
+
+    // SVG : pas de vérification de dimensions
+    if (isSvg) {
+      applyFile();
+      return;
+    }
+
+    // Vérification des dimensions min 1000×1000 px
     const objectUrl = URL.createObjectURL(file);
-    setTempDesignUrl(objectUrl);
-    setCropInfo(null); // Pas de recadrage pour le moment
-    
-    toast({
-      title: "📁 Design importé",
-      description: "Votre design a été importé avec ses dimensions originales.",
-      variant: "success",
-      duration: 3000,
-    });
-    
-    // Ouvrir le modal pour demander les informations du design
-    setDesignPrice(0);
-    setDesignName(file.name.replace(/\.[^/.]+$/, "")); // Nom du fichier sans extension
-    setDesignDescription('');
-    setDesignPriceError('');
-    setDesignNameError('');
-    setDesignCategoryId(null);
-    setDesignCategoryError('');
-    setShowDesignPriceModal(true);
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img;
+      URL.revokeObjectURL(objectUrl);
+      if (w < 1000 || h < 1000) {
+        toast({
+          title: "Dimensions insuffisantes",
+          description: `Image ${w}×${h}px. Minimum requis : 1000×1000px (100 DPI min).`,
+          variant: "destructive",
+          duration: 5000,
+        });
+        return;
+      }
+      applyFile();
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      toast({
+        title: "Erreur de lecture",
+        description: "Impossible de lire le fichier image.",
+        variant: "destructive",
+        duration: 4000,
+      });
+    };
+    img.src = objectUrl;
   };
 
   // Nouvelle fonction pour confirmer le prix et charger les produits
@@ -4862,9 +4913,13 @@ const SellDesignPage: React.FC = () => {
                           Choisir un fichier
                         </div>
                         <p className="text-xs text-gray-400 mt-3">
-                          PNG, JPG, SVG • Max 10 Mo
+                          PNG, JPG, SVG • Max 5 Mo
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Min. 1000×1000 px · Min. 100 DPI
                         </p>
                       </div>
+                      <DesignFileChecker file={checkerFile} onValidationChange={setFileIsValid} />
                     </div>
                   </div>
                 ) : (
@@ -6147,7 +6202,8 @@ const SellDesignPage: React.FC = () => {
             <Button
               type="button"
               onClick={handleConfirmDesignPrice}
-              className="flex-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100"
+              disabled={!fileIsValid}
+              className="flex-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Confirmer
             </Button>

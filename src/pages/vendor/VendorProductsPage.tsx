@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Card, CardContent } from '../../components/ui/card';
 import Button from '../../components/ui/Button';
@@ -35,6 +36,7 @@ import { vendorProductService } from '../../services/vendorProductService';
 import { vendorProductValidationService } from '../../services/vendorProductValidationService';
 import { vendorAccountService } from '../../services/vendorAccountService';
 import { API_CONFIG } from '../../config/api';
+import { useVendorProducts } from '../../hooks/vendor';
 
 // 🆕 Interface pour les prix par taille
 interface VendorSizePrice {
@@ -213,12 +215,14 @@ export const VendorProductsPage: React.FC = () => {
       }
     })();
   }, []);
-  
-  // États principaux
-  const [products, setProducts] = useState<VendorProductFromAPI[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<VendorProductFromAPI[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // React Query pour les produits
+  const productsQuery = useVendorProducts();
+  const isLoading = productsQuery.isLoading;
+  const isRefetching = productsQuery.isRefetching;
+  const queryError = productsQuery.error;
+  const apiStatus = queryError ? 'offline' : (isLoading ? 'offline' : 'connected');
+
   const [validationStatuses, setValidationStatuses] = useState<Record<number, {
     isValidated: boolean;
     validationStatus: 'validated' | 'pending' | 'rejected';
@@ -228,7 +232,7 @@ export const VendorProductsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'products' | 'stickers'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [mockupFilter, setMockupFilter] = useState<string>('all'); // 🆕 Filtre par nom de mockup
+  const [mockupFilter, setMockupFilter] = useState<string>('all');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -349,277 +353,110 @@ export const VendorProductsPage: React.FC = () => {
     return null;
   };
 
-  // 🆕 Charger les produits selon la documentation
-  const loadProducts = async () => {
-    setLoading(true);
-    try {
-      console.log('📡 Chargement des produits vendeur avec mockups et designs...');
-      
-      // ✅ CORRECTION : Utiliser l'endpoint configuré avec authentification par cookies
-      const response = await fetch(`${API_CONFIG.BASE_URL}/vendor/products`, {
-        method: 'GET',
-        credentials: 'include', // Important : inclure les cookies pour l'authentification JWT
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('🔍 Réponse HTTP:', response.status, response.statusText);
-
-      if (!response.ok) {
-        console.warn(`⚠️ Erreur ${response.status} pour /vendor/products, essai avec /public/best-sellers...`);
-        
-        // Fallback vers l'endpoint public si l'authentification échoue
-        const fallbackResponse = await fetch(`${API_CONFIG.BASE_URL}/public/best-sellers?limit=20`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!fallbackResponse.ok) {
-          throw new Error(`HTTP error! status: ${fallbackResponse.status}`);
-        }
-
-        const fallbackResult = await fallbackResponse.json();
-        console.log('📋 Réponse API fallback:', fallbackResult);
-        
-        let apiProducts = [];
-        
-        if (fallbackResult.success && fallbackResult.data && fallbackResult.data.bestSellers) {
-          apiProducts = fallbackResult.data.bestSellers;
-        } else if (fallbackResult.data && Array.isArray(fallbackResult.data)) {
-          apiProducts = fallbackResult.data;
-        } else if (Array.isArray(fallbackResult)) {
-          apiProducts = fallbackResult;
-        } else {
-          console.warn('⚠️ Structure de réponse inattendue:', fallbackResult);
-          apiProducts = [];
-        }
-        
-        console.log('✅ Produits chargés (fallback):', apiProducts.length);
-        
-        setProducts(apiProducts);
-        setFilteredProducts(apiProducts);
-        return;
-      }
-
-      const result = await response.json();
-      console.log('📋 Réponse API produits vendeur:', result);
-      
-      // ✅ CORRECTION : Adapter le parsing selon la structure de /vendor/products
-      let apiProducts = [];
-      
-      if (result.success && result.data && Array.isArray(result.data)) {
-        // Format de /vendor/products avec data.products
-        apiProducts = result.data;
-      } else if (result.data && result.data.products && Array.isArray(result.data.products)) {
-        // Format avec data.products
-        apiProducts = result.data.products;
-      } else if (Array.isArray(result)) {
-        // Format tableau direct
-        apiProducts = result;
-      } else if (result.products && Array.isArray(result.products)) {
-        // Format avec products à la racine
-        apiProducts = result.products;
-      } else {
-        console.warn('⚠️ Structure de réponse inattendue pour /vendor/products:', result);
-        apiProducts = [];
-      }
-      
-      console.log('✅ Produits vendeur chargés avec mockups:', apiProducts.length);
-
-
-      // ✅ TRANSFORMATION : Adapter les données pour l'affichage avec mockups
-      const transformedProducts = apiProducts.map((product: any, index: number) => {
-        // 🔍 DEBUG: Vérifier les données WIZARD brutes avant transformation
-        if (product.isWizardProduct || product.adminValidated !== undefined) {
-          console.log(`🔍 RAW WIZARD DATA - Produit ${product.id}:`, {
-            isWizardProduct: product.isWizardProduct,
-            adminValidated: product.adminValidated,
-            adminValidatedType: typeof product.adminValidated,
-            status: product.status,
-            designId: product.designId
-          });
-        }
-
-        // 🔍 Extraire le statut de validation avec la fonction helper
-        const designValidationStatus = extractDesignValidationStatus(product);
-
-        // 🔍 DEBUG: Vérifier directement les catégories dans adminProduct
-        console.log(`🔍 DEBUG - Produit ${product.id}:`);
-        console.log(`🔍 DEBUG - adminProduct.categories:`, product.adminProduct?.categories);
-
-        if (product.adminProduct?.categories && Array.isArray(product.adminProduct.categories)) {
-          console.log(`🎯 CATÉGORIES TROUVÉES: ${product.adminProduct.categories.length} catégories`);
-          console.log(`🎯 PREMIÈRE CATÉGORIE:`, product.adminProduct.categories[0]);
-          if (product.adminProduct.categories[0]?.name) {
-            console.log(`🎯 NOM PREMIÈRE CATÉGORIE: "${product.adminProduct.categories[0].name}"`);
-          }
-        } else {
-          console.log(`❌ PAS DE CATÉGORIES - adminProduct.categories:`, product.adminProduct?.categories);
-        }
-
-        return {
-          id: product.id,
-          vendorName: product.vendorName || product.name || 'Produit Vendeur',
-          description: product.description || '',
-          price: product.vendorPrice || product.price || 0,
-          status: product.status || 'DRAFT',
-          
-          bestSeller: {
-            isBestSeller: product.bestSeller?.isBestSeller || false,
-            salesCount: product.bestSeller?.salesCount || 0,
-            totalRevenue: product.bestSeller?.totalRevenue || 0,
-          },
-          
-          adminProduct: {
-            id: product.adminProduct?.id || product.baseProductId || product.id,
-            name: product.adminProduct?.name || product.name || 'Produit Admin',
-            genre: product.adminProduct?.genre || 'UNISEXE',
-            categories: product.adminProduct?.categories || [],
-            colorVariations: product.adminProduct?.colorVariations || product.colorVariations || []
-          },
-          
-          designApplication: {
-            hasDesign: product.designApplication?.hasDesign || !!product.designApplication?.designUrl,
-            designUrl: product.designApplication?.designUrl || product.designUrl || '',
-            positioning: product.designApplication?.positioning || 'CENTER',
-            scale: product.designApplication?.scale || 0.6,
-            mode: product.designApplication?.mode || 'PRESERVED',
-            // 🆕 Inclure les données de validation extraites par la fonction helper
-            isValidated: designValidationStatus?.isValidated || false,
-            validationStatus: designValidationStatus?.validationStatus || 'pending'
-          },
-          
-          designPositions: product.designPositions || [{
-            designId: product.designId || 0,
-            position: {
-              x: 0.5,
-              y: 0.5,
-              scale: 0.6,
-              rotation: 0,
-              constraints: {
-                minScale: 0.1,
-                maxScale: 2.0
-              },
-              designWidth: 200,
-              designHeight: 200
-            }
-          }],
-          
-          designTransforms: product.designTransforms || [{
-            id: product.designId || 0,
-            designUrl: product.designApplication?.designUrl || product.designUrl || '',
-            transforms: {
-              'default': {
-                x: 0.5,
-                y: 0.5,
-                scale: 0.6,
-                rotation: 0,
-                designWidth: 200,
-                designHeight: 200
-              }
-            }
-          }],
-
-          // 🆕 Prix par taille
-          priceRange: product.priceRange,
-          useGlobalPricing: product.useGlobalPricing,
-          globalCostPrice: product.globalCostPrice,
-          globalSuggestedPrice: product.globalSuggestedPrice,
-          sizePrices: product.sizePrices,
-
-          vendor: {
-            id: product.vendor?.id || 0,
-            fullName: product.vendor?.fullName || 'Vendeur',
-            shop_name: product.vendor?.shop_name || '',
-            profile_photo_url: product.vendor?.profile_photo_url || ''
-          },
-          
-          images: {
-            adminReferences: product.images?.adminReferences || [],
-            total: product.images?.total || 0,
-            primaryImageUrl: product.images?.primaryImageUrl || product.adminProduct?.colorVariations?.[0]?.images?.[0]?.url || ''
-          },
-          
-          selectedSizes: product.selectedSizes || [],
-          selectedColors: product.selectedColors || [],
+  // Transformer les produits bruts depuis l'API
+  const products = useMemo<VendorProductFromAPI[]>(() => {
+    const apiProducts = productsQuery.data || [];
+    return apiProducts.map((product: any) => {
+      const designValidationStatus = extractDesignValidationStatus(product);
+      return {
+        id: product.id,
+        vendorName: product.vendorName || product.name || 'Produit Vendeur',
+        description: product.description || '',
+        price: product.vendorPrice || product.price || 0,
+        status: product.status || 'DRAFT',
+        bestSeller: {
+          isBestSeller: product.bestSeller?.isBestSeller || false,
+          salesCount: product.bestSeller?.salesCount || 0,
+          totalRevenue: product.bestSeller?.totalRevenue || 0,
+        },
+        adminProduct: {
+          id: product.adminProduct?.id || product.baseProductId || product.id,
+          name: product.adminProduct?.name || product.name || 'Produit Admin',
+          genre: product.adminProduct?.genre || 'UNISEXE',
+          categories: product.adminProduct?.categories || [],
+          colorVariations: product.adminProduct?.colorVariations || product.colorVariations || []
+        },
+        designApplication: {
+          hasDesign: product.designApplication?.hasDesign || !!product.designApplication?.designUrl,
+          designUrl: product.designApplication?.designUrl || product.designUrl || '',
+          positioning: product.designApplication?.positioning || 'CENTER',
+          scale: product.designApplication?.scale || 0.6,
+          mode: product.designApplication?.mode || 'PRESERVED',
+          isValidated: designValidationStatus?.isValidated || false,
+          validationStatus: designValidationStatus?.validationStatus || 'pending'
+        },
+        designPositions: product.designPositions || [{
           designId: product.designId || 0,
-          isDelete: product.isDelete || false,
+          position: { x: 0.5, y: 0.5, scale: 0.6, rotation: 0, constraints: { minScale: 0.1, maxScale: 2.0 }, designWidth: 200, designHeight: 200 }
+        }],
+        designTransforms: product.designTransforms || [{
+          id: product.designId || 0,
+          designUrl: product.designApplication?.designUrl || product.designUrl || '',
+          transforms: { 'default': { x: 0.5, y: 0.5, scale: 0.6, rotation: 0, designWidth: 200, designHeight: 200 } }
+        }],
+        priceRange: product.priceRange,
+        useGlobalPricing: product.useGlobalPricing,
+        globalCostPrice: product.globalCostPrice,
+        globalSuggestedPrice: product.globalSuggestedPrice,
+        sizePrices: product.sizePrices,
+        vendor: {
+          id: product.vendor?.id || 0,
+          fullName: product.vendor?.fullName || 'Vendeur',
+          shop_name: product.vendor?.shop_name || '',
+          profile_photo_url: product.vendor?.profile_photo_url || ''
+        },
+        images: {
+          adminReferences: product.images?.adminReferences || [],
+          total: product.images?.total || 0,
+          primaryImageUrl: product.images?.primaryImageUrl || product.adminProduct?.colorVariations?.[0]?.images?.[0]?.url || ''
+        },
+        selectedSizes: product.selectedSizes || [],
+        selectedColors: product.selectedColors || [],
+        designId: product.designId || 0,
+        isDelete: product.isDelete || false,
+        isWizardProduct: product.isWizardProduct ?? false,
+        adminValidated: product.adminValidated,
+        design: product.design ? {
+          id: product.design.id,
+          name: product.design.name,
+          description: product.design.description || '',
+          category: product.design.category || { id: 0, name: 'Non définie' },
+          imageUrl: product.design.imageUrl || '',
+          tags: product.design.tags || [],
+          isValidated: product.design.isValidated || false,
+          validatedAt: product.design.validatedAt || '',
+          createdAt: product.design.createdAt || ''
+        } : undefined
+      };
+    });
+  }, [productsQuery.data]);
 
-          // 🆕 WIZARD VALIDATION FIELDS (MANQUANTS !)
-          isWizardProduct: product.isWizardProduct ?? false,
-          adminValidated: product.adminValidated,
-
-          // 🆕 Inclure les informations du design
-          design: product.design ? {
-            id: product.design.id,
-            name: product.design.name,
-            description: product.design.description || '',
-            category: product.design.category || {
-              id: 0,
-              name: 'Non définie'
-            },
-            imageUrl: product.design.imageUrl || '',
-            tags: product.design.tags || [],
-            isValidated: product.design.isValidated || false,
-            validatedAt: product.design.validatedAt || '',
-            createdAt: product.design.createdAt || ''
-          } : undefined
-        };
-      });
-      
-      
-      setProducts(transformedProducts);
-      setFilteredProducts(transformedProducts);
-
-      // 🆕 Vérifier les statuts de validation des designs
-      if (transformedProducts.length > 0) {
-        await checkDesignValidationStatuses(transformedProducts);
-      }
-
-
-    } catch (err) {
-      setError('Erreur lors du chargement des produits');
-      console.error('❌ Erreur:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Charger les produits au montage
+  // Vérifier les validations quand les produits changent
   useEffect(() => {
-    loadProducts();
-  }, []);
+    if (products.length > 0) {
+      checkDesignValidationStatuses(products);
+    }
+  }, [products]);
 
   // Filtrer les produits
-  useEffect(() => {
-    let filtered = [...products];
-
-    // Filtrer par recherche
+  const filteredProducts = useMemo(() => {
+    let filtered = products.filter(p => !p.isDelete);
     if (searchTerm) {
       filtered = filtered.filter(product =>
         product.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.adminProduct.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
-    // Filtrer par statut
     if (statusFilter !== 'all') {
       filtered = filtered.filter(product => product.status === statusFilter);
     }
-
-    // 🆕 Filtrer par nom de mockup (adminProduct.name)
     if (mockupFilter !== 'all') {
       filtered = filtered.filter(product => product.adminProduct.name === mockupFilter);
     }
-
-    setFilteredProducts(filtered);
+    return filtered;
   }, [products, searchTerm, statusFilter, mockupFilter]);
 
-  // Filtrage des produits non supprimés depuis la liste filtrée
-  const visibleProducts = filteredProducts.filter(p => !p.isDelete);
+  const visibleProducts = filteredProducts;
 
   // Calculer les statistiques
   const nonDeletedProducts = products.filter(p => !p.isDelete);
@@ -654,7 +491,7 @@ export const VendorProductsPage: React.FC = () => {
     if (!productToDelete) return;
     try {
       await vendorProductService.deleteVendorProduct(productToDelete);
-      setProducts(products => products.filter(p => p.id !== productToDelete));
+      productsQuery.refetch();
       toast.success('Produit supprimé !');
     } catch (err: any) {
       toast.error('Erreur : ' + (err.message || 'Suppression impossible'));
@@ -692,7 +529,7 @@ export const VendorProductsPage: React.FC = () => {
           }, 1000);
         }
 
-        loadProducts(); // Recharger la liste
+        productsQuery.refetch(); // Recharger la liste
       } else {
         throw new Error(result.message || 'Erreur lors de la publication');
       }
@@ -716,7 +553,7 @@ export const VendorProductsPage: React.FC = () => {
         } else if (result.status === 'PENDING') {
           toast.info('📝 Produit en attente - Design non validé par l\'admin');
         }
-        loadProducts(); // Recharger la liste
+        productsQuery.refetch(); // Recharger la liste
       } else {
         throw new Error(result.message || 'Erreur lors de la publication');
       }
@@ -735,7 +572,7 @@ export const VendorProductsPage: React.FC = () => {
 
       if (result.success) {
         toast.success('📝 Produit mis en brouillon !');
-        loadProducts(); // Recharger la liste
+        productsQuery.refetch(); // Recharger la liste
       } else {
         throw new Error(result.message || 'Erreur lors de la mise en brouillon');
       }
@@ -905,39 +742,6 @@ export const VendorProductsPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="flex items-center gap-2">
-              <RefreshCw className="w-6 h-6 animate-spin" />
-              <span>Chargement des produits...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="p-6 text-center">
-              <h2 className="text-lg font-semibold text-red-800 mb-2">Erreur</h2>
-              <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={loadProducts} variant="outline">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Réessayer
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   // ✅ Affichage du bandeau d'avertissement si compte désactivé (mais accès complet maintenu)
   const renderDeactivatedBanner = () => {
@@ -973,37 +777,54 @@ export const VendorProductsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-7xl mx-auto">
         {/* Bandeau d'avertissement si compte désactivé */}
         {renderDeactivatedBanner()}
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Mes Produits</h1>
-            <p className="text-gray-600 mt-1">
-              Gérez vos produits avec designs appliqués
-            </p>
+        {/* Header style dashboard */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white border-b border-gray-200 px-6 py-6 mb-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">Mes Produits</h1>
+              <p className="text-gray-600 text-sm">Gérez vos produits avec designs appliqués</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={
+                  apiStatus === 'connected'
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-red-50 text-red-700 border-red-200"
+                }
+              >
+                <div className={`w-2 h-2 rounded-full mr-2 ${apiStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                {apiStatus === 'connected' ? "Connectée" : "Mode hors ligne"}
+              </Badge>
+              <button
+                onClick={() => productsQuery.refetch()}
+                disabled={isLoading}
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-3 py-1.5 text-sm gap-1.5"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Actualiser</span>
+              </button>
+              <button
+                onClick={() => navigate('/vendeur/create-product')}
+                className={`inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 text-sm gap-1.5 ${isAccountActive === false ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white'}`}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Nouveau produit{isAccountActive === false && ' (masqué)'}</span>
+              </button>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <Button
-              onClick={() => navigate('/vendeur/create-product')}
-              className={isAccountActive === false ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Créer vos produits {isAccountActive === false && '(masqué aux clients)'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/vendeur/sell-design')}
-              className="border-gray-300"
-            >
-              <Package className="w-4 h-4 mr-2" />
-              Ancienne méthode
-            </Button>
-          </div>
-        </div>
+        </motion.div>
+
+        <div className="px-6 pb-8">
 
         {/* Onglets Produits / Stickers */}
         <div className="mb-6 border-b border-gray-200">
@@ -1024,149 +845,140 @@ export const VendorProductsPage: React.FC = () => {
                 <Badge variant="secondary" className="ml-1">{stats.total}</Badge>
               </div>
             </button>
-            <button
-              onClick={() => setActiveTab('stickers')}
-              className={`
-                py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                ${activeTab === 'stickers'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }
-              `}
-            >
-              <div className="flex items-center gap-2">
-                <Sticker className="w-5 h-5" />
-                <span>Autocollants</span>
-              </div>
-            </button>
           </nav>
         </div>
 
         {/* Contenu selon l'onglet actif */}
-        {activeTab === 'stickers' ? (
-          <VendorStickersList />
-        ) : (
-          <>
-            {/* Statistiques */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+        <>
+          {/* Statistiques */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-600">Total</span>
+                <div className="w-8 h-8 rounded-lg bg-[rgb(20,104,154)]/10 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-[rgb(20,104,154)]" />
                 </div>
-                <Package className="w-5 h-5 text-blue-600" />
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Publiés</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.published}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-green-200 transition-all duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-600">Publiés</span>
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
                 </div>
-                <CheckCircle className="w-5 h-5 text-green-600" />
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">En attente</p>
-                  <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+              <p className="text-2xl font-bold text-green-600">{stats.published}</p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-yellow-200 transition-all duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-600">En attente</span>
+                <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-yellow-600" />
                 </div>
-                <Clock className="w-5 h-5 text-yellow-600" />
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Brouillons</p>
-                  <p className="text-2xl font-bold text-gray-600">{stats.draft}</p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-gray-300 transition-all duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-600">Brouillons</span>
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <Settings className="w-4 h-4 text-gray-600" />
                 </div>
-                <Settings className="w-5 h-5 text-gray-600" />
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Rejetés</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+              <p className="text-2xl font-bold text-gray-600">{stats.draft}</p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-red-200 transition-all duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-600">Rejetés</span>
+                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                  <X className="w-4 h-4 text-red-600" />
                 </div>
-                <X className="w-5 h-5 text-red-600" />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+            </div>
+          </div>
 
         {/* Filtres et contrôles */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="flex gap-4 items-center flex-1 flex-wrap">
-                <div className="relative flex-1 min-w-[200px] max-w-sm">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Rechercher un produit..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md bg-white"
-                >
-                  <option value="all">Tous les statuts</option>
-                  <option value="PUBLISHED">Publié</option>
-                  <option value="PENDING">En attente</option>
-                  <option value="DRAFT">Brouillon</option>
-                  <option value="REJECTED">Rejeté</option>
-                </select>
-
-                {/* 🆕 Filtre par nom de produit mockup */}
-                <select
-                  value={mockupFilter}
-                  onChange={(e) => setMockupFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md bg-white"
-                >
-                  <option value="all">Tous les mockups</option>
-                  {uniqueMockupNames.map((mockupName) => (
-                    <option key={mockupName} value={mockupName}>
-                      {mockupName}
-                    </option>
-                  ))}
-                </select>
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex gap-3 items-center flex-1 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Rechercher un produit..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 rounded-lg"
+                />
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={loadProducts}
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
-              </div>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:border-[rgb(20,104,154)]"
+              >
+                <option value="all">Tous les statuts</option>
+                <option value="PUBLISHED">Publié</option>
+                <option value="PENDING">En attente</option>
+                <option value="DRAFT">Brouillon</option>
+                <option value="REJECTED">Rejeté</option>
+              </select>
+
+              <select
+                value={mockupFilter}
+                onChange={(e) => setMockupFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:border-[rgb(20,104,154)]"
+              >
+                <option value="all">Tous les mockups</option>
+                {uniqueMockupNames.map((mockupName) => (
+                  <option key={mockupName} value={mockupName}>
+                    {mockupName}
+                  </option>
+                ))}
+              </select>
             </div>
-          </CardContent>
-        </Card>
+
+            <button
+              onClick={() => productsQuery.refetch()}
+              disabled={isLoading}
+              className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-3 py-1.5 text-sm gap-1.5"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
 
         {/* Liste des produits */}
-        {visibleProducts.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden animate-pulse">
+                <div className="aspect-square bg-gray-200" />
+                <div className="p-6 space-y-3">
+                  <div className="h-5 bg-gray-200 rounded w-3/4" />
+                  <div className="h-4 bg-gray-100 rounded w-1/2" />
+                  <div className="h-8 bg-gray-200 rounded w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : queryError ? (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6 text-center">
+              <h2 className="text-lg font-semibold text-red-800 mb-2">Erreur</h2>
+              <p className="text-red-600 mb-4">Erreur lors du chargement des produits</p>
+              <button onClick={() => productsQuery.refetch()} className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-3 py-1.5 text-sm gap-1.5">
+                <RefreshCw className="w-4 h-4" />
+                Réessayer
+              </button>
+            </CardContent>
+          </Card>
+        ) : visibleProducts.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -1174,15 +986,15 @@ export const VendorProductsPage: React.FC = () => {
                 Aucun produit trouvé
               </h3>
               <p className="text-gray-600 mb-4">
-                {searchTerm || statusFilter !== 'all' 
+                {searchTerm || statusFilter !== 'all'
                   ? 'Aucun produit ne correspond à vos critères de recherche'
                   : 'Vous n\'avez pas encore créé de produit'
                 }
               </p>
-              <Button onClick={() => navigate('/vendeur/sell-design')}>
-                <Plus className="w-4 h-4 mr-2" />
+              <button onClick={() => navigate('/vendeur/sell-design')} className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white px-3 py-1.5 text-sm gap-1.5">
+                <Plus className="w-4 h-4" />
                 Créer un produit
-              </Button>
+              </button>
             </CardContent>
           </Card>
         ) : (
@@ -1345,68 +1157,59 @@ export const VendorProductsPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Boutons d'action selon le nouveau système pub.md */}
+                      {/* Boutons d'action */}
                       <div className="flex items-center gap-2 pt-4 border-t border-gray-100">
                         {/* Actions spécifiques selon le statut */}
                         {product.status === 'DRAFT' && product.designApplication.hasDesign && (
                           <div className="flex-1 flex flex-col gap-1">
-                            <Button
-                              size="sm"
+                            <button
                               onClick={() => handlePublishNow(product.id)}
                               disabled={!canPublishNow(product)}
-                              className={`w-full font-medium ${
+                              className={`inline-flex items-center justify-center w-full font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
                                 canPublishNow(product)
-                                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  ? 'bg-green-600 hover:bg-green-700 active:bg-green-800 text-white'
+                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }`}
                             >
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              {canPublishNow(product) ? 'Publier maintenant' : 'En attente validation'}
-                            </Button>
-                            <span className={`text-xs text-center px-2 ${
-                              canPublishNow(product) ? 'text-green-600' : 'text-amber-600'
-                            }`}>
+                              <CheckCircle className="w-4 h-4" />
+                              {canPublishNow(product) ? 'Publier' : 'En attente'}
+                            </button>
+                            <span className={`text-xs text-center ${canPublishNow(product) ? 'text-green-600' : 'text-amber-600'}`}>
                               {getPublishMessage(product)}
                             </span>
                           </div>
                         )}
 
                         {product.status === 'PUBLISHED' && (
-                          <Button
-                            size="sm"
+                          <button
                             onClick={() => handleSetToDraft(product.id)}
                             disabled={!canSetToDraft(product)}
-                            variant="outline"
-                            className={`flex-1 font-medium ${
+                            className={`flex-1 inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 border-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                               canSetToDraft(product)
-                                ? 'border-gray-400 text-gray-700 hover:bg-gray-50'
-                                : 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
+                                ? 'border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white'
+                                : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
                             }`}
                           >
-                            <Save className="w-4 h-4 mr-2" />
-                            {canSetToDraft(product) ? 'Mettre en brouillon' : 'En attente validation'}
-                          </Button>
+                            <Save className="w-4 h-4" />
+                            <span className="hidden sm:inline">{canSetToDraft(product) ? 'Brouillon' : 'En attente'}</span>
+                          </button>
                         )}
 
-                        {/* Produits DRAFT WIZARD sans design - nécessitent validation admin */}
                         {product.status === 'DRAFT' && !product.designApplication.hasDesign && (product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0)) && (
                           <div className="flex-1 flex flex-col gap-1">
-                            <Button
-                              size="sm"
+                            <button
                               onClick={() => handlePublish(product.id)}
                               disabled={!canPublishNow(product)}
-                              className={`w-full font-medium ${
+                              className={`inline-flex items-center justify-center w-full font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
                                 canPublishNow(product)
-                                  ? 'bg-gray-900 hover:bg-gray-800 text-white'
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  ? 'bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white'
+                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }`}
                             >
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              {canPublishNow(product) ? 'Publier (produit personnalisé)' : 'En attente validation admin'}
-                            </Button>
-                            <span className={`text-xs text-center px-2 ${
-                              canPublishNow(product) ? 'text-green-600' : 'text-orange-600'
-                            }`}>
+                              <CheckCircle className="w-4 h-4" />
+                              {canPublishNow(product) ? 'Publier' : 'En attente admin'}
+                            </button>
+                            <span className={`text-xs text-center ${canPublishNow(product) ? 'text-green-600' : 'text-orange-600'}`}>
                               {getPublishMessage(product)}
                             </span>
                           </div>
@@ -1414,62 +1217,46 @@ export const VendorProductsPage: React.FC = () => {
 
                         {(product.status === 'PENDING' || (!product.designApplication.hasDesign && product.status !== 'PUBLISHED' && !(product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0)))) && (
                           <div className="flex-1 flex flex-col gap-1">
-                            <Button
-                              size="sm"
+                            <button
                               onClick={() => handlePublish(product.id)}
                               disabled={product.status === 'PENDING' && !canRepublishPendingProduct(product)}
-                              className={`w-full font-medium ${
+                              className={`inline-flex items-center justify-center w-full font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
                                 product.status === 'PENDING' && !canRepublishPendingProduct(product)
-                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  : 'bg-gray-900 hover:bg-gray-800 text-white'
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white'
                               }`}
                             >
-                              <CheckCircle className="w-4 h-4 mr-2" />
+                              <CheckCircle className="w-4 h-4" />
                               {(() => {
                                 const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
-
                                 if (product.status === 'PENDING' && !canRepublishPendingProduct(product)) {
-                                  return isWizardProduct ? 'En attente validation admin' : 'En attente de validation';
+                                  return isWizardProduct ? 'En attente admin' : 'En attente';
                                 }
-
-                                if (isWizardProduct) {
-                                  return 'Publier (produit personnalisé)';
-                                } else {
-                                  return product.designApplication.hasDesign ? 'Publier' : 'Publier (sans design)';
-                                }
+                                return isWizardProduct ? 'Publier' : (product.designApplication.hasDesign ? 'Publier' : 'Publier');
                               })()}
-                            </Button>
+                            </button>
                             {product.status === 'PENDING' && product.designApplication.hasDesign && (
-                              <span className={`text-xs text-center px-2 ${
-                                canRepublishPendingProduct(product) ? 'text-green-600' : 'text-amber-600'
-                              }`}>
-                                {canRepublishPendingProduct(product)
-                                  ? 'Design validé - Peut republier'
-                                  : 'Design en attente de validation admin'
-                                }
+                              <span className={`text-xs text-center ${canRepublishPendingProduct(product) ? 'text-green-600' : 'text-amber-600'}`}>
+                                {canRepublishPendingProduct(product) ? 'Design validé' : 'En attente de validation'}
                               </span>
                             )}
                           </div>
                         )}
 
                         {/* Boutons standards */}
-                        <Button
-                          size="sm"
-                          variant="outline"
+                        <button
                           onClick={() => handlePreview(product.id)}
-                          className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+                          className="flex-1 inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white"
                         >
-                          <Eye className="w-4 h-4 mr-2" />
-                          Aperçu
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
+                          <Eye className="w-4 h-4" />
+                          <span className="hidden sm:inline">Aperçu</span>
+                        </button>
+                        <button
                           onClick={() => handleDeleteClick(product.id)}
-                          className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300"
+                          className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm border-2 border-gray-200 text-gray-500 hover:border-red-400 hover:text-red-600 hover:bg-red-50 bg-white"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </Button>
+                        </button>
                       </div>
                   </div>
                 </CardContent>
@@ -1600,111 +1387,60 @@ export const VendorProductsPage: React.FC = () => {
                         <>
                           {product.status === 'DRAFT' && product.designApplication.hasDesign && (
                             <div className="flex flex-col gap-2">
-                              <Button
-                                onClick={() => {
-                                  handlePublishNow(selectedProductId);
-                                  setIsPreviewOpen(false);
-                                }}
+                              <button
+                                onClick={() => { handlePublishNow(selectedProductId); setIsPreviewOpen(false); }}
                                 disabled={!canPublishNow(product)}
-                                className={`font-medium ${
-                                  canPublishNow(product)
-                                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                }`}
+                                className={`inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${canPublishNow(product) ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
                               >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                {canPublishNow(product) ? 'Publier maintenant' : 'En attente validation'}
-                              </Button>
-                              <span className={`text-xs text-center px-2 ${
-                                canPublishNow(product) ? 'text-green-600' : 'text-amber-600'
-                              }`}>
-                                {getPublishMessage(product)}
-                              </span>
+                                <CheckCircle className="w-4 h-4" />
+                                {canPublishNow(product) ? 'Publier' : 'En attente'}
+                              </button>
+                              <span className={`text-xs text-center ${canPublishNow(product) ? 'text-green-600' : 'text-amber-600'}`}>{getPublishMessage(product)}</span>
                             </div>
                           )}
 
                           {product.status === 'PUBLISHED' && (
-                            <Button
-                              onClick={() => {
-                                handleSetToDraft(selectedProductId);
-                                setIsPreviewOpen(false);
-                              }}
+                            <button
+                              onClick={() => { handleSetToDraft(selectedProductId); setIsPreviewOpen(false); }}
                               disabled={!canSetToDraft(product)}
-                              variant="outline"
-                              className={`font-medium ${
-                                canSetToDraft(product)
-                                  ? 'border-gray-400 text-gray-700 hover:bg-gray-50'
-                                  : 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
-                              }`}
+                              className={`inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 border-2 disabled:opacity-50 disabled:cursor-not-allowed ${canSetToDraft(product) ? 'border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white' : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'}`}
                             >
-                              <Save className="w-4 h-4 mr-2" />
+                              <Save className="w-4 h-4" />
                               {canSetToDraft(product) ? 'Mettre en brouillon' : 'En attente validation'}
-                            </Button>
+                            </button>
                           )}
 
-                          {/* Produits DRAFT WIZARD sans design - nécessitent validation admin */}
                           {product.status === 'DRAFT' && !product.designApplication.hasDesign && (product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0)) && (
                             <div className="flex flex-col gap-2">
-                              <Button
-                                onClick={() => {
-                                  handlePublish(selectedProductId);
-                                  setIsPreviewOpen(false);
-                                }}
+                              <button
+                                onClick={() => { handlePublish(selectedProductId); setIsPreviewOpen(false); }}
                                 disabled={!canPublishNow(product)}
-                                className={`font-medium ${
-                                  canPublishNow(product)
-                                    ? 'bg-gray-900 hover:bg-gray-800 text-white'
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                }`}
+                                className={`inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${canPublishNow(product) ? 'bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] text-white' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
                               >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                {canPublishNow(product) ? 'Publier (produit personnalisé)' : 'En attente validation admin'}
-                              </Button>
-                              <span className={`text-xs text-center px-2 ${
-                                canPublishNow(product) ? 'text-green-600' : 'text-orange-600'
-                              }`}>
-                                {getPublishMessage(product)}
-                              </span>
+                                <CheckCircle className="w-4 h-4" />
+                                {canPublishNow(product) ? 'Publier' : 'En attente admin'}
+                              </button>
+                              <span className={`text-xs text-center ${canPublishNow(product) ? 'text-green-600' : 'text-orange-600'}`}>{getPublishMessage(product)}</span>
                             </div>
                           )}
 
                           {(product.status === 'PENDING' || (!product.designApplication.hasDesign && product.status !== 'PUBLISHED' && !(product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0)))) && (
                             <div className="flex flex-col gap-2">
-                              <Button
-                                onClick={() => {
-                                  handlePublish(selectedProductId);
-                                  setIsPreviewOpen(false);
-                                }}
+                              <button
+                                onClick={() => { handlePublish(selectedProductId); setIsPreviewOpen(false); }}
                                 disabled={product.status === 'PENDING' && !canRepublishPendingProduct(product)}
-                                className={`font-medium ${
-                                  product.status === 'PENDING' && !canRepublishPendingProduct(product)
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-gray-900 hover:bg-gray-800 text-white'
-                                }`}
+                                className={`inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${product.status === 'PENDING' && !canRepublishPendingProduct(product) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] text-white'}`}
                               >
-                                <CheckCircle className="w-4 h-4 mr-2" />
+                                <CheckCircle className="w-4 h-4" />
                                 {(() => {
                                   const isWizardProduct = product.isWizardProduct ?? (!product.designId || product.designId === null || product.designId === 0);
-
-                                  if (product.status === 'PENDING' && !canRepublishPendingProduct(product)) {
-                                    return isWizardProduct ? 'En attente validation admin' : 'En attente de validation';
-                                  }
-
-                                  if (isWizardProduct) {
-                                    return 'Publier (produit personnalisé)';
-                                  } else {
-                                    return product.designApplication.hasDesign ? 'Publier' : 'Publier (sans design)';
-                                  }
+                                  if (product.status === 'PENDING' && !canRepublishPendingProduct(product)) return 'En attente';
+                                  return 'Publier';
                                 })()}
-                              </Button>
+                              </button>
                               {product.status === 'PENDING' && product.designApplication.hasDesign && (
-                                <span className={`text-xs text-center px-2 ${
-                                  canRepublishPendingProduct(product) ? 'text-green-600' : 'text-amber-600'
-                                }`}>
-                                  {canRepublishPendingProduct(product)
-                                    ? 'Design validé - Peut republier'
-                                    : 'Design en attente de validation admin'
-                                  }
+                                <span className={`text-xs text-center ${canRepublishPendingProduct(product) ? 'text-green-600' : 'text-amber-600'}`}>
+                                  {canRepublishPendingProduct(product) ? 'Design validé' : 'En attente de validation'}
                                 </span>
                               )}
                             </div>
@@ -1713,17 +1449,13 @@ export const VendorProductsPage: React.FC = () => {
                       );
                     })()}
 
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        handleDeleteClick(selectedProductId);
-                        setIsPreviewOpen(false);
-                      }}
-                      className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-red-600 hover:border-red-300 font-medium"
+                    <button
+                      onClick={() => { handleDeleteClick(selectedProductId); setIsPreviewOpen(false); }}
+                      className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-3 py-1.5 text-sm gap-1.5 border-2 border-gray-200 text-gray-500 hover:border-red-400 hover:text-red-600 hover:bg-red-50 bg-white"
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
+                      <Trash2 className="w-4 h-4" />
                       Supprimer
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1738,11 +1470,14 @@ export const VendorProductsPage: React.FC = () => {
               <DialogTitle>Confirmer la suppression</DialogTitle>
             </DialogHeader>
             <p>Voulez-vous vraiment supprimer ce produit ? Cette action est réversible.</p>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <DialogClose asChild>
-                <Button variant="outline">Annuler</Button>
+                <button className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 bg-white px-4 py-1.5 text-sm">Annuler</button>
               </DialogClose>
-              <Button variant="destructive" onClick={confirmDelete}>Supprimer</Button>
+              <button onClick={confirmDelete} className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg px-4 py-1.5 text-sm gap-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white">
+                <Trash2 className="w-4 h-4" />
+                Supprimer
+              </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1928,18 +1663,17 @@ export const VendorProductsPage: React.FC = () => {
 
             {/* Footer du modal */}
             <div className="flex justify-end pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
+              <button
                 onClick={() => setIsDetailsModalOpen(false)}
-                className="min-w-[100px]"
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-4 py-1.5 text-sm gap-1.5 min-w-[100px]"
               >
                 Fermer
-              </Button>
+              </button>
             </div>
           </DialogContent>
         </Dialog>
-          </>
-        )}
+        </>
+        </div>{/* end px-6 pb-8 */}
       </div>
     </div>
   );

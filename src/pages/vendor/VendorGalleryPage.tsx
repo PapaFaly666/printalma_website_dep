@@ -15,9 +15,9 @@ import {
   Layers,
   Eye,
   EyeOff,
-  Save
+  Save,
+  RefreshCw
 } from 'lucide-react';
-import Button from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -51,10 +51,24 @@ import {
 } from '../../types/gallery';
 import { galleryService } from '../../services/gallery.service';
 
+// React Query Hooks pour les galeries vendeur
+import {
+  useVendorGalleries,
+  useUpdateGalleryInfo,
+  useDeleteGallery,
+  useTogglePublishGallery
+} from '../../hooks/vendor';
+
 const VendorGalleryPage: React.FC = () => {
   const { user } = useAuth();
+
+  // 🔄 React Query Hooks - Gestion automatique du cache et des requêtes
+  const galleriesQuery = useVendorGalleries();
+  const updateInfoMutation = useUpdateGalleryInfo();
+  const deleteGalleryMutation = useDeleteGallery();
+  const togglePublishMutation = useTogglePublishGallery();
+
   const [galleries, setGalleries] = useState<VendorGallery[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   // États pour les dialogues
@@ -71,21 +85,19 @@ const VendorGalleryPage: React.FC = () => {
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
+  // Synchroniser les données du cache avec l'état local
   useEffect(() => {
-    loadGalleries();
-  }, []);
-
-  const loadGalleries = async () => {
-    setIsLoading(true);
-    try {
-      const response = await galleryService.getVendorGalleries();
-      setGalleries(response.galleries);
-    } catch (error: any) {
-      toast.error(error.message || 'Erreur lors du chargement des galeries');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
+    if (galleriesQuery.data) {
+      setGalleries(galleriesQuery.data.galleries);
     }
+  }, [galleriesQuery.data]);
+
+  const isLoading = galleriesQuery.isLoading;
+  const isRefetching = galleriesQuery.isRefetching;
+
+  // Fonction pour tout rafraîchir
+  const refetchAll = () => {
+    galleriesQuery.refetch();
   };
 
   const handleImageUpload = (files: FileList | null) => {
@@ -206,8 +218,8 @@ const VendorGalleryPage: React.FC = () => {
 
       toast.success(galleries.length > 0 ? 'Galerie mise à jour avec succès' : 'Galerie créée avec succès');
 
-      // Recharger toutes les galeries pour avoir les données complètes
-      await loadGalleries();
+      // Invalider le cache pour recharger les données fraîches
+      await galleriesQuery.refetch();
 
       setIsEditDialogOpen(false);
       resetForm();
@@ -222,46 +234,27 @@ const VendorGalleryPage: React.FC = () => {
   const handleUpdateGalleryInfo = async () => {
     if (galleries.length === 0) return;
 
-    setIsLoading(true);
-    try {
-      const firstGallery = galleries[0];
-      await galleryService.updateGalleryInfo({
-        title: formData.title,
-        description: formData.description,
-        status: firstGallery.status,
-        isPublished: firstGallery.isPublished
-      });
-
-      toast.success('Informations de la galerie mises à jour');
-
-      // Recharger toutes les galeries pour avoir les données complètes
-      await loadGalleries();
-
-      setIsEditDialogOpen(false);
-      resetForm();
-    } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de la mise à jour de la galerie');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+    const firstGallery = galleries[0];
+    updateInfoMutation.mutate({
+      title: formData.title,
+      description: formData.description,
+      status: firstGallery.status,
+      isPublished: firstGallery.isPublished
+    }, {
+      onSuccess: () => {
+        setIsEditDialogOpen(false);
+        resetForm();
+      }
+    });
   };
 
-  const handleDeleteGallery = async () => {
-    setIsLoading(true);
-    try {
-      await galleryService.deleteGallery();
-
-      toast.success('Galerie supprimée avec succès');
-      setIsDeleteDialogOpen(false);
-      setGalleries([]);
-      resetForm();
-    } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de la suppression de la galerie');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleDeleteGallery = () => {
+    deleteGalleryMutation.mutate(undefined, {
+      onSuccess: () => {
+        setIsDeleteDialogOpen(false);
+        resetForm();
+      }
+    });
   };
 
   const handleTogglePublish = async (isPublished: boolean, galleryId?: number) => {
@@ -274,14 +267,11 @@ const VendorGalleryPage: React.FC = () => {
         throw new Error('Aucune galerie trouvée');
       }
 
-      await galleryService.togglePublishGallery(targetGalleryId, isPublished);
-
-      // Recharger toutes les galeries pour avoir les données complètes
-      await loadGalleries();
+      await togglePublishMutation.mutateAsync({ galleryId: targetGalleryId, isPublished });
 
       toast.success(isPublished ? 'Galerie publiée avec succès' : 'Galerie dépubliée avec succès');
     } catch (error: any) {
-      toast.error(error.message || `Erreur lors de la ${isPublished ? 'publication' : 'dépublication'}`);
+      // Le toast est déjà géré par la mutation
     } finally {
       setStatusUpdating(false);
     }
@@ -328,20 +318,20 @@ const VendorGalleryPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <div className="flex items-center justify-between">
+      <div className="bg-white border-b border-gray-200 px-6 py-5 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
           <div>
-            <h1 className="text-4xl font-bold text-slate-900 flex items-center gap-3">
-              <Layers className="w-10 h-10 text-blue-600" />
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Layers className="w-6 h-6 text-[rgb(20,104,154)]" />
               Ma Galerie
             </h1>
-            <p className="text-slate-600 mt-2">
+            <p className="text-gray-500 text-sm mt-1">
               {galleries.length > 0
                 ? `Modifiez votre galerie avec exactement ${GALLERY_CONSTRAINTS.IMAGES_COUNT} images`
                 : `Créez votre galerie avec exactement ${GALLERY_CONSTRAINTS.IMAGES_COUNT} images pour présenter vos créations`
@@ -349,48 +339,58 @@ const VendorGalleryPage: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={refetchAll}
+              disabled={isLoading}
+              className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-3 py-1.5 text-sm gap-1.5"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser</span>
+            </button>
             {galleries.length > 0 ? (
-              <Button
+              <button
                 onClick={openEditDialog}
-                size="lg"
-                variant="outline"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white rounded-lg transition-colors"
               >
-                <Edit3 className="w-5 h-5 mr-2" />
+                <Edit3 className="w-4 h-4" />
                 Modifier ma galerie
-              </Button>
+              </button>
             ) : (
-              <Button
+              <button
                 onClick={openEditDialog}
-                size="lg"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white rounded-lg transition-colors"
               >
-                <Plus className="w-5 h-5 mr-2" />
+                <Plus className="w-4 h-4" />
                 Créer ma galerie
-              </Button>
+              </button>
             )}
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
 
       {/* Contenu principal */}
+      <div className="px-6 pb-8">
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[rgb(20,104,154)]"></div>
         </div>
       ) : galleries.length === 0 ? (
-        <Card className="p-12">
+        <Card className="p-12 rounded-xl border border-gray-200">
           <div className="text-center">
-            <Layers className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-slate-900 mb-2">
+            <Layers className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
               Vous n'avez pas encore de galerie
             </h3>
-            <p className="text-slate-600 mb-6">
+            <p className="text-gray-500 mb-6">
               Créez votre galerie avec exactement {GALLERY_CONSTRAINTS.IMAGES_COUNT} images pour présenter vos créations
             </p>
-            <Button onClick={openEditDialog} size="lg">
-              <Plus className="w-4 h-4 mr-2" />
+            <button
+              onClick={openEditDialog}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] text-white rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
               Créer ma galerie
-            </Button>
+            </button>
           </div>
         </Card>
       ) : (
@@ -400,13 +400,13 @@ const VendorGalleryPage: React.FC = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden rounded-xl border border-gray-200 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className="text-2xl mb-2">{galleries[0].title}</CardTitle>
+                  <CardTitle className="text-xl mb-2 text-gray-900">{galleries[0].title}</CardTitle>
                   {getStatusBadge(galleries[0].status)}
-                  <div className="mt-2 flex items-center gap-4 text-sm text-slate-500">
+                  <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
                     <span className="flex items-center gap-1">
                       <FileImage className="w-4 h-4" />
                       {(galleries[0].images?.length || 0)}/{GALLERY_CONSTRAINTS.IMAGES_COUNT} images
@@ -419,19 +419,21 @@ const VendorGalleryPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={openEditDialog}>
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Modifier
-                  </Button>
-                  <Button
-                    onClick={() => setIsDeleteDialogOpen(true)}
-                    variant="destructive"
-                    size="sm"
-                    disabled={statusUpdating}
+                  <button
+                    onClick={openEditDialog}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white rounded-lg transition-colors"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
+                    <Edit3 className="w-4 h-4" />
+                    Modifier
+                  </button>
+                  <button
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    disabled={statusUpdating}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-red-200 text-red-600 hover:bg-red-50 bg-white rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
                     Supprimer
-                  </Button>
+                  </button>
                 </div>
               </div>
             </CardHeader>
@@ -493,41 +495,42 @@ const VendorGalleryPage: React.FC = () => {
               </div>
 
               {/* Boutons d'action */}
-              <div className="flex justify-between items-center pt-4 border-t">
-                <div className="text-sm text-slate-500">
+              <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                <div className="text-sm text-gray-500">
                   {galleries[0].isPublished ? (
                     <span className="flex items-center gap-1 text-green-600">
                       <Eye className="w-4 h-4" />
                       Galerie visible par le public
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-slate-500">
+                    <span className="flex items-center gap-1 text-gray-500">
                       <EyeOff className="w-4 h-4" />
                       Galerie privée
                     </span>
                   )}
                 </div>
                 <div className="flex gap-3">
-                  <Button
-                    variant="outline"
+                  <button
                     onClick={() => handleTogglePublish(!galleries[0].isPublished)}
                     disabled={statusUpdating || (galleries[0].images?.length || 0) !== GALLERY_CONSTRAINTS.IMAGES_COUNT}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {statusUpdating ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
                     ) : galleries[0].isPublished ? (
-                      <EyeOff className="w-4 h-4 mr-2" />
+                      <EyeOff className="w-4 h-4" />
                     ) : (
-                      <Eye className="w-4 h-4 mr-2" />
+                      <Eye className="w-4 h-4" />
                     )}
                     {galleries[0].isPublished ? 'Dépublier' : 'Publier'}
-                  </Button>
+                  </button>
                 </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
       )}
+      </div>{/* end px-6 pb-8 */}
 
       {/* Dialog de création/édition */}
       <GalleryFormDialog
@@ -705,15 +708,13 @@ const GalleryFormDialog: React.FC<GalleryFormDialogProps> = ({
                               console.error(`Erreur de chargement d'image preview: ${image.imageUrl || image.url}`);
                             }}
                           />
-                          <Button
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-1 right-1 h-6 w-6 bg-white/80 hover:bg-red-50 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 h-6 w-6 bg-white/80 hover:bg-red-50 hover:text-red-600 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center"
                             onClick={() => onRemoveImage(idx)}
                           >
                             <X className="w-3 h-3" />
-                          </Button>
+                          </button>
                         </div>
                         <Input
                           type="text"
@@ -759,29 +760,28 @@ const GalleryFormDialog: React.FC<GalleryFormDialogProps> = ({
                       }
                     }}
                   >
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
-                      className="w-full border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/30 transition-colors h-32"
+                      className="w-full border-2 border-dashed border-gray-300 hover:border-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)]/5 transition-colors h-32 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={remainingSlots === 0}
                     >
                       <div className="text-center">
-                        <Upload className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p className="font-medium text-slate-700">
+                        <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                        <p className="font-medium text-gray-700">
                           {formData.images.length === 0
                             ? 'Ajouter des images'
                             : `Ajouter ${remainingSlots} image${remainingSlots > 1 ? 's' : ''}`
                           }
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-gray-500 mt-1">
                           Glissez-déposez les images ici ou cliquez pour parcourir
                         </p>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <p className="text-xs text-gray-400 mt-1">
                           {remainingSlots} emplacement{remainingSlots > 1 ? 's' : ''} restant{remainingSlots > 1 ? 's' : ''}
                         </p>
                       </div>
-                    </Button>
+                    </button>
                   </div>
                 </div>
               )}
@@ -796,7 +796,7 @@ const GalleryFormDialog: React.FC<GalleryFormDialogProps> = ({
                 </div>
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-blue-600 to-indigo-600"
+                    className="h-full bg-[rgb(20,104,154)]"
                     initial={{ width: 0 }}
                     animate={{
                       width: `${(formData.images.length / GALLERY_CONSTRAINTS.IMAGES_COUNT) * 100}%`
@@ -818,32 +818,32 @@ const GalleryFormDialog: React.FC<GalleryFormDialogProps> = ({
         </div>
 
         <DialogFooter>
-          <Button
+          <button
             type="button"
-            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white rounded-lg transition-colors disabled:opacity-50"
           >
             Annuler
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
             onClick={onSubmit}
             disabled={isLoading || (!isOnlyInfoUpdate && formData.images.length !== GALLERY_CONSTRAINTS.IMAGES_COUNT)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                 {isEdit ? 'Mise à jour...' : 'Création...'}
               </>
             ) : (
               <>
-                <Save className="w-4 h-4 mr-2" />
+                <Save className="w-4 h-4" />
                 {isOnlyInfoUpdate ? 'Mettre à jour' : (isEdit ? 'Recréer la galerie' : 'Créer la galerie')}
               </>
             )}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

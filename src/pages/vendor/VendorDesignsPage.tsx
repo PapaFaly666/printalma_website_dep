@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { DesignFileChecker } from '../../components/vendor/DesignFileChecker';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -22,7 +23,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
-import Button from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -41,7 +41,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose
 } from '../../components/ui/dialog';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -49,6 +48,7 @@ import { authService } from '../../services/auth.service';
 import { ExtendedVendorProfile } from '../../types/auth.types';
 import { designCategoryService, DesignCategory } from '../../services/designCategoryService';
 import DesignCategorySelector from '../../components/DesignCategorySelector';
+import { useVendorDesigns } from '../../hooks/vendor';
 
 // Types basés sur la documentation API
 enum DesignStatus {
@@ -445,21 +445,26 @@ export const VendorDesignsPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // États principaux
-  const [designs, setDesigns] = useState<Design[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTheme, setFilterTheme] = useState<number | null>(null);
-  const [filteredDesigns, setFilteredDesigns] = useState<Design[]>([]);
   const [themes, setThemes] = useState<DesignCategory[]>([]);
   const [filterStatus, setFilterStatus] = useState<DesignStatus>(DesignStatus.ALL);
-  // Supprimé : mode liste supprimé, toujours en grille
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 20
-  });
+
+  // React Query pour les designs
+  const designsQuery = useVendorDesigns(currentPage);
+  const loading = designsQuery.isLoading;
+  const isRefetching = designsQuery.isRefetching;
+  const apiStatus = designsQuery.error ? 'offline' : (loading ? 'offline' : 'connected');
+
+  const designs: Design[] = useMemo(
+    () => designsQuery.data?.data?.designs || [],
+    [designsQuery.data]
+  );
+  const pagination = useMemo(
+    () => designsQuery.data?.data?.pagination || { currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: 20 },
+    [designsQuery.data]
+  );
   
   // États pour l'upload
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -472,6 +477,8 @@ export const VendorDesignsPage: React.FC = () => {
     tags: [] as string[]
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [checkerFile, setCheckerFile] = useState<File | null>(null);
+  const [fileIsValid, setFileIsValid] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>('');
 
   // Calculer les stats basées sur la réponse API (utilise les stats du backend)
@@ -496,75 +503,31 @@ export const VendorDesignsPage: React.FC = () => {
   };
 
   // Charger les thèmes admin
-  const loadThemes = async () => {
-    try {
-      const response = await designCategoryService.getActiveCategories();
-      setThemes(response);
-    } catch (error) {
-      console.error('Erreur chargement thèmes:', error);
-    }
-  };
-
-  // Charger les designs avec la nouvelle API
-  const loadDesigns = async () => {
-    setLoading(true);
-    const offset = (currentPage - 1) * 20; // Convertir page en offset
-
-    const { success, data } = await handleApiCall(() =>
-      vendorDesignService.getMyDesigns({
-        offset,
-        limit: 20
-      })
-    );
-
-    if (success) {
-      setDesigns(data.data.designs);
-      setPagination(data.data.pagination);
-    }
-
-    setLoading(false);
-  };
-
-  // Effets
   useEffect(() => {
-    loadDesigns();
+    designCategoryService.getActiveCategories().then(setThemes).catch(console.error);
+  }, []);
 
-    // Charger les thèmes admin une seule fois
-    loadThemes();
-  }, [currentPage]); // Retirer filterStatus car l'API ne le supporte pas
-
-  // 🆕 useEffect pour filtrer les designs côté client
-  useEffect(() => {
+  // Filtrer les designs côté client
+  const filteredDesigns = useMemo(() => {
     let filtered = [...designs];
-
-    // Filtrer par recherche
     if (searchTerm) {
-      filtered = filtered.filter(design =>
-        design.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (design.description && design.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      filtered = filtered.filter(d =>
+        d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (d.description && d.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
-
-    // Filtrer par statut (si différent de ALL)
     if (filterStatus !== DesignStatus.ALL) {
-      filtered = filtered.filter(design => {
-        if (filterStatus === DesignStatus.VALIDATED) {
-          return design.validationStatus === 'VALIDATED' || design.isValidated;
-        } else if (filterStatus === DesignStatus.PENDING) {
-          return design.validationStatus === 'PENDING' || design.isPending;
-        } else if (filterStatus === DesignStatus.REJECTED) {
-          return design.validationStatus === 'REJECTED';
-        }
+      filtered = filtered.filter(d => {
+        if (filterStatus === DesignStatus.VALIDATED) return d.validationStatus === 'VALIDATED' || d.isValidated;
+        if (filterStatus === DesignStatus.PENDING) return d.validationStatus === 'PENDING' || d.isPending;
+        if (filterStatus === DesignStatus.REJECTED) return d.validationStatus === 'REJECTED';
         return true;
       });
     }
-
-    // Filtrer par thème
     if (filterTheme !== null) {
-      filtered = filtered.filter(design => design.themeId === filterTheme || design.categoryId === filterTheme);
+      filtered = filtered.filter(d => d.themeId === filterTheme || d.categoryId === filterTheme);
     }
-
-    setFilteredDesigns(filtered);
+    return filtered;
   }, [designs, searchTerm, filterTheme, filterStatus]);
 
   useEffect(() => {
@@ -587,21 +550,54 @@ export const VendorDesignsPage: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validation du fichier
+    // Toujours afficher le checker, même pour les fichiers invalides
+    setCheckerFile(file);
+
+    // Type
     if (!file.type.startsWith('image/')) {
       toast.error('Veuillez sélectionner un fichier image.');
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB
-      toast.error('Le fichier ne doit pas dépasser 10MB.');
+    // Taille max 5 Mo
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Le fichier ne doit pas dépasser 5 Mo.');
       return;
     }
 
-    setSelectedFile(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    setDesignForm(prev => ({ ...prev, name: file.name.split('.')[0] }));
+    // SVG : pas de vérification de dimensions
+    if (file.type === 'image/svg+xml') {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setDesignForm(prev => ({ ...prev, name: file.name.split('.')[0] }));
+      return;
+    }
+
+    // Vérification des dimensions (min 1000×1000 px)
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img;
+      URL.revokeObjectURL(objectUrl);
+
+      if (w < 1000 || h < 1000) {
+        toast.error(
+          `Dimensions insuffisantes (${w}×${h}px). Minimum requis : 1000×1000px.`
+        );
+        return;
+      }
+
+      // DPI non accessible nativement dans le navigateur — vérification faite côté serveur
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setDesignForm(prev => ({ ...prev, name: file.name.split('.')[0] }));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      toast.error('Impossible de lire le fichier image.');
+    };
+    img.src = objectUrl;
   };
 
   const handleUploadDesign = async () => {
@@ -629,7 +625,7 @@ export const VendorDesignsPage: React.FC = () => {
       toast.success('Design créé en brouillon ! Soumettez-le pour validation pour qu\'il puisse être publié.');
       setIsUploadDialogOpen(false);
       resetUploadForm();
-      loadDesigns();
+      designsQuery.refetch();
     }
 
     setUploadingDesign(false);
@@ -637,6 +633,8 @@ export const VendorDesignsPage: React.FC = () => {
 
   const resetUploadForm = () => {
     setSelectedFile(null);
+    setCheckerFile(null);
+    setFileIsValid(false);
     setPreviewUrl('');
     setDesignForm({
       name: '',
@@ -654,7 +652,7 @@ export const VendorDesignsPage: React.FC = () => {
 
     if (success) {
       toast.success('Design soumis pour validation avec succès !');
-      loadDesigns();
+      designsQuery.refetch();
     }
   };
 
@@ -669,7 +667,7 @@ export const VendorDesignsPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         className="group"
       >
-        <Card className="overflow-hidden border-gray-200 hover:border-black transition-all duration-300 hover:shadow-lg bg-white">
+        <Card className="overflow-hidden border-gray-200 hover:border-[rgb(20,104,154)]/50 transition-all duration-300 hover:shadow-lg bg-white">
           <div className="relative aspect-square overflow-hidden">
             <img
               src={design.thumbnailUrl || design.imageUrl}
@@ -686,13 +684,9 @@ export const VendorDesignsPage: React.FC = () => {
             <div className="absolute top-2 right-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="bg-gray-900/80 backdrop-blur-sm text-white hover:bg-gray-900 border border-white/20 shadow-lg"
-                  >
+                  <button className="p-1.5 bg-gray-900/80 backdrop-blur-sm text-white hover:bg-gray-900 border border-white/20 shadow-lg rounded-lg transition-colors">
                     <MoreVertical className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white border-gray-200">
                   <DropdownMenuItem
@@ -751,13 +745,13 @@ export const VendorDesignsPage: React.FC = () => {
                 {/* Brouillon ou Rejeté -> Soumettre/Re-soumettre */}
                 {(statusInfo.key === 'DRAFT' || statusInfo.key === 'REJECTED') && (
                   <div className="space-y-2">
-                    <Button 
-                      className="w-full bg-black text-white hover:bg-gray-800"
+                    <button
+                      className="inline-flex items-center justify-center w-full font-medium transition-all duration-200 rounded-lg bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white px-3 py-1.5 text-sm gap-1.5"
                       onClick={() => handleSubmitForValidation(design.id)}
                     >
-                      <ArrowUpCircle className="h-4 w-4 mr-2" />
-                      {statusInfo.key === 'REJECTED' ? 'Re-soumettre pour validation' : 'Soumettre pour validation'}
-                    </Button>
+                      <ArrowUpCircle className="h-4 w-4" />
+                      {statusInfo.key === 'REJECTED' ? 'Re-soumettre' : 'Soumettre pour validation'}
+                    </button>
                     <div className={`p-2 border rounded-md ${statusInfo.key === 'REJECTED' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
                       <p className={`text-xs ${statusInfo.key === 'REJECTED' ? 'text-red-700' : 'text-blue-700'}`}>
                         💡 {statusInfo.explanation}
@@ -872,168 +866,93 @@ export const VendorDesignsPage: React.FC = () => {
       // Le message peut venir soit de data.message, soit être un message par défaut
       const message = data.message || 'Design supprimé avec succès !';
       toast.success(message);
-      loadDesigns(); // Recharger la liste complète des designs
+      designsQuery.refetch(); // Recharger la liste complète des designs
     }
     setDeleteModalOpen(false);
     setDesignToDelete(null);
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-7xl mx-auto">
+        {/* Header style dashboard */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white border-b border-gray-200 px-6 py-6 mb-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-black">
-                Mes Designs
-              </h1>
-                <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">
-                Créez, gérez et vendez vos designs en toute simplicité
-              </p>
-              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">Mes Designs</h1>
+              <p className="text-gray-600 text-sm">Créez, gérez et vendez vos designs en toute simplicité</p>
             </div>
-            
-            <div className="flex items-center space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={loadDesigns}
-                disabled={loading}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={apiStatus === 'connected' ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
-            
-            <Button
-              onClick={() => setIsUploadDialogOpen(true)}
-                className="bg-black text-white hover:bg-gray-800"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-                Nouveau design
-            </Button>
+                <div className={`w-2 h-2 rounded-full mr-2 ${apiStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                {apiStatus === 'connected' ? "Connectée" : "Mode hors ligne"}
+              </Badge>
+              <button
+                onClick={() => designsQuery.refetch()}
+                disabled={loading}
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[rgb(20,104,154)] text-[rgb(20,104,154)] hover:bg-[rgb(20,104,154)] hover:text-white bg-white px-3 py-1.5 text-sm gap-1.5"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Actualiser</span>
+              </button>
+              <button
+                onClick={() => setIsUploadDialogOpen(true)}
+                className="inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white px-3 py-1.5 text-sm gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Nouveau design</span>
+              </button>
             </div>
           </div>
+        </motion.div>
+
+        <div className="px-6 pb-8">
+        {/* Stats + filtres + grille */}
+        <div className="mb-8">
 
           {/* Cartes de statistiques */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card className="p-4 border-gray-200 hover:border-black transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-600">Total</p>
-                    <p className="text-2xl font-bold text-black">{stats.total}</p>
-                </div>
-                  <ImageIcon className="h-6 w-6 text-gray-400" />
-              </div>
-            </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="p-4 border-gray-200 hover:border-black transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-600">Brouillons</p>
-                    <p className="text-2xl font-bold text-black">{stats.draft}</p>
-                </div>
-                  <FileText className="h-6 w-6 text-gray-400" />
-              </div>
-            </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Card className="p-4 border-gray-200 hover:border-black transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-600">En attente</p>
-                    <p className="text-2xl font-bold text-black">{stats.pendingValidation}</p>
-                </div>
-                  <Clock className="h-6 w-6 text-gray-400" />
-              </div>
-            </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Card className="p-4 border-gray-200 hover:border-black transition-colors">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Publiés</p>
-                    <p className="text-2xl font-bold text-black">{stats.published}</p>
+            {[
+              { label: 'Total', value: stats.total, icon: <ImageIcon className="h-4 w-4 text-[rgb(20,104,154)]" />, bg: 'bg-[rgb(20,104,154)]/10', color: 'text-gray-900', delay: 0.1 },
+              { label: 'Brouillons', value: stats.draft, icon: <FileText className="h-4 w-4 text-gray-600" />, bg: 'bg-gray-100', color: 'text-gray-600', delay: 0.2 },
+              { label: 'En attente', value: stats.pendingValidation, icon: <Clock className="h-4 w-4 text-yellow-600" />, bg: 'bg-yellow-100', color: 'text-yellow-600', delay: 0.3 },
+              { label: 'Publiés', value: stats.published, icon: <CheckCircle className="h-4 w-4 text-green-600" />, bg: 'bg-green-100', color: 'text-green-600', delay: 0.4 },
+              { label: 'Vues totales', value: stats.totalViews, icon: <Eye className="h-4 w-4 text-orange-500" />, bg: 'bg-orange-100', color: 'text-gray-900', delay: 0.5 },
+              ...(stats.totalEarnings > 0 ? [{ label: 'Gains', value: `${stats.totalEarnings.toLocaleString()} F`, icon: <DollarSign className="h-4 w-4 text-emerald-600" />, bg: 'bg-emerald-100', color: 'text-emerald-700', delay: 0.6 }] : []),
+            ].map(({ label, value, icon, bg, color, delay }) => (
+              <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}>
+                <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-[rgb(20,104,154)]/30 transition-all duration-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">{label}</span>
+                    <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center`}>{icon}</div>
                   </div>
-                  <CheckCircle className="h-6 w-6 text-gray-400" />
+                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
                 </div>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Card className="p-4 border-gray-200 hover:border-black transition-colors">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Vues totales</p>
-                    <p className="text-2xl font-bold text-black">{stats.totalViews}</p>
-                  </div>
-                  <Eye className="h-6 w-6 text-gray-400" />
-                </div>
-              </Card>
-            </motion.div>
-
-            {stats.totalEarnings > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                <Card className="p-4 border-gray-200 hover:border-black transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Gains</p>
-                      <p className="text-lg font-bold text-black">
-                        {stats.totalEarnings.toLocaleString()} F
-                      </p>
-                    </div>
-                    <DollarSign className="h-6 w-6 text-gray-400" />
-                  </div>
-                </Card>
               </motion.div>
-            )}
+            ))}
           </div>
 
           {/* Filtres et recherche */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
-            <div className="flex flex-col sm:flex-row gap-3 flex-1 max-w-4xl">
+          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Rechercher vos designs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-gray-300 focus:border-black focus:ring-black"
+                  className="pl-10 rounded-lg border-gray-200 focus:border-[rgb(20,104,154)]"
                 />
               </div>
-              
               <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as DesignStatus)}>
-                <SelectTrigger className="w-full sm:w-48 border-gray-300 focus:border-black focus:ring-black">
+                <SelectTrigger className="w-full sm:w-48 rounded-lg border-gray-200 focus:border-[rgb(20,104,154)]">
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-200">
@@ -1043,19 +962,16 @@ export const VendorDesignsPage: React.FC = () => {
                   <SelectItem value={DesignStatus.REJECTED}>Rejetés</SelectItem>
                 </SelectContent>
               </Select>
-              
               <div className="w-full sm:w-48">
                 <DesignCategorySelector
                   value={filterTheme}
                   onChange={setFilterTheme}
                   placeholder="Tous les thèmes"
                   showImages={false}
-                  className="border-gray-300 focus:border-black focus:ring-black"
+                  className="rounded-lg border-gray-200 focus:border-[rgb(20,104,154)]"
                 />
               </div>
             </div>
-            
-            {/* Mode liste supprimé - toujours en grille */}
           </div>
         </div>
 
@@ -1110,13 +1026,13 @@ export const VendorDesignsPage: React.FC = () => {
                   : 'Commencez votre parcours créatif en téléchargeant votre premier design.'
               }
             </p>
-              <Button
+              <button
                 onClick={() => setIsUploadDialogOpen(true)}
-                className="bg-black text-white hover:bg-gray-800"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] text-white rounded-lg transition-colors"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 Créer mon premier design
-              </Button>
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1124,44 +1040,38 @@ export const VendorDesignsPage: React.FC = () => {
         {/* Pagination */}
         {pagination.totalPages > 1 && (
           <div className="flex items-center justify-center mt-8 space-x-2">
-              <Button
-                variant="outline"
+            <button
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Précédent
-              </Button>
-            
+            </button>
             <div className="flex items-center space-x-1">
               {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                 const page = i + 1;
                 return (
-                  <Button
+                  <button
                     key={page}
-                    variant={currentPage === page ? 'default' : 'outline'}
-                    size="sm"
                     onClick={() => setCurrentPage(page)}
-                    className={
-                      currentPage === page 
-                        ? 'bg-black text-white' 
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }
+                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                      currentPage === page
+                        ? 'bg-[rgb(20,104,154)] text-white'
+                        : 'border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white'
+                    }`}
                   >
                     {page}
-                  </Button>
+                  </button>
                 );
               })}
             </div>
-            
-              <Button
-                variant="outline"
+            <button
               disabled={currentPage === pagination.totalPages}
               onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Suivant
-              </Button>
+            </button>
           </div>
         )}
 
@@ -1212,18 +1122,24 @@ export const VendorDesignsPage: React.FC = () => {
                 <Label className="text-black font-medium">Fichier design *</Label>
 
                 {!previewUrl ? (
-                  <div
-                    className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-black transition-colors cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="h-10 w-10 text-gray-400 mb-3" />
-                    <p className="text-sm text-gray-600 mb-2 text-center">
-                      Glissez votre fichier ici ou cliquez pour sélectionner
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG jusqu'à 10MB
-                    </p>
-                  </div>
+                  <>
+                    <div
+                      className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-black transition-colors cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-10 w-10 text-gray-400 mb-3" />
+                      <p className="text-sm text-gray-600 mb-2 text-center">
+                        Glissez votre fichier ici ou cliquez pour sélectionner
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, WEBP — max 5 Mo
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Min. 1000×1000 px · Min. 100 DPI
+                      </p>
+                    </div>
+                    <DesignFileChecker file={checkerFile} onValidationChange={setFileIsValid} />
+                  </>
                 ) : (
                   <div className="relative">
                     <img
@@ -1231,10 +1147,8 @@ export const VendorDesignsPage: React.FC = () => {
                       alt="Aperçu"
                       className="w-full h-40 object-cover rounded-lg border border-gray-200"
                     />
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="absolute top-2 right-2 bg-red-500 hover:bg-red-600"
+                    <button
+                      className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
                       onClick={() => {
                         setSelectedFile(null);
                         setPreviewUrl('');
@@ -1242,7 +1156,7 @@ export const VendorDesignsPage: React.FC = () => {
                       }}
                     >
                       <Trash2 className="h-3 w-3" />
-                    </Button>
+                    </button>
                   </div>
                 )}
 
@@ -1307,33 +1221,32 @@ export const VendorDesignsPage: React.FC = () => {
             </div>
 
             <DialogFooter className="space-x-2">
-              <Button
-                variant="outline"
+              <button
                 onClick={() => {
                   setIsUploadDialogOpen(false);
                   resetUploadForm();
                 }}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white rounded-lg transition-colors"
               >
                 Annuler
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={handleUploadDesign}
-                disabled={uploadingDesign || !selectedFile || !designForm.name.trim() || !designForm.themeId || designForm.themeId === 0}
-                className="bg-black text-white hover:bg-gray-800"
+                disabled={uploadingDesign || !selectedFile || !fileIsValid || !designForm.name.trim() || !designForm.themeId || designForm.themeId === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[rgb(20,104,154)] hover:bg-[rgb(16,83,123)] active:bg-[rgb(14,72,108)] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploadingDesign ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     Création...
                   </>
                 ) : (
                   <>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4" />
                     Créer le design
                   </>
                 )}
-              </Button>
+              </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1457,13 +1370,12 @@ export const VendorDesignsPage: React.FC = () => {
             )}
 
             <DialogFooter>
-              <Button
-                variant="outline"
+              <button
                 onClick={() => setDetailsModalOpen(false)}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white rounded-lg transition-colors"
               >
                 Fermer
-              </Button>
+              </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1489,14 +1401,23 @@ export const VendorDesignsPage: React.FC = () => {
               </div>
             </div>
             <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Annuler</Button>
-              </DialogClose>
-              <Button variant="destructive" onClick={confirmDelete}>Supprimer définitivement</Button>
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border-2 border-gray-200 text-gray-600 hover:bg-gray-50 bg-white rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              >
+                Supprimer définitivement
+              </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+        </div>{/* end px-6 pb-8 */}
+      </div>{/* end max-w-7xl */}
     </div>
   );
-}; 
+};

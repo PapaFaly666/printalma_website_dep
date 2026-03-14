@@ -17,6 +17,8 @@ import {
   EyeOff,
   Copy,
   CheckCircle,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { AdminButton } from '../../components/admin/AdminButton';
@@ -60,9 +62,14 @@ export const AdminUsersPageModern: React.FC = () => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [filterRoleId, setFilterRoleId] = useState<number | undefined>(undefined);
+  const [filterStatus, setFilterStatus] = useState<string>('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 20;
+
+  // Status loading
+  const [statusLoading, setStatusLoading] = useState<number | null>(null);
 
   // Modals
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -96,7 +103,7 @@ export const AdminUsersPageModern: React.FC = () => {
   // Chargement
   useEffect(() => {
     loadUsers();
-  }, [page, search]);
+  }, [page, search, filterRoleId, filterStatus]);
 
   useEffect(() => {
     loadRoles();
@@ -109,6 +116,8 @@ export const AdminUsersPageModern: React.FC = () => {
         page,
         limit,
         search,
+        roleId: filterRoleId,
+        status: filterStatus || undefined,
       });
 
       const payload = res?.data ?? res;
@@ -177,6 +186,20 @@ export const AdminUsersPageModern: React.FC = () => {
       loadUsers();
     } catch (error: any) {
       toast.error(error.message || 'Erreur lors de la modification');
+    }
+  };
+
+  const handleToggleStatus = async (targetUser: User) => {
+    const newStatus = targetUser.status?.toUpperCase() === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    try {
+      setStatusLoading(targetUser.id);
+      await userService.updateUserStatus(targetUser.id, newStatus);
+      toast.success(newStatus === 'ACTIVE' ? `${targetUser.name} activé` : `${targetUser.name} désactivé`);
+      loadUsers();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la mise à jour du statut');
+    } finally {
+      setStatusLoading(null);
     }
   };
 
@@ -276,7 +299,10 @@ export const AdminUsersPageModern: React.FC = () => {
     return true;
   };
 
-  const getRoleBadge = (role: Role) => {
+  const getRoleBadge = (role?: Role | null) => {
+    if (!role) {
+      return <Badge className="bg-gray-100 text-gray-500 border-0">Client</Badge>;
+    }
     const colors: Record<string, string> = {
       superadmin: 'bg-purple-100 text-purple-700',
       admin: 'bg-blue-100 text-blue-700',
@@ -284,12 +310,21 @@ export const AdminUsersPageModern: React.FC = () => {
       support: 'bg-yellow-100 text-yellow-700',
       comptable: 'bg-orange-100 text-orange-700',
     };
-
     return (
       <Badge className={`${colors[role.slug] || 'bg-gray-100 text-gray-700'} border-0`}>
         {role.name}
       </Badge>
     );
+  };
+
+  const getStatusBadge = (status: string) => {
+    const map: Record<string, { label: string; className: string }> = {
+      ACTIVE: { label: 'Actif', className: 'bg-green-100 text-green-700' },
+      INACTIVE: { label: 'Inactif', className: 'bg-gray-100 text-gray-500' },
+      SUSPENDED: { label: 'Suspendu', className: 'bg-red-100 text-red-700' },
+    };
+    const s = map[status?.toUpperCase()] || { label: status || '—', className: 'bg-gray-100 text-gray-500' };
+    return <Badge className={`${s.className} border-0`}>{s.label}</Badge>;
   };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -304,10 +339,10 @@ export const AdminUsersPageModern: React.FC = () => {
       >
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Gestion de l'équipe</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Gestion des utilisateurs</h1>
             <div className="flex items-center gap-4 text-sm">
               <span className="text-gray-600">
-                <span className="font-semibold text-gray-900">{total}</span> membre{total > 1 ? 's' : ''}
+                <span className="font-semibold text-gray-900">{total}</span> utilisateur{total > 1 ? 's' : ''}
               </span>
             </div>
           </div>
@@ -327,24 +362,45 @@ export const AdminUsersPageModern: React.FC = () => {
 
       {/* Contenu */}
       <div className="px-4 sm:px-6 py-4 space-y-4">
-        {/* Barre de recherche - Style ProductsPage */}
+        {/* Barre de recherche et filtres */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
         >
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Rechercher par nom ou email..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="pl-10 h-10 border-gray-300 focus:border-[rgb(20,104,154)] focus:ring-[rgb(20,104,154)]/20"
-            />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Rechercher par nom ou email..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="pl-10 h-10 border-gray-300 focus:border-[rgb(20,104,154)] focus:ring-[rgb(20,104,154)]/20"
+              />
+            </div>
+            <Select value={filterRoleId ? String(filterRoleId) : 'all'} onValueChange={(v) => { setFilterRoleId(v === 'all' ? undefined : Number(v)); setPage(1); }}>
+              <SelectTrigger className="h-10 w-full sm:w-44 border-gray-300">
+                <SelectValue placeholder="Tous les rôles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les rôles</SelectItem>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus || 'all'} onValueChange={(v) => { setFilterStatus(v === 'all' ? '' : v); setPage(1); }}>
+              <SelectTrigger className="h-10 w-full sm:w-36 border-gray-300">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="ACTIVE">Actif</SelectItem>
+                <SelectItem value="INACTIVE">Inactif</SelectItem>
+                <SelectItem value="SUSPENDED">Suspendu</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </motion.div>
 
@@ -361,10 +417,13 @@ export const AdminUsersPageModern: React.FC = () => {
                   <thead className="border-b bg-gray-50/50">
                     <tr>
                       <th className="text-left py-3 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Membre
+                        Utilisateur
                       </th>
                       <th className="text-left py-3 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Rôle
+                      </th>
+                      <th className="text-left py-3 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Statut
                       </th>
                       <th className="text-left py-3 px-6 text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Dernière connexion
@@ -410,17 +469,34 @@ export const AdminUsersPageModern: React.FC = () => {
 
                           {/* Rôle */}
                           <td className="py-4 px-6">
-                            {canModifyUser(user) ? (
+                            {/* Superadmin : rôle non modifiable */}
+                            {user.role?.slug === 'superadmin' ? (
+                              <div className="flex items-center gap-2">
+                                {getRoleBadge(user.role)}
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Info className="h-4 w-4 text-gray-400" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Le rôle superadmin ne peut pas être modifié</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                            ) : !user.role ? (
+                              /* Utilisateur sans rôle (client) */
+                              getRoleBadge(null)
+                            ) : canModifyUser(user) ? (
                               <Select
-                                value={String(user.roleId)}
+                                value={user.roleId ? String(user.roleId) : ''}
                                 onValueChange={(value) => handleRoleChange(user.id, Number(value), user.name)}
-                                disabled={!isSuperAdmin && user.role?.slug === 'superadmin'}
                               >
-                                <SelectTrigger className="w-52 h-9 border-0 shadow-none hover:bg-gray-100 focus:ring-0">
+                                <SelectTrigger className="w-48 h-9 border-0 shadow-none hover:bg-gray-100 focus:ring-0">
                                   <SelectValue>{getRoleBadge(user.role)}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {roles.map((role) => (
+                                  {roles.filter(r => r.slug !== 'superadmin').map((role) => (
                                     <SelectItem key={role.id} value={String(role.id)}>
                                       <div className="flex items-center gap-2">
                                         <Shield className="h-4 w-4 text-gray-400" />
@@ -434,22 +510,13 @@ export const AdminUsersPageModern: React.FC = () => {
                                 </SelectContent>
                               </Select>
                             ) : (
-                              <div className="flex items-center gap-2">
-                                {getRoleBadge(user.role)}
-                                {user.role?.slug === 'superadmin' && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger>
-                                        <Info className="h-4 w-4 text-gray-400" />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Seul un superadmin peut modifier ce rôle</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                              </div>
+                              getRoleBadge(user.role)
                             )}
+                          </td>
+
+                          {/* Statut */}
+                          <td className="py-4 px-6">
+                            {getStatusBadge(user.status)}
                           </td>
 
                           {/* Dernière connexion */}
@@ -487,6 +554,23 @@ export const AdminUsersPageModern: React.FC = () => {
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
+                                    disabled={!canModifyUser(user) || statusLoading === user.id}
+                                    onClick={() => handleToggleStatus(user)}
+                                  >
+                                    {user.status?.toUpperCase() === 'ACTIVE' ? (
+                                      <>
+                                        <UserX className="h-4 w-4 mr-2 text-orange-500" />
+                                        Désactiver
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UserCheck className="h-4 w-4 mr-2 text-green-600" />
+                                        Activer
+                                      </>
+                                    )}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
                                     className="text-red-600 focus:text-red-600"
                                     disabled={!canModifyUser(user)}
                                     onClick={() => {
@@ -495,7 +579,7 @@ export const AdminUsersPageModern: React.FC = () => {
                                     }}
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />
-                                    Supprimer
+                                    Supprimer définitivement
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -510,10 +594,10 @@ export const AdminUsersPageModern: React.FC = () => {
                 {users.length === 0 && !loading && (
                   <div className="text-center py-12 px-4">
                     <UserIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 mb-2">Aucun membre trouvé</p>
-                    {search && (
-                      <AdminButton variant="outline" size="sm" onClick={() => setSearch('')}>
-                        Réinitialiser la recherche
+                    <p className="text-gray-500 mb-2">Aucun utilisateur trouvé</p>
+                    {(search || filterRoleId || filterStatus) && (
+                      <AdminButton variant="outline" size="sm" onClick={() => { setSearch(''); setFilterRoleId(undefined); setFilterStatus(''); }}>
+                        Réinitialiser les filtres
                       </AdminButton>
                     )}
                   </div>
@@ -534,7 +618,7 @@ export const AdminUsersPageModern: React.FC = () => {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4">
             <p className="text-sm text-gray-600">
-              {total} membre{total > 1 ? 's' : ''} au total
+              {total} utilisateur{total > 1 ? 's' : ''} au total
             </p>
             <div className="flex gap-2">
               <AdminButton
@@ -689,10 +773,11 @@ export const AdminUsersPageModern: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertCircle className="h-5 w-5" />
-              Supprimer {userToDelete?.name} ?
+              Supprimer définitivement {userToDelete?.name} ?
             </DialogTitle>
             <DialogDescription>
-              Cette action est irréversible. Toutes les données seront supprimées.
+              Cette action est <strong>irréversible</strong>. L'utilisateur et toutes ses données seront supprimés de manière permanente.
+              Pour bloquer temporairement l'accès, utilisez plutôt "Désactiver".
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -708,7 +793,7 @@ export const AdminUsersPageModern: React.FC = () => {
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" />
-                  Supprimer
+                  Supprimer définitivement
                 </>
               )}
             </AdminButton>

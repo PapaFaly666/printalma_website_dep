@@ -104,7 +104,7 @@ class SearchService {
   }
 
   /**
-   * Rechercher des produits (fallback si API non disponible)
+   * Rechercher des produits via /public/search
    */
   async searchProducts(query: string): Promise<SearchResult[]> {
     if (!query.trim() || query.length < 2) {
@@ -112,45 +112,57 @@ class SearchService {
     }
 
     try {
-      console.log('🔍 [searchService] Recherche de produits pour:', query);
       const response = await fetch(
-        `${this.baseUrl}/api/products/search?q=${encodeURIComponent(query)}&limit=6`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+        `${this.baseUrl}/public/search?q=${encodeURIComponent(query)}&limit=6`,
+        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
       );
 
-      console.log('📡 [searchService] Réponse produits - Status:', response.status, response.ok);
-
-      if (!response.ok) {
-        console.warn('⚠️ [searchService] API produits non disponible ou erreur');
-        return [];
-      }
+      if (!response.ok) return [];
 
       const result = await response.json();
-      console.log('📦 [searchService] Résultat produits:', result);
 
       if (result.success && result.data?.products) {
-        const mapped = result.data.products.map((product: any) => ({
-          id: product.id,
-          name: product.name,
-          type: 'product' as const,
-          imageUrl: product.images?.[0]?.url || product.imageUrl,
-          price: product.price,
-          category: product.category,
-          subCategory: product.subCategory,
-          url: `/product/${product.id}`,
-        }));
-        console.log('✅ [searchService] Produits trouvés:', mapped.length);
-        return mapped;
+        return result.data.products.slice(0, 6).map((product: any) => {
+          // Priorité : finalImages top-level > colorVariations.finalUrlImage > image base
+          const finalImages: any[] = product.finalImages || [];
+          const colorVariations: any[] = product.adminProduct?.colorVariations || [];
+
+          let finalImage: string | null = null;
+
+          // 1. Chercher dans finalImages (couleur par défaut en priorité)
+          if (finalImages.length > 0) {
+            const defaultImg = product.defaultColorId
+              ? finalImages.find((img: any) => img.colorId === product.defaultColorId)
+              : null;
+            finalImage = (defaultImg || finalImages[0])?.finalImageUrl || null;
+          }
+
+          // 2. Fallback : finalUrlImage sur colorVariation
+          if (!finalImage) {
+            finalImage = colorVariations.find((cv: any) => cv.finalUrlImage)?.finalUrlImage || null;
+          }
+
+          // 3. Fallback : image de base du produit admin
+          if (!finalImage) {
+            finalImage = colorVariations[0]?.images?.[0]?.url || null;
+          }
+
+          return {
+            id: product.id,
+            name: product.vendorName || product.name,
+            type: 'product' as const,
+            imageUrl: finalImage,
+            price: product.price,
+            category: product.adminProduct?.name,
+            shopName: product.vendor?.shop_name || product.vendor?.fullName || '',
+            url: `/vendor-product-detail/${product.id}`,
+          };
+        });
       }
 
       return [];
     } catch (error) {
-      console.error('❌ [searchService] Erreur lors de la recherche de produits:', error);
+      console.error('❌ [searchService] Erreur recherche produits:', error);
       return [];
     }
   }
@@ -200,7 +212,7 @@ class SearchService {
   }
 
   /**
-   * Rechercher des vendeurs
+   * Rechercher des vendeurs/boutiques (client-side filtering)
    */
   async searchVendors(query: string): Promise<SearchResult[]> {
     if (!query.trim() || query.length < 2) {
@@ -208,12 +220,10 @@ class SearchService {
     }
 
     try {
-      console.log('🔍 [searchService] Recherche de vendeurs pour:', query);
       const allVendors = await VendorServiceInstance.getAllVendors();
+      const searchLower = query.toLowerCase();
 
-      // Filtrer les vendeurs par nom, prénom ou nom de boutique
-      const filteredVendors = allVendors.filter((vendor: Vendor) => {
-        const searchLower = query.toLowerCase();
+      const filtered = allVendors.filter((vendor: Vendor) => {
         const firstName = vendor.firstName?.toLowerCase() || '';
         const lastName = vendor.lastName?.toLowerCase() || '';
         const shopName = vendor.shop_name?.toLowerCase() || '';
@@ -227,12 +237,9 @@ class SearchService {
         );
       });
 
-      console.log('✅ [searchService] Vendeurs trouvés:', filteredVendors.length);
-
-      // Limiter à 4 résultats
-      return filteredVendors.slice(0, 4).map((vendor: Vendor) => ({
+      return filtered.slice(0, 4).map((vendor: Vendor) => ({
         id: vendor.id,
-        name: `${vendor.firstName} ${vendor.lastName}`.trim(),
+        name: vendor.shop_name || `${vendor.firstName} ${vendor.lastName}`.trim(),
         type: 'vendor' as const,
         imageUrl: vendor.profile_photo_url || vendor.photo_profil || undefined,
         category: this.getVendorTypeLabel(vendor.vendeur_type),
@@ -241,7 +248,7 @@ class SearchService {
         url: `/profile/${vendor.vendeur_type.toLowerCase()}/${vendor.id}`,
       }));
     } catch (error) {
-      console.error('❌ [searchService] Erreur lors de la recherche de vendeurs:', error);
+      console.error('❌ [searchService] Erreur recherche vendeurs:', error);
       return [];
     }
   }

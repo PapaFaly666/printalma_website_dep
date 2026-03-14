@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import CategoryTabs from '../components/CategoryTabs';
 import ServiceFeatures from '../pages/ServiceFeatures ';
 import { VendorServiceInstance, Vendor } from '../services/vendorService';
+import { vendorStatsService } from '../services/vendorStatsService';
 
 interface Artist {
   id: number;
@@ -134,6 +135,7 @@ export default function ArtistesPage() {
   }, []);
 
   const handleViewShop = (artist: Artist) => {
+    vendorStatsService.trackShopClick(artist.id);
     // Utiliser le nom de la boutique si disponible, sinon le firstName
     const shopName = artist.shopName || artist.firstName || artist.name;
     // Convertir en URL-friendly (remplacer les espaces et caractères spéciaux)

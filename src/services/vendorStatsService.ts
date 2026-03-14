@@ -144,6 +144,49 @@ export const vendorStatsService = {
     }
   },
 
+  trackShopClick: async (vendorId: number): Promise<void> => {
+    try {
+      await fetch(`${API_CONFIG.BASE_URL}/public/vendors/${vendorId}/click`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      // Silently ignore tracking errors
+      console.warn('[vendorStatsService] Erreur tracking click boutique:', error);
+    }
+  },
+
+  getShopClicksHistory: async (days: number = 7): Promise<{ date: string; clicks: number }[]> => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/vendor/stats/shop-clicks?days=${days}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error('API returned success: false');
+      }
+
+      return result.data;
+    } catch (error) {
+      console.warn('[vendorStatsService] Erreur récupération historique clics boutique:', error);
+      return [];
+    }
+  },
+
   getVendorStats: async (): Promise<VendorStatsData> => {
     try {
       console.log('🔄 [vendorStatsService] Récupération des statistiques depuis:', `${API_CONFIG.BASE_URL}/vendor/stats`);
